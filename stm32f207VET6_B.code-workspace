@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"clang-format.executable": "C:\\Users\\Administrator\\.vscode\\extensions\\ms-vscode.cpptools-0.25.1\\LLVM\\bin\\clang-format.exe",
+		"C_Cpp.clang_format_sortIncludes": false,
+		"clang-format.fallbackStyle": "WebKit",
+		"editor.formatOnSave": true,
+		"formatFiles.extensionsToInclude": "c,h",
+		"formatFiles.excludePattern": "**/node_modules,**/.vscode,**/dist/**,**/.chrome,**/Drivers,**/Debug,**/FreeRTOS,**/Release,**/Startup,**/Src/main.c,**/Src/sys*,**/Src/stm32*,**/Inc/sys*,**/Inc/stm32*,**/Inc/main*,**/FreeRTOS*"
+	}
+}

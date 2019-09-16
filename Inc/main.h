@@ -1,22 +1,22 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.h
-  * @brief          : Header for main.c file.
-  *                   This file contains the common defines of the application.
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; Copyright (c) 2019 STMicroelectronics.
-  * All rights reserved.</center></h2>
-  *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.h
+ * @brief          : Header for main.c file.
+ *                   This file contains the common defines of the application.
+ ******************************************************************************
+ * @attention
+ *
+ * <h2><center>&copy; Copyright (c) 2019 STMicroelectronics.
+ * All rights reserved.</center></h2>
+ *
+ * This software component is licensed by ST under BSD 3-Clause license,
+ * the "License"; You may not use this file except in compliance with the
+ * License. You may obtain a copy of the License at:
+ *                        opensource.org/licenses/BSD-3-Clause
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
@@ -52,7 +52,12 @@ extern "C" {
 
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
-
+#define TASK_PRIORITY_COMM_OUT_RX 4
+#define TASK_PRIORITY_COMM_OUT_TX 5
+#define TASK_PRIORITY_COMM_MAIN_RX 6
+#define TASK_PRIORITY_COMM_MAIN_TX 7
+#define TASK_PRIORITY_COMM_DATA_RX 8
+#define TASK_PRIORITY_COMM_DATA_TX 9
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
@@ -63,8 +68,16 @@ void FL_Error_Handler(char * file, int line);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define BC_RXD_Pin GPIO_PIN_10
+#define BC_RXD_GPIO_Port GPIOB
+#define BC_TXD_Pin GPIO_PIN_11
+#define BC_TXD_GPIO_Port GPIOB
 #define LAMP1_Pin GPIO_PIN_8
 #define LAMP1_GPIO_Port GPIOA
+#define CORE_RXD_Pin GPIO_PIN_9
+#define CORE_RXD_GPIO_Port GPIOA
+#define CORE_TXD_Pin GPIO_PIN_10
+#define CORE_TXD_GPIO_Port GPIOA
 #define LAMP2_Pin GPIO_PIN_11
 #define LAMP2_GPIO_Port GPIOA
 #define LAMP3_Pin GPIO_PIN_12
@@ -75,8 +88,12 @@ void FL_Error_Handler(char * file, int line);
 #define MCU_TXD_GPIO_Port GPIOC
 #define MCU_RXD_Pin GPIO_PIN_2
 #define MCU_RXD_GPIO_Port GPIOD
+#define FRONT_RXD_Pin GPIO_PIN_5
+#define FRONT_RXD_GPIO_Port GPIOD
+#define FRONT_TXD_Pin GPIO_PIN_6
+#define FRONT_TXD_GPIO_Port GPIOD
 /* USER CODE BEGIN Private defines */
-
+#define ARRAY_LEN(x) (sizeof(x) / sizeof((x)[0]))
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
