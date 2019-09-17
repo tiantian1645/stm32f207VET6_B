@@ -11,6 +11,7 @@
 #include "protocol.h"
 #include "stdio.h"
 #include "comm_out.h"
+#include "m_l6470.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern UART_HandleTypeDef huart5;
@@ -141,6 +142,7 @@ void comm_Out_Init(void)
 {
     BaseType_t xResult;
 
+    m_l6470_Init();
     comm_Out_ConfInit();
 
     /* 接收队列 */

@@ -4,6 +4,7 @@
 #include "comm_out.h"
 #include "comm_main.h"
 #include "comm_data.h"
+#include "m_l6470.h"
 
 /* Extern variables ----------------------------------------------------------*/
 
@@ -292,14 +293,87 @@ eProtocolParseResult protocol_Parse_Emit(eProtocol_COMM_Index index, uint8_t * p
  */
 eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
 {
+    eProtocolParseResult error = PROTOCOL_PARSE_OK;
+    uint16_t status = 0;
+    uint32_t step;
+
     if (pInBuff[5] == eProtocoleRespPack_Client_ACK) { /* 收到对方回应帧 */
         comm_Out_Send_ACK_Notify(pInBuff[6]);          /* 通知串口发送任务 回应包收到 */
         return PROTOCOL_PARSE_OK;                      /* 直接返回 */
     }
 
     /* 其他命令帧 */
-    gProtocol_ACK_IndexSet(eComm_Out, pInBuff[3] + 1);      /* 设置发送确认帧号 */
-    return protocol_Parse_Emit(eComm_Out, pInBuff, length); /* 后续详细处理 */
+    gProtocol_ACK_IndexSet(eComm_Out, pInBuff[3] + 1); /* 设置发送确认帧号 */
+    switch (pInBuff[5]) {                              /* 进一步处理 功能码 */
+        case 0xD0:
+            m_l6470_Index_Switch(eM_L6470_Index_0, portMAX_DELAY);
+            if (length < 11) {
+                pInBuff[6] = 0;
+                pInBuff[7] = 0;
+                pInBuff[8] = 0;
+                pInBuff[9] = 0;
+                pInBuff[10] = 200;
+            } else {
+                step = (uint32_t)(pInBuff[7] << 24) + (uint32_t)(pInBuff[8] << 16) + (uint32_t)(pInBuff[9] << 8) + (uint32_t)(pInBuff[10] << 0);
+            }
+            switch (pInBuff[6]) {
+                case 0x00:
+                    error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 发送回应包 */
+                    dSPIN_Move(REV, step);                                 /* 向驱动发送指令 */
+                    status = dSPIN_Get_Status();
+                    pInBuff[0] = status >> 8;
+                    pInBuff[1] = status & 0xFF;
+                    error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, pInBuff, 2);
+                    break;
+                case 0x01:
+                default:
+                    error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 发送回应包 */
+                    dSPIN_Move(FWD, step);                                 /* 向驱动发送指令 */
+                    status = dSPIN_Get_Status();
+                    pInBuff[0] = status >> 8;
+                    pInBuff[1] = status & 0xFF;
+                    error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, pInBuff, 2);
+                    break;
+            }
+            m_l6470_release();
+            return error;
+        case 0xD1:
+            m_l6470_Index_Switch(eM_L6470_Index_1, portMAX_DELAY);
+            if (length < 11) {
+                pInBuff[6] = 0;
+                pInBuff[7] = 0;
+                pInBuff[8] = 0;
+                pInBuff[9] = 0;
+                pInBuff[10] = 200;
+            } else {
+                step = (uint32_t)(pInBuff[7] << 24) + (uint32_t)(pInBuff[8] << 16) + (uint32_t)(pInBuff[9] << 8) + (uint32_t)(pInBuff[10] << 0);
+            }
+            switch (pInBuff[6]) {
+                case 0x00:
+                    error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 发送回应包 */
+                    dSPIN_Move(REV, step);                                 /* 向驱动发送指令 */
+                    status = dSPIN_Get_Status();
+                    pInBuff[0] = status >> 8;
+                    pInBuff[1] = status & 0xFF;
+                    error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, pInBuff, 2);
+                    break;
+                case 0x01:
+                default:
+                    error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 发送回应包 */
+                    dSPIN_Move(FWD, step);                                 /* 向驱动发送指令 */
+                    status = dSPIN_Get_Status();
+                    pInBuff[0] = status >> 8;
+                    pInBuff[1] = status & 0xFF;
+                    error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, pInBuff, 2);
+                    break;
+            }
+            m_l6470_release();
+            return error;
+        default:
+            error |= PROTOCOL_PARSE_CMD_ERROR;
+            break;
+    }
+    return error;
 }
 
 /**

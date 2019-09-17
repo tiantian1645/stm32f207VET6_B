@@ -10,6 +10,9 @@
 		"clang-format.fallbackStyle": "WebKit",
 		"editor.formatOnSave": true,
 		"formatFiles.extensionsToInclude": "c,h",
-		"formatFiles.excludePattern": "**/node_modules,**/.vscode,**/dist/**,**/.chrome,**/Drivers,**/Debug,**/FreeRTOS,**/Release,**/Startup,**/Src/main.c,**/Src/sys*,**/Src/stm32*,**/Inc/sys*,**/Inc/stm32*,**/Inc/main*,**/FreeRTOS*"
+		"formatFiles.excludePattern": "**/node_modules,**/.vscode,**/dist/**,**/.chrome,**/Drivers,**/Debug,**/FreeRTOS,**/Release,**/Startup,**/Src/main.c,**/Src/sys*,**/Src/stm32*,**/Inc/sys*,**/Inc/stm32*,**/Inc/main*,**/FreeRTOS*",
+		"files.associations": {
+			"comm_out.h": "c"
+		}
 	}
 }
