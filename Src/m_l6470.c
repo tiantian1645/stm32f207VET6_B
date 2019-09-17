@@ -309,9 +309,6 @@ void m_l6470_Params_Init(void)
  */
 void m_l6470_Init(void)
 {
-    uint8_t step_1 = 0, step_2 = 0;
-    uint32_t cnt;
-
     m_l6470_spi_sem = xSemaphoreCreateBinary();
     if (m_l6470_spi_sem == NULL || xSemaphoreGive(m_l6470_spi_sem) != pdPASS) {
         Error_Handler();
@@ -322,7 +319,7 @@ void m_l6470_Init(void)
     vTaskDelay(pdMS_TO_TICKS(1000));
     HAL_GPIO_WritePin(MOT_NRST_GPIO_Port, MOT_NRST_Pin, GPIO_PIN_SET);
 
-    printf("\n\n============= Enter motor 1 | %d =============\n\n", step_1);
+    printf("\n\n============= Enter motor 1 | =============\n\n");
     /* 扫码电机驱动 */
     m_l6470_Index_Switch(eM_L6470_Index_0, portMAX_DELAY);
     m_l6470_Params_Init();
@@ -330,7 +327,7 @@ void m_l6470_Init(void)
     dSPIN_Registers_Check(&dSPIN_RegsStructs[gML6470Index]);
     m_l6470_release();
 
-    printf("\n\n============= Enter motor 2 | %d =============\n\n", step_2);
+    printf("\n\n============= Enter motor 2 | =============\n\n");
 
     /* 托盘电机驱动 */
     m_l6470_Index_Switch(eM_L6470_Index_1, portMAX_DELAY);

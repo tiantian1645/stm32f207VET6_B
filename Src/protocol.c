@@ -5,9 +5,12 @@
 #include "comm_main.h"
 #include "comm_data.h"
 #include "m_l6470.h"
+#include "m_drv8824.h"
 #include "barcode_scan.h"
 
 /* Extern variables ----------------------------------------------------------*/
+extern TIM_HandleTypeDef htim9;
+extern TIM_HandleTypeDef htim1;
 
 /* Private includes ----------------------------------------------------------*/
 
@@ -340,9 +343,9 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             vTaskDelay(1000);
             step = ((int32_t)(dSPIN_Get_Param(dSPIN_ABS_POS) << 10)) >> 10;
             if (step > ((1 << 21) + 1)) {
-            	step = (1 << 22) - step;
-            	m_l6470_release();
-            	return PROTOCOL_PARSE_EMIT_ERROR;
+                step = (1 << 22) - step;
+                m_l6470_release();
+                return PROTOCOL_PARSE_EMIT_ERROR;
             }
             m_l6470_release();
             return error;
@@ -384,9 +387,22 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 return error;
             }
             barcode_Read_From_Serial(&barcode_length, pInBuff, 1000);
-            if (barcode_length > 0){
-                error |=comm_Out_SendTask_QueueEmitWithBuildCover(0xD2, pInBuff, barcode_length);
+            if (barcode_length > 0) {
+                error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xD2, pInBuff, barcode_length);
             }
+            break;
+        case 0xD3:
+            PWM_Start_AW();
+            break;
+        case 0xD4:
+            HAL_TIM_PWM_Start(&htim9, TIM_CHANNEL_2);
+            vTaskDelay(1000);
+            HAL_TIM_PWM_Stop(&htim9, TIM_CHANNEL_2);
+            break;
+        case 0xD5:
+            HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+            vTaskDelay(1000);
+            HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);
             break;
         default:
             error |= PROTOCOL_PARSE_CMD_ERROR;
