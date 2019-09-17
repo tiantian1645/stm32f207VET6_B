@@ -60,6 +60,8 @@ extern "C" {
 #define TASK_PRIORITY_COMM_DATA_TX 9
 /* USER CODE END EM */
 
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
+
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
 
@@ -68,6 +70,24 @@ void FL_Error_Handler(char * file, int line);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define STEP_NCS1_Pin GPIO_PIN_13
+#define STEP_NCS1_GPIO_Port GPIOC
+#define STEP_NFLG1_Pin GPIO_PIN_14
+#define STEP_NFLG1_GPIO_Port GPIOC
+#define BC_AIM_WK_N_Pin GPIO_PIN_5
+#define BC_AIM_WK_N_GPIO_Port GPIOC
+#define STEP_STEP_Pin GPIO_PIN_9
+#define STEP_STEP_GPIO_Port GPIOE
+#define STEP_NRST_Pin GPIO_PIN_10
+#define STEP_NRST_GPIO_Port GPIOE
+#define STEP_NCS2_Pin GPIO_PIN_12
+#define STEP_NCS2_GPIO_Port GPIOE
+#define STEP_DIR2_Pin GPIO_PIN_13
+#define STEP_DIR2_GPIO_Port GPIOE
+#define BC_TRIG_N_Pin GPIO_PIN_14
+#define BC_TRIG_N_GPIO_Port GPIOE
+#define STEP_NFLG2_Pin GPIO_PIN_15
+#define STEP_NFLG2_GPIO_Port GPIOE
 #define BC_RXD_Pin GPIO_PIN_10
 #define BC_RXD_GPIO_Port GPIOB
 #define BC_TXD_Pin GPIO_PIN_11
@@ -112,6 +132,8 @@ void FL_Error_Handler(char * file, int line);
 #define FRONT_RXD_GPIO_Port GPIOD
 #define FRONT_TXD_Pin GPIO_PIN_6
 #define FRONT_TXD_GPIO_Port GPIOD
+#define STEP_DIR1_Pin GPIO_PIN_9
+#define STEP_DIR1_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 #define ARRAY_LEN(x) (sizeof(x) / sizeof((x)[0]))
 /* USER CODE END Private defines */

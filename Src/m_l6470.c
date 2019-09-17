@@ -292,8 +292,12 @@ void m_l6470_Params_Init(void)
                                              (uint16_t)dSPIN_CONF_PARAM_VS_COMP | (uint16_t)dSPIN_CONF_PARAM_OC_SD | (uint16_t)dSPIN_CONF_PARAM_SR |
                                              (uint16_t)dSPIN_CONF_PARAM_PWM_DIV | (uint16_t)dSPIN_CONF_PARAM_PWM_MUL;
 
-    /* 32 分步 */
-    dSPIN_RegsStructs[gML6470Index].STEP_MODE = dSPIN_STEP_SEL_1_32;
+    /* 细分步 */
+    dSPIN_RegsStructs[gML6470Index].STEP_MODE = dSPIN_CONF_PARAM_STEP_MODE;
+    /* 告警配置 */
+    dSPIN_RegsStructs[gML6470Index].ALARM_EN = dSPIN_CONF_PARAM_ALARM_EN;
+    dSPIN_RegsStructs[gML6470Index].OCD_TH = dSPIN_CONF_PARAM_OCD_TH;
+
     /* Program all dSPIN registers */
     dSPIN_Registers_Set(&dSPIN_RegsStructs[gML6470Index]);
 }
@@ -313,28 +317,25 @@ void m_l6470_Init(void)
         Error_Handler();
     }
 
-    vTaskDelay(pdMS_TO_TICKS(100));
     m_l6470_NCS_GPIO_Deactive();
     HAL_GPIO_WritePin(MOT_NRST_GPIO_Port, MOT_NRST_Pin, GPIO_PIN_RESET);
     vTaskDelay(pdMS_TO_TICKS(1000));
     HAL_GPIO_WritePin(MOT_NRST_GPIO_Port, MOT_NRST_Pin, GPIO_PIN_SET);
 
-    vTaskDelay(pdMS_TO_TICKS(100));
     printf("\n\n============= Enter motor 1 | %d =============\n\n", step_1);
     /* 扫码电机驱动 */
     m_l6470_Index_Switch(eM_L6470_Index_0, portMAX_DELAY);
     m_l6470_Params_Init();
-    vTaskDelay(pdMS_TO_TICKS(100));
+    dSPIN_Get_Status(); /* 读取电机状态 清除低压告警位 */
     dSPIN_Registers_Check(&dSPIN_RegsStructs[gML6470Index]);
     m_l6470_release();
 
     printf("\n\n============= Enter motor 2 | %d =============\n\n", step_2);
 
-    vTaskDelay(pdMS_TO_TICKS(100));
     /* 托盘电机驱动 */
     m_l6470_Index_Switch(eM_L6470_Index_1, portMAX_DELAY);
     m_l6470_Params_Init();
-    vTaskDelay(pdMS_TO_TICKS(100));
+    dSPIN_Get_Status(); /* 读取电机状态 清除低压告警位 */
     dSPIN_Registers_Check(&dSPIN_RegsStructs[gML6470Index]);
     m_l6470_release();
 }
@@ -449,7 +450,7 @@ void dSPIN_Regs_Struct_Reset(dSPIN_RegsStruct_TypeDef * dSPIN_RegsStruct)
 
     dSPIN_RegsStruct->OCD_TH = 0x8;
     dSPIN_RegsStruct->STEP_MODE = 0x7;
-    dSPIN_RegsStruct->ALARM_EN = 0xFF;
+    dSPIN_RegsStruct->ALARM_EN = 0;
     dSPIN_RegsStruct->CONFIG = 0x2E88;
 }
 
@@ -854,7 +855,7 @@ uint16_t dSPIN_Get_Status(void)
  */
 uint8_t dSPIN_Busy_HW(void)
 {
-    if (!(m_l6470_FLAG_GPIO_Get()))
+    if (!(m_l6470_BUSY_GPIO_Get()))
         return 0x01;
     else
         return 0x00;
