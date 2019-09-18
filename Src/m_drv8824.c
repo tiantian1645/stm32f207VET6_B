@@ -17,6 +17,7 @@ typedef struct {
     uint32_t pcs;
     uint32_t rcr;
     uint32_t ccr;
+    uint16_t dup;
 } sPWM_AW_Conf;
 
 /* Private variables ---------------------------------------------------------*/
@@ -24,12 +25,53 @@ static eM_DRV8824_Index gMDRV8824Index = eM_DRV8824_Index_0;
 static uint32_t aSRC_Buffer[3] = {0, 0, 0};
 static uint32_t gPWM_TEST_AW_CNT = 0;
 static SemaphoreHandle_t m_drv8824_spi_sem = NULL;
-const sPWM_AW_Conf cgPWM_AW_Confs[] = {{576 - 1, 25 - 1, 288}, {144 - 1, 100 - 1, 72}};
+const sPWM_AW_Conf cgPWM_AW_Confs[] = {{120 - 1, 232 - 1, 70, 20 * 1}, {240 - 1, 232 - 1, 120, 20 * 1}};
 
 /* Private function prototypes -----------------------------------------------*/
 static uint8_t m_drv8824_acquire(uint32_t timeout);
 
 /* Private user code ---------------------------------------------------------*/
+
+/**
+ * @brief  失能 单个电机驱动
+ * @param  None
+ * @retval None
+ */
+void m_drv8824_Deactive(void)
+{
+    switch (gMDRV8824Index) {
+        case eM_DRV8824_Index_0:
+            HAL_GPIO_WritePin(STEP_NCS1_GPIO_Port, STEP_NCS1_Pin, GPIO_PIN_SET);
+            break;
+        case eM_DRV8824_Index_1:
+            HAL_GPIO_WritePin(STEP_NCS2_GPIO_Port, STEP_NCS2_Pin, GPIO_PIN_SET);
+        default:
+            break;
+    }
+}
+
+/**
+ * @brief  失能 所有电机驱动
+ * @param  None
+ * @retval None
+ */
+void m_drv8824_Deactive_All(void)
+{
+    HAL_GPIO_WritePin(STEP_NCS1_GPIO_Port, STEP_NCS1_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(STEP_NCS2_GPIO_Port, STEP_NCS2_Pin, GPIO_PIN_SET);
+}
+
+/**
+ * @brief  重置 所有电机驱动
+ * @param  None
+ * @retval None
+ */
+void m_drv8824_Reset_All(void)
+{
+    HAL_GPIO_WritePin(STEP_NRST_GPIO_Port, STEP_NCS1_Pin, GPIO_PIN_RESET);
+    vTaskDelay(1);
+    HAL_GPIO_WritePin(STEP_NRST_GPIO_Port, STEP_NCS1_Pin, GPIO_PIN_SET);
+}
 
 /**
  * @brief  PWM资源锁初始化
@@ -38,6 +80,7 @@ static uint8_t m_drv8824_acquire(uint32_t timeout);
  */
 void m_drv8824_Init(void)
 {
+    m_drv8824_Deactive_All();
     m_drv8824_spi_sem = xSemaphoreCreateBinary();
     if (m_drv8824_spi_sem == NULL || xSemaphoreGive(m_drv8824_spi_sem) != pdPASS) {
         Error_Handler();
@@ -99,6 +142,7 @@ static uint8_t m_drv8824_acquire(uint32_t timeout)
  */
 uint8_t m_drv8824_release(void)
 {
+    m_drv8824_Deactive_All();
     if (xSemaphoreGive(m_drv8824_spi_sem) == pdPASS) {
         return 0;
     }
@@ -113,6 +157,8 @@ uint8_t m_drv8824_release(void)
 uint8_t m_drv8824_release_ISR(void)
 {
     BaseType_t xHigherPriorityTaskWoken;
+
+    m_drv8824_Deactive_All();
     if (xSemaphoreGiveFromISR(m_drv8824_spi_sem, &xHigherPriorityTaskWoken) == pdPASS) {
         return 0;
     }
@@ -194,8 +240,7 @@ HAL_StatusTypeDef PWM_Start_AW(void)
 {
     HAL_StatusTypeDef status;
 
-    //m_drv8824_Index_Switch(eM_DRV8824_Index_0, portMAX_DELAY);
-
+    m_drv8824_Index_Switch(eM_DRV8824_Index_1, portMAX_DELAY);
     gPWM_TEST_AW_CNT_Clear();
     __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE);
     status = HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
@@ -206,40 +251,75 @@ HAL_StatusTypeDef PWM_Start_AW(void)
     return status;
 }
 
-/**
- * @brief  HAL_TIM_PeriodElapsedCallback 中断回调处理
- * @param  None
- * @retval None
- */
+// /**
+//  * @brief  HAL_TIM_PeriodElapsedCallback 中断回调处理
+//  * @param  None
+//  * @retval None
+//  */
+// void PWM_AW_IRQ_CallBcak(void)
+// {
+//     uint32_t cnt;
+//     uint16_t length, idx = 0xFFFF;
+//     static uint16_t i = 0, sum = 0;
+
+//     cnt = gPWM_TEST_AW_CNT_Get(); /* 获取当前脉冲计数 */
+
+//     for (i = i; i < ARRAY_LEN(cgPWM_AW_Confs); ++i) { /* 寻找下一个脉冲段配置 */
+//         length = cgPWM_AW_Confs[i].rcr + 1;           /* 计算本区间脉冲数输出数目 */
+//         if ((sum <= cnt) && (cnt < sum + length)) {   /* 落中区间 */
+//             idx = i;                                  /* 弹出区间索引 */
+//             break;
+//         }
+//         sum += length; /* 记录前区间脉冲总数 */
+//     }
+
+//     if (idx >= ARRAY_LEN(cgPWM_AW_Confs)) {        /* 停止输出 */
+//         i = 0;                                     /* 清零索引 */
+//         sum = 0;                                   /* 清零前区间脉冲总计数 */
+//         HAL_TIM_Base_Stop(&htim1);                 /* 停止定时器 */
+//         __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE); /* 清除更新事件标志位 */
+//         __HAL_TIM_SET_COUNTER(&htim1, 0);          /* 清零定时器计数寄存器 */
+//         HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);   /* 停止PWM输出 */
+//         m_drv8824_release_ISR();                   /* 释放PWM资源 */
+//     } else {
+//         aSRC_Buffer[0] = cgPWM_AW_Confs[i].pcs; /* 周期长度 */
+//         aSRC_Buffer[1] = cgPWM_AW_Confs[i].rcr; /* 重复次数 */
+//         aSRC_Buffer[2] = cgPWM_AW_Confs[i].ccr; /* 翻转点 占空比 */
+//         /* burst模式修改时基单元 */
+//         HAL_TIM_DMABurst_WriteStart(&htim1, TIM_DMABASE_ARR, TIM_DMA_UPDATE, (uint32_t *)aSRC_Buffer, TIM_DMABURSTLENGTH_3TRANSFERS);
+//     }
+//     gPWM_TEST_AW_CNT_Inc(); /* 自增脉冲计数 */
+// }
+
 void PWM_AW_IRQ_CallBcak(void)
 {
     uint32_t cnt;
-    uint16_t length, idx = 0xFFFF;
+    uint16_t idx;
     static uint16_t i = 0, sum = 0;
 
     cnt = gPWM_TEST_AW_CNT_Get(); /* 获取当前脉冲计数 */
+    idx = 0xFFFF;
 
-    for (i = i; i < ARRAY_LEN(cgPWM_AW_Confs); ++i) { /* 寻找下一个脉冲段配置 */
-        length = cgPWM_AW_Confs[i].rcr + 1;           /* 计算本区间脉冲数输出数目 */
-        if ((sum <= cnt) && (cnt < sum + length)) {   /* 落中区间 */
-            idx = i;                                  /* 弹出区间索引 */
+    for (i = i; i < ARRAY_LEN(cgPWM_AW_Confs); ++i) {              /* 寻找下一个脉冲段配置 */
+        if ((sum <= cnt) && (cnt < sum + cgPWM_AW_Confs[i].dup)) { /* 落中区间 */
+            idx = i;                                               /* 弹出区间索引 */
             break;
         }
-        sum += length; /* 记录前区间脉冲总数 */
+        sum += cgPWM_AW_Confs[i].dup; /* 记录前区间脉冲总数 */
     }
 
     if (idx >= ARRAY_LEN(cgPWM_AW_Confs)) {        /* 停止输出 */
         i = 0;                                     /* 清零索引 */
         sum = 0;                                   /* 清零前区间脉冲总计数 */
-//        HAL_TIM_Base_Stop(&htim1);                 /* 停止定时器 */
-//        __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE); /* 清除更新事件标志位 */
-//        __HAL_TIM_SET_COUNTER(&htim1, 0);          /* 清零定时器计数寄存器 */
+        HAL_TIM_Base_Stop(&htim1);                 /* 停止定时器 */
+        __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE); /* 清除更新事件标志位 */
+        __HAL_TIM_SET_COUNTER(&htim1, 0);          /* 清零定时器计数寄存器 */
         HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);   /* 停止PWM输出 */
         m_drv8824_release_ISR();                   /* 释放PWM资源 */
     } else {
-        aSRC_Buffer[0] = cgPWM_AW_Confs[i].pcs; /* 周期长度 */
-        aSRC_Buffer[1] = cgPWM_AW_Confs[i].rcr; /* 重复次数 */
-        aSRC_Buffer[2] = cgPWM_AW_Confs[i].ccr; /* 翻转点 占空比 */
+        aSRC_Buffer[0] = cgPWM_AW_Confs[idx].pcs; /* 周期长度 */
+        aSRC_Buffer[1] = cgPWM_AW_Confs[idx].rcr; /* 重复次数 */
+        aSRC_Buffer[2] = cgPWM_AW_Confs[idx].ccr; /* 翻转点 占空比 */
         /* burst模式修改时基单元 */
         HAL_TIM_DMABurst_WriteStart(&htim1, TIM_DMABASE_ARR, TIM_DMA_UPDATE, (uint32_t *)aSRC_Buffer, TIM_DMABURSTLENGTH_3TRANSFERS);
     }
