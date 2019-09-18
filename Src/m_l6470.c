@@ -895,7 +895,7 @@ uint8_t dSPIN_Write_Byte(uint8_t byte)
 
     /* nSS signal activation - low */
     m_l6470_NCS_GPIO_Active();
-    vTaskDelay(1);
+
     /* SPI byte send and receive */
 
     if (HAL_SPI_TransmitReceive(&hspi2, &byte, &result, 1, 30) != HAL_OK) {

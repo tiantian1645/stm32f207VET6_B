@@ -52,7 +52,7 @@
 
 /* Register : MAX_SPEED */
 /* Maximum speed in step/s, range 15.25 to 15610 steps/s */
-#define dSPIN_CONF_PARAM_MAX_SPEED (991.821)
+#define dSPIN_CONF_PARAM_MAX_SPEED (500.821)
 
 /* Register : MIN_SPEED */
 /* Minimum speed in step/s, range 0 to 976.3 steps/s */

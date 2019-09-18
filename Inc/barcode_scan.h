@@ -1,11 +1,12 @@
 /* Define to prevent recursive inclusion -------------------------------------*/
-
+#ifndef __BARCODE_SCAN_H
+#define __BARCODE_SCAN_H
 /* Includes ------------------------------------------------------------------*/
 
 /* Private includes ----------------------------------------------------------*/
 
 /* Exported macro ------------------------------------------------------------*/
-#define BARCODE_MAX_LENGTH 24
+#define BARCODE_MAX_LENGTH 100
 #define BARCODE_INDEX_NUM 6
 
 /* Exported types ------------------------------------------------------------*/
@@ -37,6 +38,7 @@ typedef struct {
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/
+void barcode_serial_Test(void);
 void barcde_Test(uint32_t cnt);
 
 void barcode_Init(void);
@@ -45,3 +47,5 @@ eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index, uint8_t * pOut_length, 
 eBarcodeState barcode_Read_From_Serial(uint8_t * pOut_length, uint8_t * pData, uint32_t timeout);
 
 /* Private defines -----------------------------------------------------------*/
+
+#endif

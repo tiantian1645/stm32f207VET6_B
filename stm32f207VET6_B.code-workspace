@@ -13,7 +13,8 @@
 		"formatFiles.excludePattern": "**/node_modules,**/.vscode,**/dist/**,**/.chrome,**/Drivers,**/Debug,**/FreeRTOS,**/Release,**/Startup,**/Src/main.c,**/Src/sys*,**/Src/stm32*,**/Inc/sys*,**/Inc/stm32*,**/Inc/main*,**/FreeRTOS*",
 		"files.associations": {
 			"comm_out.h": "c",
-			"m_drv8824.h": "c"
+			"m_drv8824.h": "c",
+			"barcode_scan.h": "c"
 		}
 	}
 }

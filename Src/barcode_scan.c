@@ -35,10 +35,10 @@ extern UART_HandleTypeDef huart3;
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
-
-#define BARCODE_MOTOR_IS_BUSY (dSPIN_Busy_HW()) /* 扫码电机忙碌位读取 */
-#define BARCODE_MOTOR_IS_FLAG (dSPIN_Flag())    /* 扫码电机标志脚读取 */
-#define BARCODE_MOTOR_MAX_DISP 16000            /* 扫码电机运动最大步数 物理限制步数 */
+#define BARCODE_MOTOR_IS_OPT (HAL_GPIO_ReadPin(OPTSW_OUT0_GPIO_Port, OPTSW_OUT0_Pin) == GPIO_PIN_RESET) /* 光耦输入 */
+#define BARCODE_MOTOR_IS_BUSY (dSPIN_Busy_HW())                                                         /* 扫码电机忙碌位读取 */
+#define BARCODE_MOTOR_IS_FLAG (dSPIN_Flag())                                                            /* 扫码电机标志脚读取 */
+#define BARCODE_MOTOR_MAX_DISP 16000                                                                    /* 扫码电机运动最大步数 物理限制步数 */
 #define BARCODE_UART huart3
 
 /* Private variables ---------------------------------------------------------*/
@@ -103,18 +103,18 @@ void barcode_Motor_Deal_Status()
     status = dSPIN_Get_Status(); /* 读取电机状态 */
 
     if (((status & dSPIN_STATUS_STEP_LOSS_A) == 0) || ((status & dSPIN_STATUS_STEP_LOSS_B) == 0)) { /* 发生失步 */
-        //m_l6470_Reset_HW();                                                                         /* 硬件重置 */
-       // m_l6470_Params_Init();                                                                      /* 初始化参数 */
+        // m_l6470_Reset_HW();                                                                         /* 硬件重置 */
+        // m_l6470_Params_Init();                                                                      /* 初始化参数 */
         return;
     }
     if (((status & dSPIN_STATUS_UVLO)) == 0) { /* 低压 */
-       // m_l6470_Reset_HW();                    /* 硬件重置 */
-        //m_l6470_Params_Init();                 /* 初始化参数 */
+                                               // m_l6470_Reset_HW();                    /* 硬件重置 */
+        // m_l6470_Params_Init();                 /* 初始化参数 */
         return;
     }
     if (((status & dSPIN_STATUS_TH_WRN)) == 0 || ((status & dSPIN_STATUS_TH_SD)) == 0 || ((status & dSPIN_STATUS_OCD)) == 0) { /* 高温 超温 过流 */
-        //m_l6470_Reset_HW();                                                                                                    /* 硬件重置 */
-        //m_l6470_Params_Init();                                                                                                 /* 初始化参数 */
+        // m_l6470_Reset_HW();                                                                                                    /* 硬件重置 */
+        // m_l6470_Params_Init();                                                                                                 /* 初始化参数 */
         return;
     }
     return;
@@ -129,21 +129,16 @@ void barcode_Motor_Deal_Status()
 eBarcodeState barcode_Motor_Leave_On_OPT(void)
 {
     while (xTaskGetTickCount() - motor_Status_Get_TickInit(&gBarcodeMotorRunStatus) < motor_CMD_Info_Get_Tiemout(&gBarcodeMotorRunCmdInfo)) { /* 超时等待 */
-        if (BARCODE_MOTOR_IS_FLAG > 0) { /* 驱动产生告警 */
-        	barcode_Motor_Brake();                                 /* 刹车 */
-        	barcode_Motor_Deal_Status();
-            return eBarcodeState_Error;  /* 中止电机运动 后续根据状态寄存器进一步处理 */
-        }
-        if (BARCODE_MOTOR_IS_BUSY == 0) {                          /* 已配置硬件检测停车 电机驱动空闲状态 */
-            barcode_Motor_Brake();                                 /* 刹车 */
-            dSPIN_Reset_Pos();                                     /* 重置电机驱动步数记录 */
+        if (BARCODE_MOTOR_IS_BUSY == 0 || BARCODE_MOTOR_IS_OPT) { /* 已配置硬件检测停车 电机驱动空闲状态 */
+            barcode_Motor_Brake();                                /* 刹车 */
+            dSPIN_Reset_Pos();                                    /* 重置电机驱动步数记录 */
             barcode_Motor_Deal_Status();
             motor_Status_Set_Position(&gBarcodeMotorRunStatus, 0); /* 重置电机状态步数记录 */
             return eBarcodeState_OK;
         }
         vTaskDelay(1); /* 延时 */
     }
-    barcode_Motor_Brake();                                 /* 刹车 */
+    barcode_Motor_Brake(); /* 刹车 */
     barcode_Motor_Deal_Status();
     return eBarcodeState_Error; /* 超时返回错误 */
 }
@@ -209,15 +204,36 @@ eBarcodeState barcode_Motor_Run(void)
  */
 eBarcodeState barcode_Motor_Init(void)
 {
-    motor_CMD_Info_Set_PF_Enter(&gBarcodeMotorRunCmdInfo, barcode_Motor_Enter);        /* 配置启动前回调 */
-    motor_CMD_Info_Set_Dir(&gBarcodeMotorRunCmdInfo, eMotorDir_REV);                   /* 倒车方向 */
-    motor_CMD_Info_Set_Step(&gBarcodeMotorRunCmdInfo, 100);                          /* 运动步数 配置硬件停车 步数应覆盖导轨条长度*/
-    motor_CMD_Info_Set_Tiemout(&gBarcodeMotorRunCmdInfo, 2000);                        /* 运动超时时间 2S */
-    motor_CMD_Info_Set_PF_Leave(&gBarcodeMotorRunCmdInfo, barcode_Motor_Leave_On_OPT); /* 等待光耦位置主动停车 */
-    if (barcode_Motor_Run() == eBarcodeState_OK) {                                     /* 执行成功 光耦位置停车 */
-        return eBarcodeState_OK;
+    eBarcodeState result;
+    uint8_t cnt = 0;
+
+    result = barcode_Motor_Enter();
+    if (result != eBarcodeState_OK) { /* 入口回调 */
+        if (result != eBarcodeState_Tiemout) {
+            m_l6470_release(); /* 释放SPI总线资源*/
+        }
+        return result;
     }
-    return eBarcodeState_Error;
+
+    if (BARCODE_MOTOR_IS_OPT) {
+        dSPIN_Move(FWD, 300);
+        do {
+            vTaskDelay(100);
+        } while (BARCODE_MOTOR_IS_BUSY && ++cnt < 1000);
+        cnt = 0;
+    }
+    if (BARCODE_MOTOR_IS_FLAG) {
+        barcode_Motor_Deal_Status();
+    }
+
+    dSPIN_Go_Until(ACTION_RESET, REV, 8000);
+
+    do {
+        vTaskDelay(100);
+    } while (BARCODE_MOTOR_IS_BUSY && ++cnt < 1000);
+    barcode_Motor_Brake(); /* 刹车 */
+    m_l6470_release();     /* 释放SPI总线资源*/
+    return eBarcodeState_OK;
 }
 
 /**
@@ -312,6 +328,23 @@ eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index, uint8_t * pOut_length, 
                                                                   //        return eBarcodeState_Error;
                                                                   //    }
     return barcode_Read_From_Serial(pOut_length, pData, timeout); /* 开始扫码 */
+}
+
+void barcode_serial_Test(void)
+{
+    uint8_t buffer[24];
+    //扫描模组通信报文
+    const unsigned char Close_Scan[] = {
+        //  0x08,0xC6,0x04,0x00,0xFF,0xF0,0x2A,0x00,0xFD,0x15   //关闭大灯
+        0x08, 0xC6, 0x04, 0x00, 0xFF, 0xF0, 0x32, 0x00, 0xFD, 0x0D //关闭瞄准器
+    };
+    const unsigned char Open_Scan[] = {
+        //  0x08,0xC6,0x04,0x00,0xFF,0xF0,0x2A,0x01,0xFD,0x14   //打开大灯
+        0x08, 0xC6, 0x04, 0x00, 0xFF, 0xF0, 0x32, 0x02, 0xFD, 0x0B //打开瞄准器
+    };
+
+    HAL_UART_Transmit(&BARCODE_UART, Close_Scan, ARRAY_LEN(Close_Scan), pdMS_TO_TICKS(10));
+    HAL_UART_Receive(&BARCODE_UART, buffer, ARRAY_LEN(buffer), pdMS_TO_TICKS(1000));
 }
 
 /**

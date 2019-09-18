@@ -386,12 +386,21 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 barcde_Test(pInBuff[6]);
                 return error;
             }
-            barcode_Read_From_Serial(&barcode_length, pInBuff, 1000);
+            if (length == 9) {
+                barcode_serial_Test();
+                return error;
+            }
+            barcode_Read_From_Serial(&barcode_length, pInBuff, 2000);
             if (barcode_length > 0) {
                 error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xD2, pInBuff, barcode_length);
             }
             break;
         case 0xD3:
+        	if (pInBuff[6] == 0) {
+        		m_drv8824_SetDir(eMotorDir_FWD);
+        	} else {
+        		m_drv8824_SetDir(eMotorDir_REV);
+        	}
             PWM_Start_AW();
             break;
         case 0xD4:

@@ -70,6 +70,16 @@ void FL_Error_Handler(char * file, int line);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define OPTSW_OUT2_Pin GPIO_PIN_2
+#define OPTSW_OUT2_GPIO_Port GPIOE
+#define OPTSW_OUT3_Pin GPIO_PIN_3
+#define OPTSW_OUT3_GPIO_Port GPIOE
+#define OPTSW_OUT4_Pin GPIO_PIN_4
+#define OPTSW_OUT4_GPIO_Port GPIOE
+#define OPTSW_OUT5_Pin GPIO_PIN_5
+#define OPTSW_OUT5_GPIO_Port GPIOE
+#define BUZZ_ON_Pin GPIO_PIN_6
+#define BUZZ_ON_GPIO_Port GPIOE
 #define STEP_NCS1_Pin GPIO_PIN_13
 #define STEP_NCS1_GPIO_Port GPIOC
 #define STEP_NFLG1_Pin GPIO_PIN_14
@@ -134,6 +144,10 @@ void FL_Error_Handler(char * file, int line);
 #define FRONT_TXD_GPIO_Port GPIOD
 #define STEP_DIR1_Pin GPIO_PIN_9
 #define STEP_DIR1_GPIO_Port GPIOB
+#define OPTSW_OUT0_Pin GPIO_PIN_0
+#define OPTSW_OUT0_GPIO_Port GPIOE
+#define OPTSW_OUT1_Pin GPIO_PIN_1
+#define OPTSW_OUT1_GPIO_Port GPIOE
 /* USER CODE BEGIN Private defines */
 #define ARRAY_LEN(x) (sizeof(x) / sizeof((x)[0]))
 /* USER CODE END Private defines */

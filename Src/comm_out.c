@@ -13,6 +13,8 @@
 #include "comm_out.h"
 #include "m_l6470.h"
 #include "barcode_scan.h"
+#include "tray_run.h"
+#include "m_drv8824.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern UART_HandleTypeDef huart5;

@@ -1,30 +1,35 @@
 /* Define to prevent recursive inclusion -------------------------------------*/
-
+#ifndef __TRAY_RUN_H
+#define __TRAY_RUN_H
 /* Includes ------------------------------------------------------------------*/
-#include "motor.h"
 
 /* Private includes ----------------------------------------------------------*/
 
 /* Exported macro ------------------------------------------------------------*/
-#define STEP_TIM_PSC (1 - 1)
-#define STEP_TIM_ARR (0xFFFF)
-#define STEP_TIM_RCR (1 - 1)
 
 /* Exported types ------------------------------------------------------------*/
+
+/* 条码索引 32细分步下标准 */
 typedef enum {
-    eM_DRV8824_Index_0 = 0,
-    eM_DRV8824_Index_1 = 1,
-} eM_DRV8824_Index;
+    eTrayIndex_0 = 0,
+    eTrayIndex_1 = 3200,
+    eTrayIndex_2 = 6400,
+} eTrayIndex;
+
+typedef enum {
+    eTrayState_OK,
+    eTrayState_Tiemout,
+    eTrayState_Busy,
+    eTrayState_Error,
+} eTrayState;
 
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/
-void m_drv8824_Init(void);
-void m_drv8824_SetDir(eMotorDir dir);
-uint8_t m_drv8824_Get_Flag(void);
-void m_drv8824_Reset_All(void);
-uint8_t m_drv8824_Index_Switch(eM_DRV8824_Index index, uint32_t timeout);
-void PWM_AW_IRQ_CallBcak(void);
-HAL_StatusTypeDef PWM_Start_AW(void);
+
+void tray_Init(void);
+eTrayState tray_Move_By_Index(eTrayIndex index, uint32_t timeout);
 
 /* Private defines -----------------------------------------------------------*/
+
+#endif
