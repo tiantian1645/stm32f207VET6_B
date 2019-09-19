@@ -6,7 +6,8 @@
 /* Private includes ----------------------------------------------------------*/
 
 /* Exported macro ------------------------------------------------------------*/
-#define BARCODE_MAX_LENGTH 100
+#define BARCODE_QR_LENGTH 100
+#define BARCODE_BA_LENGTH 20
 #define BARCODE_INDEX_NUM 6
 
 /* Exported types ------------------------------------------------------------*/
@@ -18,6 +19,7 @@ typedef enum {
     eBarcodeIndex_3 = 9600,
     eBarcodeIndex_4 = 12800,
     eBarcodeIndex_5 = 16000,
+    eBarcodeIndex_6 = 18680,
 } eBarcodeIndex;
 
 typedef enum {
@@ -30,21 +32,20 @@ typedef enum {
 /* 扫码结果结构体 */
 typedef struct {
     eBarcodeState state;
-    eBarcodeIndex index;
     uint8_t length;
-    uint8_t data[BARCODE_MAX_LENGTH];
+    uint8_t * pData;
 } sBarcoderesult;
 
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/
-void barcode_serial_Test(void);
-void barcde_Test(uint32_t cnt);
+uint8_t barcode_serial_Test(void);
+void barcode_Test(uint32_t cnt);
 
 void barcode_Init(void);
 eBarcodeState barcode_Motor_Enter(void);
-eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index, uint8_t * pOut_length, uint8_t * pData, uint32_t timeout);
-eBarcodeState barcode_Read_From_Serial(uint8_t * pOut_length, uint8_t * pData, uint32_t timeout);
+eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index);
+eBarcodeState barcode_Read_From_Serial(uint8_t * pOut_length, uint8_t * pData, uint8_t max_read_length, uint32_t timeout);
 
 /* Private defines -----------------------------------------------------------*/
 

@@ -7,6 +7,7 @@
 #include "m_l6470.h"
 #include "m_drv8824.h"
 #include "barcode_scan.h"
+#include "tray_run.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim9;
@@ -311,97 +312,118 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
     gProtocol_ACK_IndexSet(eComm_Out, pInBuff[3] + 1); /* 设置发送确认帧号 */
     switch (pInBuff[5]) {                              /* 进一步处理 功能码 */
         case 0xD0:
-            m_l6470_Index_Switch(eM_L6470_Index_0, portMAX_DELAY);
-            if (length < 11) {
-                pInBuff[6] = 0;
-                pInBuff[7] = 0;
-                pInBuff[8] = 0;
-                pInBuff[9] = 0;
-                pInBuff[10] = 200;
-            } else {
+            if (length == 12) {
+                m_l6470_Index_Switch(eM_L6470_Index_0, portMAX_DELAY);
                 step = (uint32_t)(pInBuff[7] << 24) + (uint32_t)(pInBuff[8] << 16) + (uint32_t)(pInBuff[9] << 8) + (uint32_t)(pInBuff[10] << 0);
-            }
-            switch (pInBuff[6]) {
-                case 0x00:
-                    error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 发送回应包 */
-                    dSPIN_Move(REV, step);                                 /* 向驱动发送指令 */
-                    status = dSPIN_Get_Status();
-                    pInBuff[0] = status >> 8;
-                    pInBuff[1] = status & 0xFF;
-                    error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, pInBuff, 2);
-                    break;
-                case 0x01:
-                default:
-                    error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 发送回应包 */
-                    dSPIN_Move(FWD, step);                                 /* 向驱动发送指令 */
-                    status = dSPIN_Get_Status();
-                    pInBuff[0] = status >> 8;
-                    pInBuff[1] = status & 0xFF;
-                    error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, pInBuff, 2);
-                    break;
-            }
-            vTaskDelay(1000);
-            step = ((int32_t)(dSPIN_Get_Param(dSPIN_ABS_POS) << 10)) >> 10;
-            if (step > ((1 << 21) + 1)) {
-                step = (1 << 22) - step;
+
+                switch (pInBuff[6]) {
+                    case 0x00:
+                        error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 发送回应包 */
+                        dSPIN_Move(REV, step);                                 /* 向驱动发送指令 */
+                        status = dSPIN_Get_Status();
+                        pInBuff[0] = status >> 8;
+                        pInBuff[1] = status & 0xFF;
+                        error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, pInBuff, 2);
+                        break;
+                    case 0x01:
+                    default:
+                        error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 发送回应包 */
+                        dSPIN_Move(FWD, step);                                 /* 向驱动发送指令 */
+                        status = dSPIN_Get_Status();
+                        pInBuff[0] = status >> 8;
+                        pInBuff[1] = status & 0xFF;
+                        error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, pInBuff, 2);
+                        break;
+                }
+                vTaskDelay(1000);
                 m_l6470_release();
-                return PROTOCOL_PARSE_EMIT_ERROR;
+            } else if (length == 8) {
+                switch ((pInBuff[6] % 7)) {
+                    case 0:
+                        barcode_Scan_By_Index(eBarcodeIndex_0);
+                        break;
+                    case 1:
+                        barcode_Scan_By_Index(eBarcodeIndex_1);
+                        break;
+                    case 2:
+                        barcode_Scan_By_Index(eBarcodeIndex_2);
+                        break;
+                    case 3:
+                        barcode_Scan_By_Index(eBarcodeIndex_3);
+                        break;
+                    case 4:
+                        barcode_Scan_By_Index(eBarcodeIndex_4);
+                        break;
+                    case 5:
+                        barcode_Scan_By_Index(eBarcodeIndex_5);
+                        break;
+                    case 6:
+                        barcode_Scan_By_Index(eBarcodeIndex_6);
+                        break;
+                    default:
+                        break;
+                }
             }
-            m_l6470_release();
             return error;
         case 0xD1:
-            m_l6470_Index_Switch(eM_L6470_Index_1, portMAX_DELAY);
-            if (length < 11) {
-                pInBuff[6] = 0;
-                pInBuff[7] = 0;
-                pInBuff[8] = 0;
-                pInBuff[9] = 0;
-                pInBuff[10] = 200;
-            } else {
+            if (length == 12) {
+                m_l6470_Index_Switch(eM_L6470_Index_1, portMAX_DELAY);
                 step = (uint32_t)(pInBuff[7] << 24) + (uint32_t)(pInBuff[8] << 16) + (uint32_t)(pInBuff[9] << 8) + (uint32_t)(pInBuff[10] << 0);
+                switch (pInBuff[6]) {
+                    case 0x00:
+                        error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 发送回应包 */
+                        dSPIN_Move(REV, step);                                 /* 向驱动发送指令 */
+                        status = dSPIN_Get_Status();
+                        pInBuff[0] = status >> 8;
+                        pInBuff[1] = status & 0xFF;
+                        error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, pInBuff, 2);
+                        break;
+                    case 0x01:
+                    default:
+                        error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 发送回应包 */
+                        dSPIN_Move(FWD, step);                                 /* 向驱动发送指令 */
+                        status = dSPIN_Get_Status();
+                        pInBuff[0] = status >> 8;
+                        pInBuff[1] = status & 0xFF;
+                        error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, pInBuff, 2);
+                        break;
+                }
+                m_l6470_release();
+            } else if (length == 8) {
+                switch ((pInBuff[6] % 3)) {
+                    case 0:
+                        tray_Move_By_Index(eTrayIndex_0, 2000);
+                        break;
+                    case 1:
+                        tray_Move_By_Index(eTrayIndex_1, 2000);
+                        break;
+                    case 2:
+                        tray_Move_By_Index(eTrayIndex_2, 2000);
+                        break;
+                    default:
+                        break;
+                }
             }
-            switch (pInBuff[6]) {
-                case 0x00:
-                    error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 发送回应包 */
-                    dSPIN_Move(REV, step);                                 /* 向驱动发送指令 */
-                    status = dSPIN_Get_Status();
-                    pInBuff[0] = status >> 8;
-                    pInBuff[1] = status & 0xFF;
-                    error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, pInBuff, 2);
-                    break;
-                case 0x01:
-                default:
-                    error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 发送回应包 */
-                    dSPIN_Move(FWD, step);                                 /* 向驱动发送指令 */
-                    status = dSPIN_Get_Status();
-                    pInBuff[0] = status >> 8;
-                    pInBuff[1] = status & 0xFF;
-                    error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, pInBuff, 2);
-                    break;
-            }
-            m_l6470_release();
             return error;
         case 0xD2:
-            if (length == 8) {
-                barcde_Test(pInBuff[6]);
-                return error;
-            }
             if (length == 9) {
                 barcode_serial_Test();
                 return error;
+            } else if (length == 8) {
+                barcode_Test(pInBuff[6]);
             }
-            barcode_Read_From_Serial(&barcode_length, pInBuff, 2000);
+
+            barcode_Read_From_Serial(&barcode_length, pInBuff, 100, 2000);
             if (barcode_length > 0) {
                 error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xD2, pInBuff, barcode_length);
             }
             break;
         case 0xD3:
-        	if (pInBuff[6] == 0) {
-        		m_drv8824_SetDir(eMotorDir_FWD);
-        	} else {
-        		m_drv8824_SetDir(eMotorDir_REV);
-        	}
-            PWM_Start_AW();
+            if (pInBuff[6] == 0) {
+                heat_Motor_Run(eMotorDir_FWD);
+            } else {
+                heat_Motor_Run(eMotorDir_REV);
+            }
             break;
         case 0xD4:
             HAL_TIM_PWM_Start(&htim9, TIM_CHANNEL_2);

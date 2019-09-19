@@ -38,39 +38,19 @@
 /******************No Daisy Chain Mode **************************************/
 /****************************************************************************/
 
-/* Register : ACC */
-/* Acceleration rate in step/s2, range 14.55 to 59590 steps/s2 */
-#define dSPIN_CONF_PARAM_ACC (1455.192)
-
-/* Register : DEC */
-/* Deceleration rate in step/s2, range 14.55 to 59590 steps/s2 */
-#define dSPIN_CONF_PARAM_DEC (1455.192)
-
-/* Register : MAX_SPEED */
-/* Maximum speed in step/s, range 15.25 to 15610 steps/s */
-#define dSPIN_CONF_PARAM_MAX_SPEED (534.058)
-
-/* Register : MIN_SPEED */
-/* Minimum speed in step/s, range 0 to 976.3 steps/s */
-#define dSPIN_CONF_PARAM_MIN_SPEED (0)
-
-/* Register : FS_SPD */
-/* Full step speed in step/s, range 7.63 to 15625 steps/s */
-#define dSPIN_CONF_PARAM_FS_SPD (595.093)
-
 /************************ Phase Current Control *****************************/
 
 /* Register : ACC */
 /* Acceleration rate in step/s2, range 14.55 to 59590 steps/s2 */
-#define dSPIN_CONF_PARAM_ACC (1455.192)
+#define dSPIN_CONF_PARAM_ACC (2182.5)
 
 /* Register : DEC */
 /* Deceleration rate in step/s2, range 14.55 to 59590 steps/s2 */
-#define dSPIN_CONF_PARAM_DEC (1455.192)
+#define dSPIN_CONF_PARAM_DEC (2182.5)
 
 /* Register : MAX_SPEED */
 /* Maximum speed in step/s, range 15.25 to 15610 steps/s */
-#define dSPIN_CONF_PARAM_MAX_SPEED (534.058)
+#define dSPIN_CONF_PARAM_MAX_SPEED (1220.0)
 
 /* Register : MIN_SPEED */
 /* Minimum speed in step/s, range 0 to 976.3 steps/s */

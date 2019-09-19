@@ -14,7 +14,8 @@
 		"files.associations": {
 			"comm_out.h": "c",
 			"m_drv8824.h": "c",
-			"barcode_scan.h": "c"
+			"barcode_scan.h": "c",
+			"tray_run.h": "c"
 		}
 	}
 }

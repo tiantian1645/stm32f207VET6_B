@@ -27,15 +27,15 @@
 
 /* Private typedef -----------------------------------------------------------*/
 
-
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
 #define TRAY_MOTOR_IS_OPT_1 (HAL_GPIO_ReadPin(OPTSW_OUT1_GPIO_Port, OPTSW_OUT1_Pin) == GPIO_PIN_RESET) /* 光耦输入 */
 #define TRAY_MOTOR_IS_OPT_2 (HAL_GPIO_ReadPin(OPTSW_OUT2_GPIO_Port, OPTSW_OUT2_Pin) == GPIO_PIN_RESET) /* 光耦输入 */
-#define TRAY_MOTOR_IS_BUSY (dSPIN_Busy_HW())                                                           /* 托盘电机忙碌位读取 */
+#define TRAY_MOTOR_IS_BUSY (dSPIN_Busy_SW())                                                           /* 托盘电机忙碌位读取 */
 #define TRAY_MOTOR_IS_FLAG (dSPIN_Flag())                                                              /* 托盘电机标志脚读取 */
-#define TRAY_MOTOR_MAX_DISP 16000                                                                      /* 托盘电机运动最大步数 物理限制步数 */
+#define TRAY_MOTOR_MAX_DISP 6400                                                                       /* 出仓步数 (1/8) 物理限制步数 */
+#define TRAY_MOTOR_SCAN_DISP 1400                                                                      /* 扫码步数 (1/8) */
 
 /* Private variables ---------------------------------------------------------*/
 static sMotorRunStatus gTrayMotorRunStatus;
@@ -125,7 +125,7 @@ void tray_Motor_Deal_Status()
 eTrayState tray_Motor_Leave_On_OPT(void)
 {
     while (xTaskGetTickCount() - motor_Status_Get_TickInit(&gTrayMotorRunStatus) < motor_CMD_Info_Get_Tiemout(&gTrayMotorRunCmdInfo)) { /* 超时等待 */
-        if (TRAY_MOTOR_IS_BUSY == 0 || TRAY_MOTOR_IS_OPT_2) { /* 已配置硬件检测停车 电机驱动空闲状态 */
+        if (TRAY_MOTOR_IS_BUSY == 0 || TRAY_MOTOR_IS_OPT_1) { /* 已配置硬件检测停车 电机驱动空闲状态 */
             tray_Motor_Brake();                               /* 刹车 */
             dSPIN_Reset_Pos();                                /* 重置电机驱动步数记录 */
             tray_Motor_Deal_Status();
@@ -167,6 +167,10 @@ eTrayState tray_Motor_Run(void)
 {
     eTrayState result;
 
+    if (gTrayMotorRunCmdInfo.step == 0) {
+        return eTrayState_OK;
+    }
+
     result = gTrayMotorRunCmdInfo.pfEnter();
     if (result != eTrayState_OK) { /* 入口回调 */
         if (result != eTrayState_Tiemout) {
@@ -176,21 +180,47 @@ eTrayState tray_Motor_Run(void)
     }
 
     motor_Status_Set_TickInit(&gTrayMotorRunStatus, xTaskGetTickCount()); /* 记录开始时钟脉搏数 */
-
-    switch (gTrayMotorRunCmdInfo.dir) {
-        case eMotorDir_REV:
-            dSPIN_Move(REV, gTrayMotorRunCmdInfo.step); /* 向驱动发送指令 */
-            break;
-        case eMotorDir_FWD:
-        default:
-            dSPIN_Move(FWD, gTrayMotorRunCmdInfo.step); /* 向驱动发送指令 */
-            break;
+    if (gTrayMotorRunCmdInfo.step < 0xFFFFFF) {
+        switch (gTrayMotorRunCmdInfo.dir) {
+            case eMotorDir_REV:
+                dSPIN_Move(REV, gTrayMotorRunCmdInfo.step); /* 向驱动发送指令 */
+                break;
+            case eMotorDir_FWD:
+            default:
+                dSPIN_Move(FWD, gTrayMotorRunCmdInfo.step); /* 向驱动发送指令 */
+                break;
+        }
+    } else {
+        dSPIN_Go_Until(ACTION_RESET, REV, 40000);
     }
 
     result = gTrayMotorRunCmdInfo.pfLeave(); /* 出口回调 */
     tray_Motor_Deal_Status();                /* 读取电机驱动状态清除标志 */
     m_l6470_release();                       /* 释放SPI总线资源*/
     return result;
+}
+
+/**
+ * @brief  重置电机状态位置
+ * @param  timeout 停车等待超时
+ * @retval 0 成功 1 失败
+ */
+
+uint8_t tray_Motor_Reset_Pos(uint32_t timeout)
+{
+    while ((!TRAY_MOTOR_IS_OPT_1) && --timeout > 0)
+        ;
+    if (TRAY_MOTOR_IS_OPT_1) {
+        if (tray_Motor_Enter() != eTrayState_Tiemout) {
+            tray_Motor_Brake();                                 /* 刹车 */
+            dSPIN_Reset_Pos();                                  /* 重置电机驱动步数记录 */
+            m_l6470_release();                                  /* 释放SPI总线资源*/
+            motor_Status_Set_Position(&gTrayMotorRunStatus, 0); /* 重置电机状态步数记录 */
+            return 0;
+        }
+        return 2;
+    }
+    return 1;
 }
 
 /**
@@ -201,7 +231,7 @@ eTrayState tray_Motor_Run(void)
 eTrayState tray_Motor_Init(void)
 {
     eTrayState result;
-    uint8_t cnt = 0;
+    uint32_t cnt = 0;
 
     result = tray_Motor_Enter();
     if (result != eTrayState_OK) { /* 入口回调 */
@@ -213,22 +243,17 @@ eTrayState tray_Motor_Init(void)
 
     if (TRAY_MOTOR_IS_OPT_1) {
         dSPIN_Move(FWD, 300);
-        do {
-            vTaskDelay(100);
-        } while (TRAY_MOTOR_IS_BUSY && ++cnt < 1000);
+        while (TRAY_MOTOR_IS_OPT_1 && ++cnt < 6000000)
+            ;
         cnt = 0;
+        tray_Motor_Brake(); /* 刹车 */
     }
     if (TRAY_MOTOR_IS_FLAG) {
         tray_Motor_Deal_Status();
     }
 
-    dSPIN_Go_Until(ACTION_RESET, REV, 8000);
-
-    do {
-        vTaskDelay(100);
-    } while (TRAY_MOTOR_IS_BUSY && ++cnt < 1000);
-    tray_Motor_Brake(); /* 刹车 */
-    m_l6470_release();  /* 释放SPI总线资源*/
+    dSPIN_Go_Until(ACTION_RESET, REV, 40000);
+    m_l6470_release(); /* 释放SPI总线资源*/
     return eTrayState_OK;
 }
 
@@ -244,10 +269,10 @@ void tray_Motor_Calculate(uint32_t target_step)
     current_position = motor_Status_Get_Position(&gTrayMotorRunStatus);
 
     if (target_step >= current_position) {
-        motor_CMD_Info_Set_Step(&gTrayMotorRunCmdInfo, (target_step - current_position) % TRAY_MOTOR_MAX_DISP);
+        motor_CMD_Info_Set_Step(&gTrayMotorRunCmdInfo, (target_step - current_position));
         motor_CMD_Info_Set_Dir(&gTrayMotorRunCmdInfo, eMotorDir_FWD);
     } else {
-        motor_CMD_Info_Set_Step(&gTrayMotorRunCmdInfo, (current_position - target_step) % TRAY_MOTOR_MAX_DISP);
+        motor_CMD_Info_Set_Step(&gTrayMotorRunCmdInfo, (current_position - target_step));
         motor_CMD_Info_Set_Dir(&gTrayMotorRunCmdInfo, eMotorDir_REV);
     }
 }
@@ -264,11 +289,15 @@ eTrayState tray_Move_By_Index(eTrayIndex index, uint32_t timeout)
 {
     eTrayState result;
 
-    motor_CMD_Info_Set_PF_Enter(&gTrayMotorRunCmdInfo, tray_Motor_Enter);             /* 配置启动前回调 */
-    tray_Motor_Calculate((index >> 5) << 3);                                          /* 计算运动距离 及方向 */
-    motor_CMD_Info_Set_Tiemout(&gTrayMotorRunCmdInfo, timeout);                       /* 运动超时时间 1000mS */
-    motor_CMD_Info_Set_PF_Leave(&gTrayMotorRunCmdInfo, tray_Motor_Leave_On_Busy_Bit); /* 等待驱动状态位空闲 */
-
+    motor_CMD_Info_Set_PF_Enter(&gTrayMotorRunCmdInfo, tray_Motor_Enter); /* 配置启动前回调 */
+    motor_CMD_Info_Set_Tiemout(&gTrayMotorRunCmdInfo, timeout);           /* 运动超时时间 1000mS */
+    if (index != eTrayIndex_0) {
+        tray_Motor_Calculate((index >> 5) << 3);                                          /* 计算运动距离 及方向 32细分转8细分 */
+        motor_CMD_Info_Set_PF_Leave(&gTrayMotorRunCmdInfo, tray_Motor_Leave_On_Busy_Bit); /* 等待驱动状态位空闲 */
+    } else {
+        motor_CMD_Info_Set_PF_Leave(&gTrayMotorRunCmdInfo, tray_Motor_Leave_On_OPT); /* 等待驱动状态位空闲 */
+        motor_CMD_Info_Set_Step(&gTrayMotorRunCmdInfo, 0xFFFFFF);
+    }
     result = tray_Motor_Run(); /* 执行电机运动 */
     return result;
 }

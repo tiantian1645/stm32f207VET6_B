@@ -12,8 +12,8 @@
 /* 条码索引 32细分步下标准 */
 typedef enum {
     eTrayIndex_0 = 0,
-    eTrayIndex_1 = 3200,
-    eTrayIndex_2 = 6400,
+    eTrayIndex_1 = 5600,
+    eTrayIndex_2 = 25600,
 } eTrayIndex;
 
 typedef enum {
@@ -26,8 +26,8 @@ typedef enum {
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/
-
-void tray_Init(void);
+uint8_t tray_Motor_Reset_Pos(uint32_t timeout);
+eTrayState tray_Motor_Init(void);
 eTrayState tray_Move_By_Index(eTrayIndex index, uint32_t timeout);
 
 /* Private defines -----------------------------------------------------------*/

@@ -13,9 +13,10 @@ extern TIM_HandleTypeDef htim1;
 #define PWM_PCS_MIN 14500
 #define PWM_PCS_GAP 78
 #define PWM_PCS_UNT 20
-#define PWM_PCS_SUM 116
+#define PWM_PCS_SUM 110
 
 /* Private macro -------------------------------------------------------------*/
+#define DRV8824_HEAT_IS_OPT (HAL_GPIO_ReadPin(OPTSW_OUT3_GPIO_Port, OPTSW_OUT3_Pin) == GPIO_PIN_RESET) /* 光耦输入 */
 
 /* Private typedef -----------------------------------------------------------*/
 typedef struct {
@@ -30,32 +31,9 @@ static eM_DRV8824_Index gMDRV8824Index = eM_DRV8824_Index_0;
 static uint32_t aSRC_Buffer[3] = {0, 0, 0};
 static uint32_t gPWM_TEST_AW_CNT = 0;
 static SemaphoreHandle_t m_drv8824_spi_sem = NULL;
-const sPWM_AW_Conf cgPWM_AW_Confs[116] = {
-    {24048 - 1, 20 - 1, 25, 1}, {23970 - 1, 20 - 1, 25, 1}, {23892 - 1, 20 - 1, 25, 1}, {23814 - 1, 20 - 1, 25, 1}, {23736 - 1, 20 - 1, 25, 1},
-    {23658 - 1, 20 - 1, 25, 1}, {23580 - 1, 20 - 1, 25, 1}, {23502 - 1, 20 - 1, 25, 1}, {23424 - 1, 20 - 1, 25, 1}, {23346 - 1, 20 - 1, 25, 1},
-    {23268 - 1, 20 - 1, 25, 1}, {23190 - 1, 20 - 1, 25, 1}, {23112 - 1, 20 - 1, 25, 1}, {23034 - 1, 20 - 1, 25, 1}, {22956 - 1, 20 - 1, 25, 1},
-    {22878 - 1, 20 - 1, 25, 1}, {22800 - 1, 20 - 1, 25, 1}, {22722 - 1, 20 - 1, 25, 1}, {22644 - 1, 20 - 1, 25, 1}, {22566 - 1, 20 - 1, 25, 1},
-    {22488 - 1, 20 - 1, 25, 1}, {22410 - 1, 20 - 1, 25, 1}, {22332 - 1, 20 - 1, 25, 1}, {22254 - 1, 20 - 1, 25, 1}, {22176 - 1, 20 - 1, 25, 1},
-    {22098 - 1, 20 - 1, 25, 1}, {22020 - 1, 20 - 1, 25, 1}, {21942 - 1, 20 - 1, 25, 1}, {21864 - 1, 20 - 1, 25, 1}, {21786 - 1, 20 - 1, 25, 1},
-    {21708 - 1, 20 - 1, 25, 1}, {21630 - 1, 20 - 1, 25, 1}, {21552 - 1, 20 - 1, 25, 1}, {21474 - 1, 20 - 1, 25, 1}, {21396 - 1, 20 - 1, 25, 1},
-    {21318 - 1, 20 - 1, 25, 1}, {21240 - 1, 20 - 1, 25, 1}, {21162 - 1, 20 - 1, 25, 1}, {21084 - 1, 20 - 1, 25, 1}, {21006 - 1, 20 - 1, 25, 1},
-    {20928 - 1, 20 - 1, 25, 1}, {20850 - 1, 20 - 1, 25, 1}, {20772 - 1, 20 - 1, 25, 1}, {20694 - 1, 20 - 1, 25, 1}, {20616 - 1, 20 - 1, 25, 1},
-    {20538 - 1, 20 - 1, 25, 1}, {20460 - 1, 20 - 1, 25, 1}, {20382 - 1, 20 - 1, 25, 1}, {20304 - 1, 20 - 1, 25, 1}, {20226 - 1, 20 - 1, 25, 1},
-    {20148 - 1, 20 - 1, 25, 1}, {20070 - 1, 20 - 1, 25, 1}, {19992 - 1, 20 - 1, 25, 1}, {19914 - 1, 20 - 1, 25, 1}, {19836 - 1, 20 - 1, 25, 1},
-    {19758 - 1, 20 - 1, 25, 1}, {19680 - 1, 20 - 1, 25, 1}, {19602 - 1, 20 - 1, 25, 1}, {19524 - 1, 20 - 1, 25, 1}, {19446 - 1, 20 - 1, 25, 1},
-    {19368 - 1, 20 - 1, 25, 1}, {19290 - 1, 20 - 1, 25, 1}, {19212 - 1, 20 - 1, 25, 1}, {19134 - 1, 20 - 1, 25, 1}, {19056 - 1, 20 - 1, 25, 1},
-    {18978 - 1, 20 - 1, 25, 1}, {18900 - 1, 20 - 1, 25, 1}, {18822 - 1, 20 - 1, 25, 1}, {18744 - 1, 20 - 1, 25, 1}, {18666 - 1, 20 - 1, 25, 1},
-    {18588 - 1, 20 - 1, 25, 1}, {18510 - 1, 20 - 1, 25, 1}, {18432 - 1, 20 - 1, 25, 1}, {18354 - 1, 20 - 1, 25, 1}, {18276 - 1, 20 - 1, 25, 1},
-    {18198 - 1, 20 - 1, 25, 1}, {18120 - 1, 20 - 1, 25, 1}, {18042 - 1, 20 - 1, 25, 1}, {17964 - 1, 20 - 1, 25, 1}, {17886 - 1, 20 - 1, 25, 1},
-    {17808 - 1, 20 - 1, 25, 1}, {17730 - 1, 20 - 1, 25, 1}, {17652 - 1, 20 - 1, 25, 1}, {17574 - 1, 20 - 1, 25, 1}, {17496 - 1, 20 - 1, 25, 1},
-    {17418 - 1, 20 - 1, 25, 1}, {17340 - 1, 20 - 1, 25, 1}, {17262 - 1, 20 - 1, 25, 1}, {17184 - 1, 20 - 1, 25, 1}, {17106 - 1, 20 - 1, 25, 1},
-    {17028 - 1, 20 - 1, 25, 1}, {16950 - 1, 20 - 1, 25, 1}, {16872 - 1, 20 - 1, 25, 1}, {16794 - 1, 20 - 1, 25, 1}, {16716 - 1, 20 - 1, 25, 1},
-    {16638 - 1, 20 - 1, 25, 1}, {16560 - 1, 20 - 1, 25, 1}, {16482 - 1, 20 - 1, 25, 1}, {16404 - 1, 20 - 1, 25, 1}, {16326 - 1, 20 - 1, 25, 1},
-    {16248 - 1, 20 - 1, 25, 1}, {16170 - 1, 20 - 1, 25, 1}, {16092 - 1, 20 - 1, 25, 1}, {16014 - 1, 20 - 1, 25, 1}, {15936 - 1, 20 - 1, 25, 1},
-    {15858 - 1, 20 - 1, 25, 1}, {15780 - 1, 20 - 1, 25, 1}, {15702 - 1, 20 - 1, 25, 1}, {15624 - 1, 20 - 1, 25, 1}, {15546 - 1, 20 - 1, 25, 1},
-    {15468 - 1, 20 - 1, 25, 1}, {15390 - 1, 20 - 1, 25, 1}, {15312 - 1, 20 - 1, 25, 1}, {15234 - 1, 20 - 1, 25, 1}, {15156 - 1, 20 - 1, 25, 1},
-    {15078 - 1, 20 - 1, 25, 1},
-};
+static eMotorDir gMDRV8824_Heat_Dir = eMotorDir_FWD;
+static uint32_t gMDRV8824_Heat_Position = 0;
+
 /* Private function prototypes -----------------------------------------------*/
 static uint8_t m_drv8824_acquire(uint32_t timeout);
 
@@ -138,6 +116,7 @@ void m_drv8824_Init(void)
     if (m_drv8824_spi_sem == NULL || xSemaphoreGive(m_drv8824_spi_sem) != pdPASS) {
         Error_Handler();
     }
+    heat_Motor_Run(eMotorDir_FWD);
 }
 
 /**
@@ -285,15 +264,109 @@ void gPWM_TEST_AW_CNT_Clear(void)
 }
 
 /**
+ * @brief  加热体电机方向 获取
+ * @param  None
+ * @retval 加热体电机方向
+ */
+eMotorDir gMDRV8824_Heat_Dir_Get(void)
+{
+    return gMDRV8824_Heat_Dir;
+}
+
+/**
+ * @brief  加热体电机方向 设置
+ * @param  加热体电机方向
+ * @retval None
+ */
+void gMDRV8824_Heat_Dir_Set(eMotorDir dir)
+{
+    gMDRV8824_Heat_Dir = dir;
+}
+
+/**
+ * @brief  加热体电机位置 获取
+ * @param  None
+ * @retval 加热体电机位置
+ */
+uint32_t gMDRV8824_Heat_Position_Get(void)
+{
+    return gMDRV8824_Heat_Position;
+}
+
+/**
+ * @brief  加热体电机位置 检查是否已经处于被压下状态
+ * @note   已运动步数超过极限位置80%
+ * @param  None
+ * @retval 加热体电机位置
+ */
+uint8_t heat_Motor_Position_Is_Down(void)
+{
+    return gMDRV8824_Heat_Position_Get() > PWM_PCS_SUM * PWM_PCS_UNT * 80 / 100;
+}
+
+/**
+ * @brief  加热体电机位置 检查是否已经处于被抬起状态
+ * @note   已运动步数为0
+ * @param  None
+ * @retval 加热体电机位置
+ */
+uint8_t heat_Motor_Position_Is_Up(void)
+{
+    return gMDRV8824_Heat_Position_Get() == 0;
+}
+
+/**
+ * @brief  加热体电机位置 设置
+ * @param  加热体电机位置
+ * @retval None
+ */
+static void gMDRV8824_Heat_Position_Set(uint32_t position)
+{
+    gMDRV8824_Heat_Position = position;
+}
+
+/**
+ * @brief  加热体电机位置 增量
+ * @param  加热体电机位置
+ * @retval None
+ */
+static void gMDRV8824_Heat_Position_Inc(uint32_t position)
+{
+    gMDRV8824_Heat_Position_Set(gMDRV8824_Heat_Position_Get() + position);
+}
+
+/**
+ * @brief  加热体电机位置 清零
+ * @param  None
+ * @retval None
+ */
+static void gMDRV8824_Heat_Position_Clr(void)
+{
+    gMDRV8824_Heat_Position_Set(0);
+}
+
+/**
  * @brief  启动DMA PWM输出
  * @param  None
  * @retval 启动结果
  */
-HAL_StatusTypeDef PWM_Start_AW(void)
+HAL_StatusTypeDef heat_Motor_Run(eMotorDir dir)
 {
     HAL_StatusTypeDef status;
 
+    if (DRV8824_HEAT_IS_OPT) {         /* 光耦被遮挡 处于抬起状态 */
+        gMDRV8824_Heat_Position_Clr(); /* 清空位置记录 */
+        if (dir == eMotorDir_FWD) {    /* 仍然收到向上运动指令 */
+            return HAL_OK;
+        }
+    } else if (dir == eMotorDir_REV && heat_Motor_Position_Is_Down()) { /* 向下运动指令 但已运动步数超过极限位置80% */
+        return HAL_OK;
+    }
+
     m_drv8824_Index_Switch(eM_DRV8824_Index_1, portMAX_DELAY);
+    m_drv8824_SetDir(dir);
+    gMDRV8824_Heat_Dir_Set(dir);
+
     gPWM_TEST_AW_CNT_Clear();
     __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE);
     status = HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
@@ -304,77 +377,100 @@ HAL_StatusTypeDef PWM_Start_AW(void)
     return status;
 }
 
-// /**
-//  * @brief  HAL_TIM_PeriodElapsedCallback 中断回调处理
-//  * @param  None
-//  * @retval None
-//  */
-// void PWM_AW_IRQ_CallBcak(void)
-// {
-//     uint32_t cnt;
-//     uint16_t length, idx = 0xFFFF;
-//     static uint16_t i = 0, sum = 0;
+// void PWM_AW_IRQ_CallBcak_Heat_Up(void)
+//{
+//    static uint16_t total = 0;
+//    static uint32_t cnt = 0;
+//    static uint8_t cross = 0;
+//    static GPIO_PinState last_gpio = GPIO_PIN_SET;
+//    GPIO_PinState gpio;
+//
+//    gpio = HAL_GPIO_ReadPin(OPTSW_OUT3_GPIO_Port, OPTSW_OUT3_Pin);
+//    if (last_gpio != gpio) {
+//        if (gpio == GPIO_PIN_RESET) {
+//            ++cross;
+//        }
+//        last_gpio = gpio;
+//    }
+//
+//    aSRC_Buffer[0] = (PWM_PCS_MAX - PWM_PCS_MIN > PWM_PCS_GAP * total) ? (PWM_PCS_MAX - PWM_PCS_GAP * total) : (PWM_PCS_MAX); /* 周期长度 */
+//    aSRC_Buffer[1] = PWM_PCS_UNT;                                                                                             /* 重复次数 */
+//    aSRC_Buffer[2] = (aSRC_Buffer[0] + 1) / 2;                                                                                /* 占空比 默认50% */
+//    /* burst模式修改时基单元 */
+//    HAL_TIM_DMABurst_WriteStart(&htim1, TIM_DMABASE_ARR, TIM_DMA_UPDATE, (uint32_t *)aSRC_Buffer, TIM_DMABURSTLENGTH_3TRANSFERS);
+//    if (cross >= 1) {
+//        cnt += aSRC_Buffer[1];
+//    }
+//    if (cross >= 100) {
+//        HAL_TIM_Base_Stop(&htim1);                 /* 停止定时器 */
+//        __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE); /* 清除更新事件标志位 */
+//        __HAL_TIM_SET_COUNTER(&htim1, 0);          /* 清零定时器计数寄存器 */
+//        HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);   /* 停止PWM输出 */
+//        m_drv8824_release_ISR();                   /* 释放PWM资源 */
+//        cross = 0;
+//        cnt = 0;
+//        total = 0; /* 清零前区间脉冲总计数 */
+//        return;
+//    }
+//
+//    ++total;
+//}
 
-//     cnt = gPWM_TEST_AW_CNT_Get(); /* 获取当前脉冲计数 */
-
-//     for (i = i; i < ARRAY_LEN(cgPWM_AW_Confs); ++i) { /* 寻找下一个脉冲段配置 */
-//         length = cgPWM_AW_Confs[i].rcr + 1;           /* 计算本区间脉冲数输出数目 */
-//         if ((sum <= cnt) && (cnt < sum + length)) {   /* 落中区间 */
-//             idx = i;                                  /* 弹出区间索引 */
-//             break;
-//         }
-//         sum += length; /* 记录前区间脉冲总数 */
-//     }
-
-//     if (idx >= ARRAY_LEN(cgPWM_AW_Confs)) {        /* 停止输出 */
-//         i = 0;                                     /* 清零索引 */
-//         sum = 0;                                   /* 清零前区间脉冲总计数 */
-//         HAL_TIM_Base_Stop(&htim1);                 /* 停止定时器 */
-//         __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE); /* 清除更新事件标志位 */
-//         __HAL_TIM_SET_COUNTER(&htim1, 0);          /* 清零定时器计数寄存器 */
-//         HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);   /* 停止PWM输出 */
-//         m_drv8824_release_ISR();                   /* 释放PWM资源 */
-//     } else {
-//         aSRC_Buffer[0] = cgPWM_AW_Confs[i].pcs; /* 周期长度 */
-//         aSRC_Buffer[1] = cgPWM_AW_Confs[i].rcr; /* 重复次数 */
-//         aSRC_Buffer[2] = cgPWM_AW_Confs[i].ccr; /* 翻转点 占空比 */
-//         /* burst模式修改时基单元 */
-//         HAL_TIM_DMABurst_WriteStart(&htim1, TIM_DMABASE_ARR, TIM_DMA_UPDATE, (uint32_t *)aSRC_Buffer, TIM_DMABURSTLENGTH_3TRANSFERS);
-//     }
-//     gPWM_TEST_AW_CNT_Inc(); /* 自增脉冲计数 */
-// }
-
-void PWM_AW_IRQ_CallBcak(void)
+void PWM_AW_IRQ_CallBcak_Heat_Up(void)
 {
-    uint32_t cnt;
-    uint16_t idx;
-    static uint16_t i = 0, sum = 0;
+    static uint16_t total = 0;
 
-    cnt = gPWM_TEST_AW_CNT_Get(); /* 获取当前脉冲计数 */
-    idx = 0xFFFF;
-
-    for (i = i; i < ARRAY_LEN(cgPWM_AW_Confs); ++i) {              /* 寻找下一个脉冲段配置 */
-        if ((sum <= cnt) && (cnt < sum + cgPWM_AW_Confs[i].dup)) { /* 落中区间 */
-            idx = i;                                               /* 弹出区间索引 */
-            break;
-        }
-        sum += cgPWM_AW_Confs[i].dup; /* 记录前区间脉冲总数 */
+    if (DRV8824_HEAT_IS_OPT || total > PWM_PCS_SUM * 3) {
+        total = 0;
+        gMDRV8824_Heat_Position_Clr();             /* 清空位置记录 */
+        HAL_TIM_Base_Stop(&htim1);                 /* 停止定时器 */
+        __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE); /* 清除更新事件标志位 */
+        __HAL_TIM_SET_COUNTER(&htim1, 0);          /* 清零定时器计数寄存器 */
+        HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);   /* 停止PWM输出 */
+        m_drv8824_release_ISR();                   /* 释放PWM资源 */
+        return;
     }
 
-    if (idx >= ARRAY_LEN(cgPWM_AW_Confs)) {        /* 停止输出 */
-        i = 0;                                     /* 清零索引 */
-        sum = 0;                                   /* 清零前区间脉冲总计数 */
+    aSRC_Buffer[0] = (PWM_PCS_MAX - PWM_PCS_MIN > PWM_PCS_GAP * total) ? (PWM_PCS_MAX - PWM_PCS_GAP * total) : (PWM_PCS_MAX); /* 周期长度 */
+    aSRC_Buffer[1] = PWM_PCS_UNT;                                                                                             /* 重复次数 */
+    aSRC_Buffer[2] = (aSRC_Buffer[0] + 1) / 2;                                                                                /* 占空比 默认50% */
+    /* burst模式修改时基单元 */
+    HAL_TIM_DMABurst_WriteStart(&htim1, TIM_DMABASE_ARR, TIM_DMA_UPDATE, (uint32_t *)aSRC_Buffer, TIM_DMABURSTLENGTH_3TRANSFERS);
+    ++total;
+}
+
+void PWM_AW_IRQ_CallBcak_Heat_Down(void)
+{
+    uint32_t cnt;
+
+    cnt = gPWM_TEST_AW_CNT_Get(); /* 获取当前脉冲计数 */
+
+    if (cnt >= PWM_PCS_SUM) {                      /* 停止输出 */
         HAL_TIM_Base_Stop(&htim1);                 /* 停止定时器 */
         __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE); /* 清除更新事件标志位 */
         __HAL_TIM_SET_COUNTER(&htim1, 0);          /* 清零定时器计数寄存器 */
         HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);   /* 停止PWM输出 */
         m_drv8824_release_ISR();                   /* 释放PWM资源 */
     } else {
-        aSRC_Buffer[0] = cgPWM_AW_Confs[idx].pcs;  /* 周期长度 */
-        aSRC_Buffer[1] = cgPWM_AW_Confs[idx].rcr;  /* 重复次数 */
-        aSRC_Buffer[2] = (aSRC_Buffer[0] + 1) / 2; // cgPWM_AW_Confs[idx].ccr; /* 翻转点 占空比 */
+        aSRC_Buffer[0] = (PWM_PCS_MAX - PWM_PCS_MIN > PWM_PCS_GAP * cnt) ? (PWM_PCS_MAX - PWM_PCS_GAP * cnt) : (PWM_PCS_MIN); /* 周期长度 */
+        aSRC_Buffer[1] = PWM_PCS_UNT;                                                                                         /* 重复次数 */
+        aSRC_Buffer[2] = (aSRC_Buffer[0] + 1) / 2;                                                                            /* 占空比 默认50% */
         /* burst模式修改时基单元 */
         HAL_TIM_DMABurst_WriteStart(&htim1, TIM_DMABASE_ARR, TIM_DMA_UPDATE, (uint32_t *)aSRC_Buffer, TIM_DMABURSTLENGTH_3TRANSFERS);
+        gMDRV8824_Heat_Position_Inc(aSRC_Buffer[1]); /* 自增位置记录 */
     }
     gPWM_TEST_AW_CNT_Inc(); /* 自增脉冲计数 */
+}
+
+void PWM_AW_IRQ_CallBcak(void)
+{
+    switch (gMDRV8824_Heat_Dir_Get()) {
+        case eMotorDir_FWD:
+            PWM_AW_IRQ_CallBcak_Heat_Up();
+            break;
+        case eMotorDir_REV:
+        default:
+            PWM_AW_IRQ_CallBcak_Heat_Down();
+            break;
+    }
 }

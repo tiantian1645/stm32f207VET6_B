@@ -22,8 +22,10 @@
 #include "comm_out.h"
 #include "comm_data.h"
 #include "barcode_scan.h"
-#include "stdio.h"
 #include "m_l6470.h"
+#include "m_drv8824.h"
+#include "tray_run.h"
+#include <string.h>
 
 /* Extern variables ----------------------------------------------------------*/
 extern UART_HandleTypeDef huart3;
@@ -31,8 +33,20 @@ extern UART_HandleTypeDef huart3;
 /* Private includes ----------------------------------------------------------*/
 
 /* Private typedef -----------------------------------------------------------*/
+typedef struct {
+    uint32_t tatasi;
+    uint32_t qigau;
+    uint32_t total;
+} sBarcodeStatistic;
 
 /* Private define ------------------------------------------------------------*/
+#define BAR_SAM_0 BAR_SAM_QR__
+#define BAR_SAM_1 BAR_SAM_CREA
+#define BAR_SAM_2 BAR_SAM_HB__
+#define BAR_SAM_3 BAR_SAM_AMY_
+#define BAR_SAM_4 BAR_SAM_UA__
+#define BAR_SAM_5 BAR_SAM_AMY_
+#define BAR_SAM_6 BAR_SAM_HB__
 
 /* Private macro -------------------------------------------------------------*/
 #define BARCODE_MOTOR_IS_OPT (HAL_GPIO_ReadPin(OPTSW_OUT0_GPIO_Port, OPTSW_OUT0_Pin) == GPIO_PIN_RESET) /* 光耦输入 */
@@ -45,9 +59,63 @@ extern UART_HandleTypeDef huart3;
 static sMotorRunStatus gBarcodeMotorRunStatus;
 static sMoptorRunCmdInfo gBarcodeMotorRunCmdInfo;
 
+sBarcoderesult gBarcodeDecodeResult[7];
+uint8_t gBarcodeDecodeData_0[BARCODE_QR_LENGTH];
+uint8_t gBarcodeDecodeData_1[BARCODE_BA_LENGTH];
+uint8_t gBarcodeDecodeData_2[BARCODE_BA_LENGTH];
+uint8_t gBarcodeDecodeData_3[BARCODE_BA_LENGTH];
+uint8_t gBarcodeDecodeData_4[BARCODE_BA_LENGTH];
+uint8_t gBarcodeDecodeData_5[BARCODE_BA_LENGTH];
+uint8_t gBarcodeDecodeData_6[BARCODE_BA_LENGTH];
+
+sBarcodeStatistic gBarcodeStatistics[7];
+
+/* Private constants ---------------------------------------------------------*/
+const char BAR_SAM_HB__[] = "1415190701";
+const char BAR_SAM_AMY_[] = "1411190601";
+const char BAR_SAM_UA__[] = "1413190703";
+const char BAR_SAM_CREA[] = "1418190602";
+const char BAR_SAM_QR__[] = "6882190918202303039503500200020004500560020000000400001170301020000000008";
+
 /* Private function prototypes -----------------------------------------------*/
 
 /* Private user code ---------------------------------------------------------*/
+
+/**
+ * @brief  初始化扫码结果缓存
+ * @param  None
+ * @retval None
+ */
+void barcode_Result_Init(void)
+{
+    gBarcodeDecodeResult[0].pData = gBarcodeDecodeData_0;
+    gBarcodeDecodeResult[0].state = eBarcodeState_Error;
+    memset(gBarcodeDecodeData_0, 0xA5, ARRAY_LEN(gBarcodeDecodeData_0));
+
+    gBarcodeDecodeResult[1].pData = gBarcodeDecodeData_1;
+    gBarcodeDecodeResult[1].state = eBarcodeState_Error;
+    memset(gBarcodeDecodeData_1, 0xA5, ARRAY_LEN(gBarcodeDecodeData_1));
+
+    gBarcodeDecodeResult[2].pData = gBarcodeDecodeData_2;
+    gBarcodeDecodeResult[2].state = eBarcodeState_Error;
+    memset(gBarcodeDecodeData_2, 0xA5, ARRAY_LEN(gBarcodeDecodeData_2));
+
+    gBarcodeDecodeResult[3].pData = gBarcodeDecodeData_3;
+    gBarcodeDecodeResult[3].state = eBarcodeState_Error;
+    memset(gBarcodeDecodeData_3, 0xA5, ARRAY_LEN(gBarcodeDecodeData_3));
+
+    gBarcodeDecodeResult[4].pData = gBarcodeDecodeData_4;
+    gBarcodeDecodeResult[4].state = eBarcodeState_Error;
+    memset(gBarcodeDecodeData_4, 0xA5, ARRAY_LEN(gBarcodeDecodeData_4));
+
+    gBarcodeDecodeResult[5].pData = gBarcodeDecodeData_5;
+    gBarcodeDecodeResult[5].state = eBarcodeState_Error;
+    memset(gBarcodeDecodeData_5, 0xA5, ARRAY_LEN(gBarcodeDecodeData_5));
+
+    gBarcodeDecodeResult[6].pData = gBarcodeDecodeData_6;
+    gBarcodeDecodeResult[6].state = eBarcodeState_Error;
+    memset(gBarcodeDecodeData_6, 0xA5, ARRAY_LEN(gBarcodeDecodeData_6));
+}
 
 /**
  * @brief  扫码电机 读取驱动中记录的步数
@@ -171,6 +239,10 @@ eBarcodeState barcode_Motor_Run(void)
 {
     eBarcodeState result;
 
+    if (gBarcodeMotorRunCmdInfo.step == 0) {
+        return eBarcodeState_OK;
+    }
+
     result = gBarcodeMotorRunCmdInfo.pfEnter();
     if (result != eBarcodeState_OK) { /* 入口回调 */
         if (result != eBarcodeState_Tiemout) {
@@ -180,21 +252,47 @@ eBarcodeState barcode_Motor_Run(void)
     }
 
     motor_Status_Set_TickInit(&gBarcodeMotorRunStatus, xTaskGetTickCount()); /* 记录开始时钟脉搏数 */
-
-    switch (gBarcodeMotorRunCmdInfo.dir) {
-        case eMotorDir_REV:
-            dSPIN_Move(REV, gBarcodeMotorRunCmdInfo.step); /* 向驱动发送指令 */
-            break;
-        case eMotorDir_FWD:
-        default:
-            dSPIN_Move(FWD, gBarcodeMotorRunCmdInfo.step); /* 向驱动发送指令 */
-            break;
+    if (gBarcodeMotorRunCmdInfo.step < 0xFFFFFF) {
+        switch (gBarcodeMotorRunCmdInfo.dir) {
+            case eMotorDir_REV:
+                dSPIN_Move(REV, gBarcodeMotorRunCmdInfo.step); /* 向驱动发送指令 */
+                break;
+            case eMotorDir_FWD:
+            default:
+                dSPIN_Move(FWD, gBarcodeMotorRunCmdInfo.step); /* 向驱动发送指令 */
+                break;
+        }
+    } else {
+        dSPIN_Go_Until(ACTION_RESET, REV, 30000);
     }
 
     result = gBarcodeMotorRunCmdInfo.pfLeave(); /* 出口回调 */
     barcode_Motor_Deal_Status();                /* 读取电机驱动状态清除标志 */
     m_l6470_release();                          /* 释放SPI总线资源*/
     return result;
+}
+
+/**
+ * @brief  重置电机状态位置
+ * @param  timeout 停车等待超时
+ * @retval 0 成功 1 失败
+ */
+
+uint8_t barcode_Motor_Reset_Pos(uint32_t timeout)
+{
+    while ((!BARCODE_MOTOR_IS_OPT) && --timeout > 0)
+        ;
+    if (BARCODE_MOTOR_IS_OPT) {
+        if (barcode_Motor_Enter() != eBarcodeState_Tiemout) {
+            barcode_Motor_Brake();                                 /* 刹车 */
+            dSPIN_Reset_Pos();                                     /* 重置电机驱动步数记录 */
+            m_l6470_release();                                     /* 释放SPI总线资源*/
+            motor_Status_Set_Position(&gBarcodeMotorRunStatus, 0); /* 重置电机状态步数记录 */
+            return 0;
+        }
+        return 2;
+    }
+    return 1;
 }
 
 /**
@@ -226,11 +324,8 @@ eBarcodeState barcode_Motor_Init(void)
         barcode_Motor_Deal_Status();
     }
 
-    dSPIN_Go_Until(ACTION_RESET, REV, 7500);
-    while (BARCODE_MOTOR_IS_BUSY && ++cnt < 60000000)
-        ;
-    barcode_Motor_Brake(); /* 刹车 */
-    m_l6470_release();     /* 释放SPI总线资源*/
+    dSPIN_Go_Until(ACTION_RESET, REV, 30000);
+    m_l6470_release(); /* 释放SPI总线资源*/
     return eBarcodeState_OK;
 }
 
@@ -246,10 +341,10 @@ void barcode_Motor_Calculate(uint32_t target_step)
     current_position = motor_Status_Get_Position(&gBarcodeMotorRunStatus);
 
     if (target_step >= current_position) {
-        motor_CMD_Info_Set_Step(&gBarcodeMotorRunCmdInfo, (target_step - current_position) % BARCODE_MOTOR_MAX_DISP);
+        motor_CMD_Info_Set_Step(&gBarcodeMotorRunCmdInfo, (target_step - current_position));
         motor_CMD_Info_Set_Dir(&gBarcodeMotorRunCmdInfo, eMotorDir_FWD);
     } else {
-        motor_CMD_Info_Set_Step(&gBarcodeMotorRunCmdInfo, (current_position - target_step) % BARCODE_MOTOR_MAX_DISP);
+        motor_CMD_Info_Set_Step(&gBarcodeMotorRunCmdInfo, (current_position - target_step));
         motor_CMD_Info_Set_Dir(&gBarcodeMotorRunCmdInfo, eMotorDir_REV);
     }
 }
@@ -261,10 +356,12 @@ void barcode_Motor_Calculate(uint32_t target_step)
  */
 void barcode_Init(void)
 {
-    m_l6470_Init();                                        /* 驱动资源及参数初始化 */
-    barcode_Motor_Init();                                  /* 扫码电机位置初始化 */
-    dSPIN_Reset_Pos();                                     /* 重置电机驱动步数记录 */
-    motor_Status_Set_Position(&gBarcodeMotorRunStatus, 0); /* 重置电机状态步数记录 */
+    barcode_Result_Init();
+    m_l6470_Init();       /* 驱动资源及参数初始化 */
+    barcode_Motor_Init(); /* 扫码电机位置初始化 */
+    tray_Motor_Init();    /* 托盘电机初始化 */
+    barcode_Motor_Reset_Pos(6000000);
+    tray_Motor_Reset_Pos(6000000);
 }
 
 /**
@@ -275,7 +372,7 @@ void barcode_Init(void)
  * @note   串口统一按最大长度24读取
  * @retval 扫码结果
  */
-eBarcodeState barcode_Read_From_Serial(uint8_t * pOut_length, uint8_t * pData, uint32_t timeout)
+eBarcodeState barcode_Read_From_Serial(uint8_t * pOut_length, uint8_t * pData, uint8_t max_read_length, uint32_t timeout)
 {
     HAL_StatusTypeDef status;
     eBarcodeState result;
@@ -283,15 +380,15 @@ eBarcodeState barcode_Read_From_Serial(uint8_t * pOut_length, uint8_t * pData, u
     HAL_GPIO_WritePin(BC_AIM_WK_N_GPIO_Port, BC_AIM_WK_N_Pin, GPIO_PIN_RESET);
     vTaskDelay(1);
     HAL_GPIO_WritePin(BC_TRIG_N_GPIO_Port, BC_TRIG_N_Pin, GPIO_PIN_RESET);
-    status = HAL_UART_Receive(&BARCODE_UART, pData, BARCODE_MAX_LENGTH, pdMS_TO_TICKS(timeout));
-    *pOut_length = BARCODE_MAX_LENGTH - BARCODE_UART.RxXferCount;
+    status = HAL_UART_Receive(&BARCODE_UART, pData, max_read_length, pdMS_TO_TICKS(timeout));
+    *pOut_length = max_read_length - BARCODE_UART.RxXferCount;
     switch (status) {
         case HAL_TIMEOUT: /* 接收超时 */
-            *pOut_length = BARCODE_MAX_LENGTH - BARCODE_UART.RxXferCount - 1;
+            *pOut_length = max_read_length - BARCODE_UART.RxXferCount - 1;
             result = eBarcodeState_Tiemout;
             break;
         case HAL_OK: /* 接收到足够字符串 */
-            *pOut_length = BARCODE_MAX_LENGTH;
+            *pOut_length = max_read_length;
             result = eBarcodeState_OK;
             break;
         default:
@@ -312,71 +409,195 @@ eBarcodeState barcode_Read_From_Serial(uint8_t * pOut_length, uint8_t * pData, u
  * @param  timeout 串口接收等待时间
  * @retval 扫码结果数据长度
  */
-eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index, uint8_t * pOut_length, uint8_t * pData, uint32_t timeout)
+eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index)
 {
     eBarcodeState result;
+    sBarcoderesult * pResult;
+    uint8_t max_read_length;
 
-    motor_CMD_Info_Set_PF_Enter(&gBarcodeMotorRunCmdInfo, barcode_Motor_Enter);             /* 配置启动前回调 */
-    barcode_Motor_Calculate((index >> 5) << 3);                                             /* 计算运动距离 及方向 */
-    motor_CMD_Info_Set_Tiemout(&gBarcodeMotorRunCmdInfo, timeout);                          /* 运动超时时间 1000mS */
-    motor_CMD_Info_Set_PF_Leave(&gBarcodeMotorRunCmdInfo, barcode_Motor_Leave_On_Busy_Bit); /* 等待驱动状态位空闲 */
+    switch (index) {
+        case eBarcodeIndex_0:
+            pResult = &(gBarcodeDecodeResult[6]);
+            max_read_length = BARCODE_BA_LENGTH;
+            break;
+        case eBarcodeIndex_1:
+            pResult = &(gBarcodeDecodeResult[5]);
+            max_read_length = BARCODE_BA_LENGTH;
+            break;
+        case eBarcodeIndex_2:
+            pResult = &(gBarcodeDecodeResult[4]);
+            max_read_length = BARCODE_BA_LENGTH;
+            break;
+        case eBarcodeIndex_3:
+            pResult = &(gBarcodeDecodeResult[3]);
+            max_read_length = BARCODE_BA_LENGTH;
+            break;
+        case eBarcodeIndex_4:
+            pResult = &(gBarcodeDecodeResult[2]);
+            max_read_length = BARCODE_BA_LENGTH;
+            break;
+        case eBarcodeIndex_5:
+            pResult = &(gBarcodeDecodeResult[1]);
+            max_read_length = BARCODE_BA_LENGTH;
+            break;
+        case eBarcodeIndex_6:
+            pResult = &(gBarcodeDecodeResult[0]);
+            max_read_length = BARCODE_QR_LENGTH;
+            break;
+        default:
+            return eBarcodeState_Error;
+    }
 
-    result = barcode_Motor_Run();                                 /* 执行电机运动 */
-                                                                  //    if (result != eBarcodeState_OK) {
-                                                                  //        return eBarcodeState_Error;
-                                                                  //    }
-    return barcode_Read_From_Serial(pOut_length, pData, timeout); /* 开始扫码 */
+    motor_CMD_Info_Set_PF_Enter(&gBarcodeMotorRunCmdInfo, barcode_Motor_Enter); /* 配置启动前回调 */
+    motor_CMD_Info_Set_Tiemout(&gBarcodeMotorRunCmdInfo, 1500);                 /* 运动超时时间 1500mS */
+    if (index != eBarcodeIndex_0) {
+        barcode_Motor_Calculate((index >> 5) << 3);                                             /* 计算运动距离 及方向 32细分转8细分 */
+        motor_CMD_Info_Set_PF_Leave(&gBarcodeMotorRunCmdInfo, barcode_Motor_Leave_On_Busy_Bit); /* 等待驱动状态位空闲 */
+    } else {
+        motor_CMD_Info_Set_PF_Leave(&gBarcodeMotorRunCmdInfo, barcode_Motor_Leave_On_OPT); /* 等待驱动状态位空闲 */
+        motor_CMD_Info_Set_Step(&gBarcodeMotorRunCmdInfo, 0xFFFFFF);
+    }
+    result = barcode_Motor_Run(); /* 执行电机运动 */
+    if (result != eBarcodeState_OK) {
+        pResult->length = 0;
+        pResult->state = eBarcodeState_Error;
+    } else {
+        pResult->state = barcode_Read_From_Serial(&(pResult->length), pResult->pData, max_read_length, 500);
+    }
+    return pResult->state;
 }
 
-void barcode_serial_Test(void)
+/**
+ * @brief  扫码枪通讯测试
+ * @param  None
+ * @retval 0 能通信 1 通信故障
+ */
+uint8_t barcode_serial_Test(void)
 {
-    uint8_t buffer[24];
+    uint8_t buffer[15];
+    HAL_StatusTypeDef status;
+
     //扫描模组通信报文
     const unsigned char Close_Scan[] = {
         //  0x08,0xC6,0x04,0x00,0xFF,0xF0,0x2A,0x00,0xFD,0x15   //关闭大灯
         0x08, 0xC6, 0x04, 0x00, 0xFF, 0xF0, 0x32, 0x00, 0xFD, 0x0D //关闭瞄准器
     };
-    const unsigned char Open_Scan[] = {
-        //  0x08,0xC6,0x04,0x00,0xFF,0xF0,0x2A,0x01,0xFD,0x14   //打开大灯
-        0x08, 0xC6, 0x04, 0x00, 0xFF, 0xF0, 0x32, 0x02, 0xFD, 0x0B //打开瞄准器
-    };
+    //    const unsigned char Open_Scan[] = {
+    //        //  0x08,0xC6,0x04,0x00,0xFF,0xF0,0x2A,0x01,0xFD,0x14   //打开大灯
+    //        0x08, 0xC6, 0x04, 0x00, 0xFF, 0xF0, 0x32, 0x02, 0xFD, 0x0B //打开瞄准器
+    //    };
 
-    HAL_UART_Transmit(&BARCODE_UART, Close_Scan, ARRAY_LEN(Close_Scan), pdMS_TO_TICKS(10));
-    HAL_UART_Receive(&BARCODE_UART, buffer, ARRAY_LEN(buffer), pdMS_TO_TICKS(1000));
+    if (HAL_UART_Transmit(&BARCODE_UART, (uint8_t *)Close_Scan, ARRAY_LEN(Close_Scan), pdMS_TO_TICKS(10)) != HAL_OK) {
+        return 1;
+    }
+    status = HAL_UART_Receive(&BARCODE_UART, buffer, ARRAY_LEN(buffer), pdMS_TO_TICKS(100));
+    switch (status) {
+        case HAL_TIMEOUT: /* 接收超时 */
+            if (ARRAY_LEN(buffer) - BARCODE_UART.RxXferCount > 1) {
+                return 0;
+            }
+            return 3;
+        case HAL_OK: /* 接收到足够字符串 */
+            return 0;
+        default: /* 故障 HAL_ERROR HAL_BUSY */
+            return 2;
+    }
+    return 2;
+}
+
+uint8_t barcode_Comp_Result(uint8_t * pData, uint8_t length, const char * pTarget)
+{
+    if (length != strlen(pTarget)) {
+        return 1;
+    }
+    if (memcmp(pData, pTarget, length) != 0) {
+        return 2;
+    }
+    return 0;
 }
 
 /**
  * @brief  扫码测试
- * @param  cnt     测试次数
- * @retval None
+ * @param  cnt 测试次数
+ * @retval 扫码结果数据长度
  */
-void barcde_Test(uint32_t cnt)
+void barcode_Test(uint32_t cnt)
 {
-    uint8_t test_buff[BARCODE_MAX_LENGTH];
-    uint8_t length;
+    uint32_t i;
 
-    while (cnt > 0) {
-        test_buff[0] = 0;                                                     /* 发送包头设置为索引值 */
-        barcode_Scan_By_Index(eBarcodeIndex_0, &length, test_buff + 1, 2000); /* 条码位置 1 */
-        serialSendStartDMA(eSerialIndex_5, test_buff, length + 1, 10);        /* 发送结果 */
-        test_buff[0] = 1;                                                     /* 发送包头设置为索引值 */
-        barcode_Scan_By_Index(eBarcodeIndex_1, &length, test_buff + 1, 2000); /* 条码位置 2 */
-        serialSendStartDMA(eSerialIndex_5, test_buff, length + 1, 10);        /* 发送结果 */
-        test_buff[0] = 2;                                                     /* 发送包头设置为索引值 */
-        barcode_Scan_By_Index(eBarcodeIndex_2, &length, test_buff + 1, 2000); /* 条码位置 3 */
-        serialSendStartDMA(eSerialIndex_5, test_buff, length + 1, 10);        /* 发送结果 */
-        test_buff[0] = 3;                                                     /* 发送包头设置为索引值 */
-        barcode_Scan_By_Index(eBarcodeIndex_3, &length, test_buff + 1, 2000); /* 条码位置 4 */
-        serialSendStartDMA(eSerialIndex_5, test_buff, length + 1, 10);        /* 发送结果 */
-        test_buff[0] = 4;                                                     /* 发送包头设置为索引值 */
-        barcode_Scan_By_Index(eBarcodeIndex_4, &length, test_buff + 1, 2000); /* 条码位置 5 */
-        serialSendStartDMA(eSerialIndex_5, test_buff, length + 1, 10);        /* 发送结果 */
-        test_buff[0] = 5;                                                     /* 发送包头设置为索引值 */
-        barcode_Scan_By_Index(eBarcodeIndex_5, &length, test_buff + 1, 2000); /* 条码位置 6 */
-        serialSendStartDMA(eSerialIndex_5, test_buff, length + 1, 10);        /* 发送结果 */
-        --cnt;
+    for (i = 0; i < ARRAY_LEN(gBarcodeStatistics); ++i) {
+        gBarcodeStatistics[i].qigau = 0;
+        gBarcodeStatistics[i].tatasi = 0;
+        gBarcodeStatistics[i].total = 0;
     }
-    if (comm_Data_DMA_TX_Enter(200) == pdPASS) { /* 等待最后一包发出去 避免系统回收 test_buff */
-        comm_Data_DMA_TX_Error();
+
+    heat_Motor_Run(eMotorDir_FWD);
+    while (!heat_Motor_Position_Is_Up() && ++i < 100) {
+        vTaskDelay(10);
     }
+    if (!heat_Motor_Position_Is_Up()) {
+        return;
+    }
+
+    if (tray_Move_By_Index(eTrayIndex_1, 3000) != eTrayState_OK) {
+        return;
+    }
+
+    do {
+        if ((barcode_Scan_By_Index(eBarcodeIndex_0) != eBarcodeState_Error) &&
+            (barcode_Comp_Result(gBarcodeDecodeResult[6].pData, gBarcodeDecodeResult[6].length, BAR_SAM_6) == 0)) {
+            ++gBarcodeStatistics[0].tatasi;
+        } else {
+            ++gBarcodeStatistics[0].qigau;
+        }
+        ++gBarcodeStatistics[0].total;
+
+        if ((barcode_Scan_By_Index(eBarcodeIndex_1) != eBarcodeState_Error) &&
+            (barcode_Comp_Result(gBarcodeDecodeResult[5].pData, gBarcodeDecodeResult[5].length, BAR_SAM_5) == 0)) {
+            ++gBarcodeStatistics[1].tatasi;
+        } else {
+            ++gBarcodeStatistics[1].qigau;
+        }
+        ++gBarcodeStatistics[1].total;
+
+        if ((barcode_Scan_By_Index(eBarcodeIndex_2) != eBarcodeState_Error) &&
+            (barcode_Comp_Result(gBarcodeDecodeResult[4].pData, gBarcodeDecodeResult[4].length, BAR_SAM_4) == 0)) {
+            ++gBarcodeStatistics[2].tatasi;
+        } else {
+            ++gBarcodeStatistics[2].qigau;
+        }
+        ++gBarcodeStatistics[2].total;
+
+        if ((barcode_Scan_By_Index(eBarcodeIndex_3) != eBarcodeState_Error) &&
+            (barcode_Comp_Result(gBarcodeDecodeResult[3].pData, gBarcodeDecodeResult[3].length, BAR_SAM_3) == 0)) {
+            ++gBarcodeStatistics[3].tatasi;
+        } else {
+            ++gBarcodeStatistics[3].qigau;
+        }
+        ++gBarcodeStatistics[3].total;
+
+        if ((barcode_Scan_By_Index(eBarcodeIndex_4) != eBarcodeState_Error) &&
+            (barcode_Comp_Result(gBarcodeDecodeResult[2].pData, gBarcodeDecodeResult[2].length, BAR_SAM_2) == 0)) {
+            ++gBarcodeStatistics[4].tatasi;
+        } else {
+            ++gBarcodeStatistics[4].qigau;
+        }
+        ++gBarcodeStatistics[4].total;
+
+        if ((barcode_Scan_By_Index(eBarcodeIndex_5) != eBarcodeState_Error) &&
+            (barcode_Comp_Result(gBarcodeDecodeResult[1].pData, gBarcodeDecodeResult[1].length, BAR_SAM_1) == 0)) {
+            ++gBarcodeStatistics[5].tatasi;
+        } else {
+            ++gBarcodeStatistics[5].qigau;
+        }
+        ++gBarcodeStatistics[5].total;
+
+        if ((barcode_Scan_By_Index(eBarcodeIndex_6) != eBarcodeState_Error) &&
+            (barcode_Comp_Result(gBarcodeDecodeResult[0].pData, gBarcodeDecodeResult[0].length, BAR_SAM_0) == 0)) {
+            ++gBarcodeStatistics[6].tatasi;
+        } else {
+            ++gBarcodeStatistics[6].qigau;
+        }
+        ++gBarcodeStatistics[6].total;
+    } while (--cnt > 0);
 }

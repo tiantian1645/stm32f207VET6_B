@@ -24,7 +24,11 @@ void m_drv8824_SetDir(eMotorDir dir);
 uint8_t m_drv8824_Get_Flag(void);
 void m_drv8824_Reset_All(void);
 uint8_t m_drv8824_Index_Switch(eM_DRV8824_Index index, uint32_t timeout);
+
+uint8_t heat_Motor_Position_Is_Down(void);
+uint8_t heat_Motor_Position_Is_Up(void);
+HAL_StatusTypeDef heat_Motor_Run(eMotorDir dir);
+
 void PWM_AW_IRQ_CallBcak(void);
-HAL_StatusTypeDef PWM_Start_AW(void);
 
 /* Private defines -----------------------------------------------------------*/
