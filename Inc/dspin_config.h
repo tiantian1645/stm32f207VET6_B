@@ -38,21 +38,39 @@
 /******************No Daisy Chain Mode **************************************/
 /****************************************************************************/
 
-/* Exported constants --------------------------------------------------------*/
-
-/**************************** Speed Profile *********************************/
-
 /* Register : ACC */
 /* Acceleration rate in step/s2, range 14.55 to 59590 steps/s2 */
-#define dSPIN_CONF_PARAM_ACC (2008.164)
+#define dSPIN_CONF_PARAM_ACC (1455.192)
 
 /* Register : DEC */
 /* Deceleration rate in step/s2, range 14.55 to 59590 steps/s2 */
-#define dSPIN_CONF_PARAM_DEC (2008.164)
+#define dSPIN_CONF_PARAM_DEC (1455.192)
 
 /* Register : MAX_SPEED */
 /* Maximum speed in step/s, range 15.25 to 15610 steps/s */
-#define dSPIN_CONF_PARAM_MAX_SPEED (500.821)
+#define dSPIN_CONF_PARAM_MAX_SPEED (534.058)
+
+/* Register : MIN_SPEED */
+/* Minimum speed in step/s, range 0 to 976.3 steps/s */
+#define dSPIN_CONF_PARAM_MIN_SPEED (0)
+
+/* Register : FS_SPD */
+/* Full step speed in step/s, range 7.63 to 15625 steps/s */
+#define dSPIN_CONF_PARAM_FS_SPD (595.093)
+
+/************************ Phase Current Control *****************************/
+
+/* Register : ACC */
+/* Acceleration rate in step/s2, range 14.55 to 59590 steps/s2 */
+#define dSPIN_CONF_PARAM_ACC (1455.192)
+
+/* Register : DEC */
+/* Deceleration rate in step/s2, range 14.55 to 59590 steps/s2 */
+#define dSPIN_CONF_PARAM_DEC (1455.192)
+
+/* Register : MAX_SPEED */
+/* Maximum speed in step/s, range 15.25 to 15610 steps/s */
+#define dSPIN_CONF_PARAM_MAX_SPEED (534.058)
 
 /* Register : MIN_SPEED */
 /* Minimum speed in step/s, range 0 to 976.3 steps/s */
@@ -66,19 +84,19 @@
 
 /* Register : KVAL_HOLD */
 /* Hold duty cycle (torque) in %, range 0 to 99.6% */
-#define dSPIN_CONF_PARAM_KVAL_HOLD (50.56)
+#define dSPIN_CONF_PARAM_KVAL_HOLD (1601.56)
 
 /* Register : KVAL_RUN */
 /* Run duty cycle (torque) in %, range 0 to 99.6% */
-#define dSPIN_CONF_PARAM_KVAL_RUN (1601.56)
+#define dSPIN_CONF_PARAM_KVAL_RUN (1054.69)
 
 /* Register : KVAL_ACC */
 /* Acceleration duty cycle (torque) in %, range 0 to 99.6% */
-#define dSPIN_CONF_PARAM_KVAL_ACC (1601.56)
+#define dSPIN_CONF_PARAM_KVAL_ACC (1054.69)
 
 /* Register : KVAL_DEC */
 /* Deceleration duty cycle (torque) in %, range 0 to 99.6% */
-#define dSPIN_CONF_PARAM_KVAL_DEC (1601.56)
+#define dSPIN_CONF_PARAM_KVAL_DEC (1054.69)
 
 /* Register : CONFIG - field : EN_VSCOMP */
 /* Motor Supply Voltage Compensation enabling , enum dSPIN_CONFIG_EN_VSCOMP_TypeDef */
@@ -119,11 +137,11 @@
 /******************************* Others *************************************/
 /* Register : OCD_TH */
 /* Overcurrent threshold settings via enum dSPIN_OCD_TH_TypeDef */
-#define dSPIN_CONF_PARAM_OCD_TH (dSPIN_OCD_TH_750mA)
+#define dSPIN_CONF_PARAM_OCD_TH (dSPIN_OCD_TH_3375mA)
 
 /* Register : STALL_TH */
 /* Stall threshold settings in mA, range 31.25mA to 4000mA */
-#define dSPIN_CONF_PARAM_STALL_TH (593.75)
+#define dSPIN_CONF_PARAM_STALL_TH (2031.25)
 
 /* Register : ALARM_EN */
 /* Alarm settings via bitmap enum dSPIN_ALARM_EN_TypeDef */

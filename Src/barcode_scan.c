@@ -205,7 +205,7 @@ eBarcodeState barcode_Motor_Run(void)
 eBarcodeState barcode_Motor_Init(void)
 {
     eBarcodeState result;
-    uint8_t cnt = 0;
+    uint32_t cnt = 0;
 
     result = barcode_Motor_Enter();
     if (result != eBarcodeState_OK) { /* 入口回调 */
@@ -217,20 +217,18 @@ eBarcodeState barcode_Motor_Init(void)
 
     if (BARCODE_MOTOR_IS_OPT) {
         dSPIN_Move(FWD, 300);
-        do {
-            vTaskDelay(100);
-        } while (BARCODE_MOTOR_IS_BUSY && ++cnt < 1000);
+        while (BARCODE_MOTOR_IS_OPT && ++cnt < 6000000)
+            ;
         cnt = 0;
+        barcode_Motor_Brake(); /* 刹车 */
     }
     if (BARCODE_MOTOR_IS_FLAG) {
         barcode_Motor_Deal_Status();
     }
 
-    dSPIN_Go_Until(ACTION_RESET, REV, 8000);
-
-    do {
-        vTaskDelay(100);
-    } while (BARCODE_MOTOR_IS_BUSY && ++cnt < 1000);
+    dSPIN_Go_Until(ACTION_RESET, REV, 7500);
+    while (BARCODE_MOTOR_IS_BUSY && ++cnt < 60000000)
+        ;
     barcode_Motor_Brake(); /* 刹车 */
     m_l6470_release();     /* 释放SPI总线资源*/
     return eBarcodeState_OK;
