@@ -1,6 +1,6 @@
 /**
  * @file    white_motor.c
- * @brief   上加热体电机控制
+ * @brief   上白板电机控制
  */
 
 /* Includes ------------------------------------------------------------------*/
@@ -40,9 +40,9 @@ static void gWhite_Motor_Position_Clr(void);
 /* Private user code ---------------------------------------------------------*/
 
 /**
- * @brief  加热体电机运动锁 获取
+ * @brief  白板电机运动锁 获取
  * @param  None
- * @retval 加热体电机运动锁
+ * @retval 白板电机运动锁
  */
 uint8_t gWhite_Motor_Lock_Get(void)
 {
@@ -50,8 +50,8 @@ uint8_t gWhite_Motor_Lock_Get(void)
 }
 
 /**
- * @brief  加热体电机运动锁 设置
- * @param  lock 加热体电机运动锁
+ * @brief  白板电机运动锁 设置
+ * @param  lock 白板电机运动锁
  * @retval None
  */
 void gWhite_Motor_Lock_Set(uint8_t lock)
@@ -60,8 +60,8 @@ void gWhite_Motor_Lock_Set(uint8_t lock)
 }
 
 /**
- * @brief  加热体电机运动锁 设置
- * @param  lock 加热体电机运动锁
+ * @brief  白板电机运动锁 设置
+ * @param  lock 白板电机运动锁
  * @retval None
  */
 uint8_t white_Motor_Lock_Check(void)
@@ -70,8 +70,8 @@ uint8_t white_Motor_Lock_Check(void)
 }
 
 /**
- * @brief  加热体电机运动锁 设置
- * @param  lock 加热体电机运动锁
+ * @brief  白板电机运动锁 设置
+ * @param  lock 白板电机运动锁
  * @retval None
  */
 void white_Motor_Lock_Occupy(void)
@@ -80,8 +80,8 @@ void white_Motor_Lock_Occupy(void)
 }
 
 /**
- * @brief  加热体电机运动锁 设置
- * @param  lock 加热体电机运动锁
+ * @brief  白板电机运动锁 设置
+ * @param  lock 白板电机运动锁
  * @retval None
  */
 void white_Motor_Lock_Release(void)
@@ -90,9 +90,9 @@ void white_Motor_Lock_Release(void)
 }
 
 /**
- * @brief  加热体电机方向 获取
+ * @brief  白板电机方向 获取
  * @param  None
- * @retval 加热体电机方向
+ * @retval 白板电机方向
  */
 eMotorDir gWhite_Motor_Dir_Get(void)
 {
@@ -100,8 +100,8 @@ eMotorDir gWhite_Motor_Dir_Get(void)
 }
 
 /**
- * @brief  加热体电机方向 设置
- * @param  dir 加热体电机方向
+ * @brief  白板电机方向 设置
+ * @param  dir 白板电机方向
  * @retval None
  */
 void gWhite_Motor_Dir_Set(eMotorDir dir)
@@ -110,9 +110,9 @@ void gWhite_Motor_Dir_Set(eMotorDir dir)
 }
 
 /**
- * @brief  加热体电机位置 获取
+ * @brief  白板电机位置 获取
  * @param  None
- * @retval 加热体电机位置
+ * @retval 白板电机位置
  */
 uint32_t gWhite_Motor_Position_Get(void)
 {
@@ -120,33 +120,54 @@ uint32_t gWhite_Motor_Position_Get(void)
 }
 
 /**
- * @brief  加热体电机位置 检查是否已经处于被压下状态
+ * @brief  白板电机位置 使能
+ * @param  None
+ * @retval None
+ */
+void white_Motor_Active(void)
+{
+    HAL_GPIO_WritePin(STEP_NCS1_GPIO_Port, STEP_NCS1_Pin, GPIO_PIN_RESET);
+}
+
+/**
+ * @brief  白板电机位置 失能
+ * @param  None
+ * @retval None
+ */
+void white_Motor_Deactive(void)
+{
+    HAL_GPIO_WritePin(STEP_NCS1_GPIO_Port, STEP_NCS1_Pin, GPIO_PIN_SET);
+}
+
+/**
+ * @brief  白板电机位置 检查是否已经处于伸展状态
  * @note   已运动步数超过极限位置80%
  * @param  None
- * @retval 加热体电机位置
+ * @retval 白板电机位置
  */
-uint8_t white_Motor_Position_Is_Down(void)
+uint8_t white_Motor_Position_Is_Out(void)
 {
     return (gWhite_Motor_Position_Get() != 0xFFFFFFFF) && (gWhite_Motor_Position_Get() > WHITE_MOTOR_PCS_SUM * WHITE_MOTOR_PCS_UNT * 90 / 100);
 }
 
 /**
- * @brief  加热体电机位置 检查是否已经处于被抬起状态
+ * @brief  白板电机位置 检查是否已经处于收缩状态
  * @note   已运动步数为0
  * @param  None
- * @retval 加热体电机位置
+ * @retval 白板电机位置
  */
 uint8_t white_Motor_Position_Is_In(void)
 {
     if (HAL_GPIO_ReadPin(OPTSW_OUT4_GPIO_Port, OPTSW_OUT4_Pin) == GPIO_PIN_RESET) {
+        white_Motor_Deactive();
         return 1;
     }
     return 0;
 }
 
 /**
- * @brief  加热体电机位置 设置
- * @param  加热体电机位置
+ * @brief  白板电机位置 设置
+ * @param  白板电机位置
  * @retval None
  */
 static void gWhite_Motor_Position_Set(uint32_t position)
@@ -155,8 +176,8 @@ static void gWhite_Motor_Position_Set(uint32_t position)
 }
 
 /**
- * @brief  加热体电机位置 增量
- * @param  加热体电机位置
+ * @brief  白板电机位置 增量
+ * @param  白板电机位置
  * @retval None
  */
 static void gWhite_Motor_Position_Inc(uint32_t position)
@@ -165,7 +186,7 @@ static void gWhite_Motor_Position_Inc(uint32_t position)
 }
 
 /**
- * @brief  加热体电机位置 清零
+ * @brief  白板电机位置 清零
  * @param  None
  * @retval None
  */
@@ -175,7 +196,7 @@ static void gWhite_Motor_Position_Clr(void)
 }
 
 /**
- * @brief  加热体电机位置 重置
+ * @brief  白板电机位置 重置
  * @param  None
  * @retval None
  */
@@ -185,7 +206,7 @@ static void gWhite_Motor_Position_Rst(void)
 }
 
 /**
- * @brief 加热体电机 停车确认
+ * @brief 白板电机 停车确认
  * @param  None
  * @retval None
  */
@@ -205,7 +226,7 @@ uint8_t white_Motor_Wait_Stop(uint32_t timeout)
         case eMotorDir_FWD:
         default:
             do {
-                if (white_Motor_Position_Is_Down()) {
+                if (white_Motor_Position_Is_Out()) {
                     return 0;
                 }
             } while (--timeout);
@@ -226,7 +247,7 @@ uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout)
         if (dir == eMotorDir_REV) {     /* 仍然收到向上运动指令 */
             return 0;
         }
-    } else if (dir == eMotorDir_FWD && white_Motor_Position_Is_Down()) { /* 向下运动指令 但已运动步数超过极限位置80% */
+    } else if (dir == eMotorDir_FWD && white_Motor_Position_Is_Out()) { /* 向下运动指令 但已运动步数超过极限位置80% */
         return 0;
     }
 
@@ -256,7 +277,7 @@ uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout)
 }
 
 /**
- * @brief  加热体电机向上运动 PWM输出控制
+ * @brief  白板电机向上运动 PWM输出控制
  * @param  None
  * @retval 0 输出完成 1 输出未完成
  */
@@ -282,7 +303,7 @@ uint8_t white_Motor_PWM_Gen_In(void)
 }
 
 /**
- * @brief  加热体电机向下运动 PWM输出控制
+ * @brief  白板电机向下运动 PWM输出控制
  * @param  None
  * @retval 0 输出完成 1 输出未完成
  */

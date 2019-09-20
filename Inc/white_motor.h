@@ -20,6 +20,9 @@ uint8_t white_Motor_Lock_Check(void);
 void white_Motor_Lock_Occupy(void);
 void white_Motor_Lock_Release(void);
 
+void white_Motor_Active(void);
+void white_Motor_Deactive(void);
+
 uint8_t white_Motor_Position_Is_Down(void);
 uint8_t white_Motor_Position_Is_In(void);
 uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout);

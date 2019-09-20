@@ -3,6 +3,7 @@
 #include "motor.h"
 #include "m_drv8824.h"
 #include "heat_motor.h"
+#include "white_motor.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim1;
@@ -109,6 +110,7 @@ void m_drv8824_Init(void)
         Error_Handler();
     }
     heat_Motor_Run(eMotorDir_FWD, 3000);
+    white_Motor_Run(eMotorDir_REV, 3000);
 }
 
 /**

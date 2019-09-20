@@ -20,6 +20,9 @@ uint8_t heat_Motor_Lock_Check(void);
 void heat_Motor_Lock_Occupy(void);
 void heat_Motor_Lock_Release(void);
 
+void heat_Motor_Active(void);
+void heat_Motor_Deactive(void);
+
 uint8_t heat_Motor_Position_Is_Down(void);
 uint8_t heat_Motor_Position_Is_Up(void);
 uint8_t heat_Motor_Run(eMotorDir dir, uint32_t timeout);
