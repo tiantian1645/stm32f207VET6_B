@@ -1,7 +1,9 @@
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __TRAY_RUN_H
-#define __TRAY_RUN_H
+#ifndef __HEAT_MOTOR_H
+#define __HEAT_MOTOR_H
+
 /* Includes ------------------------------------------------------------------*/
+#include "motor.h"
 
 /* Private includes ----------------------------------------------------------*/
 
@@ -9,29 +11,21 @@
 
 /* Exported types ------------------------------------------------------------*/
 
-/* 条码索引 32细分步下标准 */
-typedef enum {
-    eTrayIndex_0 = 0,
-    eTrayIndex_1 = 5880,
-    eTrayIndex_2 = 25600,
-} eTrayIndex;
-
-typedef enum {
-    eTrayState_OK,
-    eTrayState_Tiemout,
-    eTrayState_Busy,
-    eTrayState_Error,
-} eTrayState;
-
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/
-void tray_Motor_Lock_Occupy(void);
-void tray_Motor_Lock_Release(void);
+eMotorDir gHeat_Motor_Dir_Get(void);
 
-uint8_t tray_Motor_Reset_Pos(uint32_t timeout);
-eTrayState tray_Motor_Init(void);
-eTrayState tray_Move_By_Index(eTrayIndex index, uint32_t timeout);
+uint8_t heat_Motor_Lock_Check(void);
+void heat_Motor_Lock_Occupy(void);
+void heat_Motor_Lock_Release(void);
+
+uint8_t heat_Motor_Position_Is_Down(void);
+uint8_t heat_Motor_Position_Is_Up(void);
+uint8_t heat_Motor_Run(eMotorDir dir, uint32_t timeout);
+uint8_t heat_Motor_Wait_Stop(uint32_t timeout);
+uint8_t heat_Motor_PWM_Gen_Up(void);
+uint8_t heat_Motor_PWM_Gen_Down(void);
 
 /* Private defines -----------------------------------------------------------*/
 

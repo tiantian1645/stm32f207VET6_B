@@ -8,6 +8,7 @@
 #include "m_drv8824.h"
 #include "barcode_scan.h"
 #include "tray_run.h"
+#include "heat_motor.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim9;

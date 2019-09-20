@@ -1,4 +1,6 @@
 /* Define to prevent recursive inclusion -------------------------------------*/
+#ifndef __M_DRV8824_H
+#define __M_DRV8824_H
 
 /* Includes ------------------------------------------------------------------*/
 #include "motor.h"
@@ -26,12 +28,13 @@ uint8_t m_drv8824_Get_Flag(void);
 void m_drv8824_Reset_All(void);
 uint8_t m_drv8824_Index_Switch(eM_DRV8824_Index index, uint32_t timeout);
 
-uint8_t heat_Motor_Position_Is_Down(void);
-uint8_t heat_Motor_Position_Is_Up(void);
-uint8_t heat_Motor_Run(eMotorDir dir, uint32_t timeout);
-uint8_t heat_Motor_Wait_Stop(uint32_t timeout);
+uint32_t gPWM_TEST_AW_CNT_Get(void);
+void gPWM_TEST_AW_CNT_Inc(void);
+void gPWM_TEST_AW_CNT_Clear(void);
 
-void PWM_AW_IRQ_Clear(void);
+void PWM_AW_Stop(void);
 uint8_t PWM_AW_IRQ_CallBcak(void);
 
 /* Private defines -----------------------------------------------------------*/
+
+#endif

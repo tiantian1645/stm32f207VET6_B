@@ -2,6 +2,7 @@
 #include "main.h"
 #include "motor.h"
 #include "m_drv8824.h"
+#include "heat_motor.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim1;
@@ -9,11 +10,6 @@ extern TIM_HandleTypeDef htim1;
 /* Private includes ----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
-#define PWM_PCS_MAX 24048
-#define PWM_PCS_MIN 14500
-#define PWM_PCS_GAP 78
-#define PWM_PCS_UNT 20
-#define PWM_PCS_SUM 110
 
 /* Private macro -------------------------------------------------------------*/
 #define DRV8824_HEAT_IS_OPT 0 //(HAL_GPIO_ReadPin(OPTSW_OUT3_GPIO_Port, OPTSW_OUT3_Pin) == GPIO_PIN_RESET) /* 光耦输入 */
@@ -28,11 +24,8 @@ typedef struct {
 
 /* Private variables ---------------------------------------------------------*/
 static eM_DRV8824_Index gMDRV8824Index = eM_DRV8824_Index_0;
-static uint32_t aSRC_Buffer[3] = {0, 0, 0};
 static uint32_t gPWM_TEST_AW_CNT = 0;
 static SemaphoreHandle_t m_drv8824_spi_sem = NULL;
-static eMotorDir gHeat_Motor_Dir = eMotorDir_FWD;
-static uint32_t gMDRV8824_Heat_Position = 0xFFFFFFFF;
 
 /* Private function prototypes -----------------------------------------------*/
 static uint8_t m_drv8824_acquire(uint32_t timeout);
@@ -265,216 +258,16 @@ void gPWM_TEST_AW_CNT_Clear(void)
 }
 
 /**
- * @brief  加热体电机方向 获取
- * @param  None
- * @retval 加热体电机方向
- */
-eMotorDir gHeat_Motor_Dir_Get(void)
-{
-    return gHeat_Motor_Dir;
-}
-
-/**
- * @brief  加热体电机方向 设置
- * @param  加热体电机方向
- * @retval None
- */
-void gHeat_Motor_Dir_Set(eMotorDir dir)
-{
-    gHeat_Motor_Dir = dir;
-}
-
-/**
- * @brief  加热体电机位置 获取
- * @param  None
- * @retval 加热体电机位置
- */
-uint32_t gMDRV8824_Heat_Position_Get(void)
-{
-    return gMDRV8824_Heat_Position;
-}
-
-/**
- * @brief  加热体电机位置 检查是否已经处于被压下状态
- * @note   已运动步数超过极限位置80%
- * @param  None
- * @retval 加热体电机位置
- */
-uint8_t heat_Motor_Position_Is_Down(void)
-{
-    return (gMDRV8824_Heat_Position_Get() != 0xFFFFFFFF) && (gMDRV8824_Heat_Position_Get() > PWM_PCS_SUM * PWM_PCS_UNT * 80 / 100);
-}
-
-/**
- * @brief  加热体电机位置 检查是否已经处于被抬起状态
- * @note   已运动步数为0
- * @param  None
- * @retval 加热体电机位置
- */
-uint8_t heat_Motor_Position_Is_Up(void)
-{
-    return gMDRV8824_Heat_Position_Get() == 0;
-}
-
-/**
- * @brief  加热体电机位置 设置
- * @param  加热体电机位置
- * @retval None
- */
-static void gMDRV8824_Heat_Position_Set(uint32_t position)
-{
-    gMDRV8824_Heat_Position = position;
-}
-
-/**
- * @brief  加热体电机位置 增量
- * @param  加热体电机位置
- * @retval None
- */
-static void gMDRV8824_Heat_Position_Inc(uint32_t position)
-{
-    gMDRV8824_Heat_Position_Set(gMDRV8824_Heat_Position_Get() + position);
-}
-
-/**
- * @brief  加热体电机位置 清零
- * @param  None
- * @retval None
- */
-static void gMDRV8824_Heat_Position_Clr(void)
-{
-    gMDRV8824_Heat_Position_Set(0);
-}
-
-/**
- * @brief  加热体电机位置 重置
- * @param  None
- * @retval None
- */
-static void gMDRV8824_Heat_Position_Rst(void)
-{
-    gMDRV8824_Heat_Position_Set(0xFFFFFFFF);
-}
-
-/**
- * @brief 加热体电机 停车确认
- * @param  None
- * @retval None
- */
-uint8_t heat_Motor_Wait_Stop(uint32_t timeout)
-{
-    while (timeout--) {
-        if (heat_Motor_Position_Is_Down() || heat_Motor_Position_Is_Up()) {
-            return 0;
-        }
-        vTaskDelay(1);
-    }
-    return 1;
-}
-
-/**
- * @brief  启动DMA PWM输出
- * @param  None
- * @retval 启动结果
- */
-uint8_t heat_Motor_Run(eMotorDir dir, uint32_t timeout)
-{
-    if (heat_Motor_Position_Is_Up()) { /* 光耦被遮挡 处于抬起状态 */
-        gMDRV8824_Heat_Position_Clr(); /* 清空位置记录 */
-        if (dir == eMotorDir_FWD) {    /* 仍然收到向上运动指令 */
-            return HAL_OK;
-        }
-    } else if (dir == eMotorDir_REV && heat_Motor_Position_Is_Down()) { /* 向下运动指令 但已运动步数超过极限位置80% */
-        return HAL_OK;
-    }
-
-    gMDRV8824_Heat_Position_Rst();
-    m_drv8824_Index_Switch(eM_DRV8824_Index_1, portMAX_DELAY);
-    m_drv8824_SetDir(dir);
-    gHeat_Motor_Dir_Set(dir);
-
-    gPWM_TEST_AW_CNT_Clear();
-    __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE);
-    if (HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1) != HAL_OK) {
-        return 1;
-    }
-
-    PWM_AW_IRQ_CallBcak();
-
-    if (heat_Motor_Wait_Stop(timeout)) {
-        return 0;
-    }
-    return 2;
-}
-
-/**
  * @brief  停止PWM输出
  * @param  None
  * @retval None
  */
-void PWM_AW_IRQ_Clear(void)
+void PWM_AW_Stop(void)
 {
-    gMDRV8824_Heat_Position_Clr();             /* 清空位置记录 */
+    HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);   /* 停止PWM输出 */
     HAL_TIM_Base_Stop(&htim1);                 /* 停止定时器 */
     __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE); /* 清除更新事件标志位 */
     __HAL_TIM_SET_COUNTER(&htim1, 0);          /* 清零定时器计数寄存器 */
-    HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);   /* 停止PWM输出 */
-}
-
-/**
- * @brief  加热体电机向上运动 PWM输出控制
- * @param  None
- * @retval 0 输出完成 1 输出未完成
- */
-uint8_t heat_Motor_PWM_Gen_Up(void)
-{
-    uint32_t total = 0;
-
-    total = gPWM_TEST_AW_CNT_Get();
-
-    if (total > PWM_PCS_SUM * 4) {
-        PWM_AW_IRQ_Clear();
-        return 0;
-    }
-
-    if (total > 0 && (total % (2 * PWM_PCS_SUM) == 0)) {
-        HAL_GPIO_TogglePin(STEP_DIR2_GPIO_Port, STEP_DIR2_Pin); /* 切换方向 托盘出仓位置时 旋转方向有可能会被顶住 */
-    }
-
-    aSRC_Buffer[0] =
-        (PWM_PCS_MAX - PWM_PCS_MIN > PWM_PCS_GAP * (total % PWM_PCS_SUM)) ? (PWM_PCS_MAX - PWM_PCS_GAP * (total % PWM_PCS_SUM)) : (PWM_PCS_MAX); /* 周期长度 */
-    aSRC_Buffer[1] = PWM_PCS_UNT;              /* 重复次数 */
-    aSRC_Buffer[2] = (aSRC_Buffer[0] + 1) / 2; /* 占空比 默认50% */
-    /* burst模式修改时基单元 */
-    HAL_TIM_DMABurst_WriteStart(&htim1, TIM_DMABASE_ARR, TIM_DMA_UPDATE, (uint32_t *)aSRC_Buffer, TIM_DMABURSTLENGTH_3TRANSFERS);
-    gPWM_TEST_AW_CNT_Inc(); /* 自增脉冲计数 */
-    return 1;
-}
-
-/**
- * @brief  加热体电机向下运动 PWM输出控制
- * @param  None
- * @retval 0 输出完成 1 输出未完成
- */
-uint8_t heat_Motor_PWM_Gen_Down(void)
-{
-    uint32_t cnt;
-
-    cnt = gPWM_TEST_AW_CNT_Get(); /* 获取当前脉冲计数 */
-
-    if (cnt >= PWM_PCS_SUM) { /* 停止输出 */
-        PWM_AW_IRQ_Clear();
-        return 0;
-    } else {
-        aSRC_Buffer[0] = (PWM_PCS_MAX - PWM_PCS_MIN > PWM_PCS_GAP * cnt) ? (PWM_PCS_MAX - PWM_PCS_GAP * cnt) : (PWM_PCS_MIN); /* 周期长度 */
-        aSRC_Buffer[1] = PWM_PCS_UNT;                                                                                         /* 重复次数 */
-        aSRC_Buffer[2] = (aSRC_Buffer[0] + 1) / 2;                                                                            /* 占空比 默认50% */
-        /* burst模式修改时基单元 */
-        HAL_TIM_DMABurst_WriteStart(&htim1, TIM_DMABASE_ARR, TIM_DMA_UPDATE, (uint32_t *)aSRC_Buffer, TIM_DMABURSTLENGTH_3TRANSFERS);
-        gMDRV8824_Heat_Position_Inc(aSRC_Buffer[1]); /* 自增位置记录 */
-    }
-    gPWM_TEST_AW_CNT_Inc(); /* 自增脉冲计数 */
-    return 1;
 }
 
 /**

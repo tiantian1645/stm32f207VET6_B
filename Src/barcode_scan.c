@@ -25,6 +25,7 @@
 #include "m_l6470.h"
 #include "m_drv8824.h"
 #include "tray_run.h"
+#include "heat_motor.h"
 #include <string.h>
 
 /* Extern variables ----------------------------------------------------------*/
@@ -667,14 +668,17 @@ static void barcode_Task(void * argument)
             continue;
         }
         if (heat_Motor_Run(eMotorDir_FWD, 3000) != 0) { /* 等待加热体电机抬升 */
-            continue;                             /* 上加热体电机故障 */
+            continue;                                   /* 上加热体电机故障 */
         }
+        heat_Motor_Lock_Occupy(); /* 禁止上加热体电机运动 */
+
         if (tray_Move_By_Index(eTrayIndex_1, 3000) != 0) { /* 等待托盘电机运动到扫码位置 */
-            // heat_Motor_Unlock();                           /* 释放上加热体电机 */
-            continue; /* 托盘电机故障 */
+            heat_Motor_Lock_Release();                     /* 释放上加热体电机 */
+            continue;                                      /* 托盘电机故障 */
         }
+        tray_Motor_Lock_Occupy();                /* 禁止托盘电机运动 */
         barcode_Scan_Bantch(xNotificationValue); /* 执行批量扫码 */
-        // tray_Motor_Unlock();                     /* 释放托盘电机 */
-        // heat_Motor_Unlock();                     /* 释放上加热体电机 */
+        tray_Motor_Lock_Release();               /* 释放托盘电机 */
+        heat_Motor_Lock_Release();               /* 释放上加热体电机运动锁 */
     }
 }
