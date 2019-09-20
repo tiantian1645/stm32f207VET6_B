@@ -28,6 +28,7 @@
 #include "comm_out.h"
 #include "comm_data.h"
 #include "comm_main.h"
+#include "m_drv8824.h"
 
 /* USER CODE END Includes */
 
@@ -173,6 +174,22 @@ void DebugMon_Handler(void)
 /* For the available peripheral interrupt handler names,                      */
 /* please refer to the startup file (startup_stm32f2xx.s).                    */
 /******************************************************************************/
+
+/**
+  * @brief This function handles EXTI line3 interrupt.
+  */
+void EXTI3_IRQHandler(void)
+{
+  /* USER CODE BEGIN EXTI3_IRQn 0 */
+    if (1) {
+        PWM_AW_IRQ_Clear();
+    }
+  /* USER CODE END EXTI3_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_3);
+  /* USER CODE BEGIN EXTI3_IRQn 1 */
+
+  /* USER CODE END EXTI3_IRQn 1 */
+}
 
 /**
   * @brief This function handles DMA1 stream0 global interrupt.

@@ -12,7 +12,7 @@
 /* 条码索引 32细分步下标准 */
 typedef enum {
     eTrayIndex_0 = 0,
-    eTrayIndex_1 = 5600,
+    eTrayIndex_1 = 5880,
     eTrayIndex_2 = 25600,
 } eTrayIndex;
 

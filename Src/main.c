@@ -300,7 +300,7 @@ static void MX_TIM1_Init(void)
         Error_Handler();
     }
     sConfigOC.OCMode = TIM_OCMODE_PWM1;
-    sConfigOC.Pulse = 18;
+    sConfigOC.Pulse = STEP_TIM_PUL;
     sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
     sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
     sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
@@ -523,7 +523,7 @@ static void MX_DMA_Init(void)
     HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
     /* DMA2_Stream5_IRQn interrupt configuration */
-    HAL_NVIC_SetPriority(DMA2_Stream5_IRQn, 5, 0);
+    HAL_NVIC_SetPriority(DMA2_Stream5_IRQn, 6, 0);
     HAL_NVIC_EnableIRQ(DMA2_Stream5_IRQn);
     /* DMA2_Stream7_IRQn interrupt configuration */
     HAL_NVIC_SetPriority(DMA2_Stream7_IRQn, 5, 0);
@@ -571,12 +571,18 @@ static void MX_GPIO_Init(void)
     /*Configure GPIO pin Output Level */
     HAL_GPIO_WritePin(STEP_DIR1_GPIO_Port, STEP_DIR1_Pin, GPIO_PIN_RESET);
 
-    /*Configure GPIO pins : OPTSW_OUT2_Pin OPTSW_OUT3_Pin OPTSW_OUT4_Pin OPTSW_OUT5_Pin
-                             STEP_NFLG2_Pin OPTSW_OUT0_Pin OPTSW_OUT1_Pin */
-    GPIO_InitStruct.Pin = OPTSW_OUT2_Pin | OPTSW_OUT3_Pin | OPTSW_OUT4_Pin | OPTSW_OUT5_Pin | STEP_NFLG2_Pin | OPTSW_OUT0_Pin | OPTSW_OUT1_Pin;
+    /*Configure GPIO pins : OPTSW_OUT2_Pin OPTSW_OUT4_Pin OPTSW_OUT5_Pin STEP_NFLG2_Pin
+                             OPTSW_OUT0_Pin OPTSW_OUT1_Pin */
+    GPIO_InitStruct.Pin = OPTSW_OUT2_Pin | OPTSW_OUT4_Pin | OPTSW_OUT5_Pin | STEP_NFLG2_Pin | OPTSW_OUT0_Pin | OPTSW_OUT1_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+    /*Configure GPIO pin : OPTSW_OUT3_Pin */
+    GPIO_InitStruct.Pin = OPTSW_OUT3_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    HAL_GPIO_Init(OPTSW_OUT3_GPIO_Port, &GPIO_InitStruct);
 
     /*Configure GPIO pins : STEP_NCS1_Pin BC_AIM_WK_N_Pin LED_RUN_Pin */
     GPIO_InitStruct.Pin = STEP_NCS1_Pin | BC_AIM_WK_N_Pin | LED_RUN_Pin;
@@ -624,6 +630,10 @@ static void MX_GPIO_Init(void)
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    /* EXTI interrupt init*/
+    HAL_NVIC_SetPriority(EXTI3_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(EXTI3_IRQn);
 }
 
 /* USER CODE BEGIN 4 */
@@ -698,7 +708,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef * htim)
 {
     /* USER CODE BEGIN Callback 0 */
     if (htim->Instance == TIM1) {
-        PWM_AW_IRQ_CallBcak();
+        if (PWM_AW_IRQ_CallBcak() == 0) { /* 运动完成 */
+            m_drv8824_release_ISR();      /* 释放PWM资源 */
+        }
     }
     /* USER CODE END Callback 0 */
     if (htim->Instance == TIM14) {

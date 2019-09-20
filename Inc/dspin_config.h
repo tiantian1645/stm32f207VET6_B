@@ -64,7 +64,7 @@
 
 /* Register : KVAL_HOLD */
 /* Hold duty cycle (torque) in %, range 0 to 99.6% */
-#define dSPIN_CONF_PARAM_KVAL_HOLD (1601.56)
+#define dSPIN_CONF_PARAM_KVAL_HOLD (500.56)
 
 /* Register : KVAL_RUN */
 /* Run duty cycle (torque) in %, range 0 to 99.6% */

@@ -9,6 +9,7 @@
 #define STEP_TIM_PSC (1 - 1)
 #define STEP_TIM_ARR (0xFFFF)
 #define STEP_TIM_RCR (1 - 1)
+#define STEP_TIM_PUL (0xFFF)
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum {
@@ -27,8 +28,10 @@ uint8_t m_drv8824_Index_Switch(eM_DRV8824_Index index, uint32_t timeout);
 
 uint8_t heat_Motor_Position_Is_Down(void);
 uint8_t heat_Motor_Position_Is_Up(void);
-HAL_StatusTypeDef heat_Motor_Run(eMotorDir dir);
+uint8_t heat_Motor_Run(eMotorDir dir, uint32_t timeout);
+uint8_t heat_Motor_Wait_Stop(uint32_t timeout);
 
-void PWM_AW_IRQ_CallBcak(void);
+void PWM_AW_IRQ_Clear(void);
+uint8_t PWM_AW_IRQ_CallBcak(void);
 
 /* Private defines -----------------------------------------------------------*/

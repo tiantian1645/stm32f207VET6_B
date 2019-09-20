@@ -420,9 +420,9 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             break;
         case 0xD3:
             if (pInBuff[6] == 0) {
-                heat_Motor_Run(eMotorDir_FWD);
+                heat_Motor_Run(eMotorDir_FWD, 3000);
             } else {
-                heat_Motor_Run(eMotorDir_REV);
+                heat_Motor_Run(eMotorDir_REV, 3000);
             }
             break;
         case 0xD4:

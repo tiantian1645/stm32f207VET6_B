@@ -74,6 +74,7 @@ void FL_Error_Handler(char * file, int line);
 #define OPTSW_OUT2_GPIO_Port GPIOE
 #define OPTSW_OUT3_Pin GPIO_PIN_3
 #define OPTSW_OUT3_GPIO_Port GPIOE
+#define OPTSW_OUT3_EXTI_IRQn EXTI3_IRQn
 #define OPTSW_OUT4_Pin GPIO_PIN_4
 #define OPTSW_OUT4_GPIO_Port GPIOE
 #define OPTSW_OUT5_Pin GPIO_PIN_5

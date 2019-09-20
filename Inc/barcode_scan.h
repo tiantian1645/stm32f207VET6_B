@@ -43,6 +43,8 @@ uint8_t barcode_serial_Test(void);
 void barcode_Test(uint32_t cnt);
 
 void barcode_Init(void);
+uint8_t barcode_Task_Notify(uint32_t mark);
+
 eBarcodeState barcode_Motor_Enter(void);
 eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index);
 eBarcodeState barcode_Read_From_Serial(uint8_t * pOut_length, uint8_t * pData, uint8_t max_read_length, uint32_t timeout);

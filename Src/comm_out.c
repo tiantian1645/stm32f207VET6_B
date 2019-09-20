@@ -145,7 +145,6 @@ void comm_Out_Init(void)
 {
     BaseType_t xResult;
 
-    m_drv8824_Init();
     barcode_Init();
     comm_Out_ConfInit();
 

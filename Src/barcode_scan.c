@@ -40,13 +40,13 @@ typedef struct {
 } sBarcodeStatistic;
 
 /* Private define ------------------------------------------------------------*/
-#define BAR_SAM_0 BAR_SAM_QR__
-#define BAR_SAM_1 BAR_SAM_CREA
-#define BAR_SAM_2 BAR_SAM_HB__
-#define BAR_SAM_3 BAR_SAM_AMY_
-#define BAR_SAM_4 BAR_SAM_UA__
-#define BAR_SAM_5 BAR_SAM_AMY_
-#define BAR_SAM_6 BAR_SAM_HB__
+#define BAR_SAM_0 BAR_SAM_LDH_
+#define BAR_SAM_1 BAR_SAM_LDH_
+#define BAR_SAM_2 BAR_SAM_LDH_
+#define BAR_SAM_3 BAR_SAM_LDH_
+#define BAR_SAM_4 BAR_SAM_LDH_
+#define BAR_SAM_5 BAR_SAM_LDH_
+#define BAR_SAM_6 BAR_SAM_LDH_
 
 /* Private macro -------------------------------------------------------------*/
 #define BARCODE_MOTOR_IS_OPT (HAL_GPIO_ReadPin(OPTSW_OUT0_GPIO_Port, OPTSW_OUT0_Pin) == GPIO_PIN_RESET) /* 光耦输入 */
@@ -70,7 +70,10 @@ uint8_t gBarcodeDecodeData_6[BARCODE_BA_LENGTH];
 
 sBarcodeStatistic gBarcodeStatistics[7];
 
+TaskHandle_t barcodeTaskHandle = NULL;
+
 /* Private constants ---------------------------------------------------------*/
+const char BAR_SAM_LDH_[] = "1419190801";
 const char BAR_SAM_HB__[] = "1415190701";
 const char BAR_SAM_AMY_[] = "1411190601";
 const char BAR_SAM_UA__[] = "1413190703";
@@ -359,6 +362,7 @@ void barcode_Init(void)
     barcode_Result_Init();
     m_l6470_Init();       /* 驱动资源及参数初始化 */
     barcode_Motor_Init(); /* 扫码电机位置初始化 */
+    m_drv8824_Init();     /* 上加热体电机初始化 */
     tray_Motor_Init();    /* 托盘电机初始化 */
     barcode_Motor_Reset_Pos(6000000);
     tray_Motor_Reset_Pos(6000000);
@@ -531,7 +535,7 @@ void barcode_Test(uint32_t cnt)
         gBarcodeStatistics[i].total = 0;
     }
 
-    heat_Motor_Run(eMotorDir_FWD);
+    heat_Motor_Run(eMotorDir_FWD, 3000);
     while (!heat_Motor_Position_Is_Up() && ++i < 100) {
         vTaskDelay(10);
     }
@@ -600,4 +604,77 @@ void barcode_Test(uint32_t cnt)
         }
         ++gBarcodeStatistics[6].total;
     } while (--cnt > 0);
+}
+
+/**
+ * @brief  通知扫码
+ * @param  mark 扫码掩码
+ * @retval 通知结果
+ */
+uint8_t barcode_Task_Notify(uint32_t mark)
+{
+    if (barcodeTaskHandle != NULL) {
+        if (xTaskNotify(barcodeTaskHandle, mark, eSetValueWithoutOverwrite) == pdPASS) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+/**
+ * @brief  批次执行扫码
+ * @param  mark 扫码掩码
+ * @retval None
+ */
+void barcode_Scan_Bantch(uint32_t mark)
+{
+    if (mark & (1 << 0)) {
+        barcode_Scan_By_Index(eBarcodeIndex_6);
+    }
+    if (mark & (1 << 1)) {
+        barcode_Scan_By_Index(eBarcodeIndex_5);
+    }
+    if (mark & (1 << 2)) {
+        barcode_Scan_By_Index(eBarcodeIndex_4);
+    }
+    if (mark & (1 << 3)) {
+        barcode_Scan_By_Index(eBarcodeIndex_3);
+    }
+    if (mark & (1 << 4)) {
+        barcode_Scan_By_Index(eBarcodeIndex_2);
+    }
+    if (mark & (1 << 5)) {
+        barcode_Scan_By_Index(eBarcodeIndex_1);
+    }
+    if (mark & (1 << 6)) {
+        barcode_Scan_By_Index(eBarcodeIndex_0);
+    }
+}
+
+/**
+ * @brief  扫码任务
+ * @param  argument: Not used
+ * @retval None
+ */
+static void barcode_Task(void * argument)
+{
+    BaseType_t xResult = pdFALSE;
+    uint32_t xNotificationValue;
+
+    for (;;) {
+        xResult = xTaskNotifyWait(0, portMAX_DELAY, &xNotificationValue, portMAX_DELAY);
+        if (xResult != pdPASS) {
+            continue;
+        }
+        if (heat_Motor_Run(eMotorDir_FWD, 3000) != 0) { /* 等待加热体电机抬升 */
+            continue;                             /* 上加热体电机故障 */
+        }
+        if (tray_Move_By_Index(eTrayIndex_1, 3000) != 0) { /* 等待托盘电机运动到扫码位置 */
+            // heat_Motor_Unlock();                           /* 释放上加热体电机 */
+            continue; /* 托盘电机故障 */
+        }
+        barcode_Scan_Bantch(xNotificationValue); /* 执行批量扫码 */
+        // tray_Motor_Unlock();                     /* 释放托盘电机 */
+        // heat_Motor_Unlock();                     /* 释放上加热体电机 */
+    }
 }
