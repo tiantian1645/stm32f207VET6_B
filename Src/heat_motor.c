@@ -33,6 +33,9 @@ static uint8_t gHeat_Motor_Lock = 0;
 /* Private constants ---------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
+static void gHeat_Motor_Position_Set(uint32_t position);
+static void gHeat_Motor_Position_Inc(uint32_t position);
+static void gHeat_Motor_Position_Clr(void);
 
 /* Private user code ---------------------------------------------------------*/
 
@@ -135,7 +138,10 @@ uint8_t heat_Motor_Position_Is_Down(void)
  */
 uint8_t heat_Motor_Position_Is_Up(void)
 {
-    return gHeat_Motor_Position_Get() == 0;
+    if (HAL_GPIO_ReadPin(OPTSW_OUT3_GPIO_Port, OPTSW_OUT3_Pin) == GPIO_PIN_RESET) {
+        return 1;
+    }
+    return 0;
 }
 
 /**
@@ -185,13 +191,27 @@ static void gHeat_Motor_Position_Rst(void)
  */
 uint8_t heat_Motor_Wait_Stop(uint32_t timeout)
 {
-    while (timeout--) {
-        if (heat_Motor_Position_Is_Down() || heat_Motor_Position_Is_Up()) {
-            return 0;
-        }
-        vTaskDelay(1);
+    switch (gHeat_Motor_Dir_Get()) {
+        case eMotorDir_FWD:
+            do {
+                if (heat_Motor_Position_Is_Up()) {
+                    PWM_AW_Stop();
+                    m_drv8824_release();
+                    gHeat_Motor_Position_Clr();
+                    return 0;
+                }
+            } while (--timeout);
+            return 1;
+        case eMotorDir_REV:
+        default:
+            do {
+                if (heat_Motor_Position_Is_Down()) {
+                    return 0;
+                }
+            } while (--timeout);
+            return 1;
     }
-    return 1;
+    return 2;
 }
 
 /**
@@ -220,14 +240,15 @@ uint8_t heat_Motor_Run(eMotorDir dir, uint32_t timeout)
     gHeat_Motor_Dir_Set(dir);                                  /* 运动方向设置 目标方向 */
 
     gPWM_TEST_AW_CNT_Clear();                                 /* PWM数目清零 */
-    PWM_AW_Stop();                                            /* 清空定时器更新事件 */
+    __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE);                /* 清除更新事件标志位 */
+    __HAL_TIM_SET_COUNTER(&htim1, 0);                         /* 清零定时器计数寄存器 */
     if (HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1) != HAL_OK) { /* 启动PWM输出 */
         return 2;
     }
 
     PWM_AW_IRQ_CallBcak();
 
-    if (heat_Motor_Wait_Stop(timeout)) {
+    if (heat_Motor_Wait_Stop(6000000)) {
         return 0;
     }
     return 3;
@@ -244,7 +265,7 @@ uint8_t heat_Motor_PWM_Gen_Up(void)
 
     total = gPWM_TEST_AW_CNT_Get();
 
-    if (total > PWM_PCS_SUM * 4) {
+    if (total > PWM_PCS_SUM * 4 || heat_Motor_Position_Is_Up()) {
         PWM_AW_Stop();
         return 0;
     }

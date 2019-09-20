@@ -26,6 +26,9 @@ void m_drv8824_Init(void);
 void m_drv8824_SetDir(eMotorDir dir);
 uint8_t m_drv8824_Get_Flag(void);
 void m_drv8824_Reset_All(void);
+
+uint8_t m_drv8824_release(void);
+uint8_t m_drv8824_release_ISR(void);
 uint8_t m_drv8824_Index_Switch(eM_DRV8824_Index index, uint32_t timeout);
 
 uint32_t gPWM_TEST_AW_CNT_Get(void);

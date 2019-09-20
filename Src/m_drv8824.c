@@ -12,7 +12,6 @@ extern TIM_HandleTypeDef htim1;
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
-#define DRV8824_HEAT_IS_OPT 0 //(HAL_GPIO_ReadPin(OPTSW_OUT3_GPIO_Port, OPTSW_OUT3_Pin) == GPIO_PIN_RESET) /* 光耦输入 */
 
 /* Private typedef -----------------------------------------------------------*/
 typedef struct {
@@ -110,7 +109,6 @@ void m_drv8824_Init(void)
         Error_Handler();
     }
     heat_Motor_Run(eMotorDir_FWD, 3000);
-    heat_Motor_Wait_Stop(pdMS_TO_TICKS(50000));
 }
 
 /**
@@ -265,7 +263,6 @@ void gPWM_TEST_AW_CNT_Clear(void)
 void PWM_AW_Stop(void)
 {
     HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);   /* 停止PWM输出 */
-    HAL_TIM_Base_Stop(&htim1);                 /* 停止定时器 */
     __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE); /* 清除更新事件标志位 */
     __HAL_TIM_SET_COUNTER(&htim1, 0);          /* 清零定时器计数寄存器 */
 }
