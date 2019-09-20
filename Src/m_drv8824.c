@@ -276,12 +276,12 @@ uint8_t PWM_AW_IRQ_CallBcak(void)
 {
     switch (gMDRV8824Index) {
         case eM_DRV8824_Index_0: /* 白板电机 */
-            switch (gHeat_Motor_Dir_Get()) {
+            switch (gWhite_Motor_Dir_Get()) {
                 case eMotorDir_FWD:
-                    return heat_Motor_PWM_Gen_Up();
+                    return white_Motor_PWM_Gen_Out();
                 case eMotorDir_REV:
                 default:
-                    return heat_Motor_PWM_Gen_Down();
+                    return white_Motor_PWM_Gen_In();
             }
             break;
         case eM_DRV8824_Index_1: /* 上加热体电机 */

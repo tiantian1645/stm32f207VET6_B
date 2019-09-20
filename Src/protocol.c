@@ -9,6 +9,7 @@
 #include "barcode_scan.h"
 #include "tray_run.h"
 #include "heat_motor.h"
+#include "white_motor.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim9;
@@ -427,11 +428,18 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             }
             break;
         case 0xD4:
+            if (pInBuff[6] == 0) {
+                white_Motor_Run(eMotorDir_FWD, 3000);
+            } else {
+                white_Motor_Run(eMotorDir_REV, 3000);
+            }
+            break;
+        case 0xD5:
             HAL_TIM_PWM_Start(&htim9, TIM_CHANNEL_2);
             vTaskDelay(1000);
             HAL_TIM_PWM_Stop(&htim9, TIM_CHANNEL_2);
             break;
-        case 0xD5:
+        case 0xD6:
             HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
             vTaskDelay(1000);
             HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);
