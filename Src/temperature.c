@@ -44,11 +44,14 @@ typedef enum {
 #define TEMP_NTC_BTM_2 eTemp_NTC_Index_7
 #define TEMP_NTC_ENV_1 eTemp_NTC_Index_8
 
-#define TEMP_NTC_NUM 9  /* 温度探头数目 */
-#define TEMP_STA_NUM 10 /* 统计滤波缓存长度 */
+#define TEMP_NTC_NUM (9)                                              /* 温度探头数目 */
+#define TEMP_STA_NUM (10)                                             /* 统计滤波缓存长度 */
+#define TEMP_STA_HEAD (3)                                             /* 统计滤波去掉头部长度 */
+#define TEMP_STA_TAIL (3)                                             /* 统计滤波去掉尾部长度 */
+#define TEMP_STA_VAILD (TEMP_STA_NUM - TEMP_STA_HEAD - TEMP_STA_TAIL) /* 统计滤波中位有效长度 */
 
 /* Private variables ---------------------------------------------------------*/
-static uint32_t gTempADC_DMA_Buffer[TEMP_NTC_NUM];
+static uint32_t gTempADC_DMA_Buffer[TEMP_NTC_NUM * TEMP_STA_NUM];
 static uint32_t gTempADC_Statictic_buffer[TEMP_NTC_NUM][TEMP_STA_NUM];
 static uint32_t gTempADC_Results[TEMP_NTC_NUM];
 static uint32_t gTempADC_Conv_Cnt = 0;
@@ -122,19 +125,37 @@ void temp_Sort_Data(uint32_t * pData, uint8_t length)
     uint8_t i, j;
     uint32_t temp;
 
-    for (i = 0; i < length; ++i) {
+    for (i = 0; i < length - 1; i++) {
+        // Last i elements are already in place
+        for (j = 0; j < length - i - 1; j++)
+            if (pData[j] > pData[j + 1]) {
+                temp = pData[j];
+                pData[j] = pData[j + 1];
+                pData[j + 1] = temp;
+            }
     }
 }
 
 /**
  * @brief  温度 ADC 裸数据滤波
- * @note   中位区间平均值 从 gTempADC_Statictic_buffer[i] 中 取中位区间4 算出平均值--> gTempADC_Results[i]
+ * @note   中位区间平均值 从 gTempADC_Statictic_buffer[i] 中 取中位区间 算出平均值--> gTempADC_Results[i]
+ * @note   中位区间起始点 TEMP_STA_HEAD 中位区间长度 TEMP_STA_VAILD
  * @param  None
  * @retval None
  */
 void temp_Filter_Deal(void)
 {
-    uint8_t i;
+    uint8_t i, j;
+    uint32_t temp;
+
+    for (i = 0; i < TEMP_NTC_NUM; ++i) {
+        temp_Sort_Data(gTempADC_Statictic_buffer[i], TEMP_STA_NUM);
+        temp = 0;
+        for (j = 0; j < TEMP_STA_VAILD; ++j) {
+            temp += gTempADC_Statictic_buffer[i][TEMP_STA_HEAD + j];
+        }
+        gTempADC_Results[i] = temp / TEMP_STA_VAILD;
+    }
 }
 
 /**
@@ -144,7 +165,7 @@ void temp_Filter_Deal(void)
  */
 float temp_Get_Temp_Data(eTemp_NTC_Index idx)
 {
-    return temp_ADC_2_Temp(gTempADC_DMA_Buffer[idx]);
+    return temp_ADC_2_Temp(gTempADC_Results[idx]);
 }
 
 /**
@@ -155,9 +176,50 @@ float temp_Get_Temp_Data(eTemp_NTC_Index idx)
  */
 float temp_Get_Temp_Data_TOP(void)
 {
-    return (temp_Get_Temp_Data(TEMP_NTC_TOP_1) + temp_Get_Temp_Data(TEMP_NTC_TOP_2) + temp_Get_Temp_Data(TEMP_NTC_TOP_3) + temp_Get_Temp_Data(TEMP_NTC_TOP_4) +
-            temp_Get_Temp_Data(TEMP_NTC_TOP_5) + temp_Get_Temp_Data(TEMP_NTC_TOP_6)) /
-           6;
+    float temp = 0, sum = 0;
+    uint8_t valid = 0;
+
+    temp = temp_Get_Temp_Data(TEMP_NTC_TOP_1);
+    if (temp > 0 && temp < 55) {
+        sum += temp;
+        ++valid;
+    }
+
+    temp = temp_Get_Temp_Data(TEMP_NTC_TOP_2);
+    if (temp > 0 && temp < 55) {
+        sum += temp;
+        ++valid;
+    }
+
+    temp = temp_Get_Temp_Data(TEMP_NTC_TOP_3);
+    if (temp > 0 && temp < 55) {
+        sum += temp;
+        ++valid;
+    }
+
+    temp = temp_Get_Temp_Data(TEMP_NTC_TOP_4);
+    if (temp > 0 && temp < 55) {
+        sum += temp;
+        ++valid;
+    }
+
+    temp = temp_Get_Temp_Data(TEMP_NTC_TOP_5);
+    if (temp > 0 && temp < 55) {
+        sum += temp;
+        ++valid;
+    }
+
+    temp = temp_Get_Temp_Data(TEMP_NTC_TOP_6);
+    if (temp > 0 && temp < 55) {
+        sum += temp;
+        ++valid;
+    }
+
+    if (valid > 0) {
+        return sum / valid;
+    } else {
+        return 0;
+    }
 }
 
 /**
@@ -168,7 +230,26 @@ float temp_Get_Temp_Data_TOP(void)
  */
 float temp_Get_Temp_Data_BTM(void)
 {
-    return (temp_Get_Temp_Data(TEMP_NTC_BTM_1) + temp_Get_Temp_Data(TEMP_NTC_BTM_2)) / 2;
+    float temp = 0, sum = 0;
+    uint8_t valid = 0;
+
+    temp = temp_Get_Temp_Data(TEMP_NTC_BTM_1);
+    if (temp > 0 && temp < 55) {
+        sum += temp;
+        ++valid;
+    }
+
+    temp = temp_Get_Temp_Data(TEMP_NTC_BTM_2);
+    if (temp > 0 && temp < 55) {
+        sum += temp;
+        ++valid;
+    }
+
+    if (valid > 0) {
+        return sum / valid;
+    } else {
+        return 0;
+    }
 }
 
 /**
@@ -188,15 +269,13 @@ float temp_Get_Temp_Data_ENV(void)
  */
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef * hadc)
 {
-    uint8_t i;
+    uint8_t i, j;
     if (hadc == (&hadc1)) {
         for (i = 0; i < TEMP_NTC_NUM; ++i) {
-            gTempADC_Statictic_buffer[i][gTempADC_Conv_Cnt % TEMP_STA_NUM] = gTempADC_DMA_Buffer[i];
+            for (j = 0; j < TEMP_STA_NUM; ++j) {
+                gTempADC_Statictic_buffer[i][j] = gTempADC_DMA_Buffer[i + TEMP_NTC_NUM * j];
+            }
         }
         ++gTempADC_Conv_Cnt;
-        if (gTempADC_Conv_Cnt == TEMP_STA_NUM) {
-            gTempADC_Conv_Cnt = 0;
-            temp_Filter_Deal();
-        }
     }
 }

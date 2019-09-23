@@ -140,6 +140,8 @@ void FL_Error_Handler(char * file, int line);
 #define MOT_NFLG1_GPIO_Port GPIOD
 #define MOT_NBUSY2_Pin GPIO_PIN_13
 #define MOT_NBUSY2_GPIO_Port GPIOD
+#define HEATER_BTM_Pin GPIO_PIN_15
+#define HEATER_BTM_GPIO_Port GPIOD
 #define LAMP1_Pin GPIO_PIN_8
 #define LAMP1_GPIO_Port GPIOA
 #define CORE_RXD_Pin GPIO_PIN_9

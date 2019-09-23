@@ -31,6 +31,7 @@
 #include "comm_main.h"
 #include "m_drv8824.h"
 #include "temperature.h"
+#include "heater.h"
 
 /* USER CODE END Includes */
 
@@ -56,6 +57,7 @@ DMA_HandleTypeDef hdma_adc1;
 SPI_HandleTypeDef hspi2;
 
 TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim8;
 TIM_HandleTypeDef htim9;
 DMA_HandleTypeDef hdma_tim1_up;
@@ -89,6 +91,7 @@ static void MX_TIM1_Init(void);
 static void MX_TIM9_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM8_Init(void);
+static void MX_TIM4_Init(void);
 void StartDefaultTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
@@ -138,6 +141,7 @@ int main(void)
     MX_TIM9_Init();
     MX_ADC1_Init();
     MX_TIM8_Init();
+    MX_TIM4_Init();
     /* USER CODE BEGIN 2 */
 
     /*创建任务*/
@@ -312,7 +316,6 @@ static void MX_ADC1_Init(void)
      */
     sConfig.Channel = ADC_CHANNEL_2;
     sConfig.Rank = 7;
-    sConfig.SamplingTime = ADC_SAMPLETIME_480CYCLES;
     if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
         Error_Handler();
     }
@@ -320,7 +323,6 @@ static void MX_ADC1_Init(void)
      */
     sConfig.Channel = ADC_CHANNEL_3;
     sConfig.Rank = 8;
-    sConfig.SamplingTime = ADC_SAMPLETIME_56CYCLES;
     if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
         Error_Handler();
     }
@@ -438,6 +440,59 @@ static void MX_TIM1_Init(void)
 
     /* USER CODE END TIM1_Init 2 */
     HAL_TIM_MspPostInit(&htim1);
+}
+
+/**
+ * @brief TIM4 Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_TIM4_Init(void)
+{
+
+    /* USER CODE BEGIN TIM4_Init 0 */
+
+    /* USER CODE END TIM4_Init 0 */
+
+    TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+    TIM_MasterConfigTypeDef sMasterConfig = {0};
+    TIM_OC_InitTypeDef sConfigOC = {0};
+
+    /* USER CODE BEGIN TIM4_Init 1 */
+
+    /* USER CODE END TIM4_Init 1 */
+    htim4.Instance = TIM4;
+    htim4.Init.Prescaler = HEATER_BTM_PSC;
+    htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+    htim4.Init.Period = HEATER_BTM_ARR;
+    htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+    htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+    if (HAL_TIM_Base_Init(&htim4) != HAL_OK) {
+        Error_Handler();
+    }
+    sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+    if (HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig) != HAL_OK) {
+        Error_Handler();
+    }
+    if (HAL_TIM_PWM_Init(&htim4) != HAL_OK) {
+        Error_Handler();
+    }
+    sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+    sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+    if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK) {
+        Error_Handler();
+    }
+    sConfigOC.OCMode = TIM_OCMODE_PWM1;
+    sConfigOC.Pulse = HEATER_BTM_CCR;
+    sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+    sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+    if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_4) != HAL_OK) {
+        Error_Handler();
+    }
+    /* USER CODE BEGIN TIM4_Init 2 */
+
+    /* USER CODE END TIM4_Init 2 */
+    HAL_TIM_MspPostInit(&htim4);
 }
 
 /**
@@ -824,15 +879,31 @@ static void LED_Task(void * argument)
     xCnt = temp_Get_Conv_Cnt();
     last_cnt = xCnt;
 
+    heater_BTM_Output_Init();
+    beater_BTM_Output_Start();
+
     /* Infinite loop */
     for (;;) {
         HAL_GPIO_TogglePin(LED_RUN_GPIO_Port, LED_RUN_Pin);
+        temp_Filter_Deal();
         temp_env = temp_Get_Temp_Data_ENV();
-        vTaskDelayUntil(&xTick, 1800 - 30 * temp_env);
+        vTaskDelayUntil(&xTick, (1800 - 30 * temp_env > 0) ? (500) : (500));
         if (xTick - last_tick > 1000) {
             xCnt = temp_Get_Conv_Cnt();
-            printf("task tick | %4lu | adc cnt | %4lu | env temp | %d.%03d |\n", xTick - last_tick, xCnt - last_cnt, (uint8_t)temp_env,
-                   (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
+            temp_env = temp_Get_Temp_Data_ENV();
+            printf("task tick | %4lu | adc cnt | %4lu | ", xTick - last_tick, xCnt - last_cnt);
+            printf("env temp | %d.%03d | ", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
+            temp_env = temp_Get_Temp_Data_BTM();
+            printf("btm temp | %d.%03d |\n", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
+            // if (temp_env < 33) {
+            //     beater_BTM_Output_Ctl(95);
+            // } else if (temp_env < 37) {
+            //     beater_BTM_Output_Ctl(50 + (temp_env - 33) * 8);
+            // } else if (temp_env > 37.2) {
+            //     beater_BTM_Output_Ctl(40);
+            // }
+            heater_BTM_Output_Keep_Deal();
+
             last_cnt = xCnt;
             last_tick = xTick;
         }
