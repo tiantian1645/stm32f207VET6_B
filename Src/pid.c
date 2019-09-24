@@ -1,28 +1,44 @@
-/*	Floating point PID control loop for Microcontrollers
-        Copyright (C) 2015 Jesus Ruben Santa Anna Zamudio.
-
-        This program is free software: you can redistribute it and/or modify
-        it under the terms of the GNU General Public License as published by
-        the Free Software Foundation, either version 3 of the License, or
-        (at your option) any later version.
-
-        This program is distributed in the hope that it will be useful,
-        but WITHOUT ANY WARRANTY; without even the implied warranty of
-        MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-        GNU General Public License for more details.
-
-        You should have received a copy of the GNU General Public License
-        along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-        Author website: http://www.geekfactory.mx
-        Author e-mail: ruben at geekfactory dot mx
+/**
+ * @file    heater.c
+ * @brief   上下加热体控制控制
+ *
  */
+
+/* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "pid.h"
+#include <stdio.h>
 
-#define TICK_SECOND configTICK_RATE_HZ
-#define tick_get xTaskGetTickCount
+/* Extern variables ----------------------------------------------------------*/
 
+/* Private includes ----------------------------------------------------------*/
+
+/* Private typedef -----------------------------------------------------------*/
+
+/* Private define ------------------------------------------------------------*/
+
+/* Private macro -------------------------------------------------------------*/
+#define TICK_SECOND configTICK_RATE_HZ /* 系统时钟频率 */
+#define tick_get xTaskGetTickCount     /* 系统时钟获取函数 */
+
+/* Private variables ---------------------------------------------------------*/
+
+/* Private constants ---------------------------------------------------------*/
+
+/* Private function prototypes -----------------------------------------------*/
+
+/* Private user code ---------------------------------------------------------*/
+/**
+ * @brief  创建 PID 配置记录变量
+ * @param  pid PID 变量结构体指针
+ * @param  in 输入变量地址
+ * @param  out 输出变量地址
+ * @param  set 目标点
+ * @param  kp 差值倍率
+ * @param  ki 积分倍率
+ * @param  kd 微分倍率
+ * @retval PID 变量结构体指针
+ */
 spid_t pid_create(spid_t pid, float * in, float * out, float * set, float kp, float ki, float kd)
 {
     pid->input = in;
@@ -43,17 +59,27 @@ spid_t pid_create(spid_t pid, float * in, float * out, float * set, float kp, fl
     return pid;
 }
 
+/**
+ * @brief  判断是否需要进行 PID 计算
+ * @param  pid PID 变量结构体指针
+ * @retval 1 需要计算 0 不需要计算
+ */
 bool pid_need_compute(spid_t pid)
 {
     // Check if the PID period has elapsed
     return (tick_get() - pid->lasttime >= pid->sampletime) ? true : false;
 }
 
+/**
+ * @brief  PID 计算
+ * @param  pid PID 变量结构体指针
+ * @retval None
+ */
 void pid_compute(spid_t pid)
 {
     // Check if control is enabled
     if (!pid->automode)
-        return false;
+        return;
 
     float in = *(pid->input);
     // Compute error
@@ -78,9 +104,16 @@ void pid_compute(spid_t pid)
     // Keep track of some variables for next execution
     pid->lastin = in;
     pid->lasttime = tick_get();
-    ;
 }
 
+/**
+ * @brief  PID 倍率变量换算
+ * @param  pid PID 变量结构体指针
+ * @param  kp 差值倍率
+ * @param  ki 积分倍率
+ * @param  kd 微分倍率
+ * @retval None
+ */
 void spid_tune(spid_t pid, float kp, float ki, float kd)
 {
     // Check for validity
@@ -101,6 +134,12 @@ void spid_tune(spid_t pid, float kp, float ki, float kd)
     }
 }
 
+/**
+ * @brief  PID 倍率变量换算
+ * @param  pid PID 变量结构体指针
+ * @param  time
+ * @retval None
+ */
 void pid_sample(spid_t pid, uint32_t time)
 {
     if (time > 0) {
@@ -111,6 +150,14 @@ void pid_sample(spid_t pid, uint32_t time)
     }
 }
 
+/**
+ * @brief  PID 输出限制
+ * @param  pid PID 变量结构体指针
+ * @param  min 输出最大值
+ * @param  max 输出最小值
+ * @param  time
+ * @retval None
+ */
 void pid_limits(spid_t pid, float min, float max)
 {
     if (min >= max)
@@ -131,6 +178,11 @@ void pid_limits(spid_t pid, float min, float max)
     }
 }
 
+/**
+ * @brief  PID 使能自动计算标志
+ * @param  pid PID 变量结构体指针
+ * @retval None
+ */
 void pid_auto(spid_t pid)
 {
     // If going from manual to auto
@@ -145,11 +197,22 @@ void pid_auto(spid_t pid)
     }
 }
 
+/**
+ * @brief  PID 失能自动计算标志
+ * @param  pid PID 变量结构体指针
+ * @retval None
+ */
 void pid_manual(spid_t pid)
 {
     pid->automode = false;
 }
 
+/**
+ * @brief  PID 计算方向设置
+ * @param  pid PID 变量结构体指针
+ * @param  dir PID 计算方向
+ * @retval None
+ */
 void pid_direction(spid_t pid, enum pid_control_directions dir)
 {
     if (pid->automode && pid->direction != dir) {
@@ -158,4 +221,51 @@ void pid_direction(spid_t pid, enum pid_control_directions dir)
         pid->Kd = (0 - pid->Kd);
     }
     pid->direction = dir;
+}
+
+void ffprintff(float float_num)
+{
+    printf("%d.%03d", (uint32_t)float_num, (uint16_t)((float_num * 1000) - (uint32_t)(float_num)*1000));
+}
+
+/**
+ * @brief  PID 变量打印
+ * @param  pid PID 变量结构体指针
+ * @retval None
+ */
+void pid_log_k(spid_t pid)
+{
+    printf("\n+++  PID  K Conf +++\n");
+
+    printf("Kp | ");
+    ffprintff(pid->Kp);
+
+    printf("Ki | ");
+    ffprintff(pid->Ki);
+
+    printf("Kd | ");
+    ffprintff(pid->Kd);
+
+    printf("\n");
+}
+
+/**
+ * @brief  PID 变量打印
+ * @param  pid PID 变量结构体指针
+ * @retval None
+ */
+void pid_log_d(spid_t pid)
+{
+    printf("\n+++  PID  K Conf +++\n");
+
+    printf("input | ");
+    ffprintff(*(pid->input));
+
+    printf(" output | ");
+    ffprintff(*(pid->output));
+
+    printf(" setpoint | ");
+    ffprintff(*(pid->setpoint));
+
+    printf("\n");
 }

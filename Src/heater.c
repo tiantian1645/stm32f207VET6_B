@@ -26,7 +26,7 @@ static struct pid_controller ctrldata;
 static spid_t pid;
 // Control loop input,output and setpoint variables
 static float input = 0, output = 0;
-static float setpoint = 37.3;
+static float setpoint = 37;
 
 /* Private constants ---------------------------------------------------------*/
 
@@ -40,7 +40,6 @@ static float setpoint = 37.3;
  * @param  pr 浮点数形式占空比
  * @retval None
  */
-
 void beater_BTM_Output_Ctl(float pr)
 {
     uint16_t ccr;
@@ -82,7 +81,7 @@ void heater_BTM_Output_Init(void)
     // Prepare PID controller for operation
     pid = pid_create(&ctrldata, &input, &output, &setpoint, kp, ki, kd);
     // Set controler output limits from 0 to 200
-    pid_limits(pid, 10, 200);
+    pid_limits(pid, 5, 100);
     // Allow PID to compute and change output
     pid_auto(pid);
 }
@@ -97,10 +96,15 @@ void heater_BTM_Output_Keep_Deal(void)
     // Check if need to compute PID
     if (pid_need_compute(pid)) {
         // Read process feedback
-    	input = temp_Get_Temp_Data_BTM();
+        input = temp_Get_Temp_Data_BTM();
         // Compute new PID output value
         pid_compute(pid);
         // Change actuator value
         beater_BTM_Output_Ctl(output);
     }
+}
+
+void heater_BTM_Log_PID(void)
+{
+    pid_log_d(pid);
 }

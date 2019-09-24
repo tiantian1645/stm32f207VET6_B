@@ -181,6 +181,9 @@ void pid_manual(spid_t pid);
  */
 void pid_direction(spid_t pid, enum pid_control_directions dir);
 
+void pid_log_k(spid_t pid);
+void pid_log_d(spid_t pid);
+
 #ifdef __cplusplus
 }
 #endif

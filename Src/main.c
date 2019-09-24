@@ -32,6 +32,7 @@
 #include "m_drv8824.h"
 #include "temperature.h"
 #include "heater.h"
+#include "soft_timer.h"
 
 /* USER CODE END Includes */
 
@@ -143,6 +144,9 @@ int main(void)
     MX_TIM8_Init();
     MX_TIM4_Init();
     /* USER CODE BEGIN 2 */
+
+    /* 软定时器任务 */
+    soft_timer_Init();
 
     /*创建任务*/
     comm_Data_Init();
@@ -879,9 +883,6 @@ static void LED_Task(void * argument)
     xCnt = temp_Get_Conv_Cnt();
     last_cnt = xCnt;
 
-    heater_BTM_Output_Init();
-    beater_BTM_Output_Start();
-
     /* Infinite loop */
     for (;;) {
         HAL_GPIO_TogglePin(LED_RUN_GPIO_Port, LED_RUN_Pin);
@@ -895,17 +896,11 @@ static void LED_Task(void * argument)
             printf("env temp | %d.%03d | ", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
             temp_env = temp_Get_Temp_Data_BTM();
             printf("btm temp | %d.%03d |\n", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
-            // if (temp_env < 33) {
-            //     beater_BTM_Output_Ctl(95);
-            // } else if (temp_env < 37) {
-            //     beater_BTM_Output_Ctl(50 + (temp_env - 33) * 8);
-            // } else if (temp_env > 37.2) {
-            //     beater_BTM_Output_Ctl(40);
-            // }
-            heater_BTM_Output_Keep_Deal();
-
+            temp_env = temp_Get_Temp_Data_TOP();
+            printf("top temp | %d.%03d |\n", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
             last_cnt = xCnt;
             last_tick = xTick;
+            heater_BTM_Log_PID();
         }
     }
 }
