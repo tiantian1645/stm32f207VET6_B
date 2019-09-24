@@ -58,6 +58,7 @@ DMA_HandleTypeDef hdma_adc1;
 SPI_HandleTypeDef hspi2;
 
 TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim8;
 TIM_HandleTypeDef htim9;
@@ -92,6 +93,7 @@ static void MX_TIM1_Init(void);
 static void MX_TIM9_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM8_Init(void);
+static void MX_TIM3_Init(void);
 static void MX_TIM4_Init(void);
 void StartDefaultTask(void const * argument);
 
@@ -142,6 +144,7 @@ int main(void)
     MX_TIM9_Init();
     MX_ADC1_Init();
     MX_TIM8_Init();
+    MX_TIM3_Init();
     MX_TIM4_Init();
     /* USER CODE BEGIN 2 */
 
@@ -444,6 +447,51 @@ static void MX_TIM1_Init(void)
 
     /* USER CODE END TIM1_Init 2 */
     HAL_TIM_MspPostInit(&htim1);
+}
+
+/**
+ * @brief TIM3 Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_TIM3_Init(void)
+{
+
+    /* USER CODE BEGIN TIM3_Init 0 */
+
+    /* USER CODE END TIM3_Init 0 */
+
+    TIM_MasterConfigTypeDef sMasterConfig = {0};
+    TIM_OC_InitTypeDef sConfigOC = {0};
+
+    /* USER CODE BEGIN TIM3_Init 1 */
+
+    /* USER CODE END TIM3_Init 1 */
+    htim3.Instance = TIM3;
+    htim3.Init.Prescaler = HEATER_TOP_PSC;
+    htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+    htim3.Init.Period = HEATER_TOP_ARR;
+    htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+    htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+    if (HAL_TIM_PWM_Init(&htim3) != HAL_OK) {
+        Error_Handler();
+    }
+    sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+    sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+    if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK) {
+        Error_Handler();
+    }
+    sConfigOC.OCMode = TIM_OCMODE_PWM1;
+    sConfigOC.Pulse = HEATER_TOP_CCR;
+    sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+    sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+    if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_3) != HAL_OK) {
+        Error_Handler();
+    }
+    /* USER CODE BEGIN TIM3_Init 2 */
+
+    /* USER CODE END TIM3_Init 2 */
+    HAL_TIM_MspPostInit(&htim3);
 }
 
 /**
@@ -888,19 +936,20 @@ static void LED_Task(void * argument)
         HAL_GPIO_TogglePin(LED_RUN_GPIO_Port, LED_RUN_Pin);
         temp_Filter_Deal();
         temp_env = temp_Get_Temp_Data_ENV();
-        vTaskDelayUntil(&xTick, (1800 - 30 * temp_env > 0) ? (500) : (500));
-        if (xTick - last_tick > 1000) {
+        vTaskDelayUntil(&xTick, (1800 - 30 * temp_env > 0) ? (200) : (200));
+        if (xTick - last_tick > 100) {
             xCnt = temp_Get_Conv_Cnt();
             temp_env = temp_Get_Temp_Data_ENV();
-            printf("task tick | %4lu | adc cnt | %4lu | ", xTick - last_tick, xCnt - last_cnt);
-            printf("env temp | %d.%03d | ", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
-            temp_env = temp_Get_Temp_Data_BTM();
-            printf("btm temp | %d.%03d |\n", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
-            temp_env = temp_Get_Temp_Data_TOP();
-            printf("top temp | %d.%03d |\n", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
+            // printf("task tick | %4lu | adc cnt | %4lu | ", xTick - last_tick, xCnt - last_cnt);
+            // printf("env temp | %d.%03d \n", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
+            // temp_env = temp_Get_Temp_Data_BTM();
+            // printf("btm temp | %d.%03d | ", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
+            // temp_env = temp_Get_Temp_Data_TOP();
+            // printf("top temp | %d.%03d |\n", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
             last_cnt = xCnt;
             last_tick = xTick;
             heater_BTM_Log_PID();
+            heater_TOP_Log_PID();
         }
     }
 }

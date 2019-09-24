@@ -17,8 +17,8 @@
         Author website: http://www.geekfactory.mx
         Author e-mail: ruben at geekfactory dot mx
  */
-#ifndef __PID_H
-#define __PID_H
+#ifndef __PID_CTL_H
+#define __PID_CTL_H
 /*-------------------------------------------------------------*/
 /*		Includes and dependencies			*/
 /*-------------------------------------------------------------*/
@@ -36,16 +36,16 @@
 /**
  * Defines if the controler is direct or reverse
  */
-enum pid_control_directions {
+typedef enum {
     E_PID_DIRECT,
     E_PID_REVERSE,
-};
+} ePID_Ctrl_Dir;
 
 /**
  * Structure that holds PID all the PID controller data, multiple instances are
  * posible using different structures for each controller
  */
-struct pid_controller {
+typedef struct {
     // Input, output and setpoint
     float * input;    //!< Current Process Value
     float * output;   //!< Corrective Output from PID Controller
@@ -65,10 +65,8 @@ struct pid_controller {
     uint32_t sampletime; //!< Defines the PID sample time
     // Operation mode
     uint8_t automode; //!< Defines if the PID controller is enabled or disabled
-    enum pid_control_directions direction;
-};
-
-typedef struct pid_controller * spid_t;
+    ePID_Ctrl_Dir direction;
+} sPID_Ctrl_Conf;
 
 /*-------------------------------------------------------------*/
 /*		Function prototypes				*/
@@ -92,18 +90,18 @@ extern "C" {
  *
  * @return returns a spid_t controller handle
  */
-spid_t pid_create(spid_t pid, float * in, float * out, float * set, float kp, float ki, float kd);
+void pid_ctrl_init(sPID_Ctrl_Conf * pPID_Info, uint32_t duration, float * in, float * out, float * set, float kp, float ki, float kd);
 
 /**
  * @brief Check if PID loop needs to run
  *
  * Determines if the PID control algorithm should compute a new output value,
  * if this returs true, the user should read process feedback (sensors) and
- * place the reading in the input variable, then call the pid_compute() function.
+ * place the reading in the input variable, then call the pid_ctrl_compute() function.
  *
  * @return return Return true if PID control algorithm is required to run
  */
-bool pid_need_compute(spid_t pid);
+bool pid_ctrl_need_compute(sPID_Ctrl_Conf * pPID_Info);
 
 /**
  * @brief Computes the output of the PID control
@@ -113,7 +111,7 @@ bool pid_need_compute(spid_t pid);
  *
  * @param pid The PID controller instance which will be used for computation
  */
-void pid_compute(spid_t pid);
+void pid_ctrl_compute(sPID_Ctrl_Conf * pPID_Info);
 
 /**
  * @brief Sets new PID tuning parameters
@@ -126,7 +124,7 @@ void pid_compute(spid_t pid);
  * @param ki Integral gain
  * @param kd Derivative gain
  */
-void spid_tune(spid_t pid, float kp, float ki, float kd);
+void pid_ctrl_tune(sPID_Ctrl_Conf * pPID_Info, float kp, float ki, float kd);
 
 /**
  * @brief Sets the pid algorithm period
@@ -136,7 +134,7 @@ void spid_tune(spid_t pid, float kp, float ki, float kd);
  * @param pid The PID controller instance to modify
  * @param time The time in milliseconds between computations
  */
-void pid_sample(spid_t pid, uint32_t time);
+void pid_ctrl_sample(sPID_Ctrl_Conf * pPID_Info, uint32_t time);
 
 /**
  * @brief Sets the limits for the PID controller output
@@ -145,18 +143,18 @@ void pid_sample(spid_t pid, uint32_t time);
  * @param min The minimum output value for the PID controller
  * @param max The maximum output value for the PID controller
  */
-void pid_limits(spid_t pid, float min, float max);
+void pid_ctrl_limits(sPID_Ctrl_Conf * pPID_Info, float min, float max);
 
 /**
  * @brief Enables automatic control using PID
  *
  * Enables the PID control loop. If manual output adjustment is needed you can
- * disable the PID control loop using pid_manual(). This function enables PID
- * automatic control at program start or after calling pid_manual()
+ * disable the PID control loop using pid_ctrl_manual(). This function enables PID
+ * automatic control at program start or after calling pid_ctrl_manual()
  *
  * @param pid The PID controller instance to enable
  */
-void pid_auto(spid_t pid);
+void pid_ctrl_auto(sPID_Ctrl_Conf * pPID_Info);
 
 /**
  * @brief Disables automatic process control
@@ -166,7 +164,7 @@ void pid_auto(spid_t pid);
  *
  * @param pid The PID controller instance to disable
  */
-void pid_manual(spid_t pid);
+void pid_ctrl_manual(sPID_Ctrl_Conf * pPID_Info);
 
 /**
  * @brief Configures the PID controller direction
@@ -179,10 +177,10 @@ void pid_manual(spid_t pid);
  * @param pid The PID controller instance to modify
  * @param direction The new direction of the PID controller
  */
-void pid_direction(spid_t pid, enum pid_control_directions dir);
+void pid_ctrl_direction(sPID_Ctrl_Conf * pPID_Info, ePID_Ctrl_Dir dir);
 
-void pid_log_k(spid_t pid);
-void pid_log_d(spid_t pid);
+void pid_ctrl_log_k(sPID_Ctrl_Conf * pPID_Info);
+void pid_ctrl_log_d(const  char * head, sPID_Ctrl_Conf * pPID_Info);
 
 #ifdef __cplusplus
 }

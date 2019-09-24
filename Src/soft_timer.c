@@ -8,7 +8,7 @@
 #include "main.h"
 #include "temperature.h"
 #include "heater.h"
-#include "pid.h"
+#include "pid_ctrl.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim4;
@@ -39,6 +39,7 @@ TimerHandle_t gTimerHandleHeater = NULL;
 void soft_timer_Heater_Call_Back(TimerHandle_t xTimer)
 {
     heater_BTM_Output_Keep_Deal();
+    heater_TOP_Output_Keep_Deal();
 }
 
 /**
@@ -55,6 +56,9 @@ void soft_timer_Init(void)
 
     heater_BTM_Output_Init();
     beater_BTM_Output_Start();
+
+    heater_TOP_Output_Init();
+    beater_TOP_Output_Start();
 
     xTimerStart(gTimerHandleHeater, 0);
 }
