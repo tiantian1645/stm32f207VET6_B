@@ -205,6 +205,7 @@ eTrayState tray_Motor_Leave_On_Busy_Bit(void)
 eTrayState tray_Motor_Run(void)
 {
     eTrayState result;
+    uint32_t cnt = 0;
 
     if (gTray_Motor_Run_CMD_Info.step == 0) {
         return eTrayState_OK;
@@ -230,7 +231,15 @@ eTrayState tray_Motor_Run(void)
                 break;
         }
     } else {
+        cnt = 0;
+        dSPIN_Move(FWD, 350); /* 0.5 毫米 */
+        while (TRAY_MOTOR_IS_BUSY && ++cnt <= 600000)
+            ;
         dSPIN_Go_Until(ACTION_RESET, REV, 40000);
+        cnt = 0;
+        while (TRAY_MOTOR_IS_BUSY && ++cnt <= 60000)
+            ;
+        dSPIN_Move(REV, 24); /* 0.5 毫米 */
     }
 
     result = gTray_Motor_Run_CMD_Info.pfLeave(); /* 出口回调 */
@@ -275,7 +284,7 @@ uint8_t tray_Motor_Reset_Pos()
 eTrayState tray_Motor_Init(void)
 {
     eTrayState result;
-    uint32_t cnt = 0;
+    TickType_t xTick;
 
     result = tray_Motor_Enter();
     if (result != eTrayState_OK) { /* 入口回调 */
@@ -286,10 +295,11 @@ eTrayState tray_Motor_Init(void)
     }
 
     if (TRAY_MOTOR_IS_OPT_1) {
-        dSPIN_Move(FWD, 300);
-        while (TRAY_MOTOR_IS_OPT_1 && ++cnt < 6000000)
-            ;
-        cnt = 0;
+        dSPIN_Move(FWD, 350);
+        xTick = xTaskGetTickCount();
+        while (TRAY_MOTOR_IS_OPT_1 && xTaskGetTickCount() - xTick < 5000) {
+            vTaskDelay(1);
+        }
         tray_Motor_Brake(); /* 刹车 */
     }
     if (TRAY_MOTOR_IS_FLAG) {

@@ -269,7 +269,7 @@ uint8_t heat_Motor_Run(eMotorDir dir, uint32_t timeout)
     gPWM_TEST_AW_CNT_Clear();                                 /* PWM数目清零 */
     __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE);                /* 清除更新事件标志位 */
     __HAL_TIM_SET_COUNTER(&htim1, 0);                         /* 清零定时器计数寄存器 */
-    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 0);                         /* 占空比为0 */
+    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 0);          /* 占空比为0 */
     if (HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1) != HAL_OK) { /* 启动PWM输出 */
         return 2;
     }
