@@ -211,6 +211,9 @@ static void gHeat_Motor_Position_Rst(void)
  */
 uint8_t heat_Motor_Wait_Stop(uint32_t timeout)
 {
+    TickType_t xTick;
+
+    xTick = xTaskGetTickCount();
     switch (gHeat_Motor_Dir_Get()) {
         case eMotorDir_FWD:
             do {
@@ -221,7 +224,8 @@ uint8_t heat_Motor_Wait_Stop(uint32_t timeout)
                     gHeat_Motor_Position_Clr();
                     return 0;
                 }
-            } while (--timeout);
+                vTaskDelay(1);
+            } while (xTaskGetTickCount() - xTick < timeout);
             return 1;
         case eMotorDir_REV:
         default:
@@ -229,7 +233,8 @@ uint8_t heat_Motor_Wait_Stop(uint32_t timeout)
                 if (heat_Motor_Position_Is_Down()) {
                     return 0;
                 }
-            } while (--timeout);
+                vTaskDelay(1);
+            } while (xTaskGetTickCount() - xTick < timeout);
             return 1;
     }
     return 2;
@@ -264,13 +269,14 @@ uint8_t heat_Motor_Run(eMotorDir dir, uint32_t timeout)
     gPWM_TEST_AW_CNT_Clear();                                 /* PWM数目清零 */
     __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE);                /* 清除更新事件标志位 */
     __HAL_TIM_SET_COUNTER(&htim1, 0);                         /* 清零定时器计数寄存器 */
+    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 0);                         /* 占空比为0 */
     if (HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1) != HAL_OK) { /* 启动PWM输出 */
         return 2;
     }
 
     PWM_AW_IRQ_CallBcak();
 
-    if (heat_Motor_Wait_Stop(6000000)) {
+    if (heat_Motor_Wait_Stop(timeout) == 0) {
         return 0;
     }
     return 3;

@@ -180,7 +180,7 @@ void pid_ctrl_manual(sPID_Ctrl_Conf * pPID_Info);
 void pid_ctrl_direction(sPID_Ctrl_Conf * pPID_Info, ePID_Ctrl_Dir dir);
 
 void pid_ctrl_log_k(sPID_Ctrl_Conf * pPID_Info);
-void pid_ctrl_log_d(const  char * head, sPID_Ctrl_Conf * pPID_Info);
+void pid_ctrl_log_d(const char * head, sPID_Ctrl_Conf * pPID_Info);
 
 #ifdef __cplusplus
 }

@@ -254,7 +254,7 @@ void pid_ctrl_log_k(sPID_Ctrl_Conf * pPID_Info)
 
     printf("Ki | ");
     ffprintff(pPID_Info->Ki);
-\
+
     printf("Kd | ");
     ffprintff(pPID_Info->Kd);
 
@@ -268,7 +268,7 @@ void pid_ctrl_log_k(sPID_Ctrl_Conf * pPID_Info)
  */
 void pid_ctrl_log_d(const char * head, sPID_Ctrl_Conf * pPID_Info)
 {
-//    printf("\n+++  PID  K Conf %s +++\n", head);
+    //    printf("\n+++  PID  K Conf %s +++\n", head);
 
     printf("input | ");
     ffprintff(*(pPID_Info->input));

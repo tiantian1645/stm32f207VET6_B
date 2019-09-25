@@ -448,7 +448,7 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             break;
         case 0xD7:
             if (length == 8) {
-            	motor_fun = pInBuff[6];
+                motor_fun = pInBuff[6];
                 motor_Emit(&motor_fun, 0);
             }
             break;

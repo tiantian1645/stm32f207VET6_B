@@ -24,7 +24,6 @@
 #define __DSPIN_CONFIG_H
 
 /* Includes ------------------------------------------------------------------*/
-#include "m_l6470.h"
 
 /* Exported constants --------------------------------------------------------*/
 
@@ -50,7 +49,7 @@
 
 /* Register : MAX_SPEED */
 /* Maximum speed in step/s, range 15.25 to 15610 steps/s */
-#define dSPIN_CONF_PARAM_MAX_SPEED (1220.0)
+#define dSPIN_CONF_PARAM_MAX_SPEED (800.0)
 
 /* Register : MIN_SPEED */
 /* Minimum speed in step/s, range 0 to 976.3 steps/s */

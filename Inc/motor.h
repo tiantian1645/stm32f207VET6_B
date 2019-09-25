@@ -50,6 +50,7 @@ typedef enum {
     eMotor_Fun_PD,   /* PD值测试 */
     eMotor_Fun_WH,   /* 白底值测试 */
     eMotor_Fun_SYK,  /* 交错 */
+    eMotor_Fun_RLB,  /* 回滚 */
 } eMotor_Fun;
 
 /* 电机任务队列效果结构 */

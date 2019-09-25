@@ -53,7 +53,9 @@ void motor_Resource_Init(void)
 
     barcode_Motor_Reset_Pos(); /* 重置扫码电机位置 */
     tray_Motor_Reset_Pos();    /* 重置托盘电机位置 */
-    barcode_Scan_By_Index(eBarcodeIndex_6);
+
+    barcode_Scan_By_Index(eBarcodeIndex_6); /* QR Code 位置 */
+    heat_Motor_Run(eMotorDir_REV, 3000);    /* 砸下上加热体电机 */
 }
 
 /**
@@ -63,12 +65,11 @@ void motor_Resource_Init(void)
  */
 void motor_Init(void)
 {
-    motor_Resource_Init();
     motor_Fun_Queue_Handle = xQueueCreate(1, sizeof(sMotor_Fun));
     if (motor_Fun_Queue_Handle == NULL) {
         Error_Handler();
     }
-    if (xTaskCreate(motor_Task, "Motor Task", 128, NULL, TASK_PRIORITY_MOTOR, NULL) != pdPASS) {
+    if (xTaskCreate(motor_Task, "Motor Task", 160, NULL, TASK_PRIORITY_MOTOR, NULL) != pdPASS) {
         Error_Handler();
     }
 }
@@ -97,6 +98,7 @@ static void motor_Task(void * argument)
     BaseType_t xResult = pdFALSE;
     sMotor_Fun mf;
 
+    motor_Resource_Init();
     for (;;) {
         xResult = xQueueReceive(motor_Fun_Queue_Handle, &mf, portMAX_DELAY);
         if (xResult != pdPASS) {
@@ -145,8 +147,12 @@ static void motor_Task(void * argument)
                 };
                 tray_Move_By_Index(eTrayIndex_2, 5000); /* 运动托盘电机 */
                 heat_Motor_Run(eMotorDir_REV, 3000);    /* 砸下上加热体电机 */
-                white_Motor_Run(eMotorDir_REV, 3000);   /* 运动白板电机 */
+                white_Motor_Run(eMotorDir_FWD, 3000);   /* 运动白板电机 */
                 barcode_Scan_By_Index(eBarcodeIndex_0);
+                break;
+            case eMotor_Fun_RLB: /* 回滚 */
+                motor_Resource_Init();
+                break;
             default:
                 break;
         }

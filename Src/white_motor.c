@@ -159,7 +159,6 @@ uint8_t white_Motor_Position_Is_Out(void)
 uint8_t white_Motor_Position_Is_In(void)
 {
     if (HAL_GPIO_ReadPin(OPTSW_OUT4_GPIO_Port, OPTSW_OUT4_Pin) == GPIO_PIN_RESET) {
-        white_Motor_Deactive();
         return 1;
     }
     return 0;
@@ -212,16 +211,21 @@ static void gWhite_Motor_Position_Rst(void)
  */
 uint8_t white_Motor_Wait_Stop(uint32_t timeout)
 {
+    TickType_t xTick;
+
+    xTick = xTaskGetTickCount();
     switch (gWhite_Motor_Dir_Get()) {
         case eMotorDir_REV:
             do {
                 if (white_Motor_Position_Is_In()) {
+                    white_Motor_Deactive();
                     PWM_AW_Stop();
                     m_drv8824_release();
                     gWhite_Motor_Position_Clr();
                     return 0;
                 }
-            } while (--timeout);
+                vTaskDelay(1);
+            } while (xTaskGetTickCount() - xTick < timeout);
             return 1;
         case eMotorDir_FWD:
         default:
@@ -229,7 +233,8 @@ uint8_t white_Motor_Wait_Stop(uint32_t timeout)
                 if (white_Motor_Position_Is_Out()) {
                     return 0;
                 }
-            } while (--timeout);
+                vTaskDelay(1);
+            } while (xTaskGetTickCount() - xTick < timeout);
             return 1;
     }
     return 2;
@@ -243,8 +248,9 @@ uint8_t white_Motor_Wait_Stop(uint32_t timeout)
 uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout)
 {
     if (white_Motor_Position_Is_In()) { /* 光耦被遮挡 处于抬起状态 */
-        gWhite_Motor_Position_Clr();    /* 清空位置记录 */
-        if (dir == eMotorDir_REV) {     /* 仍然收到向上运动指令 */
+        white_Motor_Deactive();
+        gWhite_Motor_Position_Clr(); /* 清空位置记录 */
+        if (dir == eMotorDir_REV) {  /* 仍然收到向上运动指令 */
             return 0;
         }
     } else if (dir == eMotorDir_FWD && white_Motor_Position_Is_Out()) { /* 向下运动指令 但已运动步数超过极限位置80% */
@@ -269,7 +275,7 @@ uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout)
 
     PWM_AW_IRQ_CallBcak();
 
-    if (white_Motor_Wait_Stop(6000000)) {
+    if (white_Motor_Wait_Stop(timeout)) {
         m_drv8824_release();
         return 0;
     }
