@@ -159,7 +159,6 @@ uint8_t heat_Motor_Position_Is_Down(void)
 uint8_t heat_Motor_Position_Is_Up(void)
 {
     if (HAL_GPIO_ReadPin(OPTSW_OUT3_GPIO_Port, OPTSW_OUT3_Pin) == GPIO_PIN_RESET) {
-        heat_Motor_Deactive();
         return 1;
     }
     return 0;
@@ -216,6 +215,7 @@ uint8_t heat_Motor_Wait_Stop(uint32_t timeout)
         case eMotorDir_FWD:
             do {
                 if (heat_Motor_Position_Is_Up()) {
+                    heat_Motor_Deactive();
                     PWM_AW_Stop();
                     m_drv8824_release();
                     gHeat_Motor_Position_Clr();
@@ -243,8 +243,9 @@ uint8_t heat_Motor_Wait_Stop(uint32_t timeout)
 uint8_t heat_Motor_Run(eMotorDir dir, uint32_t timeout)
 {
     if (heat_Motor_Position_Is_Up()) { /* 光耦被遮挡 处于抬起状态 */
-        gHeat_Motor_Position_Clr();    /* 清空位置记录 */
-        if (dir == eMotorDir_FWD) {    /* 仍然收到向上运动指令 */
+        heat_Motor_Deactive();
+        gHeat_Motor_Position_Clr(); /* 清空位置记录 */
+        if (dir == eMotorDir_FWD) { /* 仍然收到向上运动指令 */
             return 0;
         }
     } else if (dir == eMotorDir_REV && heat_Motor_Position_Is_Down()) { /* 向下运动指令 但已运动步数超过极限位置80% */
@@ -287,6 +288,7 @@ uint8_t heat_Motor_PWM_Gen_Up(void)
     total = gPWM_TEST_AW_CNT_Get();
 
     if (total > HEAT_MOTOR_PCS_SUM * 4 || heat_Motor_Position_Is_Up()) {
+        heat_Motor_Deactive();
         PWM_AW_Stop();
         return 0;
     }

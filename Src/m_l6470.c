@@ -116,7 +116,7 @@ uint32_t dSPIN_Registers_Check(dSPIN_RegsStruct_TypeDef * dSPIN_RegsStruct)
     if (param != dSPIN_RegsStruct->EL_POS) {
         result |= (1 << dSPIN_EL_POS);
     }
-    printf("param | %10s | data | %5lu | memory %5lu\n", "EL_POS", param, dSPIN_RegsStruct->EL_POS);
+    printf("param | %10s | data | %5lu | memory %5u\n", "EL_POS", param, dSPIN_RegsStruct->EL_POS);
 
     param = dSPIN_Get_Param(dSPIN_MARK);
     if (param != dSPIN_RegsStruct->MARK) {
@@ -128,121 +128,121 @@ uint32_t dSPIN_Registers_Check(dSPIN_RegsStruct_TypeDef * dSPIN_RegsStruct)
     if (param != dSPIN_RegsStruct->ACC) {
         result |= (1 << dSPIN_ACC);
     }
-    printf("param | %10s | data | %5lu | memory %5lu\n", "ACC", param, dSPIN_RegsStruct->ACC);
+    printf("param | %10s | data | %5lu | memory %5u\n", "ACC", param, dSPIN_RegsStruct->ACC);
 
     param = dSPIN_Get_Param(dSPIN_DEC);
     if (param != dSPIN_RegsStruct->DEC) {
         result |= (1 << dSPIN_DEC);
     }
-    printf("param | %10s | data | %5lu | memory %5lu\n", "DEC", param, dSPIN_RegsStruct->DEC);
+    printf("param | %10s | data | %5lu | memory %5u\n", "DEC", param, dSPIN_RegsStruct->DEC);
 
     param = dSPIN_Get_Param(dSPIN_MAX_SPEED);
     if (param != dSPIN_RegsStruct->MAX_SPEED) {
         result |= (1 << dSPIN_MAX_SPEED);
     }
-    printf("param | %10s | data | %5lu | memory %5lu\n", "MAX_SPEED", param, dSPIN_RegsStruct->MAX_SPEED);
+    printf("param | %10s | data | %5lu | memory %5u\n", "MAX_SPEED", param, dSPIN_RegsStruct->MAX_SPEED);
 
     param = dSPIN_Get_Param(dSPIN_MIN_SPEED);
     if (param != dSPIN_RegsStruct->MIN_SPEED) {
         result |= (1 << dSPIN_MIN_SPEED);
     }
-    printf("param | %10s | data | %5lu | memory %5lu\n", "MIN_SPEED", param, dSPIN_RegsStruct->MIN_SPEED);
+    printf("param | %10s | data | %5lu | memory %5u\n", "MIN_SPEED", param, dSPIN_RegsStruct->MIN_SPEED);
 
     param = dSPIN_Get_Param(dSPIN_KVAL_HOLD);
     if (param != dSPIN_RegsStruct->KVAL_HOLD) {
         result |= (1 << dSPIN_KVAL_HOLD);
     }
-    printf("param | %10s | data | %5lu | memory %5lu\n", "KVAL_HOLD", param, dSPIN_RegsStruct->KVAL_HOLD);
+    printf("param | %10s | data | %5lu | memory %5u\n", "KVAL_HOLD", param, dSPIN_RegsStruct->KVAL_HOLD);
 
     param = dSPIN_Get_Param(dSPIN_KVAL_RUN);
     if (param != dSPIN_RegsStruct->KVAL_RUN) {
         result |= (1 << dSPIN_KVAL_RUN);
     }
-    printf("param | %10s | data | %5lu | memory %5lu\n", "KVAL_RUN", param, dSPIN_RegsStruct->KVAL_RUN);
+    printf("param | %10s | data | %5lu | memory %5u\n", "KVAL_RUN", param, dSPIN_RegsStruct->KVAL_RUN);
 
     param = dSPIN_Get_Param(dSPIN_KVAL_ACC);
     if (param != dSPIN_RegsStruct->KVAL_ACC) {
         result |= (1 << dSPIN_KVAL_ACC);
     }
-    printf("param | %10s | data | %5lu | memory %5lu\n", "KVAL_ACC", param, dSPIN_RegsStruct->KVAL_ACC);
+    printf("param | %10s | data | %5lu | memory %5u\n", "KVAL_ACC", param, dSPIN_RegsStruct->KVAL_ACC);
 
     param = dSPIN_Get_Param(dSPIN_KVAL_DEC);
     if (param != dSPIN_RegsStruct->KVAL_DEC) {
         result |= (1 << dSPIN_KVAL_DEC);
     }
-    printf("param | %10s | data | %5lu | memory %5lu\n", "KVAL_DEC", param, dSPIN_RegsStruct->KVAL_DEC);
+    printf("param | %10s | data | %5lu | memory %5u\n", "KVAL_DEC", param, dSPIN_RegsStruct->KVAL_DEC);
 
     param = dSPIN_Get_Param(dSPIN_INT_SPD);
     if (param != dSPIN_RegsStruct->INT_SPD) {
         result |= (1 << dSPIN_INT_SPD);
     }
-    printf("param | %10s | data | %5lu | memory %5lu\n", "INT_SPD", param, dSPIN_RegsStruct->INT_SPD);
+    printf("param | %10s | data | %5lu | memory %5u\n", "INT_SPD", param, dSPIN_RegsStruct->INT_SPD);
 
     param = dSPIN_Get_Param(dSPIN_ST_SLP);
     if (param != dSPIN_RegsStruct->ST_SLP) {
         result |= (1 << dSPIN_ST_SLP);
     }
-    printf("param | %10s | data | %5lu | memory %5lu\n", "ST_SLP", param, dSPIN_RegsStruct->ST_SLP);
+    printf("param | %10s | data | %5lu | memory %5u\n", "ST_SLP", param, dSPIN_RegsStruct->ST_SLP);
 
     param = dSPIN_Get_Param(dSPIN_FN_SLP_ACC);
     if (param != dSPIN_RegsStruct->FN_SLP_ACC) {
         result |= (1 << dSPIN_FN_SLP_ACC);
     }
-    printf("param | %10s | data | %5lu | memory %5lu\n", "FN_SLP_ACC", param, dSPIN_RegsStruct->FN_SLP_ACC);
+    printf("param | %10s | data | %5lu | memory %5u\n", "FN_SLP_ACC", param, dSPIN_RegsStruct->FN_SLP_ACC);
 
     param = dSPIN_Get_Param(dSPIN_FN_SLP_DEC);
     if (param != dSPIN_RegsStruct->FN_SLP_DEC) {
         result |= (1 << dSPIN_FN_SLP_DEC);
     }
-    printf("param | %10s | data | %5lu | memory %5lu\n", "FN_SLP_DEC", param, dSPIN_RegsStruct->FN_SLP_DEC);
+    printf("param | %10s | data | %5lu | memory %5u\n", "FN_SLP_DEC", param, dSPIN_RegsStruct->FN_SLP_DEC);
 
     param = dSPIN_Get_Param(dSPIN_K_THERM);
     if (param != dSPIN_RegsStruct->K_THERM) {
         result |= (1 << dSPIN_K_THERM);
     }
-    printf("param | %10s | data | %5lu | memory %5lu\n", "K_THERM", param, dSPIN_RegsStruct->K_THERM);
+    printf("param | %10s | data | %5lu | memory %5u\n", "K_THERM", param, dSPIN_RegsStruct->K_THERM);
 
     param = dSPIN_Get_Param(dSPIN_OCD_TH);
     if (param != dSPIN_RegsStruct->OCD_TH) {
         result |= (1 << dSPIN_OCD_TH);
     }
-    printf("param | %10s | data | %5lu | memory %5lu\n", "OCD_TH", param, dSPIN_RegsStruct->OCD_TH);
+    printf("param | %10s | data | %5lu | memory %5u\n", "OCD_TH", param, dSPIN_RegsStruct->OCD_TH);
 
     param = dSPIN_Get_Param(dSPIN_STALL_TH);
     if (param != dSPIN_RegsStruct->STALL_TH) {
         result |= (1 << dSPIN_STALL_TH);
     }
-    printf("param | %10s | data | %5lu | memory %5lu\n", "STALL_TH", param, dSPIN_RegsStruct->STALL_TH);
+    printf("param | %10s | data | %5lu | memory %5u\n", "STALL_TH", param, dSPIN_RegsStruct->STALL_TH);
 
     param = dSPIN_Get_Param(dSPIN_FS_SPD);
     if (param != dSPIN_RegsStruct->FS_SPD) {
         result |= (1 << dSPIN_FS_SPD);
     }
-    printf("param | %10s | data | %5lu | memory %5lu\n", "FS_SPD", param, dSPIN_RegsStruct->FS_SPD);
+    printf("param | %10s | data | %5lu | memory %5u\n", "FS_SPD", param, dSPIN_RegsStruct->FS_SPD);
 
     param = dSPIN_Get_Param(dSPIN_STEP_MODE);
     if (param != dSPIN_RegsStruct->STEP_MODE) {
         result |= (1 << dSPIN_STEP_MODE);
     }
-    printf("param | %10s | data | %5lu | memory %5lu\n", "STEP_MODE", param, dSPIN_RegsStruct->STEP_MODE);
+    printf("param | %10s | data | %5lu | memory %5u\n", "STEP_MODE", param, dSPIN_RegsStruct->STEP_MODE);
 
     param = dSPIN_Get_Param(dSPIN_ALARM_EN);
     if (param != dSPIN_RegsStruct->ALARM_EN) {
         result |= (1 << dSPIN_ALARM_EN);
     }
-    printf("param | %10s | data | %5lu | memory %5lu\n", "ALARM_EN", param, dSPIN_RegsStruct->ALARM_EN);
+    printf("param | %10s | data | %5lu | memory %5u\n", "ALARM_EN", param, dSPIN_RegsStruct->ALARM_EN);
 
     param = dSPIN_Get_Param(dSPIN_CONFIG);
     if (param != dSPIN_RegsStruct->CONFIG) {
         result |= (1 << dSPIN_CONFIG);
     }
-    printf("param | %10s | data | %5lu | memory %5lu\n", "CONFIG", param, dSPIN_RegsStruct->CONFIG);
+    printf("param | %10s | data | %5lu | memory %5u\n", "CONFIG", param, dSPIN_RegsStruct->CONFIG);
 
     param = dSPIN_Get_Param(dSPIN_STATUS);
     if (param != dSPIN_RegsStruct->STATUS) {
         result |= (1 << dSPIN_STATUS);
     }
-    printf("param | %10s | data | %5lu | memory %5lu\n", "STATUS", param, dSPIN_RegsStruct->STATUS);
+    printf("param | %10s | data | %5lu | memory %5u\n", "STATUS", param, dSPIN_RegsStruct->STATUS);
     return result;
 }
 

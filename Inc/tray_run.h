@@ -29,7 +29,7 @@ typedef enum {
 void tray_Motor_Lock_Occupy(void);
 void tray_Motor_Lock_Release(void);
 
-uint8_t tray_Motor_Reset_Pos(uint32_t timeout);
+uint8_t tray_Motor_Reset_Pos();
 eTrayState tray_Motor_Init(void);
 eTrayState tray_Move_By_Index(eTrayIndex index, uint32_t timeout);
 

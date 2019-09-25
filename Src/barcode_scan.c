@@ -81,6 +81,14 @@ const char BAR_SAM_UA__[] = "1413190703";
 const char BAR_SAM_CREA[] = "1418190602";
 const char BAR_SAM_QR__[] = "6882190918202303039503500200020004500560020000000400001170301020000000008";
 
+const uint8_t BAR_CODE_PROTOCOL_CLOSE_SCAN[] = {0x08, 0xC6, 0x04, 0x00, 0xFF, 0xF0, 0x32, 0x00, 0xFD, 0x0D}; //关闭瞄准器
+const uint8_t BAR_CODE_PROTOCOL_ACK[] = {0x04, 0xD0, 0x00, 0x00, 0xFF, 0x2C};                                //正常回应
+const uint8_t BAR_CODE_PROTOCOL_NAK[] = {0x05, 0xD1, 0x00, 0x00, 0x01, 0xFF, 0x29};                          //异常回应
+
+const eBarcodeIndex cBarCodeIndex[] = {
+    eBarcodeIndex_5, eBarcodeIndex_4, eBarcodeIndex_3, eBarcodeIndex_2, eBarcodeIndex_1, eBarcodeIndex_0,
+};
+
 /* Private function prototypes -----------------------------------------------*/
 
 /* Private user code ---------------------------------------------------------*/
@@ -282,21 +290,33 @@ eBarcodeState barcode_Motor_Run(void)
  * @retval 0 成功 1 失败
  */
 
-uint8_t barcode_Motor_Reset_Pos(uint32_t timeout)
+uint8_t barcode_Motor_Reset_Pos(void)
 {
-    while ((!BARCODE_MOTOR_IS_OPT) && --timeout > 0)
-        ;
-    if (BARCODE_MOTOR_IS_OPT) {
-        if (barcode_Motor_Enter() != eBarcodeState_Tiemout) {
-            barcode_Motor_Brake();                                 /* 刹车 */
-            dSPIN_Reset_Pos();                                     /* 重置电机驱动步数记录 */
-            m_l6470_release();                                     /* 释放SPI总线资源*/
-            motor_Status_Set_Position(&gBarcodeMotorRunStatus, 0); /* 重置电机状态步数记录 */
-            return 0;
-        }
+    eBarcodeState result;
+    TickType_t xTick;
+
+    xTick = xTaskGetTickCount();
+
+    while ((!BARCODE_MOTOR_IS_OPT) && xTaskGetTickCount() - xTick < 5000) { /* 检测光耦是否被遮挡 */
+        vTaskDelay(1);
+    }
+
+    if (!BARCODE_MOTOR_IS_OPT) { /* 超时时间到 光耦未遮挡 初始化位置失败 */
+        return 1;
+    }
+    result = barcode_Motor_Enter();
+    if (result == eBarcodeState_Tiemout) { /* 获取SPI资源失败 */
         return 2;
     }
-    return 1;
+    if (result == eBarcodeState_Busy) { /* 电机忙 */
+        m_l6470_release();              /* 释放SPI总线资源*/
+        return 3;
+    }
+    barcode_Motor_Brake();                                 /* 刹车 */
+    dSPIN_Reset_Pos();                                     /* 重置电机驱动步数记录 */
+    m_l6470_release();                                     /* 释放SPI总线资源*/
+    motor_Status_Set_Position(&gBarcodeMotorRunStatus, 0); /* 重置电机状态步数记录 */
+    return 0;
 }
 
 /**
@@ -354,19 +374,37 @@ void barcode_Motor_Calculate(uint32_t target_step)
 }
 
 /**
+ * @brief  扫码模块硬件初始化
+ * @param  None
+ * @retval None
+ */
+void barcode_sn2707_Init(void)
+{
+    uint8_t cnt = 0, buffer[10];
+    while (++cnt < 120) {                                               /* 初始化扫码模块 */
+        memset(buffer, 0, ARRAY_LEN(buffer));                           /* 清空结果 */
+        HAL_UART_Transmit(&BARCODE_UART, buffer, 2, pdMS_TO_TICKS(10)); /* 唤醒串口 */
+        vTaskDelay(20);                                                 /* 唤醒等待 */
+        HAL_UART_Transmit(&BARCODE_UART, (uint8_t *)BAR_CODE_PROTOCOL_CLOSE_SCAN, ARRAY_LEN(BAR_CODE_PROTOCOL_CLOSE_SCAN),
+                          pdMS_TO_TICKS(10));                                               /* 发送关闭瞄准灯报文 */
+        HAL_UART_Receive(&BARCODE_UART, buffer, 10, pdMS_TO_TICKS(100));                    /* 接收回应报文 */
+        if (memcmp(buffer, BAR_CODE_PROTOCOL_ACK, ARRAY_LEN(BAR_CODE_PROTOCOL_ACK)) == 0) { /* 对比结果 */
+            break;
+        } else {
+            vTaskDelay(20); /* 延时后继续 */
+        }
+    }
+}
+
+/**
  * @brief  扫码枪初始化
  * @param  None
  * @retval None
  */
 void barcode_Init(void)
 {
-    barcode_Result_Init();
-    m_l6470_Init();       /* 驱动资源及参数初始化 */
-    barcode_Motor_Init(); /* 扫码电机位置初始化 */
-    m_drv8824_Init();     /* 上加热体电机初始化 */
-    tray_Motor_Init();    /* 托盘电机初始化 */
-    barcode_Motor_Reset_Pos(6000000);
-    tray_Motor_Reset_Pos(6000000);
+    barcode_Result_Init(); /* 扫码结果初始化 */
+    barcode_sn2707_Init(); /* 扫码模块硬件初始化 */
 }
 
 /**
@@ -407,11 +445,8 @@ eBarcodeState barcode_Read_From_Serial(uint8_t * pOut_length, uint8_t * pData, u
 }
 
 /**
- * @brief  扫码执行
+ * @brief  扫码执行 按索引操作
  * @param  index   条码位置索引
- * @param  pdata   结果存放指针
- * @param  length  最大结果长度
- * @param  timeout 串口接收等待时间
  * @retval 扫码结果数据长度
  */
 eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index)
@@ -473,6 +508,43 @@ eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index)
 }
 
 /**
+ * @brief  扫码执行 电机任务调用
+ * @param  None
+ * @retval 扫码结果
+ */
+eBarcodeState barcode_Scan_Whole(void)
+{
+    sBarcoderesult * pResult;
+    eBarcodeState result;
+    uint8_t i;
+
+    pResult = &(gBarcodeDecodeResult[0]);                                                   /* 先扫描 QR Code */
+    motor_CMD_Info_Set_PF_Enter(&gBarcodeMotorRunCmdInfo, barcode_Motor_Enter);             /* 配置启动前回调 */
+    motor_CMD_Info_Set_Tiemout(&gBarcodeMotorRunCmdInfo, 1500);                             /* 运动超时时间 1500mS */
+    barcode_Motor_Calculate((eBarcodeIndex_6 >> 5) << 3);                                   /* 计算运动距离 及方向 32细分转8细分 */
+    motor_CMD_Info_Set_PF_Leave(&gBarcodeMotorRunCmdInfo, barcode_Motor_Leave_On_Busy_Bit); /* 等待驱动状态位空闲 */
+    result = barcode_Motor_Run();                                                           /* 执行电机运动 */
+    if (result != eBarcodeState_OK) {                                                       /* 扫码电机故障 */
+        pResult->length = 0;                                                                /* 结果长度清零 */
+        pResult->state = eBarcodeState_Error;                                               /* 标记错误 */
+        return pResult->state;                                                              /* 提前返回 */
+    }
+    pResult->state = barcode_Read_From_Serial(&(pResult->length), pResult->pData, BARCODE_QR_LENGTH, 500);
+    if (pResult->length > 50) {  /* 存在有效QR Code */
+        return eBarcodeState_OK; /* 提前返回 */
+    }
+
+    for (i = 0; i < ARRAY_LEN(cBarCodeIndex); ++i) {      /* 不存在有效QR Code */
+        pResult = &(gBarcodeDecodeResult[1 + i]);         /* 逐个扫描 Bar Code */
+        result = barcode_Scan_By_Index(cBarCodeIndex[i]); /* 扫码位置索引倒序 */
+        if (result == eBarcodeState_Error) {              /* 扫码电机故障 */
+            return eBarcodeState_Error;                   /* 提前返回 */
+        }
+    }
+    return eBarcodeState_OK; /* 提前返回 */
+}
+
+/**
  * @brief  扫码枪通讯测试
  * @param  None
  * @retval 0 能通信 1 通信故障
@@ -510,6 +582,13 @@ uint8_t barcode_serial_Test(void)
     return 2;
 }
 
+/**
+ * @brief  扫码结果比较
+ * @param  pData 输入指针
+ * @param  length 输入长度
+ * @param  pTarget 期望
+ * @retval 0 一致 1 长度不匹配 2 数据不一致
+ */
 uint8_t barcode_Comp_Result(uint8_t * pData, uint8_t length, const char * pTarget)
 {
     if (length != strlen(pTarget)) {
@@ -649,36 +728,5 @@ void barcode_Scan_Bantch(uint32_t mark)
     }
     if (mark & (1 << 6)) {
         barcode_Scan_By_Index(eBarcodeIndex_0);
-    }
-}
-
-/**
- * @brief  扫码任务
- * @param  argument: Not used
- * @retval None
- */
-static void barcode_Task(void * argument)
-{
-    BaseType_t xResult = pdFALSE;
-    uint32_t xNotificationValue;
-
-    for (;;) {
-        xResult = xTaskNotifyWait(0, portMAX_DELAY, &xNotificationValue, portMAX_DELAY);
-        if (xResult != pdPASS) {
-            continue;
-        }
-        if (heat_Motor_Run(eMotorDir_FWD, 3000) != 0) { /* 等待加热体电机抬升 */
-            continue;                                   /* 上加热体电机故障 */
-        }
-        heat_Motor_Lock_Occupy(); /* 禁止上加热体电机运动 */
-
-        if (tray_Move_By_Index(eTrayIndex_1, 3000) != 0) { /* 等待托盘电机运动到扫码位置 */
-            heat_Motor_Lock_Release();                     /* 释放上加热体电机 */
-            continue;                                      /* 托盘电机故障 */
-        }
-        tray_Motor_Lock_Occupy();                /* 禁止托盘电机运动 */
-        barcode_Scan_Bantch(xNotificationValue); /* 执行批量扫码 */
-        tray_Motor_Lock_Release();               /* 释放托盘电机 */
-        heat_Motor_Lock_Release();               /* 释放上加热体电机运动锁 */
     }
 }

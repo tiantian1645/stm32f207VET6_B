@@ -233,10 +233,10 @@ void pid_ctrl_direction(sPID_Ctrl_Conf * pPID_Info, ePID_Ctrl_Dir dir)
 void ffprintff(float float_num)
 {
     if (float_num > 0) {
-        printf("%3i.%03d", (uint32_t)float_num, (uint16_t)((float_num * 1000) - (uint32_t)(float_num)*1000));
+        printf("%3li.%03d", (uint32_t)float_num, (uint16_t)((float_num * 1000) - (uint32_t)(float_num)*1000));
     } else {
         float_num = -1.0 * float_num;
-        printf("-%i.%03d", (uint32_t)float_num, (uint16_t)((float_num * 1000) - (uint32_t)(float_num)*1000));
+        printf("-%li.%03d", (uint32_t)float_num, (uint16_t)((float_num * 1000) - (uint32_t)(float_num)*1000));
     }
 }
 
@@ -254,7 +254,7 @@ void pid_ctrl_log_k(sPID_Ctrl_Conf * pPID_Info)
 
     printf("Ki | ");
     ffprintff(pPID_Info->Ki);
-
+\
     printf("Kd | ");
     ffprintff(pPID_Info->Kd);
 

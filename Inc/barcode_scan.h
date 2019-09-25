@@ -12,13 +12,20 @@
 
 /* Exported types ------------------------------------------------------------*/
 /* 条码索引 32细分步下标准 */
+/*
+In [606]: 123.62 - 43.52
+Out[606]: 80.1
+
+In [607]: _ / 3950
+Out[607]: 0.020278481012658226
+*/
 typedef enum {
     eBarcodeIndex_0 = 0,
-    eBarcodeIndex_1 = 3200,
-    eBarcodeIndex_2 = 6400,
-    eBarcodeIndex_3 = 9600,
-    eBarcodeIndex_4 = 12800,
-    eBarcodeIndex_5 = 16000,
+    eBarcodeIndex_1 = 3156,
+    eBarcodeIndex_2 = 6312,
+    eBarcodeIndex_3 = 9468,
+    eBarcodeIndex_4 = 12624,
+    eBarcodeIndex_5 = 15780,
     eBarcodeIndex_6 = 18680,
 } eBarcodeIndex;
 
@@ -46,7 +53,11 @@ void barcode_Init(void);
 uint8_t barcode_Task_Notify(uint32_t mark);
 
 eBarcodeState barcode_Motor_Enter(void);
+eBarcodeState barcode_Motor_Init(void);
+uint8_t barcode_Motor_Reset_Pos(void);
+
 eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index);
+eBarcodeState barcode_Scan_Whole(void);
 eBarcodeState barcode_Read_From_Serial(uint8_t * pOut_length, uint8_t * pData, uint8_t max_read_length, uint32_t timeout);
 
 /* Private defines -----------------------------------------------------------*/

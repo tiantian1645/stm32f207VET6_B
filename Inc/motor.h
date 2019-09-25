@@ -42,6 +42,21 @@ typedef struct {
     uint8_t (*pfLeave)(void);
 } sMoptorRunCmdInfo;
 
+/* 电机任务队列效果枚举 */
+typedef enum {
+    eMotor_Fun_In,   /* 入仓 */
+    eMotor_Fun_Out,  /* 出仓 */
+    eMotor_Fun_Scan, /* 扫码 */
+    eMotor_Fun_PD,   /* PD值测试 */
+    eMotor_Fun_WH,   /* 白底值测试 */
+    eMotor_Fun_SYK,  /* 交错 */
+} eMotor_Fun;
+
+/* 电机任务队列效果结构 */
+typedef struct {
+    eMotor_Fun fun_type;
+} sMotor_Fun;
+
 /* Exported define -----------------------------------------------------------*/
 #define motor_Status_Set_Position(__RUNSTATUS__, __POSITION__) ((__RUNSTATUS__)->position = (__POSITION__))
 #define motor_Status_Set_TickInit(__RUNSTATUS__, __TICKINIT__) ((__RUNSTATUS__)->tick_init = (__TICKINIT__))
@@ -60,6 +75,9 @@ typedef struct {
 #define motor_CMD_Info_Get_Step(__COM_INFO__) ((__COM_INFO__)->step)
 #define motor_CMD_Info_Get_Tiemout(__COM_INFO__) ((__COM_INFO__)->timeout)
 #define motor_CMD_Info_Get_PF_Leave(__COM_INFO__) ((__COM_INFO__)->pfLeave)
+
+void motor_Init(void);
+uint8_t motor_Emit(eMotor_Fun * pFun_type, uint32_t timeout);
 
 /* Exported constants --------------------------------------------------------*/
 

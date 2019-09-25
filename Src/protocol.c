@@ -10,6 +10,7 @@
 #include "tray_run.h"
 #include "heat_motor.h"
 #include "white_motor.h"
+#include "motor.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim9;
@@ -304,6 +305,7 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
     uint16_t status = 0;
     int32_t step;
     uint8_t barcode_length;
+    eMotor_Fun motor_fun;
 
     if (pInBuff[5] == eProtocoleRespPack_Client_ACK) { /* 收到对方回应帧 */
         comm_Out_Send_ACK_Notify(pInBuff[6]);          /* 通知串口发送任务 回应包收到 */
@@ -443,6 +445,12 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
             vTaskDelay(1000);
             HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);
+            break;
+        case 0xD7:
+            if (length == 8) {
+            	motor_fun = pInBuff[6];
+                motor_Emit(&motor_fun, 0);
+            }
             break;
         default:
             error |= PROTOCOL_PARSE_CMD_ERROR;

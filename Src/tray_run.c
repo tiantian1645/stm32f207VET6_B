@@ -245,10 +245,15 @@ eTrayState tray_Motor_Run(void)
  * @retval 0 成功 1 失败
  */
 
-uint8_t tray_Motor_Reset_Pos(uint32_t timeout)
+uint8_t tray_Motor_Reset_Pos()
 {
-    while ((!TRAY_MOTOR_IS_OPT_1) && --timeout > 0)
-        ;
+    TickType_t xTick;
+
+    xTick = xTaskGetTickCount();
+    while ((!TRAY_MOTOR_IS_OPT_1) && xTaskGetTickCount() - xTick < 5000) { /* 检测光耦是否被遮挡 */
+        vTaskDelay(1);
+    }
+
     if (TRAY_MOTOR_IS_OPT_1) {
         if (tray_Motor_Enter() != eTrayState_Tiemout) {
             tray_Motor_Brake();                                    /* 刹车 */

@@ -32,6 +32,7 @@
 #include "m_drv8824.h"
 #include "temperature.h"
 #include "heater.h"
+#include "motor.h"
 #include "soft_timer.h"
 
 /* USER CODE END Includes */
@@ -155,6 +156,7 @@ int main(void)
     comm_Data_Init();
     comm_Out_Init();
     comm_Main_Init();
+    motor_Init();
 
     if (xTaskCreate(LED_Task, "TASK_LED", 160, NULL, 1, NULL) != pdPASS) {
         FL_Error_Handler(__FILE__, __LINE__);
