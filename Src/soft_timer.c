@@ -99,12 +99,12 @@ void soft_timer_Temp_Call_Back(TimerHandle_t xTimer)
     uint16_t temp;
 
     temp = (uint16_t)(temp_Get_Temp_Data_BTM() * 100);
-    buffer[0] = temp >> 8;
-    buffer[1] = temp & 0xFF;
+    buffer[0] = temp & 0xFF; /* 小端模式 */
+    buffer[1] = temp >> 8;
 
     temp = (uint16_t)(temp_Get_Temp_Data_TOP() * 100);
-    buffer[2] = temp >> 8;
-    buffer[3] = temp & 0xFF;
+    buffer[2] = temp & 0xFF; /* 小端模式 */
+    buffer[3] = temp >> 8;
 
     length = buildPackOrigin(eComm_Main, eProtocoleRespPack_Client_TMP, buffer, 4);
     comm_Out_SendTask_QueueEmitCover(buffer, length);

@@ -20,7 +20,9 @@
 #include "motor.h"
 #include "serial.h"
 #include "comm_out.h"
+#include "comm_main.h"
 #include "comm_data.h"
+#include "protocol.h"
 #include "barcode_scan.h"
 #include "m_l6470.h"
 #include "m_drv8824.h"
@@ -534,7 +536,8 @@ eBarcodeState barcode_Scan_Whole(void)
         return pResult->state;                                                              /* 提前返回 */
     }
     pResult->state = barcode_Read_From_Serial(&(pResult->length), pResult->pData, BARCODE_QR_LENGTH, 500);
-    if (pResult->length > 50) {  /* 存在有效QR Code */
+    if (pResult->length > 50) { /* 存在有效QR Code */
+        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_BARCODE, pResult->pData, pResult->length);
         return eBarcodeState_OK; /* 提前返回 */
     }
 
@@ -544,6 +547,7 @@ eBarcodeState barcode_Scan_Whole(void)
         if (result == eBarcodeState_Error) {              /* 扫码电机故障 */
             return eBarcodeState_Error;                   /* 提前返回 */
         }
+        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_BARCODE, pResult->pData, pResult->length);
     }
     return eBarcodeState_OK; /* 提前返回 */
 }
