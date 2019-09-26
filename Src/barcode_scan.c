@@ -26,6 +26,7 @@
 #include "m_drv8824.h"
 #include "tray_run.h"
 #include "heat_motor.h"
+#include "se2707.h"
 #include <string.h>
 
 /* Extern variables ----------------------------------------------------------*/
@@ -380,19 +381,19 @@ void barcode_Motor_Calculate(uint32_t target_step)
  */
 void barcode_sn2707_Init(void)
 {
-    uint8_t cnt = 0, buffer[10];
-    while (++cnt < 120) {                                               /* 初始化扫码模块 */
-        memset(buffer, 0, ARRAY_LEN(buffer));                           /* 清空结果 */
-        HAL_UART_Transmit(&BARCODE_UART, buffer, 2, pdMS_TO_TICKS(10)); /* 唤醒串口 */
-        vTaskDelay(20);                                                 /* 唤醒等待 */
-        HAL_UART_Transmit(&BARCODE_UART, (uint8_t *)BAR_CODE_PROTOCOL_CLOSE_SCAN, ARRAY_LEN(BAR_CODE_PROTOCOL_CLOSE_SCAN),
-                          pdMS_TO_TICKS(10));                                               /* 发送关闭瞄准灯报文 */
-        HAL_UART_Receive(&BARCODE_UART, buffer, 10, pdMS_TO_TICKS(100));                    /* 接收回应报文 */
-        if (memcmp(buffer, BAR_CODE_PROTOCOL_ACK, ARRAY_LEN(BAR_CODE_PROTOCOL_ACK)) == 0) { /* 对比结果 */
-            break;
-        } else {
-            vTaskDelay(20); /* 延时后继续 */
-        }
+    sSE2707_Image_Capture_Param icParam;
+
+    HAL_GPIO_WritePin(BC_AIM_WK_N_GPIO_Port, BC_AIM_WK_N_Pin, GPIO_PIN_RESET);
+    HAL_Delay(1);
+    HAL_GPIO_WritePin(BC_AIM_WK_N_GPIO_Port, BC_AIM_WK_N_Pin, GPIO_PIN_SET);
+
+    icParam.param = Decoding_Illumination;
+    icParam.data = 0;
+    if (se2707_conf_param(&huart3, &icParam, 1000, 5) != 0) {
+    	Error_Handler();
+    }
+    if (se2707_check_param(&huart3, icParam, 1000, 5) != 0) {
+    	Error_Handler();
     }
 }
 
