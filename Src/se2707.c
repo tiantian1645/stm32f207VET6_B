@@ -338,3 +338,29 @@ uint8_t se2707_check_param(UART_HandleTypeDef * puart, sSE2707_Image_Capture_Par
     } while (--retry > 0);
     return result;
 }
+
+/**
+ * @brief  se2707 ssi 重置默认参数
+ * @param  puart 串口句柄指针
+ * @param  timeout 接收超时时间
+ * @param  retry 重试次数 0 时尝试到死
+ * @retval 0 重置成功 1 数据不正常 2 数据校验错误
+ */
+uint8_t se2707_reset_param(UART_HandleTypeDef * puart, uint32_t timeout, uint8_t retry)
+{
+    uint8_t buffer[10], result;
+    uint16_t length;
+
+    do {
+        length = se2707_build_pack_reset_Default(buffer);
+        se2707_send_pack(puart, buffer, length);
+        memset(buffer, 0, ARRAY_LEN(buffer));
+        length = se2707_recv_pack(puart, buffer, 7, timeout);
+        result = se2707_check_recv_ack(buffer, length);
+        if (result == 0) {
+            break;
+        }
+        HAL_Delay(1000);
+    } while (--retry > 0);
+    return result;
+}

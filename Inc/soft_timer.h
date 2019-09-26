@@ -13,6 +13,8 @@
 
 /* Exported functions prototypes ---------------------------------------------*/
 void soft_timer_Init(void);
+void soft_timer_Temp_Pause(void);
+void soft_timer_Temp_Resume(void);
 
 /* Private defines -----------------------------------------------------------*/
 

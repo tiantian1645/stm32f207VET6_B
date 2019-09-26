@@ -14,12 +14,14 @@
 
 /* Extern variables ----------------------------------------------------------*/
 extern UART_HandleTypeDef huart2;
+extern UART_HandleTypeDef huart5;
 extern DMA_HandleTypeDef hdma_usart2_rx;
-extern TIM_HandleTypeDef htim2;
+extern TIM_HandleTypeDef htim6;
 
 /* Private define ------------------------------------------------------------*/
 #define COMM_DATA_SERIAL_INDEX eSerialIndex_2
 #define COMM_DATA_UART_HANDLE huart2
+#define COMM_DATA_TIM_PD htim6
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -157,31 +159,32 @@ void comm_Data_DMA_TX_Error(void)
 }
 
 /**
- * @brief  串口定时器中断处理 用于同步发送开始采集信号
+ * @brief  串口定时器中断处理 用于同步发送开始采集信号 PD
  * @param  None
  * @retval None
  */
-void comm_Data_Time_Deal_FromISR(void)
+void comm_Data_PD_Time_Deal_FromISR(void)
 {
     static uint8_t i = 0, retry = 0, data[12];
     static uint8_t length;
     TickType_t tick;
 
-    if (i >= 5) {
+    if (i >= 6) {
         i = 0;
         retry = 0;
-        HAL_TIM_Base_Stop_IT(&htim2); /* 停止定时器 */
+        HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_PD); /* 停止定时器 */
         gComm_Data_TIM_StartFlag = 0;
         return;
     }
 
-    if (i == 0 || gComm_Data_RecvConfirm_Get() + 1 == i) { /* 构造下一个数据包 */
+    if (1) {
+        // if (i == 0 || gComm_Data_RecvConfirm_Get() + 1 == i) { /* 构造下一个数据包 */
         tick = xTaskGetTickCountFromISR();
         data[0] = (tick >> 24) & 0xFF;
         data[1] = (tick >> 16) & 0xFF;
         data[2] = (tick >> 8) & 0xFF;
         data[3] = (tick >> 0) & 0xFF;
-        data[4] = i;
+        data[4] = 0x02;
         length = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_START, data, 5);
         ++i;
         retry = 1;
@@ -190,13 +193,13 @@ void comm_Data_Time_Deal_FromISR(void)
         if (retry > 5) {
             i = 0;
             retry = 0;
-            HAL_TIM_Base_Stop_IT(&htim2); /* 停止定时器 */
+            HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_PD); /* 停止定时器 */
             gComm_Data_TIM_StartFlag = 0;
             return;
         }
     }
 
-    if (HAL_UART_Transmit_DMA(&COMM_DATA_UART_HANDLE, data, length) != HAL_OK) { /* 发送失败 */
+    if (HAL_UART_Transmit_DMA(&huart5, data, length) != HAL_OK) { /* 发送失败 */
         FL_Error_Handler(__FILE__, __LINE__);
     }
 }
@@ -213,7 +216,7 @@ uint8_t comm_Data_Sample_Start(void)
     }
 
     gComm_Data_TIM_StartFlag = 1;
-    HAL_TIM_Base_Start_IT(&htim2); /* 启动定时器 开始测试 */
+    HAL_TIM_Base_Start_IT(&COMM_DATA_TIM_PD); /* 启动定时器 开始测试 */
 
     return 0;
 }

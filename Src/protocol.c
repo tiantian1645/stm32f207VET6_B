@@ -11,10 +11,12 @@
 #include "heat_motor.h"
 #include "white_motor.h"
 #include "motor.h"
+#include "soft_timer.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim9;
 extern TIM_HandleTypeDef htim1;
+extern TIM_HandleTypeDef htim6;
 
 /* Private includes ----------------------------------------------------------*/
 
@@ -453,25 +455,28 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 motor_Emit(&motor_fun, 0);
             }
             break;
+        case 0xD8:
+            HAL_TIM_Base_Start_IT(&htim6);
+            break;
 
         case eProtocolEmitPack_Client_CMD_START:                   /* 开始测量帧 0x01 */
             barcode_length = pInBuff[3];                           /* 暂存帧号 */
-                                                                   /* TO DO */
+            soft_timer_Temp_Pause();                               /* TO DO */
             pInBuff[3] = barcode_length;                           /* 取回帧号 */
             error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 处理回应包 */
             break;
         case eProtocolEmitPack_Client_CMD_ABRUPT:                  /* 仪器测量取消命令帧 0x02 */
             barcode_length = pInBuff[3];                           /* 暂存帧号 */
-                                                                   /* TO DO */
+            soft_timer_Temp_Resume();                              /* TO DO */
             pInBuff[3] = barcode_length;                           /* 取回帧号 */
             error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 处理回应包 */
             break;
-        case eProtocolEmitPack_Client_CMD_CONFIG:                                              /* 测试项信息帧 0x03 */
-            barcode_length = pInBuff[3];                                                       /* 暂存帧号 */
+        case eProtocolEmitPack_Client_CMD_CONFIG:                                               /* 测试项信息帧 0x03 */
+            barcode_length = pInBuff[3];                                                        /* 暂存帧号 */
             buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, &pInBuff[6], length - 6); /* 保留数据区 修改包头包尾 */
-            comm_Data_SendTask_QueueEmitCover(pInBuff, length);                                /* 发送给数据采集板 */
-            pInBuff[3] = barcode_length;                                                       /* 取回帧号 */
-            error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff);                             /* 处理回应包 */
+            comm_Data_SendTask_QueueEmitCover(pInBuff, length);                                 /* 发送给数据采集板 */
+            pInBuff[3] = barcode_length;                                                        /* 取回帧号 */
+            error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff);                              /* 处理回应包 */
             break;
         case eProtocolEmitPack_Client_CMD_FORWARD:                 /* 打开托盘帧 0x04 */
             barcode_length = pInBuff[3];                           /* 暂存帧号 */

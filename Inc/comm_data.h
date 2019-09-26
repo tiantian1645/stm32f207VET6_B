@@ -16,8 +16,10 @@
 #define COMM_DATA_SER_TX_RETRY_INT 200 /* 重发间隔 200mS 内应有响应包 */
 #define COMM_DATA_SER_TX_RETRY_SUM ((COMM_DATA_SER_TX_RETRY_NUM) * (COMM_DATA_SER_TX_RETRY_INT))
 
-#define COMM_DATA_TIMER_PRESCALER (9000 - 1) /* 10kHz */
-#define COMM_DATA_TIMER_PERIOD (50000 - 1)   /* 1 S */
+#define COMM_DATA_PD_TIMER_PRESCALER (12000 - 1)
+#define COMM_DATA_PD_TIMER_PERIOD (50000 - 1) /* 10 S */
+#define COMM_DATA_WH_TIMER_PRESCALER (12000 - 1)
+#define COMM_DATA_WH_TIMER_PERIOD (50000 - 1) /* 10 S */
 
 /* Exported types ------------------------------------------------------------*/
 /* 采集板串口 接收数据定义*/
@@ -81,7 +83,7 @@ void comm_Data_DMA_TX_Error(void);
 BaseType_t comm_Data_SendTask_QueueEmit(uint8_t * pdata, uint8_t length, uint32_t timeout);
 #define comm_Data_SendTask_QueueEmitCover(pdata, length) comm_Data_SendTask_QueueEmit((pdata), (length), (COMM_DATA_SER_TX_RETRY_SUM))
 BaseType_t comm_Data_Send_ACK_Notify(uint8_t packIndex);
-void comm_Data_Time_Deal_FromISR(void);
+void comm_Data_PD_Time_Deal_FromISR(void);
 uint8_t gComm_Data_RecvConfirm_Get(void);
 void gComm_Data_RecvConfirm_Set(uint8_t data);
 void comm_Data_Sample_Data_Deal(uint8_t data_num, uint8_t channel, uint8_t * pSample);

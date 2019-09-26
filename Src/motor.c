@@ -109,6 +109,8 @@ static void motor_Task(void * argument)
                     break;
                 };
                 tray_Move_By_Index(eTrayIndex_0, 5000); /* 运动托盘电机 */
+                tray_Move_By_Index(eTrayIndex_1, 5000); /* 运动托盘电机 */
+                barcode_Scan_Whole();                   /* 执行扫码 */
                 break;
             case eMotor_Fun_Out:                                /* 出仓 */
                 if (heat_Motor_Run(eMotorDir_FWD, 3000) != 0) { /* 抬起上加热体电机 失败 */

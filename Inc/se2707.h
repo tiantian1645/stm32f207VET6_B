@@ -92,7 +92,7 @@ uint8_t se2707_decode_param(uint8_t * pData, uint8_t length, sSE2707_Image_Captu
 
 uint8_t se2707_conf_param(UART_HandleTypeDef * puart, sSE2707_Image_Capture_Param * pICP, uint32_t timeout, uint8_t retry);
 uint8_t se2707_check_param(UART_HandleTypeDef * puart, sSE2707_Image_Capture_Param conf, uint32_t timeout, uint8_t retry);
-
+uint8_t se2707_reset_param(UART_HandleTypeDef * puart, uint32_t timeout, uint8_t retry);
 /* Private defines -----------------------------------------------------------*/
 
 #endif

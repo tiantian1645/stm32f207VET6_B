@@ -381,19 +381,22 @@ void barcode_Motor_Calculate(uint32_t target_step)
  */
 void barcode_sn2707_Init(void)
 {
-    sSE2707_Image_Capture_Param icParam;
+    //    sSE2707_Image_Capture_Param icParam;
 
     HAL_GPIO_WritePin(BC_AIM_WK_N_GPIO_Port, BC_AIM_WK_N_Pin, GPIO_PIN_RESET);
     HAL_Delay(1);
     HAL_GPIO_WritePin(BC_AIM_WK_N_GPIO_Port, BC_AIM_WK_N_Pin, GPIO_PIN_SET);
 
-    icParam.param = Decoding_Illumination;
-    icParam.data = 0;
-    if (se2707_conf_param(&huart3, &icParam, 1000, 5) != 0) {
-    	Error_Handler();
-    }
-    if (se2707_check_param(&huart3, icParam, 1000, 5) != 0) {
-    	Error_Handler();
+    //    icParam.param = Decoding_Illumination;
+    //    icParam.data = 0;
+    //    if (se2707_conf_param(&huart3, &icParam, 1000, 5) != 0) {
+    //        Error_Handler();
+    //    }
+    //    if (se2707_check_param(&huart3, icParam, 1000, 5) != 0) {
+    //        Error_Handler();
+    //    }
+    if (se2707_reset_param(&huart3, 2500, 2) != 0) {
+        Error_Handler();
     }
 }
 
