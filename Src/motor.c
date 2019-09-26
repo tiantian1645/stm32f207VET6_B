@@ -55,7 +55,6 @@ void motor_Resource_Init(void)
     tray_Motor_Reset_Pos();    /* 重置托盘电机位置 */
 
     barcode_Scan_By_Index(eBarcodeIndex_6); /* QR Code 位置 */
-    heat_Motor_Run(eMotorDir_REV, 3000);    /* 砸下上加热体电机 */
 }
 
 /**
@@ -80,7 +79,7 @@ void motor_Init(void)
  * @param  timeout  最长等待时间
  * @retval 0 提交成功 1 提交失败
  */
-uint8_t motor_Emit(eMotor_Fun * pFun_type, uint32_t timeout)
+uint8_t motor_Emit(sMotor_Fun * pFun_type, uint32_t timeout)
 {
     if (xQueueSendToBack(motor_Fun_Queue_Handle, pFun_type, timeout) != pdTRUE) {
         return 1;
@@ -110,7 +109,6 @@ static void motor_Task(void * argument)
                     break;
                 };
                 tray_Move_By_Index(eTrayIndex_0, 5000); /* 运动托盘电机 */
-                heat_Motor_Run(eMotorDir_REV, 3000);    /* 砸下上加热体电机 */
                 break;
             case eMotor_Fun_Out:                                /* 出仓 */
                 if (heat_Motor_Run(eMotorDir_FWD, 3000) != 0) { /* 抬起上加热体电机 失败 */

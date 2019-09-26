@@ -20,13 +20,13 @@
 #define COMM_DATA_TIMER_PERIOD (50000 - 1)   /* 1 S */
 
 /* Exported types ------------------------------------------------------------*/
-/* 串口 1 接收数据定义*/
+/* 采集板串口 接收数据定义*/
 typedef struct {
     uint8_t length;
     uint8_t buff[COMM_DATA_SER_RX_SIZE];
 } sComm_Data_RecvInfo;
 
-/* 串口 1 发送数据定义*/
+/* 采集板串口 发送数据定义*/
 typedef struct {
     uint8_t length;
     uint8_t buff[COMM_DATA_SER_TX_SIZE];
@@ -63,6 +63,12 @@ typedef enum {
     eComm_Data_Inbound_CMD_DATA = 0xB3, /* 采集数据帧 */
     eComm_Data_Inbound_CMD_OVER = 0x34, /* 采集数据完成帧 */
 } eComm_Data_Inbound_CMD;
+
+typedef struct {
+    uint8_t num;
+    uint8_t channel;
+    uint16_t data[120];
+} eComm_Data_Sample;
 
 /* Exported constants --------------------------------------------------------*/
 

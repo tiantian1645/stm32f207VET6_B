@@ -232,9 +232,11 @@ eTrayState tray_Motor_Run(void)
         }
     } else {
         cnt = 0;
-        dSPIN_Move(FWD, 350); /* 0.5 毫米 */
-        while (TRAY_MOTOR_IS_BUSY && ++cnt <= 600000)
-            ;
+        if (TRAY_MOTOR_IS_OPT_1) {
+            dSPIN_Move(FWD, 350); /* 0.5 毫米 */
+            while (TRAY_MOTOR_IS_BUSY && ++cnt <= 600000)
+                ;
+        }
         dSPIN_Go_Until(ACTION_RESET, REV, 40000);
         cnt = 0;
         while (TRAY_MOTOR_IS_BUSY && ++cnt <= 60000)

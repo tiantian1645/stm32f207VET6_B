@@ -44,6 +44,7 @@ static const unsigned char CRC8Table[256] = {
 };
 
 static sProtocol_ACK_Record gProtocol_ACK_Record = {0, 0, 0};
+static eComm_Data_Sample gComm_Data_Sample_Buffer;
 
 /* Private function prototypes -----------------------------------------------*/
 
@@ -305,7 +306,7 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
     uint16_t status = 0;
     int32_t step;
     uint8_t barcode_length;
-    eMotor_Fun motor_fun;
+    sMotor_Fun motor_fun;
 
     if (pInBuff[5] == eProtocoleRespPack_Client_ACK) { /* 收到对方回应帧 */
         comm_Out_Send_ACK_Notify(pInBuff[6]);          /* 通知串口发送任务 回应包收到 */
@@ -448,9 +449,55 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             break;
         case 0xD7:
             if (length == 8) {
-                motor_fun = pInBuff[6];
+                motor_fun.fun_type = pInBuff[6];
                 motor_Emit(&motor_fun, 0);
             }
+            break;
+
+        case eProtocolEmitPack_Client_CMD_START:                   /* 开始测量帧 0x01 */
+            barcode_length = pInBuff[3];                           /* 暂存帧号 */
+                                                                   /* TO DO */
+            pInBuff[3] = barcode_length;                           /* 取回帧号 */
+            error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 处理回应包 */
+            break;
+        case eProtocolEmitPack_Client_CMD_ABRUPT:                  /* 仪器测量取消命令帧 0x02 */
+            barcode_length = pInBuff[3];                           /* 暂存帧号 */
+                                                                   /* TO DO */
+            pInBuff[3] = barcode_length;                           /* 取回帧号 */
+            error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 处理回应包 */
+            break;
+        case eProtocolEmitPack_Client_CMD_CONFIG:                                              /* 测试项信息帧 0x03 */
+            barcode_length = pInBuff[3];                                                       /* 暂存帧号 */
+            buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, &pInBuff[6], length - 6); /* 保留数据区 修改包头包尾 */
+            comm_Data_SendTask_QueueEmitCover(pInBuff, length);                                /* 发送给数据采集板 */
+            pInBuff[3] = barcode_length;                                                       /* 取回帧号 */
+            error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff);                             /* 处理回应包 */
+            break;
+        case eProtocolEmitPack_Client_CMD_FORWARD:                 /* 打开托盘帧 0x04 */
+            barcode_length = pInBuff[3];                           /* 暂存帧号 */
+            motor_fun.fun_type = eMotor_Fun_Out;                   /* 配置电机动作套餐类型 出仓 */
+            motor_Emit(&motor_fun, 0);                             /* 交给电机任务 出仓 */
+            pInBuff[3] = barcode_length;                           /* 取回帧号 */
+            error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 处理回应包 */
+            break;
+        case eProtocolEmitPack_Client_CMD_REVERSE:                 /* 关闭托盘命令帧 0x05 */
+            barcode_length = pInBuff[3];                           /* 暂存帧号 */
+            motor_fun.fun_type = eMotor_Fun_In;                    /* 配置电机动作套餐类型 进仓 */
+            motor_Emit(&motor_fun, 0);                             /* 交给电机任务 进仓 */
+            pInBuff[3] = barcode_length;                           /* 取回帧号 */
+            error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 处理回应包 */
+            break;
+        case eProtocolEmitPack_Client_CMD_READ_ID:                 /* ID卡读取命令帧 0x06 */
+            barcode_length = pInBuff[3];                           /* 暂存帧号 */
+                                                                   /* TO DO */
+            pInBuff[3] = barcode_length;                           /* 取回帧号 */
+            error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 处理回应包 */
+            break;
+        case eProtocolEmitPack_Client_CMD_UPGRADE:                 /* 下位机升级命令帧 0x0F */
+            barcode_length = pInBuff[3];                           /* 暂存帧号 */
+                                                                   /* TO DO */
+            pInBuff[3] = barcode_length;                           /* 取回帧号 */
+            error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 处理回应包 */
             break;
         default:
             error |= PROTOCOL_PARSE_CMD_ERROR;
@@ -488,6 +535,7 @@ eProtocolParseResult protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
 eProtocolParseResult protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
 {
     eProtocolParseResult error = PROTOCOL_PARSE_OK;
+    uint8_t i;
 
     if (pInBuff[5] == eProtocoleRespPack_Client_ACK) { /* 收到对方回应帧 */
         comm_Data_Send_ACK_Notify(pInBuff[6]);         /* 通知串口发送任务 回应包收到 */
@@ -496,6 +544,16 @@ eProtocolParseResult protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
 
     gProtocol_ACK_IndexSet(eComm_Data, pInBuff[3] + 1); /* 其他命令帧 设置发送确认帧号 */
     switch (pInBuff[5]) {                               /* 进一步处理 功能码 */
+        case eComm_Data_Inbound_CMD_DATA:               /* 采集数据帧 */
+            gComm_Data_Sample_Buffer.num = pInBuff[6];
+            gComm_Data_Sample_Buffer.channel = pInBuff[7];
+            for (i = 0; i < pInBuff[6]; ++i) {
+                gComm_Data_Sample_Buffer.data[i] = pInBuff[8] + (pInBuff[9] << 8); /* 小端模式 */
+            }
+            break;
+        case eComm_Data_Inbound_CMD_OVER: /* 采集数据完成帧 */
+
+            break;
         default:
             error |= PROTOCOL_PARSE_CMD_ERROR;
             break;
