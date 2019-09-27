@@ -26,6 +26,7 @@ void white_Motor_Deactive(void);
 uint8_t white_Motor_Position_Is_Down(void);
 uint8_t white_Motor_Position_Is_In(void);
 uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout);
+uint8_t white_Motor_Toggle(uint32_t timeout);
 uint8_t white_Motor_Wait_Stop(uint32_t timeout);
 uint8_t white_Motor_PWM_Gen_In(void);
 uint8_t white_Motor_PWM_Gen_Out(void);

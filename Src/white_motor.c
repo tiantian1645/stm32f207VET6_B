@@ -247,7 +247,7 @@ uint8_t white_Motor_Wait_Stop(uint32_t timeout)
  */
 uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout)
 {
-    if (white_Motor_Position_Is_In()) { /* 光耦被遮挡 处于抬起状态 */
+    if (white_Motor_Position_Is_In()) { /* 光耦被遮挡 处于收起状态 */
         white_Motor_Deactive();
         gWhite_Motor_Position_Clr(); /* 清空位置记录 */
         if (dir == eMotorDir_REV) {  /* 仍然收到向上运动指令 */
@@ -280,6 +280,14 @@ uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout)
         return 0;
     }
     return 3;
+}
+
+uint8_t white_Motor_Toggle(uint32_t timeout)
+{
+    if (white_Motor_Position_Is_In()) {
+        return white_Motor_Run(eMotorDir_FWD, timeout);
+    }
+    return white_Motor_Run(eMotorDir_REV, timeout);
 }
 
 /**

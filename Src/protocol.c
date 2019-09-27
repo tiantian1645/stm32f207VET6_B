@@ -461,13 +461,17 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
 
         case eProtocolEmitPack_Client_CMD_START:                   /* 开始测量帧 0x01 */
             barcode_length = pInBuff[3];                           /* 暂存帧号 */
-            soft_timer_Temp_Pause();                               /* TO DO */
+            soft_timer_Temp_Pause();                               /* 暂停温度上送 */
+            motor_fun.fun_type = eMotor_Fun_Sample_Start;          /* 开始测试 */
+            motor_Emit(&motor_fun, 0);                             /* 提交到电机队列 */
             pInBuff[3] = barcode_length;                           /* 取回帧号 */
             error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 处理回应包 */
             break;
         case eProtocolEmitPack_Client_CMD_ABRUPT:                  /* 仪器测量取消命令帧 0x02 */
             barcode_length = pInBuff[3];                           /* 暂存帧号 */
-            soft_timer_Temp_Resume();                              /* TO DO */
+            soft_timer_Temp_Resume();                              /* 恢复温度上送 */
+            motor_fun.fun_type = eMotor_Fun_Sample_Stop;           /* 开始测试 */
+            motor_Emit(&motor_fun, 0);                             /* 提交到电机队列 */
             pInBuff[3] = barcode_length;                           /* 取回帧号 */
             error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 处理回应包 */
             break;

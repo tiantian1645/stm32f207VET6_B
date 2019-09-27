@@ -53,17 +53,18 @@ extern "C" {
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
 #define TASK_PRIORITY_SOFT_TIMER configTIMER_TASK_PRIORITY
-#define TASK_PRIORITY_MOTOR 3
-#define TASK_PRIORITY_STORGE	4
+#define TASK_PRIORITY_STORGE 4
 #define TASK_PRIORITY_COMM_OUT_RX 5
 #define TASK_PRIORITY_COMM_OUT_TX 6
 #define TASK_PRIORITY_COMM_MAIN_RX 7
 #define TASK_PRIORITY_COMM_MAIN_TX 8
 #define TASK_PRIORITY_COMM_DATA_RX 9
 #define TASK_PRIORITY_COMM_DATA_TX 10
+#define TASK_PRIORITY_MOTOR 11
+
 /* USER CODE END EM */
 
-void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef * htim);
 
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);

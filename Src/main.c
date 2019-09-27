@@ -35,6 +35,7 @@
 #include "motor.h"
 #include "soft_timer.h"
 #include "storge_task.h"
+#include "barcode_scan.h"
 
 /* USER CODE END Includes */
 
@@ -1093,6 +1094,8 @@ static void LED_Task(void * argument)
 
     xCnt = temp_Get_Conv_Cnt();
     last_cnt = xCnt;
+
+    barcode_Init();
 
     /* Infinite loop */
     for (;;) {

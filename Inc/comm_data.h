@@ -84,8 +84,10 @@ BaseType_t comm_Data_SendTask_QueueEmit(uint8_t * pdata, uint8_t length, uint32_
 #define comm_Data_SendTask_QueueEmitCover(pdata, length) comm_Data_SendTask_QueueEmit((pdata), (length), (COMM_DATA_SER_TX_RETRY_SUM))
 BaseType_t comm_Data_Send_ACK_Notify(uint8_t packIndex);
 void comm_Data_PD_Time_Deal_FromISR(void);
+void comm_Data_WH_Time_Deal_FromISR(void);
 uint8_t gComm_Data_RecvConfirm_Get(void);
 void gComm_Data_RecvConfirm_Set(uint8_t data);
+BaseType_t comm_Data_Wait_For_Sample_Complete(uint32_t timeout);
 void comm_Data_Sample_Data_Deal(uint8_t data_num, uint8_t channel, uint8_t * pSample);
 uint8_t comm_Data_Build_Sample_Conf_Pack(uint8_t * pData);
 

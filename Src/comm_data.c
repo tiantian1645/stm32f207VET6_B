@@ -17,11 +17,13 @@ extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart5;
 extern DMA_HandleTypeDef hdma_usart2_rx;
 extern TIM_HandleTypeDef htim6;
+extern TIM_HandleTypeDef htim7;
 
 /* Private define ------------------------------------------------------------*/
 #define COMM_DATA_SERIAL_INDEX eSerialIndex_2
 #define COMM_DATA_UART_HANDLE huart2
 #define COMM_DATA_TIM_PD htim6
+#define COMM_DATA_TIM_WH htim7
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -57,6 +59,7 @@ static uint8_t gComm_Data_SendInfoFlag = 1;   /* 加入发送队列缓存修改�
 static uint8_t gComm_Data_RecvConfirm = 0x5A; /* 启动定时发送后 接收到确认采样完成标志 */
 static uint8_t gComm_Data_TIM_StartFlag = 0;
 static sComm_Data_Sample_Conf_Unit gComm_Data_Sample_Confs[6];
+static xSemaphoreHandle gComm_Data_Sem_Sample_Finish = NULL;
 
 /* Private constants ---------------------------------------------------------*/
 
@@ -65,6 +68,7 @@ static void comm_Data_Recv_Task(void * argument);
 static void comm_Data_Send_Task(void * argument);
 
 static BaseType_t comm_Data_RecvTask_QueueEmit_ISR(uint8_t * pData, uint16_t length);
+static BaseType_t comm_Data_Give_Sample_Complete_ISR(void);
 
 /* Private user code ---------------------------------------------------------*/
 
@@ -180,12 +184,12 @@ void comm_Data_PD_Time_Deal_FromISR(void)
     if (1) {
         // if (i == 0 || gComm_Data_RecvConfirm_Get() + 1 == i) { /* 构造下一个数据包 */
         tick = xTaskGetTickCountFromISR();
-        data[0] = (tick >> 24) & 0xFF;
+        data[0] = i << 8;//(tick >> 24) & 0xFF;
         data[1] = (tick >> 16) & 0xFF;
         data[2] = (tick >> 8) & 0xFF;
         data[3] = (tick >> 0) & 0xFF;
         data[4] = 0x02;
-        length = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_START, data, 5);
+        length = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_START + 1, data, 5);
         ++i;
         retry = 1;
     } else {
@@ -202,6 +206,54 @@ void comm_Data_PD_Time_Deal_FromISR(void)
     if (HAL_UART_Transmit_DMA(&huart5, data, length) != HAL_OK) { /* 发送失败 */
         FL_Error_Handler(__FILE__, __LINE__);
     }
+    comm_Data_Give_Sample_Complete_ISR();
+}
+
+/**
+ * @brief  串口定时器中断处理 用于同步发送开始采集信号 WH
+ * @param  None
+ * @retval None
+ */
+void comm_Data_WH_Time_Deal_FromISR(void)
+{
+    static uint8_t i = 0, retry = 0, data[12];
+    static uint8_t length;
+    TickType_t tick;
+
+    if (i >= 6) {
+        i = 0;
+        retry = 0;
+        HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_WH); /* 停止定时器 */
+        gComm_Data_TIM_StartFlag = 0;
+        return;
+    }
+
+    if (1) {
+        // if (i == 0 || gComm_Data_RecvConfirm_Get() + 1 == i) { /* 构造下一个数据包 */
+        tick = xTaskGetTickCountFromISR();
+        data[0] = i;//(tick >> 24) & 0xFF;
+        data[1] = (tick >> 16) & 0xFF;
+        data[2] = (tick >> 8) & 0xFF;
+        data[3] = (tick >> 0) & 0xFF;
+        data[4] = 0x02;
+        length = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_START + 2, data, 5);
+        ++i;
+        retry = 1;
+    } else {
+        ++retry; /* 重发计数器加一 */
+        if (retry > 5) {
+            i = 0;
+            retry = 0;
+            HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_WH); /* 停止定时器 */
+            gComm_Data_TIM_StartFlag = 0;
+            return;
+        }
+    }
+
+    if (HAL_UART_Transmit_DMA(&huart5, data, length) != HAL_OK) { /* 发送失败 */
+        FL_Error_Handler(__FILE__, __LINE__);
+    }
+    comm_Data_Give_Sample_Complete_ISR();
 }
 
 /**
@@ -250,7 +302,10 @@ BaseType_t comm_Data_Sample_Load_Conf(uint8_t * pData)
  * @param  pSample     数据指针
  * @retval None
  */
-void comm_Data_Sample_Data_Deal(uint8_t data_num, uint8_t channel, uint8_t * pSample) {}
+void comm_Data_Sample_Data_Deal(uint8_t data_num, uint8_t channel, uint8_t * pSample)
+{
+    comm_Data_Give_Sample_Complete_ISR();
+}
 
 /**
  * @brief  串口任务初始化
@@ -281,6 +336,13 @@ void comm_Data_Init(void)
     if (comm_Data_SendQueue == NULL) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
+
+    /* 采样完成通知量 */
+    gComm_Data_Sem_Sample_Finish = xSemaphoreCreateBinary();
+    if (gComm_Data_Sem_Sample_Finish == NULL) {
+        FL_Error_Handler(__FILE__, __LINE__);
+    }
+    xSemaphoreTake(gComm_Data_Sem_Sample_Finish, 0);
 
     /* Start DMA */
     if (HAL_UART_Receive_DMA(&COMM_DATA_UART_HANDLE, gComm_Data_RX_dma_buffer, ARRAY_LEN(gComm_Data_RX_dma_buffer)) != HAL_OK) {
@@ -351,6 +413,24 @@ BaseType_t comm_Data_SendTask_QueueEmit(uint8_t * pData, uint8_t length, uint32_
 BaseType_t comm_Data_Send_ACK_Notify(uint8_t packIndex)
 {
     return xTaskNotify(comm_Data_Send_Task_Handle, packIndex, eSetValueWithoutOverwrite);
+}
+
+static BaseType_t comm_Data_Give_Sample_Complete_ISR(void)
+{
+    BaseType_t xWaken = pdFALSE;
+
+    if (gComm_Data_Sem_Sample_Finish == NULL) {
+        return pdFALSE;
+    }
+    return xSemaphoreGiveFromISR(gComm_Data_Sem_Sample_Finish, &xWaken);
+}
+
+BaseType_t comm_Data_Wait_For_Sample_Complete(uint32_t timeout)
+{
+    if (gComm_Data_Sem_Sample_Finish == NULL) {
+        return pdFALSE;
+    }
+    return xSemaphoreTake(gComm_Data_Sem_Sample_Finish, pdMS_TO_TICKS(timeout));
 }
 
 /**

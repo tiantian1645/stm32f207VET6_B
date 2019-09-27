@@ -44,13 +44,15 @@ typedef struct {
 
 /* 电机任务队列效果枚举 */
 typedef enum {
-    eMotor_Fun_In,   /* 入仓 */
-    eMotor_Fun_Out,  /* 出仓 */
-    eMotor_Fun_Scan, /* 扫码 */
-    eMotor_Fun_PD,   /* PD值测试 */
-    eMotor_Fun_WH,   /* 白底值测试 */
-    eMotor_Fun_SYK,  /* 交错 */
-    eMotor_Fun_RLB,  /* 回滚 */
+    eMotor_Fun_In,           /* 入仓 */
+    eMotor_Fun_Out,          /* 出仓 */
+    eMotor_Fun_Scan,         /* 扫码 */
+    eMotor_Fun_PD,           /* PD值测试 */
+    eMotor_Fun_WH,           /* 白底值测试 */
+    eMotor_Fun_Sample_Start, /* 开始测试 */
+    eMotor_Fun_Sample_Stop,  /* 停止测试 */
+    eMotor_Fun_SYK,          /* 交错 */
+    eMotor_Fun_RLB,          /* 回滚 */
 } eMotor_Fun;
 
 /* 电机任务队列效果结构 */
