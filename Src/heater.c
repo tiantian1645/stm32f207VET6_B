@@ -29,8 +29,8 @@ static sPID_Ctrl_Conf gHeater_BTM_PID_Conf;
 static sPID_Ctrl_Conf gHeater_TOP_PID_Conf;
 
 // Control loop input,output and setpoint variables
-static float btm_input = 0, btm_output = 0, btm_setpoint = 38;
-static float top_input = 0, top_output = 0, top_setpoint = 38;
+static float btm_input = 0, btm_output = 0, btm_setpoint = 37;
+static float top_input = 0, top_output = 0, top_setpoint = 37;
 
 /* Private constants ---------------------------------------------------------*/
 
@@ -99,6 +99,11 @@ void heater_BTM_Output_Keep_Deal(void)
     if (pid_ctrl_need_compute(&gHeater_BTM_PID_Conf)) {
         // Read process feedback
         btm_input = temp_Get_Temp_Data_BTM();
+        if (btm_input < 36.5) {
+            btm_output = gHeater_BTM_PID_Conf.omax;
+            beater_TOP_Output_Ctl(btm_output / gHeater_BTM_PID_Conf.omax);
+            return;
+        }
         // Compute new PID output value
         pid_ctrl_compute(&gHeater_BTM_PID_Conf);
         // Change actuator value
@@ -171,7 +176,12 @@ void heater_TOP_Output_Keep_Deal(void)
     // Check if need to compute PID
     if (pid_ctrl_need_compute(&gHeater_TOP_PID_Conf)) {
         // Read process feedback
-        top_input = temp_Get_Temp_Data_TOP();
+        top_input = (temp_Get_Temp_Data_TOP() + temp_Get_Temp_Data_BTM()) / 2; /* 弥补下加热体功率不够 上下加热体温度权重比 1:1 */
+        if (top_input < 36) {
+            top_output = gHeater_TOP_PID_Conf.omax;
+            beater_TOP_Output_Ctl(top_output / gHeater_TOP_PID_Conf.omax);
+            return;
+        }
         // Compute new PID output value
         pid_ctrl_compute(&gHeater_TOP_PID_Conf);
         // Change actuator value

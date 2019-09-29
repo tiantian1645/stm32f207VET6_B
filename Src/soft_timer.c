@@ -133,5 +133,5 @@ void soft_timer_Temp_Init(void)
 void soft_timer_Init(void)
 {
     soft_timer_Heater_Init();
-    soft_timer_Temp_Init();
+    // soft_timer_Temp_Init();
 }

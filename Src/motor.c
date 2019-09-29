@@ -93,17 +93,23 @@ uint8_t motor_Emit(sMotor_Fun * pFun_type, uint32_t timeout)
     return 0;
 }
 
+/**
+ * @brief  电机任务 托盘运动 附带运动上加热体
+ * @note   托盘电机运动前 处理上加热体
+ * @param  index 托盘位置索引
+ * @retval None
+ */
 void motor_Tray_Move_By_Index(eTrayIndex index)
 {
     uint8_t buffer[8];
 
-    if (heat_Motor_Run(eMotorDir_FWD, 3000) != 0) { /* 抬起上加热体电机 失败 */
-        buffer[0] = 0x00;
-        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1);
+    if (heat_Motor_Position_Is_Up() == 0 && heat_Motor_Run(eMotorDir_FWD, 3000) != 0) { /* 上加热体光耦位置未被阻挡 则抬起上加热体电机 */
+        buffer[0] = 0x00;                                                               /* 抬起上加热体失败 */
+        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
         return;
     };
     if (tray_Move_By_Index(index, 5000) == eTrayState_OK) { /* 运动托盘电机 */
-        buffer[0] = 0x01;
+        buffer[0] = 0x01;                                   /* 托盘在检测位置 */
         comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1);
     } else {
         buffer[0] = 0x00;
@@ -122,6 +128,8 @@ static void motor_Task(void * argument)
     sMotor_Fun mf;
 
     motor_Resource_Init();
+    heat_Motor_Run(eMotorDir_REV, 3000); /* 砸下上加热体电机 */
+
     for (;;) {
         xResult = xQueueReceive(motor_Fun_Queue_Handle, &mf, portMAX_DELAY);
         if (xResult != pdPASS) {
