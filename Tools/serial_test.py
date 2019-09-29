@@ -1,5 +1,5 @@
 from bytes_helper import bytesPuttyPrint
-import dc101_pack
+import dc201_pack
 import serial
 import loguru
 import stackprinter
@@ -12,7 +12,7 @@ def dep32(n):
 logger = loguru.logger
 logger.add(r"E:\pylog\stm32f207_serial.log")
 
-dd = dc101_pack.DC101_TEST_PACK()
+dd = dc201_pack.DC201_PACK()
 
 ser = serial.Serial(port=None, baudrate=115200, timeout=1)
 ser.port = "COM13"

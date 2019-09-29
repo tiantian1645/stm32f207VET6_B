@@ -177,10 +177,10 @@ uint8_t protocol_has_head(uint8_t * pBuff, uint16_t length)
  */
 uint16_t protocol_has_tail(uint8_t * pBuff, uint16_t length)
 {
-    if (pBuff[2] + 5 > length) { /* 长度不足 */
+    if (pBuff[2] + 4 > length) { /* 长度不足 */
         return 0;
     }
-    return pBuff[2] + 5; /* 应有长度 */
+    return pBuff[2] + 4; /* 应有长度 */
 }
 
 /**
@@ -221,7 +221,7 @@ uint8_t buildPackOrigin(eProtocol_COMM_Index index, uint8_t cmdType, uint8_t * p
     }
     pData[0] = 0x69;
     pData[1] = 0xAA;
-    pData[2] = 2 + dataLength;
+    pData[2] = 3 + dataLength;
     pData[3] = gProtocol_ACK_IndexGet(index);
     pData[4] = PROTOCOL_DEVICE_ID_CTRL;
     pData[5] = cmdType;
@@ -434,9 +434,9 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             break;
         case 0xD4:
             if (pInBuff[6] == 0) {
-                white_Motor_Run(eMotorDir_FWD, 3000);
+                white_Motor_PD();
             } else {
-                white_Motor_Run(eMotorDir_REV, 3000);
+                white_Motor_WH();
             }
             break;
         case 0xD5:
@@ -475,12 +475,12 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             pInBuff[3] = barcode_length;                           /* 取回帧号 */
             error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 处理回应包 */
             break;
-        case eProtocolEmitPack_Client_CMD_CONFIG:                                               /* 测试项信息帧 0x03 */
-            barcode_length = pInBuff[3];                                                        /* 暂存帧号 */
-            buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, &pInBuff[6], length - 6); /* 保留数据区 修改包头包尾 */
-            comm_Data_SendTask_QueueEmitCover(pInBuff, length);                                 /* 发送给数据采集板 */
-            pInBuff[3] = barcode_length;                                                        /* 取回帧号 */
-            error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff);                              /* 处理回应包 */
+        case eProtocolEmitPack_Client_CMD_CONFIG:                  /* 测试项信息帧 0x03 */
+            barcode_length = pInBuff[3];                           /* 暂存帧号 */
+            comm_Data_Sample_Dump_Conf(&pInBuff[6]);               /* 保存测试配置 */
+            comm_Data_Sample_Load_Conf(pInBuff);                   /* 发送给数据采集板 */
+            pInBuff[3] = barcode_length;                           /* 取回帧号 */
+            error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 处理回应包 */
             break;
         case eProtocolEmitPack_Client_CMD_FORWARD:                 /* 打开托盘帧 0x04 */
             barcode_length = pInBuff[3];                           /* 暂存帧号 */
@@ -561,7 +561,7 @@ eProtocolParseResult protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
             }
             break;
         case eComm_Data_Inbound_CMD_OVER: /* 采集数据完成帧 */
-
+            comm_Data_Give_Sample_Complete();
             break;
         default:
             error |= PROTOCOL_PARSE_CMD_ERROR;

@@ -8,6 +8,8 @@
 /* Private includes ----------------------------------------------------------*/
 
 /* Exported macro ------------------------------------------------------------*/
+#define white_Motor_PD() white_Motor_Run(eMotorDir_FWD, 3000)
+#define white_Motor_WH() white_Motor_Run(eMotorDir_REV, 3000)
 
 /* Exported types ------------------------------------------------------------*/
 

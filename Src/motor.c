@@ -120,7 +120,6 @@ static void motor_Task(void * argument)
 {
     BaseType_t xResult = pdFALSE;
     sMotor_Fun mf;
-    uint8_t i;
 
     motor_Resource_Init();
     for (;;) {
@@ -145,39 +144,23 @@ static void motor_Task(void * argument)
             case eMotor_Fun_PD:                         /* PD值测试 */
                 motor_Tray_Move_By_Index(eTrayIndex_0); /* 运动托盘电机 */
                 heat_Motor_Run(eMotorDir_REV, 3000);    /* 砸下上加热体电机 */
-                white_Motor_Run(eMotorDir_FWD, 3000);   /* 运动白板电机 */
+                white_Motor_PD();                       /* 运动白板电机 */
                 break;
             case eMotor_Fun_WH:                         /* 白底值测试 */
                 motor_Tray_Move_By_Index(eTrayIndex_0); /* 运动托盘电机 */
                 heat_Motor_Run(eMotorDir_REV, 3000);    /* 砸下上加热体电机 */
-                white_Motor_Run(eMotorDir_REV, 3000);   /* 运动白板电机 */
+                white_Motor_WH();                       /* 运动白板电机 */
                 break;
             case eMotor_Fun_Sample_Start:               /* 准备测试 */
                 motor_Tray_Move_By_Index(eTrayIndex_2); /* 运动托盘电机 */
                 heat_Motor_Run(eMotorDir_REV, 3000);    /* 砸下上加热体电机 */
 
-                white_Motor_Run(eMotorDir_REV, 3000); /* 运动白板电机 */
-                HAL_TIM_Base_Start_IT(&htim6);        /* 启动发送定时器 PD */
+                white_Motor_PD();         /* 运动白板电机 */
+                comm_Data_Sample_Start(); /*启动定时器同步发包*/
 
-                if (comm_Data_Wait_For_Sample_Complete(10000) != pdTRUE) { /* 等待采样完成 */
-                    heat_Motor_Run(eMotorDir_FWD, 3000);                   /* 采样完成 抬起加热体电机 */
-                    break;
+                while (comm_Data_Wait_For_Sample_Complete(5000)) { /* 等待采样完成 */
+                    white_Motor_Toggle(3000);                      /* 切换白板电机位置 */
                 }
-
-                white_Motor_Run(eMotorDir_FWD, 3000);                      /* 运动白板电机 */
-                HAL_TIM_Base_Start_IT(&htim7);                             /* 启动发送定时器 WH */
-                if (comm_Data_Wait_For_Sample_Complete(10000) != pdTRUE) { /* 等待采样完成 */
-                    heat_Motor_Run(eMotorDir_FWD, 3000);                   /* 采样完成 抬起加热体电机 */
-                    break;
-                }
-
-                for (i = 0; i < 10; ++i) {                                     /* 重复切换白板位置 */
-                    white_Motor_Toggle(3000);                                  /* 运动白板电机 */
-                    if (comm_Data_Wait_For_Sample_Complete(10000) != pdTRUE) { /* 等待采样完成 */
-                        break;
-                    }
-                }
-
                 heat_Motor_Run(eMotorDir_FWD, 3000); /* 采样完成 抬起加热体电机 */
                 break;
             case eMotor_Fun_Sample_Stop:                        /* 终止测试 */

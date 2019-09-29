@@ -17,13 +17,11 @@ extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart5;
 extern DMA_HandleTypeDef hdma_usart2_rx;
 extern TIM_HandleTypeDef htim6;
-extern TIM_HandleTypeDef htim7;
 
 /* Private define ------------------------------------------------------------*/
 #define COMM_DATA_SERIAL_INDEX eSerialIndex_2
 #define COMM_DATA_UART_HANDLE huart2
 #define COMM_DATA_TIM_PD htim6
-#define COMM_DATA_TIM_WH htim7
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -60,6 +58,8 @@ static uint8_t gComm_Data_RecvConfirm = 0x5A; /* 启动定时发送后 接收到
 static uint8_t gComm_Data_TIM_StartFlag = 0;
 static sComm_Data_Sample_Conf_Unit gComm_Data_Sample_Confs[6];
 static xSemaphoreHandle gComm_Data_Sem_Sample_Finish = NULL;
+static uint32_t gComm_Data_Sample_ISR_Cnt = 0;
+static uint8_t gCoMM_Data_Sample_ISR_Buffer[16];
 
 /* Private constants ---------------------------------------------------------*/
 
@@ -162,98 +162,57 @@ void comm_Data_DMA_TX_Error(void)
     xSemaphoreGive(comm_Data_Send_Sem); /* DMA 发送异常 释放信号量 */
 }
 
+void comm_Data_PD_Conf_Set(uint8_t * pData) {}
+
+void comm_Data_PD_Conf_Apply(uint8_t * pData) {}
+
 /**
- * @brief  串口定时器中断处理 用于同步发送开始采集信号 PD
+ * @brief  串口定时器中断处理 用于同步发送开始采集信号
+ * @note   200 mS 回调一次
  * @param  None
  * @retval None
  */
 void comm_Data_PD_Time_Deal_FromISR(void)
 {
-    static uint8_t i = 0, retry = 0, data[12];
-    static uint8_t length;
+    static uint8_t length, last_idx = 0;
+    static uint32_t start_cnt;
     TickType_t tick;
 
-    if (i >= 6) {
-        i = 0;
-        retry = 0;
-        HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_PD); /* 停止定时器 */
-        gComm_Data_TIM_StartFlag = 0;
-        return;
-    }
+    if (gComm_Data_Sample_ISR_Cnt % 50 == 0) { /* 每50次 200 mS * 50 = 10S 构造一个新包  */
+        // gCoMM_Data_Sample_ISR_Buffer[0] = (gComm_Data_Sample_ISR_Cnt / 50) % 2;                               /* 采样类型 */
+        // length = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_START, gCoMM_Data_Sample_ISR_Buffer, 1); /* 构造下一个数据包 */
+        // last_idx = gCoMM_Data_Sample_ISR_Buffer[4] + 1;                                                       /* 记录帧号 */
 
-    if (1) {
-        // if (i == 0 || gComm_Data_RecvConfirm_Get() + 1 == i) { /* 构造下一个数据包 */
         tick = xTaskGetTickCountFromISR();
-        data[0] = i << 8;//(tick >> 24) & 0xFF;
-        data[1] = (tick >> 16) & 0xFF;
-        data[2] = (tick >> 8) & 0xFF;
-        data[3] = (tick >> 0) & 0xFF;
-        data[4] = 0x02;
-        length = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_START + 1, data, 5);
-        ++i;
-        retry = 1;
-    } else {
-        ++retry; /* 重发计数器加一 */
-        if (retry > 5) {
-            i = 0;
-            retry = 0;
-            HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_PD); /* 停止定时器 */
+        gCoMM_Data_Sample_ISR_Buffer[0] = (tick >> 24) & 0xFF;
+        gCoMM_Data_Sample_ISR_Buffer[1] = (tick >> 16) & 0xFF;
+        gCoMM_Data_Sample_ISR_Buffer[2] = (tick >> 8) & 0xFF;
+        gCoMM_Data_Sample_ISR_Buffer[3] = (tick >> 0) & 0xFF;
+        length = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_START, gCoMM_Data_Sample_ISR_Buffer, 4); /* 构造下一个数据包 */
+
+        if (HAL_UART_Transmit_DMA(&huart5, gCoMM_Data_Sample_ISR_Buffer, length) != HAL_OK) { /* 首次发送 */
+            FL_Error_Handler(__FILE__, __LINE__);
+        }
+        gComm_Data_TIM_StartFlag = 1;
+        start_cnt = gComm_Data_Sample_ISR_Cnt;
+    } else if (gComm_Data_TIM_StartFlag == 1 && gComm_Data_RecvConfirm_Get() != last_idx) { /* 其余时刻处理是否需要重发 收到的回应帧号不匹配 */
+        tick = xTaskGetTickCountFromISR();
+        gCoMM_Data_Sample_ISR_Buffer[0] = (tick >> 24) & 0xFF;
+        gCoMM_Data_Sample_ISR_Buffer[1] = (tick >> 16) & 0xFF;
+        gCoMM_Data_Sample_ISR_Buffer[2] = (tick >> 8) & 0xFF;
+        gCoMM_Data_Sample_ISR_Buffer[3] = (tick >> 0) & 0xFF;
+        length = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_START, gCoMM_Data_Sample_ISR_Buffer, 4); /* 构造下一个数据包 */
+        if (HAL_UART_Transmit_DMA(&huart5, gCoMM_Data_Sample_ISR_Buffer, length) != HAL_OK) {                 /* 执行重发 */
+            FL_Error_Handler(__FILE__, __LINE__);
+        }
+        if (gComm_Data_Sample_ISR_Cnt - start_cnt >= 3 - 1) { /* 重发数目达到3次 放弃采样测试 */
+            HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_PD);     /* 停止定时器 */
             gComm_Data_TIM_StartFlag = 0;
+            gComm_Data_Sample_ISR_Cnt = 0;
             return;
         }
     }
-
-    if (HAL_UART_Transmit_DMA(&huart5, data, length) != HAL_OK) { /* 发送失败 */
-        FL_Error_Handler(__FILE__, __LINE__);
-    }
-    comm_Data_Give_Sample_Complete_ISR();
-}
-
-/**
- * @brief  串口定时器中断处理 用于同步发送开始采集信号 WH
- * @param  None
- * @retval None
- */
-void comm_Data_WH_Time_Deal_FromISR(void)
-{
-    static uint8_t i = 0, retry = 0, data[12];
-    static uint8_t length;
-    TickType_t tick;
-
-    if (i >= 6) {
-        i = 0;
-        retry = 0;
-        HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_WH); /* 停止定时器 */
-        gComm_Data_TIM_StartFlag = 0;
-        return;
-    }
-
-    if (1) {
-        // if (i == 0 || gComm_Data_RecvConfirm_Get() + 1 == i) { /* 构造下一个数据包 */
-        tick = xTaskGetTickCountFromISR();
-        data[0] = i;//(tick >> 24) & 0xFF;
-        data[1] = (tick >> 16) & 0xFF;
-        data[2] = (tick >> 8) & 0xFF;
-        data[3] = (tick >> 0) & 0xFF;
-        data[4] = 0x02;
-        length = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_START + 2, data, 5);
-        ++i;
-        retry = 1;
-    } else {
-        ++retry; /* 重发计数器加一 */
-        if (retry > 5) {
-            i = 0;
-            retry = 0;
-            HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_WH); /* 停止定时器 */
-            gComm_Data_TIM_StartFlag = 0;
-            return;
-        }
-    }
-
-    if (HAL_UART_Transmit_DMA(&huart5, data, length) != HAL_OK) { /* 发送失败 */
-        FL_Error_Handler(__FILE__, __LINE__);
-    }
-    comm_Data_Give_Sample_Complete_ISR();
+    ++gComm_Data_Sample_ISR_Cnt;
 }
 
 /**
@@ -266,10 +225,31 @@ uint8_t comm_Data_Sample_Start(void)
     if (gComm_Data_TIM_StartFlag == 1) {
         return 1;
     }
-
-    gComm_Data_TIM_StartFlag = 1;
+    gComm_Data_TIM_StartFlag = 0;
+    gComm_Data_Sample_ISR_Cnt = 0;
     HAL_TIM_Base_Start_IT(&COMM_DATA_TIM_PD); /* 启动定时器 开始测试 */
 
+    return 0;
+}
+
+/**
+ * @brief  采样板配置数据包
+ * @param  pData 结果存放指针
+ * @retval 数据包长度
+ */
+BaseType_t comm_Data_Sample_Dump_Conf(uint8_t * pData)
+{
+    uint8_t i;
+
+    if (ARRAY_LEN(gComm_Data_Sample_Confs) == 0) {
+        return 1;
+    }
+
+    for (i = 0; i < ARRAY_LEN(gComm_Data_Sample_Confs); ++i) {
+        gComm_Data_Sample_Confs[i].assay = pData[3 * i + 0];
+        gComm_Data_Sample_Confs[i].radiant = pData[3 * i + 1];
+        gComm_Data_Sample_Confs[i].points_num = (pData[3 * i + 2] > 120) ? (120) : (pData[3 * i + 2]);
+    }
     return 0;
 }
 
@@ -422,7 +402,22 @@ static BaseType_t comm_Data_Give_Sample_Complete_ISR(void)
     if (gComm_Data_Sem_Sample_Finish == NULL) {
         return pdFALSE;
     }
-    return xSemaphoreGiveFromISR(gComm_Data_Sem_Sample_Finish, &xWaken);
+    if (xSemaphoreGiveFromISR(gComm_Data_Sem_Sample_Finish, &xWaken) == pdPASS) {
+        portYIELD_FROM_ISR(xWaken);
+        return pdTRUE;
+    }
+    return pdFALSE;
+}
+
+BaseType_t comm_Data_Give_Sample_Complete(void)
+{
+    if (gComm_Data_Sem_Sample_Finish == NULL) {
+        return pdFALSE;
+    }
+    if (xSemaphoreGive(gComm_Data_Sem_Sample_Finish) == pdPASS) {
+        return pdTRUE;
+    }
+    return pdFALSE;
 }
 
 BaseType_t comm_Data_Wait_For_Sample_Complete(uint32_t timeout)

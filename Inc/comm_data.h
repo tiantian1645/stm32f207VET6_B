@@ -17,9 +17,7 @@
 #define COMM_DATA_SER_TX_RETRY_SUM ((COMM_DATA_SER_TX_RETRY_NUM) * (COMM_DATA_SER_TX_RETRY_INT))
 
 #define COMM_DATA_PD_TIMER_PRESCALER (12000 - 1)
-#define COMM_DATA_PD_TIMER_PERIOD (50000 - 1) /* 10 S */
-#define COMM_DATA_WH_TIMER_PRESCALER (12000 - 1)
-#define COMM_DATA_WH_TIMER_PERIOD (50000 - 1) /* 10 S */
+#define COMM_DATA_PD_TIMER_PERIOD (1000 - 1) /* 200 mS */
 
 /* Exported types ------------------------------------------------------------*/
 /* 采集板串口 接收数据定义*/
@@ -83,13 +81,17 @@ void comm_Data_DMA_TX_Error(void);
 BaseType_t comm_Data_SendTask_QueueEmit(uint8_t * pdata, uint8_t length, uint32_t timeout);
 #define comm_Data_SendTask_QueueEmitCover(pdata, length) comm_Data_SendTask_QueueEmit((pdata), (length), (COMM_DATA_SER_TX_RETRY_SUM))
 BaseType_t comm_Data_Send_ACK_Notify(uint8_t packIndex);
+
+uint8_t comm_Data_Sample_Start(void);
 void comm_Data_PD_Time_Deal_FromISR(void);
-void comm_Data_WH_Time_Deal_FromISR(void);
 uint8_t gComm_Data_RecvConfirm_Get(void);
 void gComm_Data_RecvConfirm_Set(uint8_t data);
 BaseType_t comm_Data_Wait_For_Sample_Complete(uint32_t timeout);
 void comm_Data_Sample_Data_Deal(uint8_t data_num, uint8_t channel, uint8_t * pSample);
 uint8_t comm_Data_Build_Sample_Conf_Pack(uint8_t * pData);
+BaseType_t comm_Data_Give_Sample_Complete(void);
+BaseType_t comm_Data_Sample_Dump_Conf(uint8_t * pData);
+BaseType_t comm_Data_Sample_Load_Conf(uint8_t * pData);
 
 /* Private defines -----------------------------------------------------------*/
 

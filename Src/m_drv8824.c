@@ -110,7 +110,7 @@ void m_drv8824_Init(void)
         Error_Handler();
     }
     heat_Motor_Run(eMotorDir_FWD, 3000);
-    white_Motor_Run(eMotorDir_REV, 3000);
+    white_Motor_WH();
 }
 
 /**

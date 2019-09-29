@@ -20,7 +20,7 @@ extern TIM_HandleTypeDef htim1;
 /* Private macro -------------------------------------------------------------*/
 #define WHITE_MOTOR_PCS_MAX 40000
 #define WHITE_MOTOR_PCS_MIN 24000
-#define WHITE_MOTOR_PCS_GAP 300
+#define WHITE_MOTOR_PCS_GAP 400
 #define WHITE_MOTOR_PCS_UNT 5
 #define WHITE_MOTOR_PCS_SUM 476
 
@@ -231,6 +231,9 @@ uint8_t white_Motor_Wait_Stop(uint32_t timeout)
         default:
             do {
                 if (white_Motor_Position_Is_Out()) {
+                    white_Motor_Deactive();
+                    PWM_AW_Stop();
+                    m_drv8824_release();
                     return 0;
                 }
                 vTaskDelay(1);
@@ -275,7 +278,7 @@ uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout)
 
     PWM_AW_IRQ_CallBcak();
 
-    if (white_Motor_Wait_Stop(timeout)) {
+    if (white_Motor_Wait_Stop(timeout) == 0) {
         m_drv8824_release();
         return 0;
     }
