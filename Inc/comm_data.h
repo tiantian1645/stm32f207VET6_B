@@ -83,13 +83,20 @@ BaseType_t comm_Data_SendTask_QueueEmit(uint8_t * pdata, uint8_t length, uint32_
 BaseType_t comm_Data_Send_ACK_Notify(uint8_t packIndex);
 
 uint8_t comm_Data_Sample_Start(void);
+uint8_t comm_Data_Sample_Force_Stop(void);
+
 void comm_Data_PD_Time_Deal_FromISR(void);
 uint8_t gComm_Data_RecvConfirm_Get(void);
 void gComm_Data_RecvConfirm_Set(uint8_t data);
-BaseType_t comm_Data_Wait_For_Sample_Complete(uint32_t timeout);
+
+void gComm_Data_TIM_StartFlag_Clear(void);
+
 void comm_Data_Sample_Data_Deal(uint8_t data_num, uint8_t channel, uint8_t * pSample);
 uint8_t comm_Data_Build_Sample_Conf_Pack(uint8_t * pData);
-BaseType_t comm_Data_Give_Sample_Complete(void);
+BaseType_t comm_Data_Sample_Complete_Wait(uint32_t timeout);
+BaseType_t comm_Data_Sample_Complete_Give(void);
+BaseType_t comm_Data_Sample_Complete_Check(void);
+
 BaseType_t comm_Data_Sample_Dump_Conf(uint8_t * pData);
 BaseType_t comm_Data_Sample_Load_Conf(uint8_t * pData);
 
