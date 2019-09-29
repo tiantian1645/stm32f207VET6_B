@@ -13,6 +13,7 @@
 #include "comm_out.h"
 #include "comm_main.h"
 #include "comm_data.h"
+#include "beep.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim4;
@@ -46,6 +47,7 @@ void soft_timer_Heater_Call_Back(TimerHandle_t xTimer)
 {
     heater_BTM_Output_Keep_Deal();
     heater_TOP_Output_Keep_Deal();
+    beep_Deal(SOFT_TIMER_HEATER_PER);
 }
 
 /**
@@ -137,6 +139,7 @@ void soft_timer_Temp_Init(void)
  */
 void soft_timer_Init(void)
 {
+    beep_Init();
     soft_timer_Heater_Init();
     soft_timer_Temp_Init();
 }

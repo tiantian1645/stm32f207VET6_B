@@ -11,6 +11,7 @@
 #include "heat_motor.h"
 #include "white_motor.h"
 #include "motor.h"
+#include "beep.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim9;
@@ -456,6 +457,17 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             break;
         case 0xD8:
             HAL_TIM_Base_Start_IT(&htim6);
+            break;
+        case 0xD9:
+            if (length < 7) {
+                beep_Start();
+            } else {
+                if (pInBuff[6] == 0) {
+                    beep_Stop();
+                } else {
+                    beep_Start();
+                }
+            }
             break;
 
         case eProtocolEmitPack_Client_CMD_START:                   /* 开始测量帧 0x01 */
