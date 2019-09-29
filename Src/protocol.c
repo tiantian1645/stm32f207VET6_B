@@ -11,7 +11,6 @@
 #include "heat_motor.h"
 #include "white_motor.h"
 #include "motor.h"
-#include "soft_timer.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim9;
@@ -461,7 +460,6 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
 
         case eProtocolEmitPack_Client_CMD_START:                   /* 开始测量帧 0x01 */
             barcode_length = pInBuff[3];                           /* 暂存帧号 */
-            soft_timer_Temp_Pause();                               /* 暂停温度上送 */
             motor_fun.fun_type = eMotor_Fun_Sample_Start;          /* 开始测试 */
             motor_Emit(&motor_fun, 0);                             /* 提交到电机队列 */
             pInBuff[3] = barcode_length;                           /* 取回帧号 */
@@ -469,7 +467,6 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             break;
         case eProtocolEmitPack_Client_CMD_ABRUPT:                  /* 仪器测量取消命令帧 0x02 */
             barcode_length = pInBuff[3];                           /* 暂存帧号 */
-            soft_timer_Temp_Resume();                              /* 恢复温度上送 */
             motor_fun.fun_type = eMotor_Fun_Sample_Stop;           /* 开始测试 */
             motor_Emit(&motor_fun, 0);                             /* 提交到电机队列 */
             pInBuff[3] = barcode_length;                           /* 取回帧号 */
@@ -551,17 +548,21 @@ eProtocolParseResult protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
         return PROTOCOL_PARSE_OK;                      /* 直接返回 */
     }
 
-    gProtocol_ACK_IndexSet(eComm_Data, pInBuff[3] + 1); /* 其他命令帧 设置发送确认帧号 */
-    switch (pInBuff[5]) {                               /* 进一步处理 功能码 */
-        case eComm_Data_Inbound_CMD_DATA:               /* 采集数据帧 */
-            gComm_Data_Sample_Buffer.num = pInBuff[6];
-            gComm_Data_Sample_Buffer.channel = pInBuff[7];
-            for (i = 0; i < pInBuff[6]; ++i) {
+    gProtocol_ACK_IndexSet(eComm_Data, pInBuff[3] + 1);                            /* 其他命令帧 设置发送确认帧号 */
+    switch (pInBuff[5]) {                                                          /* 进一步处理 功能码 */
+        case eComm_Data_Inbound_CMD_DATA:                                          /* 采集数据帧 */
+            gComm_Data_Sample_Buffer.num = pInBuff[6];                             /* 数据个数 */
+            gComm_Data_Sample_Buffer.channel = pInBuff[7];                         /* 通道编码 */
+            for (i = 0; i < pInBuff[6]; ++i) {                                     /* 具体数据 */
                 gComm_Data_Sample_Buffer.data[i] = pInBuff[8] + (pInBuff[9] << 8); /* 小端模式 */
             }
+            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_SAMP_DATA, &pInBuff[6], gComm_Data_Sample_Buffer.num + 2); /* 发出给上位机 */
+            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_SAMP_DATA, &pInBuff[6], gComm_Data_Sample_Buffer.num + 2); /* 调试输出 */
             break;
-        case eComm_Data_Inbound_CMD_OVER: /* 采集数据完成帧 */
-            comm_Data_Give_Sample_Complete();
+        case eComm_Data_Inbound_CMD_OVER:                                                                /* 采集数据完成帧 */
+            comm_Data_Sample_Complete_Give();                                                            /* 释放采样完成信号量 */
+            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_SAMP_OVER, pInBuff, 0); /* 发出给上位机 */
+            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_SAMP_OVER, pInBuff, 0);  /* 调试输出 */
             break;
         default:
             error |= PROTOCOL_PARSE_CMD_ERROR;

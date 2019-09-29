@@ -46,7 +46,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define PRINT_LOG
+// #define PRINT_LOG
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -1060,7 +1061,7 @@ static void LED_Task(void * argument)
     barcode_Init();
 
     /* Infinite loop */
-    printf("temp start | %d\n", xTaskGetTickCount());
+    printf("temp start | %ld\n", xTaskGetTickCount());
 
     for (;;) {
         HAL_GPIO_TogglePin(LED_RUN_GPIO_Port, LED_RUN_Pin);
@@ -1070,10 +1071,10 @@ static void LED_Task(void * argument)
         if (xTick - last_tick > 1000) {
             xCnt = temp_Get_Conv_Cnt();
             temp_env = temp_Get_Temp_Data_ENV();
-            // printf("task tick | %4lu | adc cnt | %4lu | ", xTick - last_tick, xCnt - last_cnt);
-            // printf("env temp | %d.%03d \n", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
+            printf("task tick | %4lu | adc cnt | %4lu | ", xTick - last_tick, xCnt - last_cnt);
+            printf("env temp | %d.%03d \n", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
             temp_env = temp_Get_Temp_Data_BTM();
-            printf("tick | %d | btm temp | %d.%03d | ", xTaskGetTickCount(), (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
+            printf("tick | %ld | btm temp | %d.%03d | ", xTaskGetTickCount(), (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
             temp_env = temp_Get_Temp_Data_TOP();
             printf("top temp | %d.%03d |\n", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
             last_cnt = xCnt;

@@ -126,9 +126,9 @@ static void motor_Task(void * argument)
 {
     BaseType_t xResult = pdFALSE;
     sMotor_Fun mf;
+    uint32_t cnt = 0;
 
     motor_Resource_Init();
-    heat_Motor_Run(eMotorDir_REV, 3000); /* 砸下上加热体电机 */
 
     for (;;) {
         xResult = xQueueReceive(motor_Fun_Queue_Handle, &mf, portMAX_DELAY);
@@ -163,13 +163,21 @@ static void motor_Task(void * argument)
                 motor_Tray_Move_By_Index(eTrayIndex_2); /* 运动托盘电机 */
                 heat_Motor_Run(eMotorDir_REV, 3000);    /* 砸下上加热体电机 */
 
-                white_Motor_PD();         /* 运动白板电机 */
-                comm_Data_Sample_Start(); /*启动定时器同步发包*/
+                white_Motor_PD();                  /* 运动白板电机 */
+                comm_Data_Sample_Complete_Wait(0); /* 标记开始采样 获取采样完成信号量 */
+                comm_Data_Sample_Start();          /*启动定时器同步发包*/
 
-                while (comm_Data_Wait_For_Sample_Complete(5000)) { /* 等待采样完成 */
-                    white_Motor_Toggle(3000);                      /* 切换白板电机位置 */
+                while (comm_Data_Sample_Complete_Wait(5000)) { /* 等待采样完成 */
+                    white_Motor_Toggle(3000);                  /* 切换白板电机位置 */
                 }
                 heat_Motor_Run(eMotorDir_FWD, 3000); /* 采样完成 抬起加热体电机 */
+                if (comm_Data_Sample_Complete_Check() == pdFALSE) {
+                    comm_Data_Sample_Complete_Give();
+                }
+                white_Motor_Toggle(3000);               /* 切换白板电机位置 */
+                motor_Tray_Move_By_Index(eTrayIndex_0); /* 运动托盘电机 */
+                vTaskDelay(5000);
+                comm_Data_Sample_Force_Stop();
                 break;
             case eMotor_Fun_Sample_Stop:                        /* 终止测试 */
                 if (heat_Motor_Run(eMotorDir_FWD, 3000) != 0) { /* 抬起上加热体电机 失败 */
@@ -188,6 +196,84 @@ static void motor_Task(void * argument)
             case eMotor_Fun_RLB: /* 回滚 */
                 motor_Resource_Init();
                 break;
+            case eMotor_Fun_PRE_TRAY: /* 压力测试 托盘 */
+                do {
+                    switch (cnt % 3) {
+                        case 0:
+                            motor_Tray_Move_By_Index(eTrayIndex_0);
+                            break;
+                        case 1:
+                            motor_Tray_Move_By_Index(eTrayIndex_1);
+                            break;
+                        case 2:
+                            motor_Tray_Move_By_Index(eTrayIndex_2);
+                            break;
+                    }
+                    ++cnt;
+                } while (1);
+                break;
+            case eMotor_Fun_PRE_BARCODE: /* 压力测试 扫码 */
+                do {
+                    switch (cnt % 7) {
+                        case 0:
+                            barcode_Scan_By_Index(eBarcodeIndex_0);
+                            break;
+                        case 1:
+                            barcode_Scan_By_Index(eBarcodeIndex_1);
+                            break;
+                        case 2:
+                            barcode_Scan_By_Index(eBarcodeIndex_2);
+                            break;
+                        case 3:
+                            barcode_Scan_By_Index(eBarcodeIndex_3);
+                            break;
+                        case 4:
+                            barcode_Scan_By_Index(eBarcodeIndex_4);
+                            break;
+                        case 5:
+                            barcode_Scan_By_Index(eBarcodeIndex_5);
+                            break;
+                        case 6:
+                            barcode_Scan_By_Index(eBarcodeIndex_6);
+                            break;
+                    }
+                    ++cnt;
+                } while (1);
+                break;
+            case eMotor_Fun_PRE_HEATER: /* 压力测试 上加热体 */
+                do {
+                    heat_Motor_Run(eMotorDir_FWD + (cnt % 2), 3000); /* 砸下上加热体电机 */
+                    ++cnt;
+                } while (1);
+                break;
+            case eMotor_Fun_PRE_WHITE: /* 压力测试 白板 */
+                do {
+                    white_Motor_Toggle(3000); /* 切换白板电机位置 */
+                    ++cnt;
+                } while (1);
+                break;
+            case eMotor_Fun_PRE_ALL: /* 压力测试 */
+                do {
+                    switch (cnt % 3) {
+                        case 0:
+                            motor_Tray_Move_By_Index(eTrayIndex_0);
+                            barcode_Scan_By_Index(eBarcodeIndex_0);
+                            heat_Motor_Run(eMotorDir_REV, 3000); /* 砸下上加热体电机 */
+                            break;
+                        case 1:
+                            motor_Tray_Move_By_Index(eTrayIndex_1);
+                            barcode_Scan_By_Index(eBarcodeIndex_6);
+                            break;
+                        case 2:
+                            motor_Tray_Move_By_Index(eTrayIndex_2);
+                            barcode_Scan_By_Index(eBarcodeIndex_3);
+                            break;
+                    }
+                    white_Motor_Toggle(3000); /* 切换白板电机位置 */
+                    ++cnt;
+                } while (1);
+                break;
+
             default:
                 break;
         }

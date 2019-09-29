@@ -12,6 +12,7 @@
 #include "protocol.h"
 #include "comm_out.h"
 #include "comm_main.h"
+#include "comm_data.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim4;
@@ -98,6 +99,10 @@ void soft_timer_Temp_Call_Back(TimerHandle_t xTimer)
     uint8_t buffer[10], length;
     uint16_t temp;
 
+    if (comm_Data_Sample_Complete_Check() == 0) { /* 采样完成信号量被占用 采样中停止输出 */
+        return;
+    }
+
     temp = (uint16_t)(temp_Get_Temp_Data_BTM() * 100);
     buffer[0] = temp & 0xFF; /* 小端模式 */
     buffer[1] = temp >> 8;
@@ -133,5 +138,5 @@ void soft_timer_Temp_Init(void)
 void soft_timer_Init(void)
 {
     soft_timer_Heater_Init();
-    // soft_timer_Temp_Init();
+    soft_timer_Temp_Init();
 }

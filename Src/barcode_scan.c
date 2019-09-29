@@ -428,6 +428,7 @@ eBarcodeState barcode_Read_From_Serial(uint8_t * pOut_length, uint8_t * pData, u
 
     HAL_GPIO_WritePin(BC_AIM_WK_N_GPIO_Port, BC_AIM_WK_N_Pin, GPIO_PIN_RESET);
     vTaskDelay(1);
+    HAL_GPIO_WritePin(BC_AIM_WK_N_GPIO_Port, BC_AIM_WK_N_Pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(BC_TRIG_N_GPIO_Port, BC_TRIG_N_Pin, GPIO_PIN_RESET);
     status = HAL_UART_Receive(&BARCODE_UART, pData, max_read_length, pdMS_TO_TICKS(timeout));
     *pOut_length = max_read_length - BARCODE_UART.RxXferCount;
@@ -445,7 +446,6 @@ eBarcodeState barcode_Read_From_Serial(uint8_t * pOut_length, uint8_t * pData, u
             result = eBarcodeState_Error;
             break;
     }
-    HAL_GPIO_WritePin(BC_AIM_WK_N_GPIO_Port, BC_AIM_WK_N_Pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(BC_TRIG_N_GPIO_Port, BC_TRIG_N_Pin, GPIO_PIN_SET);
     return result;
 }
@@ -509,6 +509,9 @@ eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index)
         pResult->state = eBarcodeState_Error;
     } else {
         pResult->state = barcode_Read_From_Serial(&(pResult->length), pResult->pData, max_read_length, 500);
+        if (pResult->state != eBarcodeState_Error && pResult->length > 50) { /* 存在有效QR Code */
+            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_BARCODE, pResult->pData, pResult->length);
+        }
     }
     return pResult->state;
 }
