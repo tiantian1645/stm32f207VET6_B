@@ -12,7 +12,7 @@
 
 #define COMM_DATA_SER_TX_SIZE 32
 
-#define COMM_DATA_SER_TX_RETRY_NUM 5   /* 重发次数 */
+#define COMM_DATA_SER_TX_RETRY_NUM 3   /* 重发次数 */
 #define COMM_DATA_SER_TX_RETRY_INT 200 /* 重发间隔 200mS 内应有响应包 */
 #define COMM_DATA_SER_TX_RETRY_SUM ((COMM_DATA_SER_TX_RETRY_NUM) * (COMM_DATA_SER_TX_RETRY_INT))
 
@@ -97,8 +97,7 @@ BaseType_t comm_Data_Sample_Complete_Wait(uint32_t timeout);
 BaseType_t comm_Data_Sample_Complete_Give(void);
 BaseType_t comm_Data_Sample_Complete_Check(void);
 
-BaseType_t comm_Data_Sample_Dump_Conf(uint8_t * pData);
-BaseType_t comm_Data_Sample_Load_Conf(uint8_t * pData);
+BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData);
 
 /* Private defines -----------------------------------------------------------*/
 
