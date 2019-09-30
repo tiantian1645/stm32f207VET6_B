@@ -310,8 +310,6 @@ static void comm_Out_Send_Task(void * argument)
             }
         }
         if (ucResult == 0) { /* 重发失败处理 */
-//            memset(sendInfo.buff, 0xAA, sendInfo.length);
-//            serialSendStartDMA(COMM_OUT_SERIAL_INDEX, sendInfo.buff, sendInfo.length, 30);
         }
         xQueueReceive(comm_Out_SendQueue, &sendInfo, 0); /* 释放发送队列 */
     }

@@ -40,6 +40,8 @@ xQueueHandle motor_Fun_Queue_Handle = NULL; /* 电机功能队列 */
 
 /* Private function prototypes -----------------------------------------------*/
 static void motor_Task(void * argument);
+static void motor_Tray_Move_By_Index(eTrayIndex index);
+
 /* Private user code ---------------------------------------------------------*/
 
 /**
@@ -60,6 +62,7 @@ void motor_Resource_Init(void)
     barcode_Motor_Reset_Pos(); /* 重置扫码电机位置 */
     tray_Motor_Reset_Pos();    /* 重置托盘电机位置 */
 
+    motor_Tray_Move_By_Index(eTrayIndex_1); /* 扫码位置 */
     barcode_Scan_By_Index(eBarcodeIndex_6); /* QR Code 位置 */
 }
 
@@ -99,7 +102,7 @@ uint8_t motor_Emit(sMotor_Fun * pFun_type, uint32_t timeout)
  * @param  index 托盘位置索引
  * @retval None
  */
-void motor_Tray_Move_By_Index(eTrayIndex index)
+static void motor_Tray_Move_By_Index(eTrayIndex index)
 {
     uint8_t buffer[8];
 
@@ -163,7 +166,7 @@ static void motor_Task(void * argument)
                 motor_Tray_Move_By_Index(eTrayIndex_2); /* 运动托盘电机 */
                 heat_Motor_Run(eMotorDir_REV, 3000);    /* 砸下上加热体电机 */
 
-                white_Motor_PD();                  /* 运动白板电机 */
+                white_Motor_WH();                  /* 运动白板电机 */
                 comm_Data_Sample_Complete_Wait(0); /* 标记开始采样 获取采样完成信号量 */
                 comm_Data_Sample_Start();          /*启动定时器同步发包*/
 
