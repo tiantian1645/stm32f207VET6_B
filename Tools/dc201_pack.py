@@ -36,7 +36,7 @@ class DC201_PACK:
             pack_bytes_wc = self.pack_head + struct.pack(
                 "BBBB{}".format("B" * payload_len), payload_len + 3, pack_index, device_id, cmd_type, *payload
             )
-        pack_bytes = pack_bytes_wc + self.crc8(pack_bytes_wc)
+        pack_bytes = pack_bytes_wc + self.crc8(pack_bytes_wc[4:])
         return pack_bytes
 
     def iterIntactPack(self, pack):

@@ -191,7 +191,7 @@ uint16_t protocol_has_tail(uint8_t * pBuff, uint16_t length)
  */
 uint8_t protocol_is_comp(uint8_t * pBuff, uint16_t length)
 {
-    if (CRC8(pBuff, length - 1) == pBuff[length - 1]) { /* CRC8 校验完整性 */
+    if (CRC8(pBuff + 4, length - 5) == pBuff[length - 1]) { /* CRC8 校验完整性 */
         return 1;
     }
     if (length == 237) {
@@ -225,7 +225,7 @@ uint8_t buildPackOrigin(eProtocol_COMM_Index index, uint8_t cmdType, uint8_t * p
     pData[3] = gProtocol_ACK_IndexGet(index);
     pData[4] = PROTOCOL_DEVICE_ID_CTRL;
     pData[5] = cmdType;
-    pData[6 + dataLength] = CRC8(pData, 6 + dataLength);
+    pData[6 + dataLength] = CRC8(pData + 4, 2 + dataLength);
     return dataLength + 7;
 }
 
