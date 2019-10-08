@@ -216,9 +216,9 @@ uint8_t buildPackOrigin(eProtocol_COMM_Index index, uint8_t cmdType, uint8_t * p
     for (i = dataLength; i > 0; --i) {
         pData[i - 1 + 6] = pData[i - 1];
     }
-    if (cmdType != eProtocoleRespPack_Client_ACK) {
-        gProtocol_ACK_IndexAutoIncrease(index);
-    }
+
+    gProtocol_ACK_IndexAutoIncrease(index);
+
     pData[0] = 0x69;
     pData[1] = 0xAA;
     pData[2] = 3 + dataLength;
@@ -235,25 +235,27 @@ uint8_t buildPackOrigin(eProtocol_COMM_Index index, uint8_t cmdType, uint8_t * p
  * @param  pInbuff 入站包指针
  * @retval 数据包长度
  */
-eProtocolParseResult protocol_Parse_AnswerACK(eProtocol_COMM_Index index, uint8_t * pInBuff)
+eProtocolParseResult protocol_Parse_AnswerACK(eProtocol_COMM_Index index, uint8_t ack)
 {
     uint8_t sendLength;
+    uint8_t send_buff[12];
 
-    pInBuff[0] = pInBuff[3];                                                        /* 接收帧号作为数据 */
-    sendLength = buildPackOrigin(index, eProtocoleRespPack_Client_ACK, pInBuff, 1); /* 构造回应包 */
+    send_buff[0] = ack;
+    sendLength = buildPackOrigin(index, eProtocoleRespPack_Client_ACK, send_buff, 1); /* 构造回应包 */
     switch (index) {
         case eComm_Out:
-            if (comm_Out_SendTask_QueueEmit(pInBuff, sendLength, 50) != pdPASS) { /* 提交回应包 */
+            if (comm_Out_SendTask_QueueEmit(send_buff, sendLength, 50) != pdPASS) { /* 提交回应包 */
                 return PROTOCOL_PARSE_EMIT_ERROR;
             }
             break;
         case eComm_Main:
-            if (comm_Main_SendTask_QueueEmit(pInBuff, sendLength, 50) != pdPASS) { /* 提交回应包 */
+            if (comm_Main_SendTask_QueueEmit(send_buff, sendLength, 50) != pdPASS) { /* 提交回应包 */
                 return PROTOCOL_PARSE_EMIT_ERROR;
             }
             break;
         case eComm_Data:
-            if (comm_Data_SendTask_QueueEmit(pInBuff, sendLength, 50) != pdPASS) { /* 提交回应包 */
+        	comm_Out_SendTask_QueueEmit(send_buff, sendLength, 50);
+            if (comm_Data_SendTask_QueueEmit(send_buff, sendLength, 50) != pdPASS) { /* 提交回应包 */
                 return PROTOCOL_PARSE_EMIT_ERROR;
             }
             break;
@@ -272,6 +274,7 @@ eProtocolParseResult protocol_Parse_Emit(eProtocol_COMM_Index index, uint8_t * p
 {
     eProtocolParseResult error = PROTOCOL_PARSE_OK;
 
+    error = protocol_Parse_AnswerACK(index, pInBuff[3]); /* 发送回应包 */
     switch (pInBuff[5]) {
         case eProtocolEmitPack_Client_CMD_START: /* 开始测量帧 */
             break;
@@ -291,7 +294,6 @@ eProtocolParseResult protocol_Parse_Emit(eProtocol_COMM_Index index, uint8_t * p
             error |= PROTOCOL_PARSE_CMD_ERROR;
             break;
     }
-    error = protocol_Parse_AnswerACK(index, pInBuff); /* 发送回应包 */
     return error;
 }
 
@@ -315,9 +317,13 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
         return PROTOCOL_PARSE_OK;                      /* 直接返回 */
     }
 
-    /* 其他命令帧 */
-    gProtocol_ACK_IndexSet(eComm_Out, pInBuff[3] + 1); /* 设置发送确认帧号 */
-    switch (pInBuff[5]) {                              /* 进一步处理 功能码 */
+    if (pInBuff[4] == PROTOCOL_DEVICE_ID_SAMP) { /* ID为数据板的数据包 直接透传 调试用 */
+        comm_Data_SendTask_QueueEmitCover(pInBuff, length);
+        return PROTOCOL_PARSE_OK;
+    }
+
+    error = protocol_Parse_AnswerACK(eComm_Out, pInBuff[3]); /* 发送回应包 */
+    switch (pInBuff[5]) {                                    /* 进一步处理 功能码 */
         case 0xD0:
             if (length == 12) {
                 m_l6470_Index_Switch(eM_L6470_Index_0, portMAX_DELAY);
@@ -325,8 +331,7 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
 
                 switch (pInBuff[6]) {
                     case 0x00:
-                        error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 发送回应包 */
-                        dSPIN_Move(REV, step);                                 /* 向驱动发送指令 */
+                        dSPIN_Move(REV, step); /* 向驱动发送指令 */
                         status = dSPIN_Get_Status();
                         pInBuff[0] = status >> 8;
                         pInBuff[1] = status & 0xFF;
@@ -334,8 +339,7 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                         break;
                     case 0x01:
                     default:
-                        error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 发送回应包 */
-                        dSPIN_Move(FWD, step);                                 /* 向驱动发送指令 */
+                        dSPIN_Move(FWD, step); /* 向驱动发送指令 */
                         status = dSPIN_Get_Status();
                         pInBuff[0] = status >> 8;
                         pInBuff[1] = status & 0xFF;
@@ -378,8 +382,7 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 step = (uint32_t)(pInBuff[7] << 24) + (uint32_t)(pInBuff[8] << 16) + (uint32_t)(pInBuff[9] << 8) + (uint32_t)(pInBuff[10] << 0);
                 switch (pInBuff[6]) {
                     case 0x00:
-                        error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 发送回应包 */
-                        dSPIN_Move(REV, step);                                 /* 向驱动发送指令 */
+                        dSPIN_Move(REV, step); /* 向驱动发送指令 */
                         status = dSPIN_Get_Status();
                         pInBuff[0] = status >> 8;
                         pInBuff[1] = status & 0xFF;
@@ -387,8 +390,7 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                         break;
                     case 0x01:
                     default:
-                        error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 发送回应包 */
-                        dSPIN_Move(FWD, step);                                 /* 向驱动发送指令 */
+                        dSPIN_Move(FWD, step); /* 向驱动发送指令 */
                         status = dSPIN_Get_Status();
                         pInBuff[0] = status >> 8;
                         pInBuff[1] = status & 0xFF;
@@ -470,52 +472,30 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             }
             break;
 
-        case eProtocolEmitPack_Client_CMD_START:                   /* 开始测量帧 0x01 */
-            barcode_length = pInBuff[3];                           /* 暂存帧号 */
-            motor_fun.fun_type = eMotor_Fun_Sample_Start;          /* 开始测试 */
-            motor_Emit(&motor_fun, 0);                             /* 提交到电机队列 */
-            pInBuff[3] = barcode_length;                           /* 取回帧号 */
-            error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 处理回应包 */
+        case eProtocolEmitPack_Client_CMD_START:          /* 开始测量帧 0x01 */
+            motor_fun.fun_type = eMotor_Fun_Sample_Start; /* 开始测试 */
+            motor_Emit(&motor_fun, 0);                    /* 提交到电机队列 */
             break;
-        case eProtocolEmitPack_Client_CMD_ABRUPT:                  /* 仪器测量取消命令帧 0x02 */
-            barcode_length = pInBuff[3];                           /* 暂存帧号 */
-            motor_fun.fun_type = eMotor_Fun_Sample_Stop;           /* 开始测试 */
-            motor_Emit(&motor_fun, 0);                             /* 提交到电机队列 */
-            pInBuff[3] = barcode_length;                           /* 取回帧号 */
-            error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 处理回应包 */
+        case eProtocolEmitPack_Client_CMD_ABRUPT:        /* 仪器测量取消命令帧 0x02 */
+            motor_fun.fun_type = eMotor_Fun_Sample_Stop; /* 开始测试 */
+            motor_Emit(&motor_fun, 0);                   /* 提交到电机队列 */
             break;
-        case eProtocolEmitPack_Client_CMD_CONFIG:                  /* 测试项信息帧 0x03 */
-            barcode_length = pInBuff[3];                           /* 暂存帧号 */
-            comm_Data_Sample_Dump_Conf(&pInBuff[6]);               /* 保存测试配置 */
-            comm_Data_Sample_Load_Conf(pInBuff);                   /* 发送给数据采集板 */
-            pInBuff[3] = barcode_length;                           /* 取回帧号 */
-            error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 处理回应包 */
+        case eProtocolEmitPack_Client_CMD_CONFIG:     /* 测试项信息帧 0x03 */
+            comm_Data_Sample_Apply_Conf(&pInBuff[6]); /* 保存测试配置 */
             break;
-        case eProtocolEmitPack_Client_CMD_FORWARD:                 /* 打开托盘帧 0x04 */
-            barcode_length = pInBuff[3];                           /* 暂存帧号 */
-            motor_fun.fun_type = eMotor_Fun_Out;                   /* 配置电机动作套餐类型 出仓 */
-            motor_Emit(&motor_fun, 0);                             /* 交给电机任务 出仓 */
-            pInBuff[3] = barcode_length;                           /* 取回帧号 */
-            error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 处理回应包 */
+        case eProtocolEmitPack_Client_CMD_FORWARD: /* 打开托盘帧 0x04 */
+            motor_fun.fun_type = eMotor_Fun_Out;   /* 配置电机动作套餐类型 出仓 */
+            motor_Emit(&motor_fun, 0);             /* 交给电机任务 出仓 */
             break;
-        case eProtocolEmitPack_Client_CMD_REVERSE:                 /* 关闭托盘命令帧 0x05 */
-            barcode_length = pInBuff[3];                           /* 暂存帧号 */
-            motor_fun.fun_type = eMotor_Fun_In;                    /* 配置电机动作套餐类型 进仓 */
-            motor_Emit(&motor_fun, 0);                             /* 交给电机任务 进仓 */
-            pInBuff[3] = barcode_length;                           /* 取回帧号 */
-            error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 处理回应包 */
+        case eProtocolEmitPack_Client_CMD_REVERSE: /* 关闭托盘命令帧 0x05 */
+            motor_fun.fun_type = eMotor_Fun_In;    /* 配置电机动作套餐类型 进仓 */
+            motor_Emit(&motor_fun, 0);             /* 交给电机任务 进仓 */
             break;
-        case eProtocolEmitPack_Client_CMD_READ_ID:                 /* ID卡读取命令帧 0x06 */
-            barcode_length = pInBuff[3];                           /* 暂存帧号 */
-                                                                   /* TO DO */
-            pInBuff[3] = barcode_length;                           /* 取回帧号 */
-            error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 处理回应包 */
+        case eProtocolEmitPack_Client_CMD_READ_ID: /* ID卡读取命令帧 0x06 */
+                                                   /* TO DO */
             break;
-        case eProtocolEmitPack_Client_CMD_UPGRADE:                 /* 下位机升级命令帧 0x0F */
-            barcode_length = pInBuff[3];                           /* 暂存帧号 */
-                                                                   /* TO DO */
-            pInBuff[3] = barcode_length;                           /* 取回帧号 */
-            error |= protocol_Parse_AnswerACK(eComm_Out, pInBuff); /* 处理回应包 */
+        case eProtocolEmitPack_Client_CMD_UPGRADE: /* 下位机升级命令帧 0x0F */
+                                                   /* TO DO */
             break;
         default:
             error |= PROTOCOL_PARSE_CMD_ERROR;
@@ -539,7 +519,6 @@ eProtocolParseResult protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
     }
 
     /* 其他命令帧 */
-    gProtocol_ACK_IndexSet(eComm_Main, pInBuff[3] + 1);      /* 设置发送确认帧号 */
     return protocol_Parse_Emit(eComm_Main, pInBuff, length); /* 后续详细处理 */
 }
 
@@ -560,9 +539,10 @@ eProtocolParseResult protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
         return PROTOCOL_PARSE_OK;                      /* 直接返回 */
     }
 
-    gProtocol_ACK_IndexSet(eComm_Data, pInBuff[3] + 1);                            /* 其他命令帧 设置发送确认帧号 */
+    error = protocol_Parse_AnswerACK(eComm_Data, pInBuff[3]);                      /* 发送回应包 */
     switch (pInBuff[5]) {                                                          /* 进一步处理 功能码 */
         case eComm_Data_Inbound_CMD_DATA:                                          /* 采集数据帧 */
+            comm_Data_Sample_Complete_Give();                                      /* 释放采样完成信号量 */
             gComm_Data_Sample_Buffer.num = pInBuff[6];                             /* 数据个数 */
             gComm_Data_Sample_Buffer.channel = pInBuff[7];                         /* 通道编码 */
             for (i = 0; i < pInBuff[6]; ++i) {                                     /* 具体数据 */
@@ -572,14 +552,12 @@ eProtocolParseResult protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
             comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_SAMP_DATA, &pInBuff[6], gComm_Data_Sample_Buffer.num + 2); /* 调试输出 */
             break;
         case eComm_Data_Inbound_CMD_OVER:                                                                /* 采集数据完成帧 */
-            comm_Data_Sample_Complete_Give();                                                            /* 释放采样完成信号量 */
-            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_SAMP_OVER, pInBuff, 0); /* 发出给上位机 */
-            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_SAMP_OVER, pInBuff, 0);  /* 调试输出 */
+            // comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_SAMP_OVER, pInBuff, 0); /* 发出给上位机 */
+            // comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_SAMP_OVER, pInBuff, 0);  /* 调试输出 */
             break;
         default:
             error |= PROTOCOL_PARSE_CMD_ERROR;
             break;
     }
-    error = protocol_Parse_AnswerACK(eComm_Data, pInBuff); /* 发送回应包 */
     return error;
 }

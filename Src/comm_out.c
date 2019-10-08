@@ -194,12 +194,14 @@ void comm_Out_Init(void)
  */
 BaseType_t comm_Out_RecvTask_QueueEmit_ISR(uint8_t * pData, uint16_t length)
 {
-    BaseType_t xWaken = pdFALSE;
+    BaseType_t xResult, xWaken = pdFALSE;
     sComm_Out_RecvInfo recvInfo;
 
     recvInfo.length = length;
     memcpy(recvInfo.buff, pData, length);
-    return xQueueSendToBackFromISR(comm_Out_RecvQueue, &recvInfo, &xWaken);
+    xResult = xQueueSendToBackFromISR(comm_Out_RecvQueue, &recvInfo, &xWaken);
+    portYIELD_FROM_ISR(xWaken);
+    return xResult;
 }
 
 /**

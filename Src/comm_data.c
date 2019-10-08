@@ -101,7 +101,7 @@ void gComm_Data_RecvConfirm_Set(uint8_t data)
 uint8_t gComm_Data_RecvConfirm_Check(uint8_t idx)
 {
     if (gComm_Data_RecvConfirm == idx) {
-        return 0;
+        return 1;
     }
     return 0;
 }
@@ -216,45 +216,31 @@ void comm_Data_PD_Time_Deal_FromISR(void)
 {
     static uint8_t length, last_idx = 0;
     static uint32_t start_cnt;
-    TickType_t tick;
 
-    if (gComm_Data_Sample_ISR_Cnt % 50 == 0) { /* 每50次 200 mS * 50 = 10S 构造一个新包  */
-        // gCoMM_Data_Sample_ISR_Buffer[0] = (gComm_Data_Sample_ISR_Cnt / 50) % 2;                               /* 采样类型 */
-        // length = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_START, gCoMM_Data_Sample_ISR_Buffer, 1); /* 构造下一个数据包 */
-        // last_idx = gCoMM_Data_Sample_ISR_Buffer[4] + 1;                                                       /* 记录帧号 */
+    if (gComm_Data_Sample_ISR_Cnt % 50 == 0) {                                                                /* 每 50 次  10S 构造一个新包  */
+        gCoMM_Data_Sample_ISR_Buffer[0] = (gComm_Data_Sample_ISR_Cnt / 50) % 2 + 1;                           /* 采样类型 白物质 -> PD */
+        length = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_START, gCoMM_Data_Sample_ISR_Buffer, 1); /* 构造下一个数据包 */
+        last_idx = gCoMM_Data_Sample_ISR_Buffer[3];                                                           /* 记录帧号 */
 
-        tick = xTaskGetTickCountFromISR();
-        gCoMM_Data_Sample_ISR_Buffer[0] = (tick >> 24) & 0xFF;
-        gCoMM_Data_Sample_ISR_Buffer[1] = (tick >> 16) & 0xFF;
-        gCoMM_Data_Sample_ISR_Buffer[2] = (tick >> 8) & 0xFF;
-        gCoMM_Data_Sample_ISR_Buffer[3] = (tick >> 0) & 0xFF;
-        length = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_START, gCoMM_Data_Sample_ISR_Buffer, 4); /* 构造下一个数据包 */
-
-        if (HAL_UART_Transmit_DMA(&huart5, gCoMM_Data_Sample_ISR_Buffer, length) != HAL_OK) { /* 首次发送 */
+        if (HAL_UART_Transmit_DMA(&COMM_DATA_UART_HANDLE, gCoMM_Data_Sample_ISR_Buffer, length) != HAL_OK) { /* 首次发送 */
             FL_Error_Handler(__FILE__, __LINE__);
         }
+        HAL_UART_Transmit_DMA(&huart5, gCoMM_Data_Sample_ISR_Buffer, length);
         gComm_Data_TIM_StartFlag_Set();
         start_cnt = gComm_Data_Sample_ISR_Cnt;
     } else if (gComm_Data_TIM_StartFlag_Check() && gComm_Data_RecvConfirm_Check(last_idx) == 0) { /* 其余时刻处理是否需要重发 收到的回应帧号不匹配 */
-        // tick = xTaskGetTickCountFromISR();
-        // gCoMM_Data_Sample_ISR_Buffer[0] = (tick >> 24) & 0xFF;
-        // gCoMM_Data_Sample_ISR_Buffer[1] = (tick >> 16) & 0xFF;
-        // gCoMM_Data_Sample_ISR_Buffer[2] = (tick >> 8) & 0xFF;
-        // gCoMM_Data_Sample_ISR_Buffer[3] = (tick >> 0) & 0xFF;
-        // length = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_START, gCoMM_Data_Sample_ISR_Buffer, 4); /* 构造下一个数据包 */
-        // if (HAL_UART_Transmit_DMA(&huart5, gCoMM_Data_Sample_ISR_Buffer, length) != HAL_OK) {                 /* 执行重发 */
-        //     FL_Error_Handler(__FILE__, __LINE__);
-        // }
-        if ((gComm_Data_Sample_ISR_Cnt) % 5 == 0) {
-            comm_Data_Sample_Complete_Give_ISR();
-        }
 
-        //    if (gComm_Data_Sample_ISR_Cnt - start_cnt >= 3 - 1) { /* 重发数目达到3次 放弃采样测试 */
-        //        HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_PD);          /* 停止定时器 */
-        //        gComm_Data_TIM_StartFlag_Clear();
-        //        gComm_Data_Sample_ISR_Cnt = 0;
-        //        return;
-        //    }
+        if (HAL_UART_Transmit_DMA(&COMM_DATA_UART_HANDLE, gCoMM_Data_Sample_ISR_Buffer, length) != HAL_OK) { /* 执行重发 */
+            FL_Error_Handler(__FILE__, __LINE__);
+        }
+        HAL_UART_Transmit_DMA(&huart5, gCoMM_Data_Sample_ISR_Buffer, length);
+
+        if (gComm_Data_Sample_ISR_Cnt - start_cnt >= 3 - 1) { /* 重发数目达到3次 放弃采样测试 */
+            HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_PD);          /* 停止定时器 */
+            gComm_Data_TIM_StartFlag_Clear();
+            gComm_Data_Sample_ISR_Cnt = 0;
+            return;
+        }
     }
     ++gComm_Data_Sample_ISR_Cnt;
 }
@@ -296,42 +282,18 @@ uint8_t comm_Data_Sample_Force_Stop(void)
 /**
  * @brief  采样板配置数据包
  * @param  pData 结果存放指针
- * @retval 数据包长度
+ * @retval 提交到采集板发送队列结果
  */
-BaseType_t comm_Data_Sample_Dump_Conf(uint8_t * pData)
+BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData)
 {
-    uint8_t i;
-
-    if (ARRAY_LEN(gComm_Data_Sample_Confs) == 0) {
-        return 1;
-    }
+    uint8_t i, sendLength;
 
     for (i = 0; i < ARRAY_LEN(gComm_Data_Sample_Confs); ++i) {
         gComm_Data_Sample_Confs[i].assay = pData[3 * i + 0];
         gComm_Data_Sample_Confs[i].radiant = pData[3 * i + 1];
-        gComm_Data_Sample_Confs[i].points_num = (pData[3 * i + 2] > 120) ? (120) : (pData[3 * i + 2]);
-    }
-    return 0;
-}
-
-/**
- * @brief  采样板配置数据包
- * @param  pData 结果存放指针
- * @retval 数据包长度
- */
-BaseType_t comm_Data_Sample_Load_Conf(uint8_t * pData)
-{
-    uint8_t i, sendLength;
-
-    if (ARRAY_LEN(gComm_Data_Sample_Confs) == 0) {
-        return PROTOCOL_PARSE_DATA_ERROR;
+        gComm_Data_Sample_Confs[i].points_num = (pData[3 * i + 2] >= 120) ? (120) : (pData[3 * i + 2]);
     }
 
-    for (i = 0; i < ARRAY_LEN(gComm_Data_Sample_Confs); ++i) {
-        pData[3 * i + 0] = gComm_Data_Sample_Confs[i].assay;
-        pData[3 * i + 1] = gComm_Data_Sample_Confs[i].radiant;
-        pData[3 * i + 2] = (gComm_Data_Sample_Confs[i].points_num > 120) ? (120) : (gComm_Data_Sample_Confs[i].points_num);
-    }
     sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 3 * i); /* 构造测试配置包 */
     return comm_Data_SendTask_QueueEmit(pData, sendLength, 50);
 }
@@ -449,10 +411,11 @@ BaseType_t comm_Data_SendTask_QueueEmit(uint8_t * pData, uint8_t length, uint32_
 /**
  * @brief  串口接收回应包收到处理
  * @param  packIndex   回应包中帧号
- * @retval 加入发送队列结果
+ * @retval 通知发送任务
  */
 BaseType_t comm_Data_Send_ACK_Notify(uint8_t packIndex)
 {
+    gComm_Data_RecvConfirm_Set(packIndex); /* 用于定时器中断内重发判断 */
     return xTaskNotify(comm_Data_Send_Task_Handle, packIndex, eSetValueWithoutOverwrite);
 }
 
@@ -535,9 +498,9 @@ static void comm_Data_Recv_Task(void * argument)
             continue;                                                                    /* 队列空 */
         }
 
-        comm_Out_SendTask_QueueEmit(recvInfo.buff, recvInfo.length, 20);
-        pResult = protocol_Parse_Data(recvInfo.buff, recvInfo.length); /* 数据包协议解析 */
-        if (pResult == PROTOCOL_PARSE_OK) {                            /* 数据包解析正常 */
+        comm_Out_SendTask_QueueEmit(recvInfo.buff, recvInfo.length, 20); /* 调试用 输出外串口 */
+        pResult = protocol_Parse_Data(recvInfo.buff, recvInfo.length);   /* 数据包协议解析 */
+        if (pResult == PROTOCOL_PARSE_OK) {                              /* 数据包解析正常 */
         }
     }
 }
