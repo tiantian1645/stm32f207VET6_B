@@ -57,6 +57,7 @@ static sComm_Data_SendInfo gComm_Data_SendInfo;
 static uint8_t gComm_Data_SendInfoFlag = 1;   /* 加入发送队列缓存修改重入标志 */
 static uint8_t gComm_Data_RecvConfirm = 0x5A; /* 启动定时发送后 接收到确认采样完成标志 */
 static uint8_t gComm_Data_TIM_StartFlag = 0;
+static uint8_t gComm_Data_Sample_Max_Point = 0;
 static sComm_Data_Sample_Conf_Unit gComm_Data_Sample_Confs[6];
 static xSemaphoreHandle gComm_Data_Sem_Sample_Finish = NULL;
 static uint32_t gComm_Data_Sample_ISR_Cnt = 0;
@@ -177,7 +178,39 @@ void comm_Data_DMA_TX_Error(void)
 }
 
 /**
- * @brief  采样启动标志 获取
+ * @brief  最大采样点数 获取
+ * @param  None
+ * @retval 最大采样点数
+ */
+uint8_t gComm_Data_Sample_Max_Point_Get(void)
+{
+    return gComm_Data_Sample_Max_Point;
+}
+
+/**
+ * @brief  最大采样点数 清零
+ * @param  None
+ * @retval void
+ */
+void gComm_Data_Sample_Max_Point_Clear(void)
+{
+    gComm_Data_Sample_Max_Point = 0;
+}
+
+/**
+ * @brief  最大采样点数 更新
+ * @param  data
+ * @retval None
+ */
+void gComm_Data_Sample_Max_Point_Update(uint8_t data)
+{
+    if (data > gComm_Data_Sample_Max_Point) {
+        gComm_Data_Sample_Max_Point = data;
+    }
+}
+
+/**
+ * @brief  采样启动标志 清除
  * @param  None
  * @retval void
  */
@@ -187,7 +220,7 @@ void gComm_Data_TIM_StartFlag_Clear(void)
 }
 
 /**
- * @brief  采样启动标志 获取
+ * @brief  采样启动标志 置位
  * @param  None
  * @retval
  */
@@ -214,33 +247,44 @@ uint8_t gComm_Data_TIM_StartFlag_Check(void)
  */
 void comm_Data_PD_Time_Deal_FromISR(void)
 {
-    static uint8_t length, last_idx = 0;
+    static uint8_t length, last_idx = 0, pair_cnt = 0;
     static uint32_t start_cnt;
 
-    if (gComm_Data_Sample_ISR_Cnt % 50 == 0) {                                                                /* 每 50 次  10S 构造一个新包  */
-        gCoMM_Data_Sample_ISR_Buffer[0] = (gComm_Data_Sample_ISR_Cnt / 50) % 2 + 1;                           /* 采样类型 白物质 -> PD */
+    if (gComm_Data_Sample_ISR_Cnt == 0) {
+        pair_cnt = 0;
+    }
+
+    if (gComm_Data_Sample_ISR_Cnt % 25 == 0) {                                                                /* 每 25 次  5S 构造一个新包  */
+        gCoMM_Data_Sample_ISR_Buffer[0] = (gComm_Data_Sample_ISR_Cnt / 25) % 2 + 1;                           /* 采样类型 白物质 -> PD */
         length = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_START, gCoMM_Data_Sample_ISR_Buffer, 1); /* 构造下一个数据包 */
         last_idx = gCoMM_Data_Sample_ISR_Buffer[3];                                                           /* 记录帧号 */
 
         if (HAL_UART_Transmit_DMA(&COMM_DATA_UART_HANDLE, gCoMM_Data_Sample_ISR_Buffer, length) != HAL_OK) { /* 首次发送 */
             FL_Error_Handler(__FILE__, __LINE__);
+        } else {
+            ++pair_cnt;
         }
-        HAL_UART_Transmit_DMA(&huart5, gCoMM_Data_Sample_ISR_Buffer, length);
-        gComm_Data_TIM_StartFlag_Set();
-        start_cnt = gComm_Data_Sample_ISR_Cnt;
+        start_cnt = gComm_Data_Sample_ISR_Cnt;                                                    /* 记录当前中断次数 */
     } else if (gComm_Data_TIM_StartFlag_Check() && gComm_Data_RecvConfirm_Check(last_idx) == 0) { /* 其余时刻处理是否需要重发 收到的回应帧号不匹配 */
 
         if (HAL_UART_Transmit_DMA(&COMM_DATA_UART_HANDLE, gCoMM_Data_Sample_ISR_Buffer, length) != HAL_OK) { /* 执行重发 */
             FL_Error_Handler(__FILE__, __LINE__);
         }
-        HAL_UART_Transmit_DMA(&huart5, gCoMM_Data_Sample_ISR_Buffer, length);
 
-        if (gComm_Data_Sample_ISR_Cnt - start_cnt >= 3 - 1) { /* 重发数目达到3次 放弃采样测试 */
-            HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_PD);          /* 停止定时器 */
-            gComm_Data_TIM_StartFlag_Clear();
-            gComm_Data_Sample_ISR_Cnt = 0;
+        if (gComm_Data_Sample_ISR_Cnt - start_cnt >= COMM_DATA_SER_TX_RETRY_NUM - 1) { /* 重发数目达到3次 放弃采样测试 */
+            HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_PD);                                   /* 停止定时器 */
+            gComm_Data_TIM_StartFlag_Clear();                                          /* 标记定时器停止 */
+            gComm_Data_Sample_ISR_Cnt = 0;                                             /* 定时器中断计数清零 */
             return;
         }
+    }
+    if (pair_cnt % 2 == 0 &&                                 /* 新包次数是双数 而且 */
+        pair_cnt / 2 >= gComm_Data_Sample_Max_Point_Get()) { /* 新包次数大于等于 最大点数 */
+        pair_cnt = 0;                                        /* 清零新包次数 */
+        HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_PD);             /* 停止定时器 */
+        gComm_Data_TIM_StartFlag_Clear();                    /* 标记定时器停止 */
+        gComm_Data_Sample_ISR_Cnt = 0;                       /* 定时器中断计数清零 */
+        return;
     }
     ++gComm_Data_Sample_ISR_Cnt;
 }
@@ -252,13 +296,13 @@ void comm_Data_PD_Time_Deal_FromISR(void)
  */
 uint8_t comm_Data_Sample_Start(void)
 {
-    if (gComm_Data_TIM_StartFlag_Check()) {
+    if (gComm_Data_TIM_StartFlag_Check()) { /* 定时器未停止 采样进行中 */
         return 1;
     }
-    gComm_Data_TIM_StartFlag_Clear();
-    gComm_Data_Sample_ISR_Cnt = 0;
-    HAL_TIM_Base_Start_IT(&COMM_DATA_TIM_PD); /* 启动定时器 开始测试 */
-
+    xSemaphoreTake(comm_Data_Send_Sem, portMAX_DELAY); /* 等待发送队列为空 死等! */
+    gComm_Data_TIM_StartFlag_Set();                    /* 标记定时器启动 */
+    gComm_Data_Sample_ISR_Cnt = 0;                     /* 定时器中断计数清零 */
+    HAL_TIM_Base_Start_IT(&COMM_DATA_TIM_PD);          /* 启动定时器 开始测试 */
     return 0;
 }
 
@@ -288,13 +332,22 @@ BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData)
 {
     uint8_t i, sendLength;
 
+    gComm_Data_Sample_Max_Point_Clear(); /* 清除最大点数 */
     for (i = 0; i < ARRAY_LEN(gComm_Data_Sample_Confs); ++i) {
-        gComm_Data_Sample_Confs[i].assay = pData[3 * i + 0];
-        gComm_Data_Sample_Confs[i].radiant = pData[3 * i + 1];
-        gComm_Data_Sample_Confs[i].points_num = (pData[3 * i + 2] >= 120) ? (120) : (pData[3 * i + 2]);
+        gComm_Data_Sample_Confs[i].assay = pData[3 * i + 0];                   /* 测试方法 */
+        gComm_Data_Sample_Confs[i].radiant = pData[3 * i + 1];                 /* 测试波长 */
+        if (gComm_Data_Sample_Confs[i].assay < eComm_Data_Sample_Assay_None || /* 测试方法越限 */
+            gComm_Data_Sample_Confs[i].assay > eComm_Data_Sample_Assay_Fixed ||
+            gComm_Data_Sample_Confs[i].radiant < eComm_Data_Sample_Radiant_610 || /* 测试波长越限 */
+            gComm_Data_Sample_Confs[i].radiant > eComm_Data_Sample_Radiant_405) {
+            gComm_Data_Sample_Confs[i].points_num = 0; /* 点数清零 */
+        } else {
+            gComm_Data_Sample_Confs[i].points_num = (pData[3 * i + 2] > 120) ? (0) : (pData[3 * i + 2]); /* 测试点数 */
+            gComm_Data_Sample_Max_Point_Update(gComm_Data_Sample_Confs[i].points_num);                   /* 更新最大点数 */
+        }
     }
 
-    sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 3 * i); /* 构造测试配置包 */
+    sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 18); /* 构造测试配置包 */
     return comm_Data_SendTask_QueueEmit(pData, sendLength, 50);
 }
 
@@ -307,7 +360,7 @@ BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData)
  */
 void comm_Data_Sample_Data_Deal(uint8_t data_num, uint8_t channel, uint8_t * pSample)
 {
-    comm_Data_Sample_Complete_Give_ISR();
+    return;
 }
 
 /**
@@ -415,8 +468,8 @@ BaseType_t comm_Data_SendTask_QueueEmit(uint8_t * pData, uint8_t length, uint32_
  */
 BaseType_t comm_Data_Send_ACK_Notify(uint8_t packIndex)
 {
-    gComm_Data_RecvConfirm_Set(packIndex); /* 用于定时器中断内重发判断 */
-    return xTaskNotify(comm_Data_Send_Task_Handle, packIndex, eSetValueWithoutOverwrite);
+    gComm_Data_RecvConfirm_Set(packIndex);                                             /* 用于定时器中断内重发判断 */
+    return xTaskNotify(comm_Data_Send_Task_Handle, packIndex, eSetValueWithOverwrite); /* 允许覆盖 */
 }
 
 /**
@@ -498,9 +551,8 @@ static void comm_Data_Recv_Task(void * argument)
             continue;                                                                    /* 队列空 */
         }
 
-        comm_Out_SendTask_QueueEmit(recvInfo.buff, recvInfo.length, 20); /* 调试用 输出外串口 */
-        pResult = protocol_Parse_Data(recvInfo.buff, recvInfo.length);   /* 数据包协议解析 */
-        if (pResult == PROTOCOL_PARSE_OK) {                              /* 数据包解析正常 */
+        pResult = protocol_Parse_Data(recvInfo.buff, recvInfo.length); /* 数据包协议解析 */
+        if (pResult == PROTOCOL_PARSE_OK) {                            /* 数据包解析正常 */
         }
     }
 }
@@ -517,7 +569,7 @@ static void comm_Data_Send_Task(void * argument)
     uint32_t ulNotifyValue;
 
     for (;;) {
-        if (uxSemaphoreGetCount(comm_Data_Send_Sem) == 0) { /* DMA发送未完成 此时从接收队列提取数据覆盖发送指针会干扰DMA发送 */
+        if (uxSemaphoreGetCount(comm_Data_Send_Sem) == 0) { /* DMA发送未完成 此时从接收队列提取数据覆盖发送指针会干扰DMA发送 保护 sendInfo */
             vTaskDelay(5);
             continue;
         }
@@ -534,8 +586,6 @@ static void comm_Data_Send_Task(void * argument)
                 ucResult = 2;                                        /* 无需等待回应包默认成功 */
                 break;
             }
-            ucResult = 2; /* 无需等待回应包默认成功 */
-            break;
             if (xTaskNotifyWait(0, 0xFFFFFFFF, &ulNotifyValue, COMM_DATA_SER_TX_RETRY_INT) == pdPASS) { /* 等待任务通知 */
                 if (ulNotifyValue == sendInfo.buff[3]) {
                     ucResult = 1; /* 置位发送成功 */
@@ -544,8 +594,7 @@ static void comm_Data_Send_Task(void * argument)
             }
         }
         if (ucResult == 0) { /* 重发失败处理 */
-            memset(sendInfo.buff, 0xAA, sendInfo.length);
-            serialSendStartDMA(COMM_DATA_SERIAL_INDEX, sendInfo.buff, sendInfo.length, 30);
+            /* TO DO */
         }
         xQueueReceive(comm_Data_SendQueue, &sendInfo, 0); /* 释放发送队列 */
     }

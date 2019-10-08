@@ -161,7 +161,7 @@ void comm_Out_Init(void)
     xSemaphoreGive(comm_Out_Send_Sem);
 
     /* 发送队列 */
-    comm_Out_SendQueue = xQueueCreate(1, sizeof(sComm_Out_SendInfo));
+    comm_Out_SendQueue = xQueueCreate(6, sizeof(sComm_Out_SendInfo));
     if (comm_Out_SendQueue == NULL) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
@@ -177,7 +177,7 @@ void comm_Out_Init(void)
         FL_Error_Handler(__FILE__, __LINE__);
     }
     /* 创建串口发送任务 */
-    xResult = xTaskCreate(comm_Out_Send_Task, "CommOutTX", 128, NULL, TASK_PRIORITY_COMM_OUT_TX, &comm_Out_Send_Task_Handle);
+    xResult = xTaskCreate(comm_Out_Send_Task, "CommOutTX", 256, NULL, TASK_PRIORITY_COMM_OUT_TX, &comm_Out_Send_Task_Handle);
     if (xResult != pdPASS) {
         FL_Error_Handler(__FILE__, __LINE__);
     }

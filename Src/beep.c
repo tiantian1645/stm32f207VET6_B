@@ -183,7 +183,7 @@ void beep_Deal(uint32_t res)
  */
 void beep_Init(void)
 {
-    gBeep_Conf.period_cnt = 3;
+    gBeep_Conf.period_cnt = 0;
     gBeep_Conf.t_on = 500;
     gBeep_Conf.t_off = 500;
     gBeep_Conf.freq = eBeep_Freq_do;

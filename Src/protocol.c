@@ -45,7 +45,7 @@ static const unsigned char CRC8Table[256] = {
     0x97, 0xc9, 0x4a, 0x14, 0xf6, 0xa8, 0x74, 0x2a, 0xc8, 0x96, 0x15, 0x4b, 0xa9, 0xf7, 0xb6, 0xe8, 0x0a, 0x54, 0xd7, 0x89, 0x6b, 0x35,
 };
 
-static sProtocol_ACK_Record gProtocol_ACK_Record = {0, 0, 0};
+static sProtocol_ACK_Record gProtocol_ACK_Record = {1, 1, 1};
 static eComm_Data_Sample gComm_Data_Sample_Buffer;
 
 /* Private function prototypes -----------------------------------------------*/
@@ -71,27 +71,6 @@ uint8_t gProtocol_ACK_IndexGet(eProtocol_COMM_Index index)
 }
 
 /**
- * @brief  向对方发送回应确认帧号 设置
- * @param  index 串口索引
- * @param  sack 向对方发送回应确认帧号
- * @retval None
- */
-void gProtocol_ACK_IndexSet(eProtocol_COMM_Index index, uint8_t sack)
-{
-    switch (index) {
-        case eComm_Out:
-            gProtocol_ACK_Record.ACK_Out = sack;
-            break;
-        case eComm_Main:
-            gProtocol_ACK_Record.ACK_Main = sack;
-            break;
-        case eComm_Data:
-            gProtocol_ACK_Record.ACK_Data = sack;
-            break;
-    }
-}
-
-/**
  * @brief  向对方发送回应确认帧号 自增
  * @param  index 串口索引
  * @retval None
@@ -101,12 +80,21 @@ void gProtocol_ACK_IndexAutoIncrease(eProtocol_COMM_Index index)
     switch (index) {
         case eComm_Out:
             ++gProtocol_ACK_Record.ACK_Out;
+            if (gProtocol_ACK_Record.ACK_Out == 0) {
+                gProtocol_ACK_Record.ACK_Out = 1;
+            }
             break;
         case eComm_Main:
             ++gProtocol_ACK_Record.ACK_Main;
+            if (gProtocol_ACK_Record.ACK_Main == 0) {
+                gProtocol_ACK_Record.ACK_Main = 1;
+            }
             break;
         case eComm_Data:
             ++gProtocol_ACK_Record.ACK_Data;
+            if (gProtocol_ACK_Record.ACK_Data == 0) {
+                gProtocol_ACK_Record.ACK_Data = 1;
+            }
             break;
     }
 }
@@ -254,7 +242,6 @@ eProtocolParseResult protocol_Parse_AnswerACK(eProtocol_COMM_Index index, uint8_
             }
             break;
         case eComm_Data:
-        	comm_Out_SendTask_QueueEmit(send_buff, sendLength, 50);
             if (comm_Data_SendTask_QueueEmit(send_buff, sendLength, 50) != pdPASS) { /* 提交回应包 */
                 return PROTOCOL_PARSE_EMIT_ERROR;
             }
@@ -317,8 +304,10 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
         return PROTOCOL_PARSE_OK;                      /* 直接返回 */
     }
 
-    if (pInBuff[4] == PROTOCOL_DEVICE_ID_SAMP) { /* ID为数据板的数据包 直接透传 调试用 */
-        comm_Data_SendTask_QueueEmitCover(pInBuff, length);
+    if (pInBuff[4] == PROTOCOL_DEVICE_ID_SAMP) {             /* ID为数据板的数据包 直接透传 调试用 */
+        pInBuff[4] = PROTOCOL_DEVICE_ID_CTRL;                /* 修正装置ID */
+        pInBuff[length - 1] = CRC8(pInBuff + 4, length - 5); /* 重新校正CRC */
+        comm_Data_SendTask_QueueEmitCover(pInBuff, length);  /* 提交到采集板发送任务 */
         return PROTOCOL_PARSE_OK;
     }
 
@@ -542,18 +531,15 @@ eProtocolParseResult protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
     error = protocol_Parse_AnswerACK(eComm_Data, pInBuff[3]);                      /* 发送回应包 */
     switch (pInBuff[5]) {                                                          /* 进一步处理 功能码 */
         case eComm_Data_Inbound_CMD_DATA:                                          /* 采集数据帧 */
-            comm_Data_Sample_Complete_Give();                                      /* 释放采样完成信号量 */
             gComm_Data_Sample_Buffer.num = pInBuff[6];                             /* 数据个数 */
             gComm_Data_Sample_Buffer.channel = pInBuff[7];                         /* 通道编码 */
             for (i = 0; i < pInBuff[6]; ++i) {                                     /* 具体数据 */
                 gComm_Data_Sample_Buffer.data[i] = pInBuff[8] + (pInBuff[9] << 8); /* 小端模式 */
             }
-            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_SAMP_DATA, &pInBuff[6], gComm_Data_Sample_Buffer.num + 2); /* 发出给上位机 */
-            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_SAMP_DATA, &pInBuff[6], gComm_Data_Sample_Buffer.num + 2); /* 调试输出 */
+            comm_Out_SendTask_QueueEmitWithBuild(eProtocoleRespPack_Client_SAMP_DATA, &pInBuff[6], gComm_Data_Sample_Buffer.num + 2, 600); /* 调试输出 */
             break;
-        case eComm_Data_Inbound_CMD_OVER:                                                                /* 采集数据完成帧 */
-            // comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_SAMP_OVER, pInBuff, 0); /* 发出给上位机 */
-            // comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_SAMP_OVER, pInBuff, 0);  /* 调试输出 */
+        case eComm_Data_Inbound_CMD_OVER:     /* 采集数据完成帧 */
+            comm_Data_Sample_Complete_Give(); /* 释放采样完成信号量 */
             break;
         default:
             error |= PROTOCOL_PARSE_CMD_ERROR;

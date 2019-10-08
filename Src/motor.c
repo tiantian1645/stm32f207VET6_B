@@ -108,15 +108,15 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
 
     if (heat_Motor_Position_Is_Up() == 0 && heat_Motor_Run(eMotorDir_FWD, 3000) != 0) { /* 上加热体光耦位置未被阻挡 则抬起上加热体电机 */
         buffer[0] = 0x00;                                                               /* 抬起上加热体失败 */
-        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
+        // comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
         return;
     };
     if (tray_Move_By_Index(index, 5000) == eTrayState_OK) { /* 运动托盘电机 */
         buffer[0] = 0x01;                                   /* 托盘在检测位置 */
-        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1);
+        // comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1);
     } else {
         buffer[0] = 0x00;
-        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1);
+        // comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1);
     }
 }
 
@@ -166,21 +166,20 @@ static void motor_Task(void * argument)
                 motor_Tray_Move_By_Index(eTrayIndex_2); /* 运动托盘电机 */
                 heat_Motor_Run(eMotorDir_REV, 3000);    /* 砸下上加热体电机 */
 
-                white_Motor_WH();                  /* 运动白板电机 */
+                white_Motor_WH();                  /* 运动白板电机 白物质位置 */
                 comm_Data_Sample_Complete_Wait(0); /* 标记开始采样 获取采样完成信号量 */
                 comm_Data_Sample_Start();          /*启动定时器同步发包*/
 
-                while (comm_Data_Sample_Complete_Wait(5000)) { /* 等待采样完成 */
+                while (comm_Data_Sample_Complete_Wait(7500)) { /* 等待采样完成 */
                     white_Motor_Toggle(3000);                  /* 切换白板电机位置 */
                 }
+                comm_Data_Sample_Force_Stop();       /*停止定时器同步发包*/
                 heat_Motor_Run(eMotorDir_FWD, 3000); /* 采样完成 抬起加热体电机 */
                 if (comm_Data_Sample_Complete_Check() == pdFALSE) {
                     comm_Data_Sample_Complete_Give();
                 }
                 white_Motor_Toggle(3000);               /* 切换白板电机位置 */
                 motor_Tray_Move_By_Index(eTrayIndex_0); /* 运动托盘电机 */
-                vTaskDelay(5000);
-                comm_Data_Sample_Force_Stop();
                 break;
             case eMotor_Fun_Sample_Stop:                        /* 终止测试 */
                 if (heat_Motor_Run(eMotorDir_FWD, 3000) != 0) { /* 抬起上加热体电机 失败 */
