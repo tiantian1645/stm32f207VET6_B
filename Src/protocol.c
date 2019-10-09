@@ -528,18 +528,18 @@ eProtocolParseResult protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
         return PROTOCOL_PARSE_OK;                      /* 直接返回 */
     }
 
-    error = protocol_Parse_AnswerACK(eComm_Data, pInBuff[3]);                      /* 发送回应包 */
-    switch (pInBuff[5]) {                                                          /* 进一步处理 功能码 */
-        case eComm_Data_Inbound_CMD_DATA:                                          /* 采集数据帧 */
-            gComm_Data_Sample_Buffer.num = pInBuff[6];                             /* 数据个数 */
-            gComm_Data_Sample_Buffer.channel = pInBuff[7];                         /* 通道编码 */
-            for (i = 0; i < pInBuff[6]; ++i) {                                     /* 具体数据 */
-                gComm_Data_Sample_Buffer.data[i] = pInBuff[8] + (pInBuff[9] << 8); /* 小端模式 */
+    error = protocol_Parse_AnswerACK(eComm_Data, pInBuff[3]); /* 发送回应包 */
+    switch (pInBuff[5]) {                                     /* 进一步处理 功能码 */
+        case eComm_Data_Inbound_CMD_DATA:                     /* 采集数据帧 */
+            gComm_Data_Sample_Buffer.num = pInBuff[6];        /* 数据个数 u16 */
+            gComm_Data_Sample_Buffer.channel = pInBuff[7];    /* 通道编码 */
+            for (i = 0; i < pInBuff[6]; ++i) {                /* 具体数据 */
+                gComm_Data_Sample_Buffer.data[i] = pInBuff[8 + (i * 2)] + (pInBuff[9 + (i * 2)] << 8);
             }
-            comm_Out_SendTask_QueueEmitWithBuild(eProtocoleRespPack_Client_SAMP_DATA, &pInBuff[6], gComm_Data_Sample_Buffer.num + 2, 600); /* 调试输出 */
+            comm_Out_SendTask_QueueEmitWithBuild(eProtocoleRespPack_Client_SAMP_DATA, &pInBuff[6], (gComm_Data_Sample_Buffer.num * 2) + 2, 20); /* 调试输出 */
             break;
         case eComm_Data_Inbound_CMD_OVER:     /* 采集数据完成帧 */
-            comm_Data_Sample_Complete_Give(); /* 释放采样完成信号量 */
+            comm_Data_Sample_Complete_Deal(); /* 释放采样完成信号量 */
             break;
         default:
             error |= PROTOCOL_PARSE_CMD_ERROR;
