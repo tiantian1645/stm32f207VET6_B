@@ -166,6 +166,14 @@ float temp_Get_Temp_Data(eTemp_NTC_Index idx)
     return temp_ADC_2_Temp(gTempADC_Results[idx]);
 }
 
+float temp_fabs(float f)
+{
+    if (f < 0) {
+        return f * -1.0;
+    }
+    return f;
+}
+
 /**
  * @brief  温度 ADC 获取温度值 上加热体
  * @note   采用平均值
@@ -174,47 +182,65 @@ float temp_Get_Temp_Data(eTemp_NTC_Index idx)
  */
 float temp_Get_Temp_Data_TOP(void)
 {
-    float temp = 0, sum = 0;
+    float temp = 0, sum = 0, miss = 0;
     uint8_t valid = 0;
 
     temp = temp_Get_Temp_Data(TEMP_NTC_TOP_1);
     if (temp > 0 && temp < 55) {
         sum += temp;
+        if (temp_fabs(temp - 37) > miss) {
+            miss = temp - 37;
+        }
         ++valid;
     }
 
     temp = temp_Get_Temp_Data(TEMP_NTC_TOP_2);
     if (temp > 0 && temp < 55) {
         sum += temp;
+        if (temp_fabs(temp - 37) > miss) {
+            miss = temp - 37;
+        }
         ++valid;
     }
 
     temp = temp_Get_Temp_Data(TEMP_NTC_TOP_3);
     if (temp > 0 && temp < 55) {
         sum += temp;
+        if (temp_fabs(temp - 37) > miss) {
+            miss = temp - 37;
+        }
         ++valid;
     }
 
     temp = temp_Get_Temp_Data(TEMP_NTC_TOP_4);
     if (temp > 0 && temp < 55) {
         sum += temp;
+        if (temp_fabs(temp - 37) > miss) {
+            miss = temp - 37;
+        }
         ++valid;
     }
 
     temp = temp_Get_Temp_Data(TEMP_NTC_TOP_5);
     if (temp > 0 && temp < 55) {
         sum += temp;
+        if (temp_fabs(temp - 37) > miss) {
+            miss = temp - 37;
+        }
         ++valid;
     }
 
     temp = temp_Get_Temp_Data(TEMP_NTC_TOP_6);
     if (temp > 0 && temp < 55) {
         sum += temp;
+        if (temp_fabs(temp - 37) > miss) {
+            miss = temp - 37;
+        }
         ++valid;
     }
 
     if (valid > 0) {
-        return sum / valid;
+        return sum / valid + miss;
     } else {
         return 0;
     }
