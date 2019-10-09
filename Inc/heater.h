@@ -8,11 +8,11 @@
 /* Exported macro ------------------------------------------------------------*/
 #define HEATER_BTM_PSC (12 - 1)
 #define HEATER_BTM_ARR (10000 - 1)
-#define HEATER_BTM_CCR (5000)
+#define HEATER_BTM_CCR (10000 - 1)
 
 #define HEATER_TOP_PSC (12 - 1)
 #define HEATER_TOP_ARR (10000 - 1)
-#define HEATER_TOP_CCR (4000)
+#define HEATER_TOP_CCR (10000 - 1)
 
 /* Exported types ------------------------------------------------------------*/
 
