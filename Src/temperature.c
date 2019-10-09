@@ -10,7 +10,7 @@
 
 /* Extern variables ----------------------------------------------------------*/
 extern ADC_HandleTypeDef hadc1;
-extern TIM_HandleTypeDef htim8;
+extern TIM_HandleTypeDef htim2;
 
 /* Private includes ----------------------------------------------------------*/
 
@@ -29,7 +29,7 @@ typedef enum {
 
 /* Private define ------------------------------------------------------------*/
 #define TEMP_NTC_TK (273.15)           /* 绝对零度 热力学零度 */
-#define TEMP_NTC_B (3380)              /* NTC 温度探头 25摄氏度时 B值(电阻对数差 与 温度倒数差 之商) */
+#define TEMP_NTC_B (3240)              /* NTC 温度探头 25摄氏度时 B值(电阻对数差 与 温度倒数差 之商) B25_37 (3238 ~ 3459) */
 #define TEMP_NTC_TA (TEMP_NTC_TK + 25) /* 25摄氏度换算成热力学温度 */
 #define TEMP_NTC_S 4095                /* 12位ADC 转换最大值 */
 
@@ -45,7 +45,7 @@ typedef enum {
 #define TEMP_NTC_ENV_1 eTemp_NTC_Index_8
 
 #define TEMP_NTC_NUM (9)                                              /* 温度探头数目 */
-#define TEMP_STA_NUM (10)                                             /* 统计滤波缓存长度 */
+#define TEMP_STA_NUM (20)                                             /* 统计滤波缓存长度 */
 #define TEMP_STA_HEAD (3)                                             /* 统计滤波去掉头部长度 */
 #define TEMP_STA_TAIL (3)                                             /* 统计滤波去掉尾部长度 */
 #define TEMP_STA_VAILD (TEMP_STA_NUM - TEMP_STA_HEAD - TEMP_STA_TAIL) /* 统计滤波中位有效长度 */
@@ -80,7 +80,7 @@ uint32_t temp_Get_Conv_Cnt(void)
 HAL_StatusTypeDef temp_Start_ADC_DMA(void)
 {
     HAL_ADC_Start_DMA(&hadc1, gTempADC_DMA_Buffer, ARRAY_LEN(gTempADC_DMA_Buffer));
-    HAL_TIM_Base_Start_IT(&htim8);
+    HAL_TIM_Base_Start_IT(&htim2);
     return HAL_OK;
 }
 
@@ -103,15 +103,13 @@ HAL_StatusTypeDef temp_Stop_ADC_DMA(void)
  */
 float temp_ADC_2_Temp(uint32_t sample_hex)
 {
-    double er;
+    float er;
 
-    taskENTER_CRITICAL();
-    er = (double)(sample_hex) / (double)(TEMP_NTC_S - sample_hex);
+    er = (float)(sample_hex) / (float)(TEMP_NTC_S - sample_hex);
     er = log(er) / TEMP_NTC_B;
-    er = (double)(1) / TEMP_NTC_TA - er;
-    er = ((double)(1) / er) - TEMP_NTC_TK;
-    taskEXIT_CRITICAL();
-    return (float)(er);
+    er = (float)(1) / TEMP_NTC_TA - er;
+    er = ((float)(1) / er) - TEMP_NTC_TK;
+    return er;
 }
 
 /**

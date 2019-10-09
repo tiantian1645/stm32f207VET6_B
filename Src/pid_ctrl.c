@@ -270,7 +270,7 @@ void pid_ctrl_log_d(const char * head, sPID_Ctrl_Conf * pPID_Info)
 {
     //    printf("\n+++  PID  K Conf %s +++\n", head);
 
-    printf("input | ");
+    printf("%s | input | ", head);
     ffprintff(*(pPID_Info->input));
 
     printf(" output | ");

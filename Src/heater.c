@@ -81,9 +81,9 @@ void beater_BTM_Output_Stop(void)
 void heater_BTM_Output_Init(void)
 {
     // Prepare PID controller for operation
-    pid_ctrl_init(&gHeater_BTM_PID_Conf, HEATER_BTM_SAMPLE, &btm_input, &btm_output, &btm_setpoint, 6, 2.5, 1);
+    pid_ctrl_init(&gHeater_BTM_PID_Conf, HEATER_BTM_SAMPLE, &btm_input, &btm_output, &btm_setpoint, 9600, 0, 0);
     // Set controler output limits from 0 to 200
-    pid_ctrl_limits(&gHeater_BTM_PID_Conf, 15, 100);
+    pid_ctrl_limits(&gHeater_BTM_PID_Conf, 0, 100);
     // Allow PID to compute and change output
     pid_ctrl_auto(&gHeater_BTM_PID_Conf);
 }
@@ -176,7 +176,7 @@ void heater_TOP_Output_Keep_Deal(void)
     // Check if need to compute PID
     if (pid_ctrl_need_compute(&gHeater_TOP_PID_Conf)) {
         // Read process feedback
-        top_input = (temp_Get_Temp_Data_TOP() + temp_Get_Temp_Data_BTM()) / 2; /* 弥补下加热体功率不够 上下加热体温度权重比 1:1 */
+        top_input = temp_Get_Temp_Data_TOP();
         if (top_input < 36) {
             top_output = gHeater_TOP_PID_Conf.omax;
             beater_TOP_Output_Ctl(top_output / gHeater_TOP_PID_Conf.omax);

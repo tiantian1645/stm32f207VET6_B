@@ -1,28 +1,24 @@
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __TEMPERATURE_H
-#define __TEMPERATURE_H
+#ifndef __FAN_H
+#define __FAN_H
 
 /* Includes ------------------------------------------------------------------*/
 
 /* Private includes ----------------------------------------------------------*/
 
 /* Exported macro ------------------------------------------------------------*/
-#define TEMP_PSC (60 - 1) /* 1000 000 C/S */
-#define TEMP_ARR (50 - 1) /* 50C -> 50uS 每毫秒20个采样点 */
+#define FAN_PSC (2000 - 1) /* TIM8 APB2 120MHz / 2000 = 60000Hz */
+#define FAN_ARR (60000 - 1)
+#define FAN_CCR ((FAN_ARR + 1) / 2)
 
 /* Exported types ------------------------------------------------------------*/
 
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/
-uint32_t temp_Get_Conv_Cnt(void);
-HAL_StatusTypeDef temp_Start_ADC_DMA(void);
-HAL_StatusTypeDef temp_Stop_ADC_DMA(void);
-void temp_Filter_Deal(void);
-float temp_Get_Temp_Data(uint8_t idx);
-float temp_Get_Temp_Data_TOP(void);
-float temp_Get_Temp_Data_BTM(void);
-float temp_Get_Temp_Data_ENV(void);
+void fan_Start(void);
+void fan_Stop(void);
+void fan_Adjust(float rate);
 
 /* Private defines -----------------------------------------------------------*/
 

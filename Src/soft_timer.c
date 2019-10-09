@@ -45,6 +45,7 @@ TimerHandle_t gTimerHandleTemp = NULL;
  */
 void soft_timer_Heater_Call_Back(TimerHandle_t xTimer)
 {
+    temp_Filter_Deal();
     heater_BTM_Output_Keep_Deal();
     heater_TOP_Output_Keep_Deal();
     beep_Deal(SOFT_TIMER_HEATER_PER);

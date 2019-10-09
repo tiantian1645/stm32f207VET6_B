@@ -146,6 +146,10 @@ void FL_Error_Handler(char * file, int line);
 #define MOT_NBUSY2_GPIO_Port GPIOD
 #define HEATER_BTM_Pin GPIO_PIN_15
 #define HEATER_BTM_GPIO_Port GPIOD
+#define FAN_PWM_Pin GPIO_PIN_6
+#define FAN_PWM_GPIO_Port GPIOC
+#define FAN_EN_Pin GPIO_PIN_7
+#define FAN_EN_GPIO_Port GPIOC
 #define HEATER_TOP_Pin GPIO_PIN_8
 #define HEATER_TOP_GPIO_Port GPIOC
 #define LAMP1_Pin GPIO_PIN_8

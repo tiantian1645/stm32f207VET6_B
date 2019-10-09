@@ -36,6 +36,7 @@
 #include "soft_timer.h"
 #include "storge_task.h"
 #include "barcode_scan.h"
+#include "fan.h"
 
 /* USER CODE END Includes */
 
@@ -65,11 +66,13 @@ SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi2;
 
 TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim6;
 TIM_HandleTypeDef htim8;
 TIM_HandleTypeDef htim9;
+TIM_HandleTypeDef htim10;
 DMA_HandleTypeDef hdma_tim1_up;
 
 UART_HandleTypeDef huart5;
@@ -106,6 +109,8 @@ static void MX_TIM4_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_TIM6_Init(void);
+static void MX_TIM2_Init(void);
+static void MX_TIM10_Init(void);
 void StartDefaultTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
@@ -130,7 +135,7 @@ int main(void)
     /* MCU Configuration--------------------------------------------------------*/
 
     /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-      HAL_Init();
+    HAL_Init();
 
     /* USER CODE BEGIN Init */
 
@@ -160,6 +165,8 @@ int main(void)
     MX_I2C1_Init();
     MX_SPI1_Init();
     MX_TIM6_Init();
+    MX_TIM2_Init();
+    MX_TIM10_Init();
     /* USER CODE BEGIN 2 */
 
     /* 软定时器任务 */
@@ -284,7 +291,7 @@ static void MX_ADC1_Init(void)
     hadc1.Init.ContinuousConvMode = DISABLE;
     hadc1.Init.DiscontinuousConvMode = DISABLE;
     hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
-    hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T8_TRGO;
+    hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T2_TRGO;
     hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
     hadc1.Init.NbrOfConversion = 9;
     hadc1.Init.DMAContinuousRequests = ENABLE;
@@ -534,6 +541,47 @@ static void MX_TIM1_Init(void)
 }
 
 /**
+ * @brief TIM2 Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_TIM2_Init(void)
+{
+
+    /* USER CODE BEGIN TIM2_Init 0 */
+
+    /* USER CODE END TIM2_Init 0 */
+
+    TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+    TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+    /* USER CODE BEGIN TIM2_Init 1 */
+
+    /* USER CODE END TIM2_Init 1 */
+    htim2.Instance = TIM2;
+    htim2.Init.Prescaler = TEMP_PSC;
+    htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+    htim2.Init.Period = TEMP_ARR;
+    htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+    htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+    if (HAL_TIM_Base_Init(&htim2) != HAL_OK) {
+        Error_Handler();
+    }
+    sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+    if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK) {
+        Error_Handler();
+    }
+    sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
+    sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+    if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK) {
+        Error_Handler();
+    }
+    /* USER CODE BEGIN TIM2_Init 2 */
+
+    /* USER CODE END TIM2_Init 2 */
+}
+
+/**
  * @brief TIM3 Initialization Function
  * @param None
  * @retval None
@@ -680,17 +728,19 @@ static void MX_TIM8_Init(void)
 
     TIM_ClockConfigTypeDef sClockSourceConfig = {0};
     TIM_MasterConfigTypeDef sMasterConfig = {0};
+    TIM_OC_InitTypeDef sConfigOC = {0};
+    TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
 
     /* USER CODE BEGIN TIM8_Init 1 */
 
     /* USER CODE END TIM8_Init 1 */
     htim8.Instance = TIM8;
-    htim8.Init.Prescaler = TEMP_PSC;
+    htim8.Init.Prescaler = FAN_PSC;
     htim8.Init.CounterMode = TIM_COUNTERMODE_UP;
-    htim8.Init.Period = TEMP_AAR;
+    htim8.Init.Period = FAN_ARR;
     htim8.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
     htim8.Init.RepetitionCounter = 0;
-    htim8.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+    htim8.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
     if (HAL_TIM_Base_Init(&htim8) != HAL_OK) {
         Error_Handler();
     }
@@ -698,14 +748,38 @@ static void MX_TIM8_Init(void)
     if (HAL_TIM_ConfigClockSource(&htim8, &sClockSourceConfig) != HAL_OK) {
         Error_Handler();
     }
-    sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
+    if (HAL_TIM_PWM_Init(&htim8) != HAL_OK) {
+        Error_Handler();
+    }
+    sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
     sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
     if (HAL_TIMEx_MasterConfigSynchronization(&htim8, &sMasterConfig) != HAL_OK) {
+        Error_Handler();
+    }
+    sConfigOC.OCMode = TIM_OCMODE_PWM1;
+    sConfigOC.Pulse = FAN_CCR;
+    sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+    sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+    sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+    sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
+    sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+    if (HAL_TIM_PWM_ConfigChannel(&htim8, &sConfigOC, TIM_CHANNEL_1) != HAL_OK) {
+        Error_Handler();
+    }
+    sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
+    sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
+    sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
+    sBreakDeadTimeConfig.DeadTime = 0;
+    sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
+    sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
+    sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
+    if (HAL_TIMEx_ConfigBreakDeadTime(&htim8, &sBreakDeadTimeConfig) != HAL_OK) {
         Error_Handler();
     }
     /* USER CODE BEGIN TIM8_Init 2 */
 
     /* USER CODE END TIM8_Init 2 */
+    HAL_TIM_MspPostInit(&htim8);
 }
 
 /**
@@ -753,6 +827,47 @@ static void MX_TIM9_Init(void)
 
     /* USER CODE END TIM9_Init 2 */
     HAL_TIM_MspPostInit(&htim9);
+}
+
+/**
+ * @brief TIM10 Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_TIM10_Init(void)
+{
+
+    /* USER CODE BEGIN TIM10_Init 0 */
+
+    /* USER CODE END TIM10_Init 0 */
+
+    TIM_IC_InitTypeDef sConfigIC = {0};
+
+    /* USER CODE BEGIN TIM10_Init 1 */
+
+    /* USER CODE END TIM10_Init 1 */
+    htim10.Instance = TIM10;
+    htim10.Init.Prescaler = 0;
+    htim10.Init.CounterMode = TIM_COUNTERMODE_UP;
+    htim10.Init.Period = 0;
+    htim10.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+    htim10.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+    if (HAL_TIM_Base_Init(&htim10) != HAL_OK) {
+        Error_Handler();
+    }
+    if (HAL_TIM_IC_Init(&htim10) != HAL_OK) {
+        Error_Handler();
+    }
+    sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
+    sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
+    sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
+    sConfigIC.ICFilter = 0;
+    if (HAL_TIM_IC_ConfigChannel(&htim10, &sConfigIC, TIM_CHANNEL_1) != HAL_OK) {
+        Error_Handler();
+    }
+    /* USER CODE BEGIN TIM10_Init 2 */
+
+    /* USER CODE END TIM10_Init 2 */
 }
 
 /**
@@ -934,7 +1049,7 @@ static void MX_GPIO_Init(void)
     __HAL_RCC_GPIOD_CLK_ENABLE();
 
     /*Configure GPIO pin Output Level */
-    HAL_GPIO_WritePin(GPIOC, STEP_NCS1_Pin | LED_RUN_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOC, STEP_NCS1_Pin | FAN_EN_Pin | LED_RUN_Pin, GPIO_PIN_RESET);
 
     /*Configure GPIO pin Output Level */
     HAL_GPIO_WritePin(BC_AIM_WK_N_GPIO_Port, BC_AIM_WK_N_Pin, GPIO_PIN_SET);
@@ -970,8 +1085,8 @@ static void MX_GPIO_Init(void)
     GPIO_InitStruct.Pull = GPIO_PULLUP;
     HAL_GPIO_Init(OPTSW_OUT3_GPIO_Port, &GPIO_InitStruct);
 
-    /*Configure GPIO pins : STEP_NCS1_Pin BC_AIM_WK_N_Pin LED_RUN_Pin */
-    GPIO_InitStruct.Pin = STEP_NCS1_Pin | BC_AIM_WK_N_Pin | LED_RUN_Pin;
+    /*Configure GPIO pins : STEP_NCS1_Pin BC_AIM_WK_N_Pin FAN_EN_Pin LED_RUN_Pin */
+    GPIO_InitStruct.Pin = STEP_NCS1_Pin | BC_AIM_WK_N_Pin | FAN_EN_Pin | LED_RUN_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -1048,7 +1163,7 @@ static void LED_Task(void * argument)
 {
     TickType_t xTick, last_tick;
     uint32_t xCnt, last_cnt;
-    float temp_env;
+    float temp_env, fan_rate = 0;
 
     temp_Start_ADC_DMA();
 
@@ -1059,28 +1174,33 @@ static void LED_Task(void * argument)
     last_cnt = xCnt;
 
     barcode_Init();
-
+    fan_Start();
+    fan_Adjust(fan_rate);
     /* Infinite loop */
     printf("temp start | %ld\n", xTaskGetTickCount());
 
     for (;;) {
         HAL_GPIO_TogglePin(LED_RUN_GPIO_Port, LED_RUN_Pin);
-        temp_Filter_Deal();
         temp_env = temp_Get_Temp_Data_ENV();
         vTaskDelayUntil(&xTick, (1800 - 30 * temp_env > 0) ? (200) : (200));
-        if (xTick - last_tick > 1000) {
+        if (xTick - last_tick >= 200) {
             xCnt = temp_Get_Conv_Cnt();
             temp_env = temp_Get_Temp_Data_ENV();
-            printf("task tick | %4lu | adc cnt | %4lu | ", xTick - last_tick, xCnt - last_cnt);
-            printf("env temp | %d.%03d \n", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
-            temp_env = temp_Get_Temp_Data_BTM();
-            printf("tick | %ld | btm temp | %d.%03d | ", xTaskGetTickCount(), (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
-            temp_env = temp_Get_Temp_Data_TOP();
-            printf("top temp | %d.%03d |\n", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
+            // printf("\n========\ntask tick | %4lu | adc cnt | %4lu | ", xTick - last_tick, xCnt - last_cnt);
+            // printf("env temp | %d.%03d \n", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
+            // temp_env = temp_Get_Temp_Data_BTM();
+            // printf("tick | %ld | btm temp | %d.%03d | ", xTaskGetTickCount(), (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
+            // temp_env = temp_Get_Temp_Data_TOP();
+            // printf("top temp | %d.%03d |\n", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
             last_cnt = xCnt;
             last_tick = xTick;
             heater_BTM_Log_PID();
             heater_TOP_Log_PID();
+            fan_rate += 0.1;
+            if (fan_rate > 1.1) {
+                fan_rate = 0;
+            }
+            fan_Adjust(fan_rate);
         }
     }
 }
