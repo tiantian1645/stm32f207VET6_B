@@ -141,7 +141,7 @@ int32_t barcode_Motor_Read_Position(void)
 {
     int32_t position;
     position = (((int32_t)((dSPIN_Get_Param(dSPIN_ABS_POS)) << 10)) >> 10);
-    return position;
+    return position * -1;
 }
 
 /**
@@ -270,15 +270,15 @@ eBarcodeState barcode_Motor_Run(void)
     if (gBarcodeMotorRunCmdInfo.step < 0xFFFFFF) {
         switch (gBarcodeMotorRunCmdInfo.dir) {
             case eMotorDir_REV:
-                dSPIN_Move(REV, gBarcodeMotorRunCmdInfo.step); /* 向驱动发送指令 */
+                dSPIN_Move(FWD, gBarcodeMotorRunCmdInfo.step); /* 向驱动发送指令 */
                 break;
             case eMotorDir_FWD:
             default:
-                dSPIN_Move(FWD, gBarcodeMotorRunCmdInfo.step); /* 向驱动发送指令 */
+                dSPIN_Move(REV, gBarcodeMotorRunCmdInfo.step); /* 向驱动发送指令 */
                 break;
         }
     } else {
-        dSPIN_Go_Until(ACTION_RESET, REV, 30000);
+        dSPIN_Go_Until(ACTION_RESET, FWD, 30000);
     }
 
     result = gBarcodeMotorRunCmdInfo.pfLeave(); /* 出口回调 */
@@ -341,7 +341,7 @@ eBarcodeState barcode_Motor_Init(void)
     }
 
     if (BARCODE_MOTOR_IS_OPT) {
-        dSPIN_Move(FWD, 300);
+        dSPIN_Move(REV, 300);
         while (BARCODE_MOTOR_IS_OPT && ++cnt < 6000000)
             ;
         cnt = 0;
@@ -351,7 +351,7 @@ eBarcodeState barcode_Motor_Init(void)
         barcode_Motor_Deal_Status();
     }
 
-    dSPIN_Go_Until(ACTION_RESET, REV, 30000);
+    dSPIN_Go_Until(ACTION_RESET, FWD, 30000);
     m_l6470_release(); /* 释放SPI总线资源*/
     return eBarcodeState_OK;
 }

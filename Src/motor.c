@@ -64,6 +64,7 @@ void motor_Resource_Init(void)
     barcode_Motor_Reset_Pos(); /* 重置扫码电机位置 */
     tray_Motor_Reset_Pos();    /* 重置托盘电机位置 */
 
+    barcode_Init();                         /* 扫码枪初始化 */
     motor_Tray_Move_By_Index(eTrayIndex_1); /* 扫码位置 */
     barcode_Scan_Whole();                   /* 执行扫码 */
 

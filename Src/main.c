@@ -1173,7 +1173,6 @@ static void LED_Task(void * argument)
     xCnt = temp_Get_Conv_Cnt();
     last_cnt = xCnt;
 
-    barcode_Init();
     fan_Start();
     fan_Adjust(fan_rate);
     /* Infinite loop */

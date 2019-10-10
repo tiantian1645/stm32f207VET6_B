@@ -93,7 +93,7 @@ int32_t tray_Motor_Read_Position(void)
 {
     int32_t position;
     position = (((int32_t)((dSPIN_Get_Param(dSPIN_ABS_POS)) << 10)) >> 10);
-    return position;
+    return position * -1;
 }
 
 /**
@@ -223,25 +223,25 @@ eTrayState tray_Motor_Run(void)
     if (gTray_Motor_Run_CMD_Info.step < 0xFFFFFF) {
         switch (gTray_Motor_Run_CMD_Info.dir) {
             case eMotorDir_REV:
-                dSPIN_Move(REV, gTray_Motor_Run_CMD_Info.step); /* 向驱动发送指令 */
+                dSPIN_Move(FWD, gTray_Motor_Run_CMD_Info.step); /* 向驱动发送指令 */
                 break;
             case eMotorDir_FWD:
             default:
-                dSPIN_Move(FWD, gTray_Motor_Run_CMD_Info.step); /* 向驱动发送指令 */
+                dSPIN_Move(REV, gTray_Motor_Run_CMD_Info.step); /* 向驱动发送指令 */
                 break;
         }
     } else {
         cnt = 0;
         if (TRAY_MOTOR_IS_OPT_1) {
-            dSPIN_Move(FWD, 350); /* 0.5 毫米 */
+            dSPIN_Move(REV, 350); /* 0.5 毫米 */
             while (TRAY_MOTOR_IS_BUSY && ++cnt <= 600000)
                 ;
         }
-        dSPIN_Go_Until(ACTION_RESET, REV, 40000);
+        dSPIN_Go_Until(ACTION_RESET, FWD, 40000);
         cnt = 0;
         while (TRAY_MOTOR_IS_BUSY && ++cnt <= 60000)
             ;
-        dSPIN_Move(REV, 24); /* 0.5 毫米 */
+        dSPIN_Move(FWD, 24); /* 0.5 毫米 */
     }
 
     result = gTray_Motor_Run_CMD_Info.pfLeave(); /* 出口回调 */
@@ -297,7 +297,7 @@ eTrayState tray_Motor_Init(void)
     }
 
     if (TRAY_MOTOR_IS_OPT_1) {
-        dSPIN_Move(FWD, 350);
+        dSPIN_Move(REV, 350);
         xTick = xTaskGetTickCount();
         while (TRAY_MOTOR_IS_OPT_1 && xTaskGetTickCount() - xTick < 5000) {
             vTaskDelay(1);
@@ -308,7 +308,7 @@ eTrayState tray_Motor_Init(void)
         tray_Motor_Deal_Status();
     }
 
-    dSPIN_Go_Until(ACTION_RESET, REV, 40000);
+    dSPIN_Go_Until(ACTION_RESET, FWD, 40000);
     m_l6470_release(); /* 释放SPI总线资源*/
     return eTrayState_OK;
 }
