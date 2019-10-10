@@ -81,7 +81,7 @@ void beater_BTM_Output_Stop(void)
 void heater_BTM_Output_Init(void)
 {
     // Prepare PID controller for operation
-    pid_ctrl_init(&gHeater_BTM_PID_Conf, HEATER_BTM_SAMPLE, &btm_input, &btm_output, &btm_setpoint, 9600, 0, 0);
+    pid_ctrl_init(&gHeater_BTM_PID_Conf, HEATER_BTM_SAMPLE, &btm_input, &btm_output, &btm_setpoint, 6000, 18000, 200);
     // Set controler output limits from 0 to 200
     pid_ctrl_limits(&gHeater_BTM_PID_Conf, 0, 100);
     // Allow PID to compute and change output
@@ -99,11 +99,6 @@ void heater_BTM_Output_Keep_Deal(void)
     if (pid_ctrl_need_compute(&gHeater_BTM_PID_Conf)) {
         // Read process feedback
         btm_input = temp_Get_Temp_Data_BTM();
-        if (btm_input < 36.5) {
-            btm_output = gHeater_BTM_PID_Conf.omax;
-            beater_TOP_Output_Ctl(btm_output / gHeater_BTM_PID_Conf.omax);
-            return;
-        }
         // Compute new PID output value
         pid_ctrl_compute(&gHeater_BTM_PID_Conf);
         // Change actuator value
@@ -159,7 +154,7 @@ void beater_TOP_Output_Stop(void)
 void heater_TOP_Output_Init(void)
 {
     // Prepare PID controller for operation
-    pid_ctrl_init(&gHeater_TOP_PID_Conf, HEATER_TOP_SAMPLE, &top_input, &top_output, &top_setpoint, 7650, 0, 0); /* 37摄氏度 kp 7650 临界波动点 */
+    pid_ctrl_init(&gHeater_TOP_PID_Conf, HEATER_TOP_SAMPLE, &top_input, &top_output, &top_setpoint, 5000, 40000, 0); /* 37摄氏度 kp 7650 临界波动点 */
     // Set controler output limits from 0 to 200
     pid_ctrl_limits(&gHeater_TOP_PID_Conf, 0, 100);
     // Allow PID to compute and change output
@@ -177,11 +172,6 @@ void heater_TOP_Output_Keep_Deal(void)
     if (pid_ctrl_need_compute(&gHeater_TOP_PID_Conf)) {
         // Read process feedback
         top_input = temp_Get_Temp_Data_TOP();
-        if (top_input < 36) {
-            top_output = gHeater_TOP_PID_Conf.omax;
-            beater_TOP_Output_Ctl(top_output / gHeater_TOP_PID_Conf.omax);
-            return;
-        }
         // Compute new PID output value
         pid_ctrl_compute(&gHeater_TOP_PID_Conf);
         // Change actuator value

@@ -33,15 +33,14 @@ typedef enum {
 #define TEMP_NTC_TA (TEMP_NTC_TK + 25) /* 25摄氏度换算成热力学温度 */
 #define TEMP_NTC_S 4095                /* 12位ADC 转换最大值 */
 
+#define TEMP_NTC_TOP_NUM 6
+#define TEMP_NTC_BTM_NUM 2
+
 /* Private macro -------------------------------------------------------------*/
-#define TEMP_NTC_TOP_1 eTemp_NTC_Index_0
-#define TEMP_NTC_TOP_2 eTemp_NTC_Index_1
-#define TEMP_NTC_TOP_3 eTemp_NTC_Index_2
-#define TEMP_NTC_TOP_4 eTemp_NTC_Index_3
-#define TEMP_NTC_TOP_5 eTemp_NTC_Index_4
-#define TEMP_NTC_TOP_6 eTemp_NTC_Index_5
-#define TEMP_NTC_BTM_1 eTemp_NTC_Index_6
-#define TEMP_NTC_BTM_2 eTemp_NTC_Index_7
+const eTemp_NTC_Index TEMP_NTC_TOP_IDXS[TEMP_NTC_TOP_NUM] = {eTemp_NTC_Index_0, eTemp_NTC_Index_1, eTemp_NTC_Index_2,
+                                                             eTemp_NTC_Index_3, eTemp_NTC_Index_4, eTemp_NTC_Index_5};
+const eTemp_NTC_Index TEMP_NTC_BTM_IDXS[TEMP_NTC_BTM_NUM] = {eTemp_NTC_Index_6, eTemp_NTC_Index_7};
+
 #define TEMP_NTC_ENV_1 eTemp_NTC_Index_8
 
 #define TEMP_NTC_NUM (9)                                              /* 温度探头数目 */
@@ -166,12 +165,46 @@ float temp_Get_Temp_Data(eTemp_NTC_Index idx)
     return temp_ADC_2_Temp(gTempADC_Results[idx]);
 }
 
+/**
+ * @brief  温度浮点类型绝对值
+ * @param  f 数据
+ * @retval 绝对值
+ */
 float temp_fabs(float f)
 {
     if (f < 0) {
         return f * -1.0;
     }
     return f;
+}
+
+float temp_Deal_Temp_Data(float * pData, uint8_t length)
+{
+    uint8_t i;
+    float max, min, sum;
+
+    if (length == 0) {
+        return 0;
+    }
+
+    max = pData[0];
+    min = pData[0];
+    sum = pData[0];
+
+    for (i = 1; i < length; ++i) {
+        if (pData[i] > max) {
+            max = pData[i];
+        }
+        if (pData[i] < min) {
+            min = pData[i];
+        }
+        sum += pData[i];
+    }
+
+    if (temp_fabs(max - 37) + temp_fabs(min - 37) < 0.6) {
+        return (temp_fabs(max - 37) > temp_fabs(min - 37)) ? (max) : (min);
+    }
+    return sum / length;
 }
 
 /**
@@ -182,68 +215,17 @@ float temp_fabs(float f)
  */
 float temp_Get_Temp_Data_TOP(void)
 {
-    float temp = 0, sum = 0, miss = 0;
-    uint8_t valid = 0;
+    float temp_list[TEMP_NTC_TOP_NUM], temp;
+    uint8_t valid = 0, i;
 
-    temp = temp_Get_Temp_Data(TEMP_NTC_TOP_1);
-    if (temp > 0 && temp < 55) {
-        sum += temp;
-        if (temp_fabs(temp - 37) > miss) {
-            miss = temp - 37;
+    for (i = 0; i < TEMP_NTC_TOP_NUM; ++i) {
+        temp = temp_Get_Temp_Data(TEMP_NTC_TOP_IDXS[i]);
+        if (temp > 0 && temp < 55) {
+            temp_list[i] = temp;
+            ++valid;
         }
-        ++valid;
     }
-
-    temp = temp_Get_Temp_Data(TEMP_NTC_TOP_2);
-    if (temp > 0 && temp < 55) {
-        sum += temp;
-        if (temp_fabs(temp - 37) > miss) {
-            miss = temp - 37;
-        }
-        ++valid;
-    }
-
-    temp = temp_Get_Temp_Data(TEMP_NTC_TOP_3);
-    if (temp > 0 && temp < 55) {
-        sum += temp;
-        if (temp_fabs(temp - 37) > miss) {
-            miss = temp - 37;
-        }
-        ++valid;
-    }
-
-    temp = temp_Get_Temp_Data(TEMP_NTC_TOP_4);
-    if (temp > 0 && temp < 55) {
-        sum += temp;
-        if (temp_fabs(temp - 37) > miss) {
-            miss = temp - 37;
-        }
-        ++valid;
-    }
-
-    temp = temp_Get_Temp_Data(TEMP_NTC_TOP_5);
-    if (temp > 0 && temp < 55) {
-        sum += temp;
-        if (temp_fabs(temp - 37) > miss) {
-            miss = temp - 37;
-        }
-        ++valid;
-    }
-
-    temp = temp_Get_Temp_Data(TEMP_NTC_TOP_6);
-    if (temp > 0 && temp < 55) {
-        sum += temp;
-        if (temp_fabs(temp - 37) > miss) {
-            miss = temp - 37;
-        }
-        ++valid;
-    }
-
-    if (valid > 0) {
-        return sum / valid + miss;
-    } else {
-        return 0;
-    }
+    return temp_Deal_Temp_Data(temp_list, valid);
 }
 
 /**
@@ -255,18 +237,14 @@ float temp_Get_Temp_Data_TOP(void)
 float temp_Get_Temp_Data_BTM(void)
 {
     float temp = 0, sum = 0;
-    uint8_t valid = 0;
+    uint8_t valid = 0, i;
 
-    temp = temp_Get_Temp_Data(TEMP_NTC_BTM_1);
-    if (temp > 0 && temp < 55) {
-        sum += temp;
-        ++valid;
-    }
-
-    temp = temp_Get_Temp_Data(TEMP_NTC_BTM_2);
-    if (temp > 0 && temp < 55) {
-        sum += temp;
-        ++valid;
+    for (i = 0; i < TEMP_NTC_BTM_NUM; ++i) {
+        temp = temp_Get_Temp_Data(TEMP_NTC_BTM_IDXS[i]);
+        if (temp > 0 && temp < 55) {
+            sum += temp;
+            ++valid;
+        }
     }
 
     if (valid > 0) {
