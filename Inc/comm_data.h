@@ -95,11 +95,13 @@ void gComm_Data_TIM_StartFlag_Clear(void);
 
 void comm_Data_Sample_Data_Deal(uint8_t data_num, uint8_t channel, uint8_t * pSample);
 uint8_t comm_Data_Build_Sample_Conf_Pack(uint8_t * pData);
-BaseType_t comm_Data_Sample_Complete_Wait(uint32_t timeout);
-BaseType_t comm_Data_Sample_Complete_Give(void);
-BaseType_t comm_Data_Sample_Complete_Check(void);
+
+BaseType_t comm_Data_Sample_Complete_Deal(void);
 
 BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData);
+BaseType_t comm_Data_Sample_Send_Conf(void);
+
+BaseType_t comm_Data_Sample_Owari(void);
 
 /* Private defines -----------------------------------------------------------*/
 

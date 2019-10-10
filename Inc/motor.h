@@ -50,7 +50,6 @@ typedef enum {
     eMotor_Fun_PD,           /* PD值测试 */
     eMotor_Fun_WH,           /* 白底值测试 */
     eMotor_Fun_Sample_Start, /* 开始测试 */
-    eMotor_Fun_Sample_Stop,  /* 停止测试 */
     eMotor_Fun_SYK,          /* 交错 */
     eMotor_Fun_RLB,          /* 回滚 */
     eMotor_Fun_PRE_TRAY,     /* 压力测试 托盘 */
@@ -64,6 +63,14 @@ typedef enum {
 typedef struct {
     eMotor_Fun fun_type;
 } sMotor_Fun;
+
+typedef enum {
+    eMotorNotifyValue_TG, /* 切换位置 */
+    eMotorNotifyValue_PD, /* PD位置采样 */
+    eMotorNotifyValue_WH, /* 白物质位置采样 */
+    eMotorNotifyValue_LO, /* 最后一次采样 Last Order */
+    eMotorNotifyValue_BR, /* 终止采样 */
+} eMotorNotifyValue;
 
 /* Exported define -----------------------------------------------------------*/
 #define motor_Status_Set_Position(__RUNSTATUS__, __POSITION__) ((__RUNSTATUS__)->position = (__POSITION__))
@@ -86,6 +93,9 @@ typedef struct {
 
 void motor_Init(void);
 uint8_t motor_Emit(sMotor_Fun * pFun_type, uint32_t timeout);
+
+BaseType_t motor_Sample_Info_ISR(eMotorNotifyValue info);
+BaseType_t motor_Sample_Info(eMotorNotifyValue info);
 
 /* Exported constants --------------------------------------------------------*/
 

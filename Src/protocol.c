@@ -17,6 +17,8 @@
 extern TIM_HandleTypeDef htim9;
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim6;
+extern TIM_HandleTypeDef htim3;
+extern TIM_HandleTypeDef htim4;
 
 /* Private includes ----------------------------------------------------------*/
 
@@ -460,14 +462,26 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 }
             }
             break;
-
+        case 0xDA:
+            if (length < 8 || pInBuff[6] == 0) {
+                HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_3);
+            } else if (pInBuff[6] == 1) {
+                HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
+            } else if (pInBuff[6] == 2) {
+                HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_4);
+            } else if (pInBuff[6] == 3) {
+                HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);
+            }
+            break;
         case eProtocolEmitPack_Client_CMD_START:          /* 开始测量帧 0x01 */
+            comm_Data_Sample_Send_Conf();                 /* 发送测试配置 */
+            soft_timer_Temp_Pause();                      /* 暂停温度上送 */
             motor_fun.fun_type = eMotor_Fun_Sample_Start; /* 开始测试 */
             motor_Emit(&motor_fun, 0);                    /* 提交到电机队列 */
             break;
-        case eProtocolEmitPack_Client_CMD_ABRUPT:        /* 仪器测量取消命令帧 0x02 */
-            motor_fun.fun_type = eMotor_Fun_Sample_Stop; /* 开始测试 */
-            motor_Emit(&motor_fun, 0);                   /* 提交到电机队列 */
+        case eProtocolEmitPack_Client_CMD_ABRUPT:    /* 仪器测量取消命令帧 0x02 */
+            comm_Data_Sample_Force_Stop();           /* 强行停止采样定时器 */
+            motor_Sample_Info(eMotorNotifyValue_BR); /* 提交打断信息 */
             break;
         case eProtocolEmitPack_Client_CMD_CONFIG:     /* 测试项信息帧 0x03 */
             comm_Data_Sample_Apply_Conf(&pInBuff[6]); /* 保存测试配置 */

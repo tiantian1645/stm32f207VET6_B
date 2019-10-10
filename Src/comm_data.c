@@ -12,6 +12,7 @@
 #include "stdio.h"
 #include "comm_data.h"
 #include "comm_out.h"
+#include "motor.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern UART_HandleTypeDef huart2;
@@ -59,7 +60,7 @@ static uint8_t gComm_Data_RecvConfirm = 0x5A; /* 启动定时发送后 接收到
 static uint8_t gComm_Data_TIM_StartFlag = 0;
 static uint8_t gComm_Data_Sample_Max_Point = 0;
 static sComm_Data_Sample_Conf_Unit gComm_Data_Sample_Confs[6];
-static xSemaphoreHandle gComm_Data_Sem_Sample_Finish = NULL;
+
 static uint32_t gComm_Data_Sample_ISR_Cnt = 0;
 static uint8_t gCoMM_Data_Sample_ISR_Buffer[16];
 
@@ -70,7 +71,6 @@ static void comm_Data_Recv_Task(void * argument);
 static void comm_Data_Send_Task(void * argument);
 
 static BaseType_t comm_Data_RecvTask_QueueEmit_ISR(uint8_t * pData, uint16_t length);
-static BaseType_t comm_Data_Sample_Complete_Give_ISR(void);
 
 /* Private user code ---------------------------------------------------------*/
 
@@ -284,6 +284,7 @@ void comm_Data_PD_Time_Deal_FromISR(void)
         HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_PD);             /* 停止定时器 */
         gComm_Data_TIM_StartFlag_Clear();                    /* 标记定时器停止 */
         gComm_Data_Sample_ISR_Cnt = 0;                       /* 定时器中断计数清零 */
+        motor_Sample_Info_ISR(eMotorNotifyValue_LO);         /* 通知电机任务最后一次切换位置 */
         return;
     }
     ++gComm_Data_Sample_ISR_Cnt;
@@ -316,10 +317,9 @@ uint8_t comm_Data_Sample_Force_Stop(void)
     if (gComm_Data_TIM_StartFlag_Check() == 0) {
         return 1;
     }
+    HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_PD); /* 停止定时器 终止测试 */
     gComm_Data_TIM_StartFlag_Clear();
     gComm_Data_Sample_ISR_Cnt = 0;
-    HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_PD); /* 停止定时器 终止测试 */
-
     return 0;
 }
 
@@ -349,6 +349,20 @@ BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData)
 
     sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 18); /* 构造测试配置包 */
     return comm_Data_SendTask_QueueEmit(pData, sendLength, 50);
+}
+
+BaseType_t comm_Data_Sample_Send_Conf(void)
+{
+    uint8_t i, sendLength, pData[32];
+
+    for (i = 0; i < ARRAY_LEN(gComm_Data_Sample_Confs); ++i) {
+        pData[3 * i + 0] = gComm_Data_Sample_Confs[i].assay;      /* 测试方法 */
+        pData[3 * i + 1] = gComm_Data_Sample_Confs[i].radiant;    /* 测试波长 */
+        pData[3 * i + 2] = gComm_Data_Sample_Confs[i].points_num; /* 测试点数 */
+    }
+
+    sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 18); /* 构造测试配置包 */
+    return  comm_Data_SendTask_QueueEmit(pData, sendLength, 50);
 }
 
 /**
@@ -388,17 +402,10 @@ void comm_Data_Init(void)
     xSemaphoreGive(comm_Data_Send_Sem);
 
     /* 发送队列 */
-    comm_Data_SendQueue = xQueueCreate(1, sizeof(sComm_Data_SendInfo));
+    comm_Data_SendQueue = xQueueCreate(2, sizeof(sComm_Data_SendInfo));
     if (comm_Data_SendQueue == NULL) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
-
-    /* 采样完成通知量 */
-    gComm_Data_Sem_Sample_Finish = xSemaphoreCreateBinary();
-    if (gComm_Data_Sem_Sample_Finish == NULL) {
-        FL_Error_Handler(__FILE__, __LINE__);
-    }
-    xSemaphoreGive(gComm_Data_Sem_Sample_Finish);
 
     /* Start DMA */
     if (HAL_UART_Receive_DMA(&COMM_DATA_UART_HANDLE, gComm_Data_RX_dma_buffer, ARRAY_LEN(gComm_Data_RX_dma_buffer)) != HAL_OK) {
@@ -411,7 +418,7 @@ void comm_Data_Init(void)
         FL_Error_Handler(__FILE__, __LINE__);
     }
     /* 创建串口发送任务 */
-    xResult = xTaskCreate(comm_Data_Send_Task, "CommDataTX", 128, NULL, TASK_PRIORITY_COMM_DATA_TX, &comm_Data_Send_Task_Handle);
+    xResult = xTaskCreate(comm_Data_Send_Task, "CommDataTX", 192, NULL, TASK_PRIORITY_COMM_DATA_TX, &comm_Data_Send_Task_Handle);
     if (xResult != pdPASS) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
@@ -473,67 +480,25 @@ BaseType_t comm_Data_Send_ACK_Notify(uint8_t packIndex)
 }
 
 /**
- * @brief  采样完成信号量 释放 中断版本
- * @param  None
- * @retval 释放结果
- */
-static BaseType_t comm_Data_Sample_Complete_Give_ISR(void)
-{
-    BaseType_t xWaken = pdFALSE;
-
-    if (gComm_Data_Sem_Sample_Finish == NULL) {
-        return pdFALSE;
-    }
-    if (xSemaphoreGiveFromISR(gComm_Data_Sem_Sample_Finish, &xWaken) == pdPASS) {
-        portYIELD_FROM_ISR(xWaken);
-        return pdTRUE;
-    }
-    return pdFALSE;
-}
-
-/**
  * @brief  采样完成信号量 释放 任务版本
  * @param  None
  * @retval 释放结果
  */
-BaseType_t comm_Data_Sample_Complete_Give(void)
+BaseType_t comm_Data_Sample_Complete_Deal(void)
 {
-    if (gComm_Data_Sem_Sample_Finish == NULL) {
-        return pdFALSE;
-    }
-    if (xSemaphoreGive(gComm_Data_Sem_Sample_Finish) == pdPASS) {
-        return pdTRUE;
-    }
-    return pdFALSE;
+    return motor_Sample_Info(eMotorNotifyValue_TG);
 }
 
 /**
- * @brief  采样完成信号量 等待
- * @param  timeout 超时时间
- * @retval pdPASS 得到 pdFAULT 超时
- */
-BaseType_t comm_Data_Sample_Complete_Wait(uint32_t timeout)
-{
-    if (gComm_Data_Sem_Sample_Finish == NULL) {
-        return pdFALSE;
-    }
-    return xSemaphoreTake(gComm_Data_Sem_Sample_Finish, pdMS_TO_TICKS(timeout));
-}
-
-/**
- * @brief  采样完成信号量 检查
+ * @brief  采样全部结束 后续处理
  * @param  None
- * @retval pdFALSE 未释放 pdPASS 已释放
+ * @retval
  */
-BaseType_t comm_Data_Sample_Complete_Check(void)
+BaseType_t comm_Data_Sample_Owari(void)
 {
-    if (gComm_Data_Sem_Sample_Finish == NULL) {
-        return pdFALSE;
-    }
-    if (uxSemaphoreGetCount(gComm_Data_Sem_Sample_Finish) == 0) {
-        return pdFALSE;
-    }
-    return pdPASS;
+    uint8_t buffer[7];
+
+    return comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_SAMP_OVER, buffer, 0);
 }
 
 /**

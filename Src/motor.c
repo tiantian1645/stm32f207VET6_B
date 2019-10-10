@@ -20,6 +20,7 @@
 #include "comm_out.h"
 #include "comm_main.h"
 #include "comm_data.h"
+#include "soft_timer.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim6;
@@ -35,6 +36,7 @@ extern TIM_HandleTypeDef htim7;
 
 /* Private variables ---------------------------------------------------------*/
 xQueueHandle motor_Fun_Queue_Handle = NULL; /* 电机功能队列 */
+xTaskHandle motor_Task_Handle = NULL;       /* 电机任务句柄 */
 
 /* Private constants ---------------------------------------------------------*/
 
@@ -63,7 +65,10 @@ void motor_Resource_Init(void)
     tray_Motor_Reset_Pos();    /* 重置托盘电机位置 */
 
     motor_Tray_Move_By_Index(eTrayIndex_1); /* 扫码位置 */
-    barcode_Scan_By_Index(eBarcodeIndex_6); /* QR Code 位置 */
+    barcode_Scan_Whole();                   /* 执行扫码 */
+
+    motor_Tray_Move_By_Index(eTrayIndex_0); /* 测试位置 */
+    heat_Motor_Run(eMotorDir_REV, 3000);    /* 砸下上加热体电机 */
 }
 
 /**
@@ -77,9 +82,31 @@ void motor_Init(void)
     if (motor_Fun_Queue_Handle == NULL) {
         Error_Handler();
     }
-    if (xTaskCreate(motor_Task, "Motor Task", 160, NULL, TASK_PRIORITY_MOTOR, NULL) != pdPASS) {
+    if (xTaskCreate(motor_Task, "Motor Task", 160, NULL, TASK_PRIORITY_MOTOR, &motor_Task_Handle) != pdPASS) {
         Error_Handler();
     }
+}
+
+/**
+ * @brief  电机任务 测量定时器通信
+ * @param  info 通信信息
+ * @retval pdTRUE 提交成功 pdFALSE 提交失败
+ */
+BaseType_t motor_Sample_Info_ISR(eMotorNotifyValue info)
+{
+    BaseType_t xWoken = pdFALSE;
+
+    return xTaskNotifyFromISR(motor_Task_Handle, info, eSetBits, &xWoken);
+}
+
+/**
+ * @brief  电机任务 测量定时器通信
+ * @param  info 通信信息
+ * @retval pdTRUE 提交成功 pdFALSE 提交失败
+ */
+BaseType_t motor_Sample_Info(eMotorNotifyValue info)
+{
+    return xTaskNotify(motor_Task_Handle, info, eSetBits);
 }
 
 /**
@@ -108,15 +135,15 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
 
     if (heat_Motor_Position_Is_Up() == 0 && heat_Motor_Run(eMotorDir_FWD, 3000) != 0) { /* 上加热体光耦位置未被阻挡 则抬起上加热体电机 */
         buffer[0] = 0x00;                                                               /* 抬起上加热体失败 */
-        // comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
+        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
         return;
     };
     if (tray_Move_By_Index(index, 5000) == eTrayState_OK) { /* 运动托盘电机 */
         buffer[0] = 0x01;                                   /* 托盘在检测位置 */
-        // comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1);
+        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1);
     } else {
         buffer[0] = 0x00;
-        // comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1);
+        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1);
     }
 }
 
@@ -128,6 +155,7 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
 static void motor_Task(void * argument)
 {
     BaseType_t xResult = pdFALSE;
+    uint32_t xNotifyValue;
     sMotor_Fun mf;
     uint32_t cnt = 0;
 
@@ -139,8 +167,12 @@ static void motor_Task(void * argument)
             continue;
         }
         switch (mf.fun_type) {
-            case eMotor_Fun_In: /* 入仓 */
-                motor_Tray_Move_By_Index(eTrayIndex_0);
+            case eMotor_Fun_In:                                 /* 入仓 */
+                if (heat_Motor_Run(eMotorDir_FWD, 3000) != 0) { /* 抬起上加热体电机 失败 */
+                    break;
+                };
+                motor_Tray_Move_By_Index(eTrayIndex_1);
+                barcode_Scan_Whole();
                 break;
             case eMotor_Fun_Out: /* 出仓 */
                 motor_Tray_Move_By_Index(eTrayIndex_2);
@@ -165,26 +197,35 @@ static void motor_Task(void * argument)
             case eMotor_Fun_Sample_Start:               /* 准备测试 */
                 motor_Tray_Move_By_Index(eTrayIndex_2); /* 运动托盘电机 */
                 heat_Motor_Run(eMotorDir_REV, 3000);    /* 砸下上加热体电机 */
-
-                white_Motor_WH();                  /* 运动白板电机 白物质位置 */
-                comm_Data_Sample_Complete_Wait(0); /* 标记开始采样 获取采样完成信号量 */
-                comm_Data_Sample_Start();          /*启动定时器同步发包*/
-
-                while (comm_Data_Sample_Complete_Wait(7500)) { /* 等待采样完成 */
-                    white_Motor_Toggle(3000);                  /* 切换白板电机位置 */
+                white_Motor_WH();                       /* 运动白板电机 白物质位置 */
+                comm_Data_Sample_Start();               /* 启动定时器同步发包 开始采样 */
+                for (;;) {
+                    xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(6000)); /* 等待任务通知 */
+                    if (xResult != pdTRUE || xNotifyValue == eMotorNotifyValue_BR) {              /* 超时 或 收到中终止命令 直接退出循环 */
+                        break;
+                    }
+                    if (xNotifyValue == eMotorNotifyValue_PD) {
+                        vTaskDelay(1500); /* 延时等待测量完成 */
+                        white_Motor_PD(); /* 运动白板电机 PD位置 清零位置 */
+                    } else if (xNotifyValue == eMotorNotifyValue_WH) {
+                        vTaskDelay(1500); /* 延时等待测量完成 */
+                        white_Motor_WH(); /* 运动白板电机 白物质位置 */
+                    } else if (xNotifyValue == eMotorNotifyValue_TG) {
+                        vTaskDelay(1500);         /* 延时等待测量完成 */
+                        white_Motor_Toggle(3000); /* 运动白板电机 切换位置 */
+                    } else if (xNotifyValue == eMotorNotifyValue_LO) {
+                        vTaskDelay(1500);         /* 延时等待测量完成 */
+                        white_Motor_Toggle(3000); /* 运动白板电机 切换位置 */
+                        break;
+                    } else {
+                        break;
+                    }
                 }
-                comm_Data_Sample_Force_Stop();       /*停止定时器同步发包*/
-                heat_Motor_Run(eMotorDir_FWD, 3000); /* 采样完成 抬起加热体电机 */
-                if (comm_Data_Sample_Complete_Check() == pdFALSE) {
-                    comm_Data_Sample_Complete_Give();
-                }
-                white_Motor_Toggle(3000);               /* 切换白板电机位置 */
-                motor_Tray_Move_By_Index(eTrayIndex_0); /* 运动托盘电机 */
-                break;
-            case eMotor_Fun_Sample_Stop:                        /* 终止测试 */
-                if (heat_Motor_Run(eMotorDir_FWD, 3000) != 0) { /* 抬起上加热体电机 失败 */
-                    break;
-                };
+                soft_timer_Temp_Resume();               /* 恢复温度上送 */
+                heat_Motor_Run(eMotorDir_FWD, 3000);    /* 采样结束 抬起加热体电机 */
+                white_Motor_PD();                       /* 运动白板电机 PD位置 清零位置 */
+                motor_Tray_Move_By_Index(eTrayIndex_2); /* 运动托盘电机 */
+                comm_Data_Sample_Owari();
                 break;
             case eMotor_Fun_SYK:                                /* 交错 */
                 if (heat_Motor_Run(eMotorDir_FWD, 3000) != 0) { /* 抬起上加热体电机 失败 */

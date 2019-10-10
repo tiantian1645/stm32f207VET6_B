@@ -459,36 +459,43 @@ eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index)
 {
     eBarcodeState result;
     sBarcoderesult * pResult;
-    uint8_t max_read_length;
+    uint8_t max_read_length, idx;
 
     switch (index) {
         case eBarcodeIndex_0:
             pResult = &(gBarcodeDecodeResult[6]);
             max_read_length = BARCODE_BA_LENGTH;
+            idx = 6;
             break;
         case eBarcodeIndex_1:
             pResult = &(gBarcodeDecodeResult[5]);
             max_read_length = BARCODE_BA_LENGTH;
+            idx = 5;
             break;
         case eBarcodeIndex_2:
             pResult = &(gBarcodeDecodeResult[4]);
             max_read_length = BARCODE_BA_LENGTH;
+            idx = 4;
             break;
         case eBarcodeIndex_3:
             pResult = &(gBarcodeDecodeResult[3]);
             max_read_length = BARCODE_BA_LENGTH;
+            idx = 3;
             break;
         case eBarcodeIndex_4:
             pResult = &(gBarcodeDecodeResult[2]);
             max_read_length = BARCODE_BA_LENGTH;
+            idx = 2;
             break;
         case eBarcodeIndex_5:
             pResult = &(gBarcodeDecodeResult[1]);
             max_read_length = BARCODE_BA_LENGTH;
+            idx = 1;
             break;
         case eBarcodeIndex_6:
             pResult = &(gBarcodeDecodeResult[0]);
             max_read_length = BARCODE_QR_LENGTH;
+            idx = 7;
             break;
         default:
             return eBarcodeState_Error;
@@ -508,9 +515,13 @@ eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index)
         pResult->length = 0;
         pResult->state = eBarcodeState_Error;
     } else {
-        pResult->state = barcode_Read_From_Serial(&(pResult->length), pResult->pData, max_read_length, 500);
-        if (pResult->state != eBarcodeState_Error && pResult->length > 50) { /* 存在有效QR Code */
-            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_BARCODE, pResult->pData, pResult->length);
+        pResult->state = barcode_Read_From_Serial(&(pResult->length), pResult->pData + 2, max_read_length, 500);
+        if (pResult->state != eBarcodeState_Error) { /* 存在有效QR Code */
+            pResult->pData[0] = idx;
+            pResult->pData[1] = pResult->length;
+            if (index != eBarcodeIndex_6 || pResult->length > 0) {
+                comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_BARCODE, pResult->pData, pResult->length + 2);
+            }
         }
     }
     return pResult->state;
@@ -523,36 +534,22 @@ eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index)
  */
 eBarcodeState barcode_Scan_Whole(void)
 {
-    sBarcoderesult * pResult;
-    eBarcodeState result;
     uint8_t i;
+    eBarcodeState result;
 
-    pResult = &(gBarcodeDecodeResult[0]);                                                   /* 先扫描 QR Code */
-    motor_CMD_Info_Set_PF_Enter(&gBarcodeMotorRunCmdInfo, barcode_Motor_Enter);             /* 配置启动前回调 */
-    motor_CMD_Info_Set_Tiemout(&gBarcodeMotorRunCmdInfo, 1500);                             /* 运动超时时间 1500mS */
-    barcode_Motor_Calculate((eBarcodeIndex_6 >> 5) << 3);                                   /* 计算运动距离 及方向 32细分转8细分 */
-    motor_CMD_Info_Set_PF_Leave(&gBarcodeMotorRunCmdInfo, barcode_Motor_Leave_On_Busy_Bit); /* 等待驱动状态位空闲 */
-    result = barcode_Motor_Run();                                                           /* 执行电机运动 */
-    if (result != eBarcodeState_OK) {                                                       /* 扫码电机故障 */
-        pResult->length = 0;                                                                /* 结果长度清零 */
-        pResult->state = eBarcodeState_Error;                                               /* 标记错误 */
-        return pResult->state;                                                              /* 提前返回 */
-    }
-    pResult->state = barcode_Read_From_Serial(&(pResult->length), pResult->pData, BARCODE_QR_LENGTH, 500);
-    if (pResult->length > 50) { /* 存在有效QR Code */
-        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_BARCODE, pResult->pData, pResult->length);
-        return eBarcodeState_OK; /* 提前返回 */
+    if (barcode_Scan_By_Index(eBarcodeIndex_6) != eBarcodeState_Error) { /* 先扫二维码 */
+        if (gBarcodeDecodeResult[0].length > 0) {                        /* 扫码结果非空 */
+            return eBarcodeState_OK;                                     /* 提前返回 */
+        }
     }
 
     for (i = 0; i < ARRAY_LEN(cBarCodeIndex); ++i) {      /* 不存在有效QR Code */
-        pResult = &(gBarcodeDecodeResult[1 + i]);         /* 逐个扫描 Bar Code */
         result = barcode_Scan_By_Index(cBarCodeIndex[i]); /* 扫码位置索引倒序 */
         if (result == eBarcodeState_Error) {              /* 扫码电机故障 */
             return eBarcodeState_Error;                   /* 提前返回 */
         }
-        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_BARCODE, pResult->pData, pResult->length);
     }
-    return eBarcodeState_OK; /* 提前返回 */
+    return eBarcodeState_OK;
 }
 
 /**
