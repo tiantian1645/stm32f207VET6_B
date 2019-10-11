@@ -106,6 +106,12 @@ void FL_Error_Handler(char * file, int line);
 #define ADC_NTC_BTM2_GPIO_Port GPIOA
 #define ADC_NTC_ENV_Pin GPIO_PIN_4
 #define ADC_NTC_ENV_GPIO_Port GPIOA
+#define SPI1_SCK_Pin GPIO_PIN_5
+#define SPI1_SCK_GPIO_Port GPIOA
+#define SPI1_MISO_Pin GPIO_PIN_6
+#define SPI1_MISO_GPIO_Port GPIOA
+#define SPI1_MOSI_Pin GPIO_PIN_7
+#define SPI1_MOSI_GPIO_Port GPIOA
 #define BC_AIM_WK_N_Pin GPIO_PIN_5
 #define BC_AIM_WK_N_GPIO_Port GPIOC
 #define STEP_STEP_Pin GPIO_PIN_9
@@ -162,6 +168,8 @@ void FL_Error_Handler(char * file, int line);
 #define LAMP2_GPIO_Port GPIOA
 #define LAMP3_Pin GPIO_PIN_12
 #define LAMP3_GPIO_Port GPIOA
+#define SPI1_NSS_Pin GPIO_PIN_15
+#define SPI1_NSS_GPIO_Port GPIOA
 #define LED_RUN_Pin GPIO_PIN_10
 #define LED_RUN_GPIO_Port GPIOC
 #define MCU_TXD_Pin GPIO_PIN_12

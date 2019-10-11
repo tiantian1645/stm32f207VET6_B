@@ -13,6 +13,7 @@
 #include "motor.h"
 #include "beep.h"
 #include "soft_timer.h"
+#include "storge_task.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim9;
@@ -299,7 +300,7 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
     eProtocolParseResult error = PROTOCOL_PARSE_OK;
     uint16_t status = 0;
     int32_t step;
-    uint8_t barcode_length;
+    uint8_t result;
     sMotor_Fun motor_fun;
 
     if (pInBuff[5] == eProtocoleRespPack_Client_ACK) { /* 收到对方回应帧 */
@@ -414,9 +415,9 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 barcode_Test(pInBuff[6]);
             }
 
-            barcode_Read_From_Serial(&barcode_length, pInBuff, 100, 2000);
-            if (barcode_length > 0) {
-                error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xD2, pInBuff, barcode_length);
+            barcode_Read_From_Serial(&result, pInBuff, 100, 2000);
+            if (result > 0) {
+                error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xD2, pInBuff, result);
             }
             break;
         case 0xD3:
@@ -437,9 +438,43 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             if (length != 14) {
                 beep_Start();
             } else {
-                beep_Start_With_Conf(pInBuff[6] % 7, pInBuff[7] + (pInBuff[8] << 8), pInBuff[9] + (pInBuff[10] << 8), pInBuff[11] + (pInBuff[12] << 8));
+                beep_Start_With_Conf(pInBuff[6] % 7, (pInBuff[7] << 8) + pInBuff[8], (pInBuff[9] << 8) + pInBuff[10], (pInBuff[11] << 8) + pInBuff[12]);
             }
             break;
+        case 0xD6: /* SPI Flash 读测试 */
+            result = storgeReadConfInfo((pInBuff[6] << 16) + (pInBuff[7] << 8) + pInBuff[8], (pInBuff[9] << 16) + (pInBuff[10] << 8) + pInBuff[11], 200);
+            if (result == 0 && storgeTaskNotification(eStorgeHardwareType_Flash, eStorgeRWType_Read, eComm_Out) == pdPASS) { /* 通知存储任务 */
+                error = PROTOCOL_PARSE_OK;
+            } else {
+                error |= PROTOCOL_PARSE_EMIT_ERROR;
+            }
+            return error;
+        case 0xD7: /* SPI Flash 写测试 */
+            result = storgeWriteConfInfo((pInBuff[6] << 16) + (pInBuff[7] << 8) + pInBuff[8], &pInBuff[12],
+                                         (pInBuff[9] << 16) + (pInBuff[10] << 8) + pInBuff[11], 200);
+            if (result == 0 && storgeTaskNotification(eStorgeHardwareType_Flash, eStorgeRWType_Write, eComm_Out) == pdPASS) { /* 通知存储任务 */
+                error = PROTOCOL_PARSE_OK;
+            } else {
+                error |= PROTOCOL_PARSE_EMIT_ERROR;
+            }
+            return error;
+        case 0xD8: /* EEPROM 读测试 */
+            result = storgeReadConfInfo((pInBuff[6] << 16) + (pInBuff[7] << 8) + pInBuff[8], (pInBuff[9] << 16) + (pInBuff[10] << 8) + pInBuff[11], 200);
+            if (result == 0 && storgeTaskNotification(eStorgeHardwareType_EEPROM, eStorgeRWType_Read, eComm_Out) == pdPASS) { /* 通知存储任务 */
+                error = PROTOCOL_PARSE_OK;
+            } else {
+                error |= PROTOCOL_PARSE_EMIT_ERROR;
+            }
+            return error;
+        case 0xD9: /* EEPROM 写测试 */
+            result = storgeWriteConfInfo((pInBuff[6] << 16) + (pInBuff[7] << 8) + pInBuff[8], &pInBuff[12],
+                                         (pInBuff[9] << 16) + (pInBuff[10] << 8) + pInBuff[11], 200);
+            if (result == 0 && storgeTaskNotification(eStorgeHardwareType_EEPROM, eStorgeRWType_Write, eComm_Out) == pdPASS) { /* 通知存储任务 */
+                error = PROTOCOL_PARSE_OK;
+            } else {
+                error |= PROTOCOL_PARSE_EMIT_ERROR;
+            }
+            return error;
         case 0xDA:
             if (length < 8 || pInBuff[6] == 0) {
                 HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_3);

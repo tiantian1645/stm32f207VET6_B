@@ -424,7 +424,7 @@ static void MX_SPI1_Init(void)
     hspi1.Init.CLKPolarity = SPI_POLARITY_HIGH;
     hspi1.Init.CLKPhase = SPI_PHASE_2EDGE;
     hspi1.Init.NSS = SPI_NSS_SOFT;
-    hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
+    hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
     hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
     hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
     hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -1071,6 +1071,9 @@ static void MX_GPIO_Init(void)
     HAL_GPIO_WritePin(GPIOA, LAMP1_Pin | LAMP2_Pin | LAMP3_Pin, GPIO_PIN_RESET);
 
     /*Configure GPIO pin Output Level */
+    HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);
+
+    /*Configure GPIO pin Output Level */
     HAL_GPIO_WritePin(STEP_DIR1_GPIO_Port, STEP_DIR1_Pin, GPIO_PIN_RESET);
 
     /*Configure GPIO pins : OPTSW_OUT2_Pin OPTSW_OUT4_Pin OPTSW_OUT5_Pin STEP_NFLG2_Pin
@@ -1126,8 +1129,8 @@ static void MX_GPIO_Init(void)
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
-    /*Configure GPIO pins : LAMP1_Pin LAMP2_Pin LAMP3_Pin */
-    GPIO_InitStruct.Pin = LAMP1_Pin | LAMP2_Pin | LAMP3_Pin;
+    /*Configure GPIO pins : LAMP1_Pin LAMP2_Pin LAMP3_Pin SPI1_NSS_Pin */
+    GPIO_InitStruct.Pin = LAMP1_Pin | LAMP2_Pin | LAMP3_Pin | SPI1_NSS_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -1183,7 +1186,7 @@ static void LED_Task(void * argument)
         HAL_GPIO_TogglePin(LED_RUN_GPIO_Port, LED_RUN_Pin);
         temp_env = temp_Get_Temp_Data_ENV();
         vTaskDelayUntil(&xTick, (1800 - 30 * temp_env > 0) ? (200) : (200));
-        if (xTick - last_tick >= 200) {
+        if (xTick - last_tick >= 2000) {
             xCnt = temp_Get_Conv_Cnt();
             temp_env = temp_Get_Temp_Data_ENV();
             // printf("\n========\ntask tick | %4lu | adc cnt | %4lu | ", xTick - last_tick, xCnt - last_cnt);

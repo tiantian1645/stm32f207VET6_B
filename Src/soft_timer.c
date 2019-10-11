@@ -111,7 +111,7 @@ void soft_timer_Temp_Call_Back(TimerHandle_t xTimer)
     buffer[3] = temp >> 8;
 
     length = buildPackOrigin(eComm_Main, eProtocoleRespPack_Client_TMP, buffer, 4);
-    comm_Out_SendTask_QueueEmitCover(buffer, length);
+    // comm_Out_SendTask_QueueEmitCover(buffer, length);
 }
 
 /**
