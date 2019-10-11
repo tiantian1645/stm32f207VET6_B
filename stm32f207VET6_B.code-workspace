@@ -16,7 +16,8 @@
 			"m_drv8824.h": "c",
 			"barcode_scan.h": "c",
 			"tray_run.h": "c",
-			"pid.h": "c"
+			"pid.h": "c",
+			"beep.h": "c"
 		}
 	}
 }

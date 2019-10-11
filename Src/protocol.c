@@ -12,6 +12,7 @@
 #include "white_motor.h"
 #include "motor.h"
 #include "beep.h"
+#include "soft_timer.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim9;
@@ -433,33 +434,10 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             }
             break;
         case 0xD5:
-            HAL_TIM_PWM_Start(&htim9, TIM_CHANNEL_2);
-            vTaskDelay(1000);
-            HAL_TIM_PWM_Stop(&htim9, TIM_CHANNEL_2);
-            break;
-        case 0xD6:
-            HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-            vTaskDelay(1000);
-            HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);
-            break;
-        case 0xD7:
-            if (length == 8) {
-                motor_fun.fun_type = pInBuff[6];
-                motor_Emit(&motor_fun, 0);
-            }
-            break;
-        case 0xD8:
-            HAL_TIM_Base_Start_IT(&htim6);
-            break;
-        case 0xD9:
-            if (length < 7) {
+            if (length != 14) {
                 beep_Start();
             } else {
-                if (pInBuff[6] == 0) {
-                    beep_Stop();
-                } else {
-                    beep_Start();
-                }
+                beep_Start_With_Conf(pInBuff[6] % 7, pInBuff[7] + (pInBuff[8] << 8), pInBuff[9] + (pInBuff[10] << 8), pInBuff[11] + (pInBuff[12] << 8));
             }
             break;
         case 0xDA:
