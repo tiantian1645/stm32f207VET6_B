@@ -19,7 +19,7 @@ extern TIM_HandleTypeDef htim1;
 
 /* Private macro -------------------------------------------------------------*/
 #define HEAT_MOTOR_PCS_MAX 24048
-#define HEAT_MOTOR_PCS_MIN 14500
+#define HEAT_MOTOR_PCS_MIN 18500
 #define HEAT_MOTOR_PCS_GAP 78
 #define HEAT_MOTOR_PCS_UNT 20
 #define HEAT_MOTOR_PCS_SUM 110
