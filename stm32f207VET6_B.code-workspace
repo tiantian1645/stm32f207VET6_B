@@ -17,7 +17,8 @@
 			"barcode_scan.h": "c",
 			"tray_run.h": "c",
 			"pid.h": "c",
-			"beep.h": "c"
+			"beep.h": "c",
+			"storge_task.h": "c"
 		}
 	}
 }

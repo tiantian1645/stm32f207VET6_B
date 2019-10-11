@@ -11,8 +11,8 @@ extern SPI_HandleTypeDef hspi1;
 
 /* Private define ------------------------------------------------------------*/
 /* 串行Flsh的片选GPIO端口  */
-#define spi_FlashPORT_CS GPIOA
-#define spi_FlashPIN_CS GPIO_PIN_15
+#define spi_FlashPORT_CS SPI1_NSS_GPIO_Port
+#define spi_FlashPIN_CS SPI1_NSS_Pin
 #define spi_FlashCS_ENABLE (HAL_GPIO_WritePin(spi_FlashPORT_CS, spi_FlashPIN_CS, GPIO_PIN_RESET)) /* 使能片选 */
 #define spi_FlashCS_DISABLE (HAL_GPIO_WritePin(spi_FlashPORT_CS, spi_FlashPIN_CS, GPIO_PIN_SET))  /* 禁能片选 */
 #define spi_FlashCS_0() spi_FlashCS_ENABLE
@@ -94,7 +94,8 @@ void bsp_SpiBusExit(void)
 */
 uint8_t bsp_spi_swap(uint8_t _ucByte)
 {
-    uint8_t read;
+    uint8_t read = 0xA5;
+
     HAL_SPI_TransmitReceive(&hspi1, &_ucByte, &read, 1, 10);
     return read;
 }
@@ -609,10 +610,13 @@ uint32_t spi_FlashReadID(void)
 */
 void spi_FlashReadInfo(void)
 {
-    /* 自动识别串行Flash型号 */
-    {
-        g_tSF.ChipID = spi_FlashReadID(); /* 芯片ID */
+	uint8_t cnt=0;
 
+    /* 自动识别串行Flash型号 */
+	while (g_tSF.ChipID == 0 && ++cnt < 5){
+        g_tSF.ChipID = spi_FlashReadID(); /* 芯片ID */
+        vTaskDelay(500);
+	}
         switch (g_tSF.ChipID) {
             case SST25VF016B_ID:
                 strcpy(g_tSF.ChipName, "SST25VF016B");
@@ -632,13 +636,19 @@ void spi_FlashReadInfo(void)
                 g_tSF.PageSize = 4 * 1024;         /* 页面大小 = 4K */
                 break;
 
+            case W25Q64FW_ID:
+                strcpy(g_tSF.ChipName, "W25Q64FW");
+                g_tSF.TotalSize = 8 * 1024 * 1024; /* 总容量 = 8M */
+                g_tSF.PageSize = 4 * 1024;         /* 页面大小 = 4K */
+                break;
+
             default:
                 strcpy(g_tSF.ChipName, "Unknow Flash");
                 g_tSF.TotalSize = 2 * 1024 * 1024;
                 g_tSF.PageSize = 4 * 1024;
                 break;
         }
-    }
+
 }
 
 /*

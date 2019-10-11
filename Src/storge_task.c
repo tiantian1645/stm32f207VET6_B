@@ -156,8 +156,6 @@ BaseType_t storgeTaskNotification(eStorgeHardwareType hw, eStorgeRWType rw, ePro
  */
 void storgeTaskInit(void)
 {
-    bsp_spi_FlashInit();
-
     storgeTaskInfoSemaphore = xSemaphoreCreateBinary();
     if (storgeTaskInfoSemaphore == NULL) {
         FL_Error_Handler(__FILE__, __LINE__);
@@ -182,6 +180,8 @@ static void storgeTask(void * argument)
     uint32_t ulNotifyValue;
     uint16_t length;
     uint8_t buff[256];
+
+    bsp_spi_FlashInit();
 
     for (;;) {
         xResult = xTaskNotifyWait(0x00, 0xFFFFFFFF, &ulNotifyValue, pdMS_TO_TICKS(50));

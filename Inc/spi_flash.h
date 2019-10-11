@@ -27,7 +27,7 @@ eSPI_Flash_Result SPI_Flash_Write(uint32_t addr, uint16_t length, uint8_t * pInB
 #define spi_FlashMAX_PAGE_SIZE (4 * 1024)
 
 /* 定义串行Flash ID */
-enum { SST25VF016B_ID = 0xBF2541, MX25L1606E_ID = 0xC22015, W25Q64BV_ID = 0xEF4017 };
+enum { SST25VF016B_ID = 0xBF2541, MX25L1606E_ID = 0xC22015, W25Q64BV_ID = 0xEF4017, W25Q64FW_ID = 0xEF6017 };
 
 typedef struct {
     uint32_t ChipID;    /* 芯片ID */
