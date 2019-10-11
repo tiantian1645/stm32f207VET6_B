@@ -93,7 +93,6 @@ void gComm_Data_RecvConfirm_Set(uint8_t data);
 
 void gComm_Data_TIM_StartFlag_Clear(void);
 
-void comm_Data_Sample_Data_Deal(uint8_t data_num, uint8_t channel, uint8_t * pSample);
 uint8_t comm_Data_Build_Sample_Conf_Pack(uint8_t * pData);
 
 BaseType_t comm_Data_Sample_Complete_Deal(void);

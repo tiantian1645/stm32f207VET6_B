@@ -9,6 +9,18 @@ def dep32(n):
     return ((n >> 24) & 0xFF, (n >> 16) & 0xFF, (n >> 8) & 0xFF, n & 0xFF)
 
 
+def test_conf(fn_a, fn_g, fn_c):
+    """
+    test_conf(lambda x: x % 3 + 1, lambda x: x % 3 + 1, lambda x: x + 1)
+    """
+    result = []
+    for i in range(6):
+        result.append(fn_a(i))
+        result.append(fn_g(i))
+        result.append(fn_c(i))
+    return result
+
+
 logger = loguru.logger
 logger.add(r"E:\pylog\stm32f207_serial.log")
 

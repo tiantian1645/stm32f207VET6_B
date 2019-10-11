@@ -21,6 +21,7 @@
 #include "comm_main.h"
 #include "comm_data.h"
 #include "soft_timer.h"
+#include "beep.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim6;
@@ -199,24 +200,25 @@ static void motor_Task(void * argument)
                 motor_Tray_Move_By_Index(eTrayIndex_2); /* 运动托盘电机 */
                 heat_Motor_Run(eMotorDir_REV, 3000);    /* 砸下上加热体电机 */
                 white_Motor_WH();                       /* 运动白板电机 白物质位置 */
+                vTaskDelay(1500);                       /* 延时 */
                 comm_Data_Sample_Start();               /* 启动定时器同步发包 开始采样 */
                 for (;;) {
                     xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(6000)); /* 等待任务通知 */
                     if (xResult != pdTRUE || xNotifyValue == eMotorNotifyValue_BR) {              /* 超时 或 收到中终止命令 直接退出循环 */
+                        beep_Start_With_Conf(eBeep_Freq_mi, 500, 500, 3);                         /* 蜂鸣器输出调试 */
                         break;
                     }
-                    if (xNotifyValue == eMotorNotifyValue_PD) {
-                        vTaskDelay(1500); /* 延时等待测量完成 */
-                        white_Motor_PD(); /* 运动白板电机 PD位置 清零位置 */
-                    } else if (xNotifyValue == eMotorNotifyValue_WH) {
-                        vTaskDelay(1500); /* 延时等待测量完成 */
-                        white_Motor_WH(); /* 运动白板电机 白物质位置 */
-                    } else if (xNotifyValue == eMotorNotifyValue_TG) {
-                        vTaskDelay(1500);         /* 延时等待测量完成 */
-                        white_Motor_Toggle(3000); /* 运动白板电机 切换位置 */
-                    } else if (xNotifyValue == eMotorNotifyValue_LO) {
-                        vTaskDelay(1500);         /* 延时等待测量完成 */
-                        white_Motor_Toggle(3000); /* 运动白板电机 切换位置 */
+                    if (xNotifyValue == eMotorNotifyValue_PD) {           /* 准备移动到PD位置 */
+                        beep_Start_With_Loop();                           /* 蜂鸣器输出调试 */
+                        vTaskDelay(2500);                                 /* 延时等待测量完成 */
+                        white_Motor_PD();                                 /* 运动白板电机 PD位置 清零位置 */
+                    } else if (xNotifyValue == eMotorNotifyValue_WH) {    /* 准备移动到白板位置 */
+                        beep_Start_With_Loop();                           /* 蜂鸣器输出调试 */
+                        vTaskDelay(2500);                                 /* 延时等待测量完成 */
+                        white_Motor_WH();                                 /* 运动白板电机 白物质位置 */
+                    } else if (xNotifyValue == eMotorNotifyValue_LO) {    /* 等待最后一次测量完成 */
+                        beep_Start_With_Conf(eBeep_Freq_re, 100, 100, 5); /* 蜂鸣器输出调试 */
+                        vTaskDelay(2500);                                 /* 延时等待测量完成 */
                         break;
                     } else {
                         break;
@@ -226,7 +228,7 @@ static void motor_Task(void * argument)
                 heat_Motor_Run(eMotorDir_FWD, 3000);    /* 采样结束 抬起加热体电机 */
                 white_Motor_PD();                       /* 运动白板电机 PD位置 清零位置 */
                 motor_Tray_Move_By_Index(eTrayIndex_2); /* 运动托盘电机 */
-                comm_Data_Sample_Owari();
+                comm_Data_Sample_Owari();               /* 上送采样结束报文 */
                 break;
             case eMotor_Fun_SYK:                                /* 交错 */
                 if (heat_Motor_Run(eMotorDir_FWD, 3000) != 0) { /* 抬起上加热体电机 失败 */

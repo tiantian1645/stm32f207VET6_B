@@ -62,6 +62,7 @@ static uint8_t gComm_Data_Sample_Max_Point = 0;
 static sComm_Data_Sample_Conf_Unit gComm_Data_Sample_Confs[6];
 
 static uint32_t gComm_Data_Sample_ISR_Cnt = 0;
+static uint8_t gComm_Data_Sample_PD_WH_Idx = 0xFF;
 static uint8_t gCoMM_Data_Sample_ISR_Buffer[16];
 
 /* Private constants ---------------------------------------------------------*/
@@ -105,6 +106,36 @@ uint8_t gComm_Data_RecvConfirm_Check(uint8_t idx)
         return 1;
     }
     return 0;
+}
+
+/**
+ * @brief  当前采样项目 获取
+ * @param  None
+ * @retval 1 白板 2 PD 0xFF 重置值
+ */
+uint8_t gComm_Data_Sample_PD_WH_Idx_Get(void)
+{
+    return gComm_Data_Sample_PD_WH_Idx;
+}
+
+/**
+ * @brief  当前采样项目 设置
+ * @param  idx 1 白板 2 PD 0xFF 重置值
+ * @retval None
+ */
+void gComm_Data_Sample_PD_WH_Idx_Set(uint8_t idx)
+{
+    gComm_Data_Sample_PD_WH_Idx = idx;
+}
+
+/**
+ * @brief  当前采样项目 清零
+ * @param  None
+ * @retval None
+ */
+void gComm_Data_Sample_PD_WH_Idx_Clear(void)
+{
+    gComm_Data_Sample_PD_WH_Idx = 0xFF;
 }
 
 /**
@@ -256,6 +287,7 @@ void comm_Data_PD_Time_Deal_FromISR(void)
 
     if (gComm_Data_Sample_ISR_Cnt % 25 == 0) {                                                                /* 每 25 次  5S 构造一个新包  */
         gCoMM_Data_Sample_ISR_Buffer[0] = (gComm_Data_Sample_ISR_Cnt / 25) % 2 + 1;                           /* 采样类型 白物质 -> PD */
+        gComm_Data_Sample_PD_WH_Idx_Set(gCoMM_Data_Sample_ISR_Buffer[0]);                                     /* 更新当前采样项目 */
         length = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_START, gCoMM_Data_Sample_ISR_Buffer, 1); /* 构造下一个数据包 */
         last_idx = gCoMM_Data_Sample_ISR_Buffer[3];                                                           /* 记录帧号 */
 
@@ -284,7 +316,7 @@ void comm_Data_PD_Time_Deal_FromISR(void)
         HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_PD);             /* 停止定时器 */
         gComm_Data_TIM_StartFlag_Clear();                    /* 标记定时器停止 */
         gComm_Data_Sample_ISR_Cnt = 0;                       /* 定时器中断计数清零 */
-        motor_Sample_Info_ISR(eMotorNotifyValue_LO);         /* 通知电机任务最后一次切换位置 */
+        gComm_Data_Sample_PD_WH_Idx_Clear();                 /* 清除项目记录 */
         return;
     }
     ++gComm_Data_Sample_ISR_Cnt;
@@ -362,19 +394,7 @@ BaseType_t comm_Data_Sample_Send_Conf(void)
     }
 
     sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 18); /* 构造测试配置包 */
-    return  comm_Data_SendTask_QueueEmit(pData, sendLength, 50);
-}
-
-/**
- * @brief  采样数据处理
- * @param  data_num    数据个数
- * @param  channel     采样通道索引
- * @param  pSample     数据指针
- * @retval None
- */
-void comm_Data_Sample_Data_Deal(uint8_t data_num, uint8_t channel, uint8_t * pSample)
-{
-    return;
+    return comm_Data_SendTask_QueueEmit(pData, sendLength, 50);
 }
 
 /**
@@ -486,7 +506,14 @@ BaseType_t comm_Data_Send_ACK_Notify(uint8_t packIndex)
  */
 BaseType_t comm_Data_Sample_Complete_Deal(void)
 {
-    return motor_Sample_Info(eMotorNotifyValue_TG);
+    if (gComm_Data_Sample_PD_WH_Idx_Get() == 1) {           /* 当前检测白物质 */
+        return motor_Sample_Info(eMotorNotifyValue_PD);     /* 白板电机准备移动到PD位置 */
+    } else if (gComm_Data_Sample_PD_WH_Idx_Get() == 2) {    /* 当前检测PD */
+        return motor_Sample_Info(eMotorNotifyValue_WH);     /* 白板电机准备移动到白物质位置 */
+    } else if (gComm_Data_Sample_PD_WH_Idx_Get() == 0xFF) { /* 最后一次采样 */
+        return motor_Sample_Info(eMotorNotifyValue_LO);     /* 白板电机准备复位 */
+    }
+    return pdFALSE;
 }
 
 /**

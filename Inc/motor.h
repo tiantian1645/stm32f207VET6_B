@@ -65,11 +65,10 @@ typedef struct {
 } sMotor_Fun;
 
 typedef enum {
-    eMotorNotifyValue_TG, /* 切换位置 */
-    eMotorNotifyValue_PD, /* PD位置采样 */
-    eMotorNotifyValue_WH, /* 白物质位置采样 */
-    eMotorNotifyValue_LO, /* 最后一次采样 Last Order */
-    eMotorNotifyValue_BR, /* 终止采样 */
+    eMotorNotifyValue_PD = (1 << 0), /* PD位置采样 */
+    eMotorNotifyValue_WH = (1 << 1), /* 白物质位置采样 */
+    eMotorNotifyValue_LO = (1 << 2), /* 最后一次采样 Last Order */
+    eMotorNotifyValue_BR = (1 << 3), /* 终止采样 */
 } eMotorNotifyValue;
 
 /* Exported define -----------------------------------------------------------*/
