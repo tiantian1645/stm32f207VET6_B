@@ -172,7 +172,7 @@ void comm_Out_Init(void)
     }
 
     /* 创建串口接收任务 */
-    xResult = xTaskCreate(comm_Out_Recv_Task, "CommOutRX", 320, NULL, TASK_PRIORITY_COMM_OUT_RX, &comm_Out_Recv_Task_Handle);
+    xResult = xTaskCreate(comm_Out_Recv_Task, "CommOutRX", 192, NULL, TASK_PRIORITY_COMM_OUT_RX, &comm_Out_Recv_Task_Handle);
     if (xResult != pdPASS) {
         FL_Error_Handler(__FILE__, __LINE__);
     }

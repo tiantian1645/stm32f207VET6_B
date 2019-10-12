@@ -53,12 +53,37 @@ typedef struct {
 /* Private variables ---------------------------------------------------------*/
 static sStorgeTaskQueueInfo gStorgeTaskInfo;
 static TaskHandle_t storgeTaskHandle = NULL;
-static SemaphoreHandle_t storgeTaskInfoSemaphore = NULL;
+static uint8_t gStorgeTaskInfoLock = 0;
 
 /* Private function prototypes -----------------------------------------------*/
 static void storgeTask(void * argument);
 
 /* Private user code ---------------------------------------------------------*/
+
+/**
+ * @brief  存储任务运行参数 修改锁 释放
+ * @param  None
+ * @retval None
+ */
+void gStorgeTaskInfoLockRelease(void)
+{
+    gStorgeTaskInfoLock = 0; /* 解锁 */
+}
+
+/**
+ * @brief  存储任务运行参数 修改锁 获取
+ * @param  None
+ * @retval 0 成功 1 失败
+ */
+uint8_t gStorgeTaskInfoLockAcquire(void)
+{
+    if (gStorgeTaskInfoLock == 0) { /* 未上锁 */
+        gStorgeTaskInfoLock = 1;    /* 上锁 */
+        return 0;
+    }
+    return 1; /* 未解锁 */
+}
+
 /**
  * @brief  存储任务运行参数
  * @param  addr        操作地址
@@ -67,19 +92,18 @@ static void storgeTask(void * argument);
  * @param  timeout     信号量等待时间
  * @retval None
  */
-
 uint8_t storgeReadConfInfo(uint32_t addr, uint32_t num, uint32_t timeout)
 {
-    BaseType_t xResult;
+    do {
+        if (gStorgeTaskInfoLockAcquire() == 0) {
+            gStorgeTaskInfo.addr = addr;
+            gStorgeTaskInfo.num = num;
+            return 0;
+        }
+        vTaskDelay(1);
+    } while (--timeout);
 
-    xResult = xSemaphoreTake(storgeTaskInfoSemaphore, pdMS_TO_TICKS(timeout));
-    if (xResult != pdPASS) {
-        return 2; /* 错误码2 信号量被占用 不允许修改信息 */
-    }
-    gStorgeTaskInfo.addr = addr;
-    gStorgeTaskInfo.num = num;
-    xSemaphoreGive(storgeTaskInfoSemaphore);
-    return 0;
+    return 2; /* 错误码2 超时 */
 }
 
 /**
@@ -95,19 +119,22 @@ uint8_t storgeWriteConfInfo(uint32_t addr, uint8_t * pIn, uint32_t num, uint32_t
 {
     BaseType_t xResult;
 
-    if (num > ARRAY_LEN(gStorgeTaskInfo.buffer)) { /* 长度超过缓冲容量 */
+    if (pIn == NULL ||                             /* 目标指针为空 或者 */
+        num > ARRAY_LEN(gStorgeTaskInfo.buffer)) { /* 长度超过缓冲容量 */
         return 1;                                  /* 错误码1 */
     }
 
-    xResult = xSemaphoreTake(storgeTaskInfoSemaphore, pdMS_TO_TICKS(timeout));
-    if (xResult != pdPASS) {
-        return 2; /* 错误码2 信号量被占用 不允许修改信息 */
-    }
-    gStorgeTaskInfo.addr = addr;
-    gStorgeTaskInfo.num = num;
-    memcpy(gStorgeTaskInfo.buffer, pIn, num);
-    xSemaphoreGive(storgeTaskInfoSemaphore);
-    return 0;
+    do {
+        if (gStorgeTaskInfoLockAcquire() == 0) {
+            gStorgeTaskInfo.addr = addr;
+            gStorgeTaskInfo.num = num;
+            memcpy(gStorgeTaskInfo.buffer, pIn, num);
+            return 0;
+        }
+        vTaskDelay(1);
+    } while (--timeout);
+
+    return 2; /* 错误码2 超时 */
 }
 
 /**
@@ -156,12 +183,6 @@ BaseType_t storgeTaskNotification(eStorgeHardwareType hw, eStorgeRWType rw, ePro
  */
 void storgeTaskInit(void)
 {
-    storgeTaskInfoSemaphore = xSemaphoreCreateBinary();
-    if (storgeTaskInfoSemaphore == NULL) {
-        FL_Error_Handler(__FILE__, __LINE__);
-    }
-    xSemaphoreGive(storgeTaskInfoSemaphore);
-
     if (xTaskCreate(storgeTask, "StorgeTask", 160, NULL, TASK_PRIORITY_STORGE, &storgeTaskHandle) != pdPASS) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
@@ -184,17 +205,15 @@ static void storgeTask(void * argument)
     bsp_spi_FlashInit();
 
     for (;;) {
-        xResult = xTaskNotifyWait(0x00, 0xFFFFFFFF, &ulNotifyValue, pdMS_TO_TICKS(50));
+        xResult = xTaskNotifyWait(0x00, 0xFFFFFFFF, &ulNotifyValue, portMAX_DELAY);
         if (xResult != pdPASS) {
             continue;
         }
         if ((ulNotifyValue & STORGE_TASK_NOTIFY_ALL) == 0) {
+            gStorgeTaskInfoLockRelease(); /* 解锁 */
             continue;
         }
-        xResult = xSemaphoreTake(storgeTaskInfoSemaphore, 0);
-        if (xResult != pdPASS) {
-            continue;
-        }
+
         switch (ulNotifyValue & STORGE_TASK_NOTIFY_IN) {
             case STORGE_TASK_NOTIFY_IN_FLASH_READ:
                 for (i = 0; i < ((gStorgeTaskInfo.num + STORGE_FLASH_PART_NUM - 1) / STORGE_FLASH_PART_NUM); ++i) {
@@ -277,6 +296,6 @@ static void storgeTask(void * argument)
             default:
                 break;
         }
-        xSemaphoreGive(storgeTaskInfoSemaphore);
+        gStorgeTaskInfoLockRelease(); /* 解锁 */
     }
 }
