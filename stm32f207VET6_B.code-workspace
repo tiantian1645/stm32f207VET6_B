@@ -18,7 +18,9 @@
 			"tray_run.h": "c",
 			"pid.h": "c",
 			"beep.h": "c",
-			"storge_task.h": "c"
+			"storge_task.h": "c",
+			"main.h": "c",
+			"error.h": "c"
 		}
 	}
 }

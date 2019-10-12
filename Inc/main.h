@@ -38,6 +38,8 @@ extern "C" {
 #include "queue.h"
 #include "semphr.h"
 #include "string.h"
+#include "error.h"
+
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -64,7 +66,7 @@ extern "C" {
 
 /* USER CODE END EM */
 
-void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef * htim);
 
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);

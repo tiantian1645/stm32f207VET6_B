@@ -397,9 +397,9 @@ void barcode_sn2707_Init(void)
     //    if (se2707_check_param(&huart3, icParam, 1000, 5) != 0) {
     //        Error_Handler();
     //    }
-    // if (se2707_reset_param(&huart3, 2500, 2) != 0) {
-    //     Error_Handler();
-    // }
+    if (se2707_reset_param(&huart3, 1000, 2) != 0) {
+        error_Emit(eComm_Out, eError_Peripheral_Scanner, eError_Scanner_Recv_None);
+    }
 }
 
 /**

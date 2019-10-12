@@ -110,7 +110,7 @@ void gProtocol_ACK_IndexAutoIncrease(eProtocol_COMM_Index index)
  */
 BaseType_t protocol_is_NeedWaitRACK(uint8_t * pData)
 {
-    if (pData[5] == eProtocoleRespPack_Client_ACK) {
+    if (pData[5] == eProtocoleRespPack_Client_ACK || pData[5] == eProtocoleRespPack_Client_ERR) {
         return pdFALSE;
     }
     return pdTRUE;
