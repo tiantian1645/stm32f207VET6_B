@@ -117,8 +117,6 @@ uint8_t storgeReadConfInfo(uint32_t addr, uint32_t num, uint32_t timeout)
 
 uint8_t storgeWriteConfInfo(uint32_t addr, uint8_t * pIn, uint32_t num, uint32_t timeout)
 {
-    BaseType_t xResult;
-
     if (pIn == NULL ||                             /* 目标指针为空 或者 */
         num > ARRAY_LEN(gStorgeTaskInfo.buffer)) { /* 长度超过缓冲容量 */
         return 1;                                  /* 错误码1 */
@@ -209,10 +207,6 @@ static void storgeTask(void * argument)
         if (xResult != pdPASS) {
             continue;
         }
-        if ((ulNotifyValue & STORGE_TASK_NOTIFY_ALL) == 0) {
-            gStorgeTaskInfoLockRelease(); /* 解锁 */
-            continue;
-        }
 
         switch (ulNotifyValue & STORGE_TASK_NOTIFY_IN) {
             case STORGE_TASK_NOTIFY_IN_FLASH_READ:
@@ -258,15 +252,22 @@ static void storgeTask(void * argument)
                 for (i = 0; i < ((gStorgeTaskInfo.num + STORGE_EEPROM_PART_NUM - 1) / STORGE_EEPROM_PART_NUM); ++i) {
                     readCnt =
                         (gStorgeTaskInfo.num >= STORGE_EEPROM_PART_NUM * (i + 1)) ? (STORGE_EEPROM_PART_NUM) : (gStorgeTaskInfo.num % STORGE_EEPROM_PART_NUM);
-                    length = I2C_EEPROM_Read(gStorgeTaskInfo.addr + STORGE_EEPROM_PART_NUM * i, buff, readCnt, 30);
+                    length = I2C_EEPROM_Read(gStorgeTaskInfo.addr + STORGE_EEPROM_PART_NUM * i, buff + 5, readCnt, 30);
+                    length = readCnt;                                                     /* 调试用! */
+                    memset(buff, i, ARRAY_LEN(buff));                                     /* 调试用! */
+                    buff[0] = gStorgeTaskInfo.num & 0xFF;                                 /* 信息总长度 小端模式 */
+                    buff[1] = gStorgeTaskInfo.num >> 8;                                   /* 信息总长度 小端模式 */
+                    buff[2] = (gStorgeTaskInfo.addr + STORGE_EEPROM_PART_NUM * i) & 0xFF; /* 地址信息 小端模式 */
+                    buff[3] = (gStorgeTaskInfo.addr + STORGE_EEPROM_PART_NUM * i) >> 8;   /* 地址信息 小端模式 */
+                    buff[4] = length;                                                     /* 数据长度 小端模式 */
                     if (ulNotifyValue & STORGE_TASK_NOTIFY_COMM_OUT) {
-                        xResult = comm_Out_SendTask_QueueEmitWithBuildCover(0xD3, buff, length);
+                        xResult = comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_ID_CARD, buff, length + 5);
                         if (xResult != pdPASS) {
                             break;
                         }
                     }
                     if (ulNotifyValue & STORGE_TASK_NOTIFY_COMM_MAIN) {
-                        xResult = comm_Main_SendTask_QueueEmitWithBuildCover(0xD3, buff, length);
+                        xResult = comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_ID_CARD, buff, length + 5);
                         if (xResult != pdPASS) {
                             break;
                         }

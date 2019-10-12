@@ -507,8 +507,13 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             motor_fun.fun_type = eMotor_Fun_In;    /* 配置电机动作套餐类型 进仓 */
             motor_Emit(&motor_fun, 0);             /* 交给电机任务 进仓 */
             break;
-        case eProtocolEmitPack_Client_CMD_READ_ID: /* ID卡读取命令帧 0x06 */
-                                                   /* TO DO */
+        case eProtocolEmitPack_Client_CMD_READ_ID:                                                                            /* ID卡读取命令帧 0x06 */
+            result = storgeReadConfInfo(0, 4096, 200);                                                                        /* 暂无定义 按最大读取 */
+            if (result == 0 && storgeTaskNotification(eStorgeHardwareType_EEPROM, eStorgeRWType_Read, eComm_Out) == pdPASS) { /* 通知存储任务 */
+                error = PROTOCOL_PARSE_OK;
+            } else {
+                error |= PROTOCOL_PARSE_EMIT_ERROR;
+            }
             break;
         case eProtocolEmitPack_Client_CMD_UPGRADE: /* 下位机升级命令帧 0x0F */
                                                    /* TO DO */

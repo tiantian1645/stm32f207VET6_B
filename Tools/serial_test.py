@@ -4,6 +4,7 @@ import serial
 import loguru
 import stackprinter
 import random
+import time
 
 logger = loguru.logger
 logger.add(r"E:\pylog\stm32f207_serial.log")
@@ -44,7 +45,7 @@ def read_pack_generator(pack_index, cmd_type, addr, num):
 
 
 ser = serial.Serial(port=None, baudrate=115200, timeout=1)
-ser.port = "COM6"
+ser.port = "COM3"
 
 
 def serial_test(*args, **kwargs):
@@ -52,15 +53,26 @@ def serial_test(*args, **kwargs):
         if not ser.isOpen():
             ser.open()
         send_pack = dd.buildPack(*args, **kwargs)
-        logger.info("send pack | {}".format(bytesPuttyPrint(send_pack)))
+        logger.warning("send pack | {}".format(bytesPuttyPrint(send_pack)))
         ser.write(send_pack)
-        recv_pack = ser.read(3)
-        if recv_pack:
-            if len(recv_pack) == 3:
-                recv_pack += ser.read(recv_pack[-1] + 2)
-            logger.info("recv pack | {}".format(bytesPuttyPrint(recv_pack)))
-        else:
-            logger.warning("recv pack | None")
+        cnt = 0
+        while True:
+            recv_pack = ser.read(3)
+            if len(recv_pack) < 3:
+                if cnt == 0:
+                    logger.error("recv pack error | {}".format(bytesPuttyPrint(recv_pack)))
+                break
+            second_read_num = recv_pack[-1] + 1
+            recv_pack += ser.read(second_read_num)
+            if len(recv_pack) < 3 + second_read_num:
+                logger.error("recv second pack error | {}".format(bytesPuttyPrint(recv_pack)))
+                break
+            logger.success("recv pack | {}".format(bytesPuttyPrint(recv_pack)))
+            if recv_pack[5] != 0xAA:
+                ack_pack = dd.buildPack(0x13, random.randint(0, 255), 0xAA, (recv_pack[3],))
+                ser.write(ack_pack)
+                logger.warning("send pack | {}".format(bytesPuttyPrint(ack_pack)))
+            cnt += 1
     except Exception:
         logger.error("exception in serial test\n{}".format(stackprinter.format()))
     finally:
@@ -68,32 +80,39 @@ def serial_test(*args, **kwargs):
 
 
 def storge_write_test():
-    result = b""
+    w_result = b""
     addr = 0
     pack_index = 0
+    max_addr = 0x800000
+    # max_addr = 0x010000
 
     if not ser.isOpen():
         ser.open()
-    while addr < 0x800000:
-        if addr + 0xE0 > 0x800000:
-            num = 0x800000 - addr
+    ser.read(2048)
+    while addr < max_addr:
+        if addr + 0xE0 > max_addr:
+            num = max_addr - addr
         else:
             num = 0xE0
         logger.debug("0x{:06X} ~ 0x{:06X}".format(addr, addr + num - 1))
-        pack = write_pack_generator(pack_index & 0xFF, 0xD6, addr, num)
-        result += pack[12:-1]
+        pack = write_pack_generator(pack_index & 0xFF, 0xD7, addr, num)
+        w_result += pack[12:-1]
         try:
             logger.debug("send pack | {}".format(bytesPuttyPrint(pack)))
             ser.write(pack)
             recv_ack = ser.read(8)
             if len(recv_ack) == 0:
                 logger.error("recv ack None stop")
-                break
+                time.sleep(3)
+                ser.read(2048)
+                continue
             logger.success("recv ack | {}".format(bytesPuttyPrint(recv_ack)))
             recv_data = ser.read(8)
             if len(recv_ack) == 0:
                 logger.error("recv data None stop")
-                break
+                time.sleep(3)
+                ser.read(2048)
+                continue
             logger.success("recv data | {}".format(bytesPuttyPrint(recv_data)))
             last_packindex = recv_data[3]
             pack_index = last_packindex + 1
@@ -106,4 +125,49 @@ def storge_write_test():
             break
         addr += 0xE0
     ser.close()
-    return result
+    return w_result
+
+
+addr = 0
+pack_index = 0
+max_addr = 0x010000
+r_result = b""
+
+if not ser.isOpen():
+    ser.open()
+while addr < max_addr:
+    if addr + 0xE0 > max_addr:
+        num = max_addr - addr
+    else:
+        num = 0xE0
+    logger.debug("0x{:06X} ~ 0x{:06X}".format(addr, addr + num - 1))
+    pack = read_pack_generator(pack_index & 0xFF, 0xD6, addr, num)
+    try:
+        logger.debug("send pack | {}".format(bytesPuttyPrint(pack)))
+        ser.write(pack)
+        recv_ack = ser.read(8)
+        if len(recv_ack) == 0:
+            logger.error("recv ack None stop")
+            time.sleep(3)
+            ser.read(2048)
+            continue
+        logger.success("recv ack | {}".format(bytesPuttyPrint(recv_ack)))
+        recv_data = ser.read(7 + num)
+        if len(recv_ack) == 0:
+            logger.error("recv data None stop")
+            time.sleep(3)
+            ser.read(2048)
+            continue
+        logger.success("recv data | {}".format(bytesPuttyPrint(recv_data)))
+        r_result += recv_data[6:-1]
+        last_packindex = recv_data[3]
+        pack_index = last_packindex + 1
+        ack_pack = dd.buildPack(0x13, pack_index & 0xFF, 0xAA, (last_packindex,))
+        logger.debug("send ack | {}".format(bytesPuttyPrint(ack_pack)))
+        ser.write(ack_pack)
+        pack_index += 1
+    except Exception:
+        logger.debug("error {}".format(stackprinter.format()))
+        break
+    addr += 0xE0
+ser.close()

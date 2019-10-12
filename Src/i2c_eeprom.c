@@ -12,6 +12,7 @@ extern I2C_HandleTypeDef hi2c1;
 /* Private define ------------------------------------------------------------*/
 #define AT24CXX_DEV_ADDR 0xA0
 #define AT24CXX_MEM_ADDR_SIZE I2C_MEMADD_SIZE_16BIT
+#define AT24CXX_I2C_HANDLE hi2c1
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -44,7 +45,7 @@ uint16_t I2C_EEPROM_Read(uint32_t memAddr, uint8_t * pOutBuff, uint16_t length, 
     }
 
     do {
-        if (HAL_I2C_Mem_Read(&hi2c1, AT24CXX_DEV_ADDR, memAddr, AT24CXX_MEM_ADDR_SIZE, pOutBuff, dealNum, timeout) != HAL_OK) {
+        if (HAL_I2C_Mem_Read(&AT24CXX_I2C_HANDLE, AT24CXX_DEV_ADDR, memAddr, AT24CXX_MEM_ADDR_SIZE, pOutBuff, dealNum, timeout) != HAL_OK) {
             return readCnt;
         }
         readCnt += dealNum; /* 已读取数量 */
@@ -83,7 +84,7 @@ uint16_t I2C_EEPROM_Write(uint32_t memAddr, uint8_t * pOutBuff, uint16_t length,
     }
 
     do {
-        if (HAL_I2C_Mem_Write(&hi2c1, AT24CXX_DEV_ADDR, memAddr, AT24CXX_MEM_ADDR_SIZE, pOutBuff, dealNum, timeout) != HAL_OK) {
+        if (HAL_I2C_Mem_Write(&AT24CXX_I2C_HANDLE, AT24CXX_DEV_ADDR, memAddr, AT24CXX_MEM_ADDR_SIZE, pOutBuff, dealNum, timeout) != HAL_OK) {
             return wroteCnt;
         }
         wroteCnt += dealNum; /* 已写入数量 */

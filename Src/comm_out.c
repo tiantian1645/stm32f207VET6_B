@@ -265,13 +265,14 @@ static void comm_Out_Recv_Task(void * argument)
     eProtocolParseResult pResult;
 
     for (;;) {
-        if (xQueueReceive(comm_Out_RecvQueue, &recvInfo, pdMS_TO_TICKS(5)) != pdPASS) { /* 检查接收队列 */
-            continue;                                                                   /* 队列空 */
+        if (xQueueReceive(comm_Out_RecvQueue, &recvInfo, portMAX_DELAY) != pdPASS) { /* 检查接收队列 */
+            continue;                                                                /* 队列空 */
         }
 
         pResult = protocol_Parse_Out(recvInfo.buff, recvInfo.length); /* 数据包协议解析 */
         if (pResult == PROTOCOL_PARSE_OK) {                           /* 数据包解析正常 */
         }
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
@@ -288,10 +289,10 @@ static void comm_Out_Send_Task(void * argument)
 
     for (;;) {
         if (uxSemaphoreGetCount(comm_Out_Send_Sem) == 0) { /* DMA发送未完成 此时从接收队列提取数据覆盖发送指针会干扰DMA发送 */
-            vTaskDelay(5);
+            vTaskDelay(pdMS_TO_TICKS(10));
             continue;
         }
-        if (xQueuePeek(comm_Out_SendQueue, &sendInfo, pdMS_TO_TICKS(5)) != pdPASS) { /* 发送队列为空 */
+        if (xQueueReceive(comm_Out_SendQueue, &sendInfo, portMAX_DELAY) != pdPASS) { /* 发送队列为空 */
             continue;
         }
         ucResult = 0; /* 发送结果初始化 */
@@ -308,11 +309,15 @@ static void comm_Out_Send_Task(void * argument)
                 if (ulNotifyValue == sendInfo.buff[3]) {
                     ucResult = 1; /* 置位发送成功 */
                     break;
+                } else {
+                    ucResult = 3;
                 }
+            } else {
+                ucResult = 4;
             }
         }
         if (ucResult == 0) { /* 重发失败处理 */
         }
-        xQueueReceive(comm_Out_SendQueue, &sendInfo, 0); /* 释放发送队列 */
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
