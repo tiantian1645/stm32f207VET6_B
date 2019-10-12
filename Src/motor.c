@@ -173,8 +173,10 @@ static void motor_Task(void * argument)
                 if (heat_Motor_Run(eMotorDir_FWD, 3000) != 0) { /* 抬起上加热体电机 失败 */
                     break;
                 };
-                motor_Tray_Move_By_Index(eTrayIndex_1);
-                barcode_Scan_Whole();
+                motor_Tray_Move_By_Index(eTrayIndex_1); /* 扫码位置 */
+                barcode_Scan_Whole();                   /* 执行扫码 */
+                motor_Tray_Move_By_Index(eTrayIndex_0); /* 测试位置 */
+                heat_Motor_Run(eMotorDir_REV, 3000);    /* 砸下上加热体电机 */
                 break;
             case eMotor_Fun_Out: /* 出仓 */
                 motor_Tray_Move_By_Index(eTrayIndex_2);
