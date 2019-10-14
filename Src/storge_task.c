@@ -5,6 +5,7 @@
 #include "i2c_eeprom.h"
 #include "spi_flash.h"
 #include "protocol.h"
+#include "soft_timer.h"
 
 /* Private includes ----------------------------------------------------------*/
 #include "storge_task.h"
@@ -207,7 +208,7 @@ static void storgeTask(void * argument)
         if (xResult != pdPASS) {
             continue;
         }
-
+        soft_timer_Temp_Pause(); /* 暂停温度上送 */
         switch (ulNotifyValue & STORGE_TASK_NOTIFY_IN) {
             case STORGE_TASK_NOTIFY_IN_FLASH_READ:
                 for (i = 0; i < ((gStorgeTaskInfo.num + STORGE_FLASH_PART_NUM - 1) / STORGE_FLASH_PART_NUM); ++i) {
@@ -298,5 +299,6 @@ static void storgeTask(void * argument)
                 break;
         }
         gStorgeTaskInfoLockRelease(); /* 解锁 */
+        soft_timer_Temp_Resume();     /* 恢复温度上送 */
     }
 }

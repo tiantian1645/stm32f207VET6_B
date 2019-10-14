@@ -355,12 +355,12 @@ uint8_t se2707_reset_param(UART_HandleTypeDef * puart, uint32_t timeout, uint8_t
         length = se2707_build_pack_reset_Default(buffer);
         se2707_send_pack(puart, buffer, length);
         memset(buffer, 0, ARRAY_LEN(buffer));
-        length = se2707_recv_pack(puart, buffer, 7, timeout);
+        length = se2707_recv_pack(puart, buffer, 6, timeout); /* ack 报文长度为6 */
         result = se2707_check_recv_ack(buffer, length);
         if (result == 0) {
             break;
         }
-        HAL_Delay(1000);
+        se2707_recv_pack(puart, buffer, ARRAY_LEN(buffer), 1000); /* nak 报文长度为7清除串口缓冲 */
     } while (--retry > 0);
     return result;
 }

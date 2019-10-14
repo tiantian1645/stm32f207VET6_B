@@ -110,7 +110,7 @@ void gProtocol_ACK_IndexAutoIncrease(eProtocol_COMM_Index index)
  */
 BaseType_t protocol_is_NeedWaitRACK(uint8_t * pData)
 {
-    if (pData[5] == eProtocoleRespPack_Client_ACK || pData[5] == eProtocoleRespPack_Client_ERR) {
+    if (pData[5] == eProtocoleRespPack_Client_ACK || pData[5] == eProtocoleRespPack_Client_ERR || pData[0] != 0x69) {
         return pdFALSE;
     }
     return pdTRUE;
@@ -485,6 +485,10 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             } else if (pInBuff[6] == 3) {
                 HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);
             }
+            break;
+        case 0xDB:
+            motor_fun.fun_type = (eMotor_Fun)pInBuff[6]; /* 开始测试 */
+            motor_Emit(&motor_fun, 0);                   /* 提交到电机队列 */
             break;
         case eProtocolEmitPack_Client_CMD_START:          /* 开始测量帧 0x01 */
             comm_Data_Sample_Send_Conf();                 /* 发送测试配置 */
