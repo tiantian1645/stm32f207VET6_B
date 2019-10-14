@@ -28,7 +28,6 @@ extern TIM_HandleTypeDef htim1;
 static eMotorDir gHeat_Motor_Dir = eMotorDir_FWD;
 static uint32_t gHeat_Motor_Position = 0xFFFFFFFF;
 static uint32_t gHeat_Motor_SRC_Buffer[3] = {0, 0, 0};
-static uint8_t gHeat_Motor_Lock = 0;
 
 /* Private constants ---------------------------------------------------------*/
 
@@ -38,56 +37,6 @@ static void gHeat_Motor_Position_Inc(uint32_t position);
 static void gHeat_Motor_Position_Clr(void);
 
 /* Private user code ---------------------------------------------------------*/
-
-/**
- * @brief  加热体电机运动锁 获取
- * @param  None
- * @retval 加热体电机运动锁
- */
-uint8_t gHeat_Motor_Lock_Get(void)
-{
-    return gHeat_Motor_Lock;
-}
-
-/**
- * @brief  加热体电机运动锁 设置
- * @param  lock 加热体电机运动锁
- * @retval None
- */
-void gHeat_Motor_Lock_Set(uint8_t lock)
-{
-    gHeat_Motor_Lock = lock;
-}
-
-/**
- * @brief  加热体电机运动锁 设置
- * @param  lock 加热体电机运动锁
- * @retval None
- */
-uint8_t heat_Motor_Lock_Check(void)
-{
-    return gHeat_Motor_Lock_Get() == 0;
-}
-
-/**
- * @brief  加热体电机运动锁 设置
- * @param  lock 加热体电机运动锁
- * @retval None
- */
-void heat_Motor_Lock_Occupy(void)
-{
-    gHeat_Motor_Lock_Set(1);
-}
-
-/**
- * @brief  加热体电机运动锁 设置
- * @param  lock 加热体电机运动锁
- * @retval None
- */
-void heat_Motor_Lock_Release(void)
-{
-    gHeat_Motor_Lock_Set(0);
-}
 
 /**
  * @brief  加热体电机方向 获取
@@ -255,10 +204,6 @@ uint8_t heat_Motor_Run(eMotorDir dir, uint32_t timeout)
         }
     } else if (dir == eMotorDir_REV && heat_Motor_Position_Is_Down()) { /* 向下运动指令 但已运动步数超过极限位置80% */
         return 0;
-    }
-
-    if (!heat_Motor_Lock_Check()) { /* 检查运动锁 */
-        return 1;
     }
 
     gHeat_Motor_Position_Rst();                                /* 重置位置记录置非法值 0xFFFFFFFF */

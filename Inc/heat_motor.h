@@ -8,6 +8,8 @@
 /* Private includes ----------------------------------------------------------*/
 
 /* Exported macro ------------------------------------------------------------*/
+#define heat_Motor_Up() heat_Motor_Run(eMotorDir_FWD, 3000)
+#define heat_Motor_Down() heat_Motor_Run(eMotorDir_REV, 3000)
 
 /* Exported types ------------------------------------------------------------*/
 
@@ -15,10 +17,6 @@
 
 /* Exported functions prototypes ---------------------------------------------*/
 eMotorDir gHeat_Motor_Dir_Get(void);
-
-uint8_t heat_Motor_Lock_Check(void);
-void heat_Motor_Lock_Occupy(void);
-void heat_Motor_Lock_Release(void);
 
 void heat_Motor_Active(void);
 void heat_Motor_Deactive(void);

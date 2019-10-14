@@ -8,8 +8,8 @@
 /* Private includes ----------------------------------------------------------*/
 
 /* Exported macro ------------------------------------------------------------*/
-#define white_Motor_PD() white_Motor_Run(eMotorDir_REV, 3000)
-#define white_Motor_WH() white_Motor_Run(eMotorDir_FWD, 3000)
+#define white_Motor_PD() white_Motor_Run(eMotorDir_REV, 1000)
+#define white_Motor_WH() white_Motor_Run(eMotorDir_FWD, 1000)
 
 /* Exported types ------------------------------------------------------------*/
 
@@ -17,10 +17,6 @@
 
 /* Exported functions prototypes ---------------------------------------------*/
 eMotorDir gWhite_Motor_Dir_Get(void);
-
-uint8_t white_Motor_Lock_Check(void);
-void white_Motor_Lock_Occupy(void);
-void white_Motor_Lock_Release(void);
 
 void white_Motor_Active(void);
 void white_Motor_Deactive(void);

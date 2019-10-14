@@ -18,9 +18,9 @@ extern TIM_HandleTypeDef htim1;
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
-#define WHITE_MOTOR_PCS_MAX 40000
+#define WHITE_MOTOR_PCS_MAX 32000
 #define WHITE_MOTOR_PCS_MIN 24000
-#define WHITE_MOTOR_PCS_GAP 400
+#define WHITE_MOTOR_PCS_GAP 200
 #define WHITE_MOTOR_PCS_UNT 5
 #define WHITE_MOTOR_PCS_SUM 476
 
@@ -28,7 +28,6 @@ extern TIM_HandleTypeDef htim1;
 static eMotorDir gWhite_Motor_Dir = eMotorDir_FWD;
 static uint32_t gWhite_Motor_Position = 0xFFFFFFFF;
 static uint32_t gWhite_Motor_SRC_Buffer[3] = {0, 0, 0};
-static uint8_t gWhite_Motor_Lock = 0;
 
 /* Private constants ---------------------------------------------------------*/
 
@@ -38,56 +37,6 @@ static void gWhite_Motor_Position_Inc(uint32_t position);
 static void gWhite_Motor_Position_Clr(void);
 
 /* Private user code ---------------------------------------------------------*/
-
-/**
- * @brief  白板电机运动锁 获取
- * @param  None
- * @retval 白板电机运动锁
- */
-uint8_t gWhite_Motor_Lock_Get(void)
-{
-    return gWhite_Motor_Lock;
-}
-
-/**
- * @brief  白板电机运动锁 设置
- * @param  lock 白板电机运动锁
- * @retval None
- */
-void gWhite_Motor_Lock_Set(uint8_t lock)
-{
-    gWhite_Motor_Lock = lock;
-}
-
-/**
- * @brief  白板电机运动锁 设置
- * @param  lock 白板电机运动锁
- * @retval None
- */
-uint8_t white_Motor_Lock_Check(void)
-{
-    return gWhite_Motor_Lock_Get() == 0;
-}
-
-/**
- * @brief  白板电机运动锁 设置
- * @param  lock 白板电机运动锁
- * @retval None
- */
-void white_Motor_Lock_Occupy(void)
-{
-    gWhite_Motor_Lock_Set(1);
-}
-
-/**
- * @brief  白板电机运动锁 设置
- * @param  lock 白板电机运动锁
- * @retval None
- */
-void white_Motor_Lock_Release(void)
-{
-    gWhite_Motor_Lock_Set(0);
-}
 
 /**
  * @brief  白板电机方向 获取
@@ -258,10 +207,6 @@ uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout)
         }
     } else if (dir == eMotorDir_FWD && white_Motor_Position_Is_Out()) { /* 向下运动指令 但已运动步数超过极限位置80% */
         return 0;
-    }
-
-    if (!white_Motor_Lock_Check()) { /* 检查运动锁 */
-        return 1;
     }
 
     gWhite_Motor_Position_Rst();                               /* 重置位置记录置非法值 0xFFFFFFFF */
