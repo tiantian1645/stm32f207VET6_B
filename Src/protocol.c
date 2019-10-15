@@ -110,7 +110,7 @@ void gProtocol_ACK_IndexAutoIncrease(eProtocol_COMM_Index index)
  */
 BaseType_t protocol_is_NeedWaitRACK(uint8_t * pData)
 {
-    if (pData[5] == eProtocoleRespPack_Client_ACK || pData[5] == eProtocoleRespPack_Client_ERR || pData[0] != 0x69) {
+    if (pData[5] == eProtocoleRespPack_Client_ACK || pData[5] == eProtocoleRespPack_Client_ERR) {
         return pdFALSE;
     }
     return pdTRUE;
@@ -314,6 +314,8 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
         comm_Data_SendTask_QueueEmitCover(pInBuff, length);  /* 提交到采集板发送任务 */
         return PROTOCOL_PARSE_OK;
     }
+
+    soft_timer_Temp_Comm_Set(eComm_Out, 1);
 
     error = protocol_Parse_AnswerACK(eComm_Out, pInBuff[3]); /* 发送回应包 */
     switch (pInBuff[5]) {                                    /* 进一步处理 功能码 */

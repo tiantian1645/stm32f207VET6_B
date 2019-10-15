@@ -141,11 +141,16 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
         return;
     };
     if (tray_Move_By_Index(index, 5000) == eTrayState_OK) { /* 运动托盘电机 */
-        buffer[0] = 0x01;                                   /* 托盘在检测位置 */
-        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1);
+        if (index == eTrayIndex_0) {                        /* 托盘在检测位置 */
+            buffer[0] = 0x01;
+            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1);
+        } else if (index == eTrayIndex_2) { /* 托盘在加样位置 */
+            buffer[0] = 0x02;
+            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1);
+        }
     } else {
-        buffer[0] = 0x00;
-        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1);
+        buffer[0] = 0x00;                                                                     /* 托盘电机运动失败 */
+        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
     }
 }
 
@@ -175,8 +180,6 @@ static void motor_Task(void * argument)
                 if (heat_Motor_Up() != 0) { /* 抬起上加热体电机 失败 */
                     break;
                 };
-                motor_Tray_Move_By_Index(eTrayIndex_1); /* 扫码位置 */
-                barcode_Scan_Whole();                   /* 执行扫码 */
                 motor_Tray_Move_By_Index(eTrayIndex_0); /* 测试位置 */
                 heat_Motor_Down();                      /* 砸下上加热体电机 */
                 break;
@@ -201,6 +204,8 @@ static void motor_Task(void * argument)
                 white_Motor_WH();                       /* 运动白板电机 */
                 break;
             case eMotor_Fun_Sample_Start:               /* 准备测试 */
+                motor_Tray_Move_By_Index(eTrayIndex_1); /* 运动托盘电机 */
+                barcode_Scan_Whole();                   /* 执行扫码 */
                 motor_Tray_Move_By_Index(eTrayIndex_2); /* 运动托盘电机 */
                 heat_Motor_Down();                      /* 砸下上加热体电机 */
                 white_Motor_WH();                       /* 运动白板电机 白物质位置 */

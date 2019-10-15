@@ -196,13 +196,8 @@ uint16_t se2707_send_pack(UART_HandleTypeDef * puart, uint8_t * pData, uint16_t 
     if (HAL_UART_Transmit(puart, nn, 1, 10) != HAL_OK) {
         return 1;
     }
-    HAL_Delay(20);
+    HAL_Delay(40);
 
-    if (HAL_UART_Transmit(puart, nn, 1, 10) != HAL_OK) {
-        return 1;
-    }
-
-    HAL_Delay(20);
     if (HAL_UART_Transmit(puart, pData, length, 10) != HAL_OK) {
         return 1;
     }

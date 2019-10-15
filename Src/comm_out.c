@@ -15,6 +15,7 @@
 #include "barcode_scan.h"
 #include "tray_run.h"
 #include "m_drv8824.h"
+#include "soft_timer.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern UART_HandleTypeDef huart5;
@@ -52,9 +53,6 @@ static xSemaphoreHandle comm_Out_Send_Sem = NULL;
 /* 串口收发任务句柄 */
 static xTaskHandle comm_Out_Recv_Task_Handle = NULL;
 static xTaskHandle comm_Out_Send_Task_Handle = NULL;
-
-static sComm_Out_SendInfo gComm_Out_SendInfo;
-static uint8_t gComm_Out_SendInfoFlag = 1;
 
 /* Private constants ---------------------------------------------------------*/
 
@@ -172,7 +170,7 @@ void comm_Out_Init(void)
     }
 
     /* 创建串口接收任务 */
-    xResult = xTaskCreate(comm_Out_Recv_Task, "CommOutRX", 192, NULL, TASK_PRIORITY_COMM_OUT_RX, &comm_Out_Recv_Task_Handle);
+    xResult = xTaskCreate(comm_Out_Recv_Task, "CommOutRX", 256, NULL, TASK_PRIORITY_COMM_OUT_RX, &comm_Out_Recv_Task_Handle);
     if (xResult != pdPASS) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
@@ -205,6 +203,16 @@ BaseType_t comm_Out_RecvTask_QueueEmit_ISR(uint8_t * pData, uint16_t length)
 }
 
 /**
+ * @brief  串口发送队列 未处理个数
+ * @param  Npne
+ * @retval 串口发送队列 未处理个数
+ */
+UBaseType_t comm_Out_SendTask_Queue_GetWaiting(void)
+{
+    return uxQueueMessagesWaiting(comm_Out_SendQueue);
+}
+
+/**
  * @brief  加入串口发送队列
  * @param  pData   数据指针
  * @param  length  数据长度
@@ -214,18 +222,19 @@ BaseType_t comm_Out_RecvTask_QueueEmit_ISR(uint8_t * pData, uint16_t length)
 BaseType_t comm_Out_SendTask_QueueEmit(uint8_t * pData, uint8_t length, uint32_t timeout)
 {
     BaseType_t xResult;
+    sComm_Out_SendInfo sendInfo;
+
     if (length == 0 || pData == NULL) {
         return pdFALSE;
     }
-    if (gComm_Out_SendInfoFlag == 0) {
-        return pdFALSE;
-    }
-    gComm_Out_SendInfoFlag = 0;
-    memcpy(gComm_Out_SendInfo.buff, pData, length);
-    gComm_Out_SendInfo.length = length;
 
-    xResult = xQueueSendToBack(comm_Out_SendQueue, &gComm_Out_SendInfo, pdMS_TO_TICKS(timeout));
-    gComm_Out_SendInfoFlag = 1;
+    memcpy(sendInfo.buff, pData, length);
+    sendInfo.length = length;
+    if (protocol_is_NeedWaitRACK(sendInfo.buff)) {
+        xResult = xQueueSendToBack(comm_Out_SendQueue, &sendInfo, pdMS_TO_TICKS(timeout));
+    } else {
+        xResult = xQueueSendToFront(comm_Out_SendQueue, &sendInfo, pdMS_TO_TICKS(timeout));
+    }
     return xResult;
 }
 
@@ -310,13 +319,14 @@ static void comm_Out_Send_Task(void * argument)
                     ucResult = 1; /* 置位发送成功 */
                     break;
                 } else {
-                    ucResult = 3;
+                    ucResult = 0;
                 }
             } else {
-                ucResult = 4;
+                ucResult = 0;
             }
         }
-        if (ucResult == 0) { /* 重发失败处理 */
+        if (ucResult == 0) {                        /* 重发失败处理 */
+            soft_timer_Temp_Comm_Set(eComm_Out, 0); /* 关闭本串口温度上送 */
         }
         vTaskDelay(pdMS_TO_TICKS(10));
     }

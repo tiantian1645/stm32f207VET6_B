@@ -13,7 +13,7 @@
 #define COMM_OUT_SER_TX_SIZE 255
 
 #define COMM_OUT_SER_TX_RETRY_NUM 3
-#define COMM_OUT_SER_TX_RETRY_INT 200
+#define COMM_OUT_SER_TX_RETRY_INT 2000
 #define COMM_OUT_SER_TX_RETRY_SUM ((COMM_OUT_SER_TX_RETRY_NUM) * (COMM_OUT_SER_TX_RETRY_INT))
 
 /* Exported types ------------------------------------------------------------*/
@@ -37,11 +37,16 @@ void comm_Out_IRQ_RX_Deal(UART_HandleTypeDef * huart);
 void comm_Out_DMA_TX_CallBack(void);
 BaseType_t comm_Out_DMA_TX_Enter(uint32_t timeout);
 void comm_Out_DMA_TX_Error(void);
+
+UBaseType_t comm_Out_SendTask_Queue_GetWaiting(void);
+
 BaseType_t comm_Out_SendTask_QueueEmit(uint8_t * pdata, uint8_t length, uint32_t timeout);
 #define comm_Out_SendTask_QueueEmitCover(pdata, length) comm_Out_SendTask_QueueEmit((pdata), (length), (COMM_OUT_SER_TX_RETRY_SUM))
+
 BaseType_t comm_Out_SendTask_QueueEmitWithBuild(uint8_t cmdType, uint8_t * pData, uint8_t length, uint32_t timeout);
 #define comm_Out_SendTask_QueueEmitWithBuildCover(cmdType, pdata, length)                                                                                      \
     comm_Out_SendTask_QueueEmitWithBuild((cmdType), (pdata), (length), (COMM_OUT_SER_TX_RETRY_SUM))
+
 BaseType_t comm_Out_Send_ACK_Notify(uint8_t packIndex);
 
 /* Private defines -----------------------------------------------------------*/
