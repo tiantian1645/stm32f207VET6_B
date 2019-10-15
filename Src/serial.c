@@ -88,7 +88,7 @@ void serialGenerateCallback(uint8_t * pBuff, uint16_t length, sSerialRecord * ps
         memcpy(&psrd->pSerialBuff[psrd->validLength], pBuff, length); /* 拼接到尾部 */
         psrd->validLength += length;                                  /* 更新未处理数据长度 */
     }
-
+    // HAL_UART_Transmit(&huart5, pBuff, length, 10);
     if (psrd->validLength < psrd->minLength) { /* 报文长度不足 */
         return;
     }

@@ -1,10 +1,13 @@
-from bytes_helper import bytesPuttyPrint
+from bytes_helper import bytesPuttyPrint, str2Bytes
 import dc201_pack
 import serial
 import loguru
 import stackprinter
 import random
 import time
+import queue
+import threading
+
 
 logger = loguru.logger
 logger.add(r"E:\pylog\stm32f207_serial.log")
@@ -48,6 +51,81 @@ ser = serial.Serial(port=None, baudrate=115200, timeout=1)
 ser.port = "COM3"
 
 
+ser.open()
+write_queue = queue.Queue()
+
+
+def read_task():
+    recv_buffer = b""
+    last_recv_pack = b""
+    while True:
+        iw = ser.in_waiting
+        if iw <= 0:
+            time.sleep(0.1)
+            continue
+
+        recv_data = ser.read(iw)
+        recv_buffer += recv_data
+        if len(recv_buffer) < 8:
+            continue
+
+        for i in range(len(recv_buffer)):
+            head = recv_buffer[i : i + 2]
+            if head != b"\x69\xaa":
+                continue
+            data_length = recv_buffer[i + 2]
+            end = i + 3 + data_length + 1
+            if end > len(recv_buffer):
+                break
+            if dd.crc8(recv_buffer[i + 4 : i + 3 + data_length + 1]) == b"\x00":
+                recv_pack = recv_buffer[i:end]
+                logger.success("get recv pack | {}".format(bytesPuttyPrint(recv_pack)))
+                recv_buffer = recv_buffer[end:]
+                ack = recv_pack[3]
+                fun_code = recv_pack[5]
+                if fun_code != 0xAA and last_recv_pack != recv_pack:
+                    write_queue.put(dd.buildPack(0x13, 0xFF - ack, 0xAA, (ack,)))
+                last_recv_pack = recv_pack
+
+
+def send_task():
+    while True:
+        try:
+            send_data = write_queue.get()
+            if isinstance(send_data, bytes):
+                time.sleep(1)
+                logger.warning("get send pack | {}".format(bytesPuttyPrint(send_data)))
+                ser.write(send_data)
+            else:
+                logger.error("send data type error | {} | {}".format(type(send_data), send_data))
+        except queue.Empty:
+            logger.debug("empty send queue")
+        except Exception:
+            logger.error("send queue exception \n{}".format(stackprinter.format()))
+            continue
+
+
+def input_task():
+    idx = 0
+    while True:
+        send_text = input()
+        if send_text in ("1", "2", "3", "4", "5"):
+            send_data = dd.buildPack(0x13, idx & 0xFF, int(send_text))
+        else:
+            send_data = str2Bytes(send_text)
+        if len(send_data) > 0:
+            write_queue.put(send_data)
+            idx += 1
+
+
+rt = threading.Thread(target=read_task)
+st = threading.Thread(target=send_task)
+wt = threading.Thread(target=input_task)
+rt.start()
+st.start()
+wt.start()
+
+
 def serial_test(*args, **kwargs):
     try:
         if not ser.isOpen():
@@ -75,7 +153,6 @@ def serial_test(*args, **kwargs):
             cnt += 1
     except Exception:
         logger.error("exception in serial test\n{}".format(stackprinter.format()))
-    finally:
         ser.close()
 
 

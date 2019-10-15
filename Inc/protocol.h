@@ -31,6 +31,7 @@ typedef enum {
     eProtocolEmitPack_Client_CMD_FORWARD = 0x04, /* 打开托盘帧 */
     eProtocolEmitPack_Client_CMD_REVERSE = 0x05, /* 关闭托盘命令帧 */
     eProtocolEmitPack_Client_CMD_READ_ID = 0x06, /* ID卡读取命令帧 */
+    eProtocolEmitPack_Client_CMD_STATUS = 0x07,  /* 状态信息查询帧 (首帧) */
     eProtocolEmitPack_Client_CMD_UPGRADE = 0x0F, /* 下位机升级命令帧 */
 } eProtocolEmitPack_Client_CMD_Type;
 

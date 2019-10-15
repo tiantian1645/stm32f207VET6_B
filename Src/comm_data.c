@@ -433,12 +433,12 @@ void comm_Data_Init(void)
     }
 
     /* 创建串口接收任务 */
-    xResult = xTaskCreate(comm_Data_Recv_Task, "CommDataRX", 192, NULL, TASK_PRIORITY_COMM_DATA_RX, &comm_Data_Recv_Task_Handle);
+    xResult = xTaskCreate(comm_Data_Recv_Task, "CommDataRX", 160, NULL, TASK_PRIORITY_COMM_DATA_RX, &comm_Data_Recv_Task_Handle);
     if (xResult != pdPASS) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
     /* 创建串口发送任务 */
-    xResult = xTaskCreate(comm_Data_Send_Task, "CommDataTX", 192, NULL, TASK_PRIORITY_COMM_DATA_TX, &comm_Data_Send_Task_Handle);
+    xResult = xTaskCreate(comm_Data_Send_Task, "CommDataTX", 160, NULL, TASK_PRIORITY_COMM_DATA_TX, &comm_Data_Send_Task_Handle);
     if (xResult != pdPASS) {
         FL_Error_Handler(__FILE__, __LINE__);
     }

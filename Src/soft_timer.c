@@ -140,7 +140,7 @@ uint8_t soft_timer_Temp_Comm_Get(eProtocol_COMM_Index comm_index)
 void soft_timer_Temp_Call_Back(TimerHandle_t xTimer)
 {
     uint8_t buffer[10], length;
-    uint16_t temp;
+    uint16_t temp_btm, temp_top;
 
     if (comm_Out_SendTask_Queue_GetWaiting() > 2) { /* 队列内未处理数据多于2 */
         return;
@@ -149,22 +149,27 @@ void soft_timer_Temp_Call_Back(TimerHandle_t xTimer)
         return;
     }
 
-    temp = (uint16_t)(temp_Get_Temp_Data_BTM() * 100);
-    buffer[0] = temp & 0xFF; /* 小端模式 */
-    buffer[1] = temp >> 8;
+    temp_btm = (uint16_t)(temp_Get_Temp_Data_BTM() * 100);
+    temp_top = (uint16_t)(temp_Get_Temp_Data_TOP() * 100);
 
-    temp = (uint16_t)(temp_Get_Temp_Data_TOP() * 100);
-    buffer[2] = temp & 0xFF; /* 小端模式 */
-    buffer[3] = temp >> 8;
+    buffer[0] = temp_btm & 0xFF; /* 小端模式 */
+    buffer[1] = temp_btm >> 8;
+    buffer[2] = temp_top & 0xFF; /* 小端模式 */
+    buffer[3] = temp_top >> 8;
 
     if (soft_timer_Temp_Comm_Get(eComm_Out)) {
         length = buildPackOrigin(eComm_Out, eProtocoleRespPack_Client_TMP, buffer, 4);
         comm_Out_SendTask_QueueEmitCover(buffer, length);
     }
-    // if (soft_timer_Temp_Comm_Get(eComm_Main)) {
-    //     length = buildPackOrigin(eComm_Main, eProtocoleRespPack_Client_TMP, buffer, 4);
-    //     comm_Main_SendTask_QueueEmitCover(buffer, length);
-    // }
+
+    buffer[0] = temp_btm & 0xFF; /* 小端模式 */
+    buffer[1] = temp_btm >> 8;
+    buffer[2] = temp_top & 0xFF; /* 小端模式 */
+    buffer[3] = temp_top >> 8;
+    if (soft_timer_Temp_Comm_Get(eComm_Main)) {
+        length = buildPackOrigin(eComm_Main, eProtocoleRespPack_Client_TMP, buffer, 4);
+        comm_Main_SendTask_QueueEmitCover(buffer, length);
+    }
 }
 
 /**

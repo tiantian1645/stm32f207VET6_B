@@ -64,13 +64,7 @@ void motor_Resource_Init(void)
 
     barcode_Motor_Reset_Pos(); /* 重置扫码电机位置 */
     tray_Motor_Reset_Pos();    /* 重置托盘电机位置 */
-
-    barcode_Init();                         /* 扫码枪初始化 */
-    motor_Tray_Move_By_Index(eTrayIndex_1); /* 扫码位置 */
-    barcode_Scan_Whole();                   /* 执行扫码 */
-
-    motor_Tray_Move_By_Index(eTrayIndex_0); /* 测试位置 */
-    heat_Motor_Down();                      /* 砸下上加热体电机 */
+    heat_Motor_Down();         /* 砸下上加热体电机 */
 }
 
 /**
@@ -138,19 +132,25 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
     if (heat_Motor_Position_Is_Up() == 0 && heat_Motor_Up() != 0) { /* 上加热体光耦位置未被阻挡 则抬起上加热体电机 */
         buffer[0] = 0x00;                                           /* 抬起上加热体失败 */
         comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
+        beep_Start_With_Conf(eBeep_Freq_do, 300, 0, 1);
         return;
     };
     if (tray_Move_By_Index(index, 5000) == eTrayState_OK) { /* 运动托盘电机 */
         if (index == eTrayIndex_0) {                        /* 托盘在检测位置 */
             buffer[0] = 0x01;
             comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1);
+            beep_Start_With_Conf(eBeep_Freq_re, 300, 0, 1);
         } else if (index == eTrayIndex_2) { /* 托盘在加样位置 */
             buffer[0] = 0x02;
             comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1);
+            beep_Start_With_Conf(eBeep_Freq_mi, 300, 0, 1);
         }
+        return;
     } else {
         buffer[0] = 0x00;                                                                     /* 托盘电机运动失败 */
         comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
+        beep_Start_With_Conf(eBeep_Freq_fa, 300, 0, 1);
+        return;
     }
 }
 
@@ -167,10 +167,11 @@ static void motor_Task(void * argument)
     uint32_t cnt;
     uint8_t buffer[9];
 
-    motor_Resource_Init();
+    motor_Resource_Init(); /* 电机驱动、位置初始化 */
+    barcode_Init();        /* 扫码枪初始化 */
 
     for (;;) {
-        xResult = xQueueReceive(motor_Fun_Queue_Handle, &mf, portMAX_DELAY);
+        xResult = xQueuePeek(motor_Fun_Queue_Handle, &mf, portMAX_DELAY);
         if (xResult != pdPASS) {
             continue;
         }
@@ -206,7 +207,7 @@ static void motor_Task(void * argument)
             case eMotor_Fun_Sample_Start:               /* 准备测试 */
                 motor_Tray_Move_By_Index(eTrayIndex_1); /* 运动托盘电机 */
                 barcode_Scan_Whole();                   /* 执行扫码 */
-                motor_Tray_Move_By_Index(eTrayIndex_2); /* 运动托盘电机 */
+                motor_Tray_Move_By_Index(eTrayIndex_0); /* 运动托盘电机 */
                 heat_Motor_Down();                      /* 砸下上加热体电机 */
                 white_Motor_WH();                       /* 运动白板电机 白物质位置 */
                 vTaskDelay(1500);                       /* 延时 */
@@ -214,20 +215,20 @@ static void motor_Task(void * argument)
                 for (;;) {
                     xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(6000)); /* 等待任务通知 */
                     if (xResult != pdTRUE || xNotifyValue == eMotorNotifyValue_BR) {              /* 超时 或 收到中终止命令 直接退出循环 */
-                        beep_Start_With_Conf(eBeep_Freq_mi, 500, 500, 3);                         /* 蜂鸣器输出调试 */
+                        // beep_Start_With_Conf(eBeep_Freq_mi, 500, 500, 3);                         /* 蜂鸣器输出调试 */
                         break;
                     }
-                    if (xNotifyValue == eMotorNotifyValue_PD) {           /* 准备移动到PD位置 */
-                        beep_Start_With_Loop();                           /* 蜂鸣器输出调试 */
-                        vTaskDelay(2500);                                 /* 延时等待测量完成 */
-                        white_Motor_PD();                                 /* 运动白板电机 PD位置 清零位置 */
-                    } else if (xNotifyValue == eMotorNotifyValue_WH) {    /* 准备移动到白板位置 */
-                        beep_Start_With_Loop();                           /* 蜂鸣器输出调试 */
-                        vTaskDelay(2500);                                 /* 延时等待测量完成 */
-                        white_Motor_WH();                                 /* 运动白板电机 白物质位置 */
-                    } else if (xNotifyValue == eMotorNotifyValue_LO) {    /* 等待最后一次测量完成 */
-                        beep_Start_With_Conf(eBeep_Freq_re, 100, 100, 5); /* 蜂鸣器输出调试 */
-                        vTaskDelay(2500);                                 /* 延时等待测量完成 */
+                    if (xNotifyValue == eMotorNotifyValue_PD) { /* 准备移动到PD位置 */
+                        // beep_Start_With_Loop();                           /* 蜂鸣器输出调试 */
+                        vTaskDelay(2500);                              /* 延时等待测量完成 */
+                        white_Motor_PD();                              /* 运动白板电机 PD位置 清零位置 */
+                    } else if (xNotifyValue == eMotorNotifyValue_WH) { /* 准备移动到白板位置 */
+                        // beep_Start_With_Loop();                           /* 蜂鸣器输出调试 */
+                        vTaskDelay(2500);                              /* 延时等待测量完成 */
+                        white_Motor_WH();                              /* 运动白板电机 白物质位置 */
+                    } else if (xNotifyValue == eMotorNotifyValue_LO) { /* 等待最后一次测量完成 */
+                        // beep_Start_With_Conf(eBeep_Freq_re, 100, 100, 5); /* 蜂鸣器输出调试 */
+                        vTaskDelay(2500); /* 延时等待测量完成 */
                         break;
                     } else {
                         break;
@@ -350,5 +351,6 @@ static void motor_Task(void * argument)
             default:
                 break;
         }
+        xQueueReceive(motor_Fun_Queue_Handle, &mf, portMAX_DELAY);
     }
 }

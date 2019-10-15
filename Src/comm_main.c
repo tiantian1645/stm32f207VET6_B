@@ -157,7 +157,7 @@ void comm_Main_Init(void)
     xSemaphoreGive(comm_Main_Send_Sem);
 
     /* 发送队列 */
-    comm_Main_SendQueue = xQueueCreate(1, sizeof(sComm_Main_SendInfo));
+    comm_Main_SendQueue = xQueueCreate(6, sizeof(sComm_Main_SendInfo));
     if (comm_Main_SendQueue == NULL) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
@@ -168,12 +168,12 @@ void comm_Main_Init(void)
     }
 
     /* 创建串口接收任务 */
-    xResult = xTaskCreate(comm_Main_Recv_Task, "CommMainRX", 160, NULL, TASK_PRIORITY_COMM_MAIN_RX, &comm_Main_Recv_Task_Handle);
+    xResult = xTaskCreate(comm_Main_Recv_Task, "CommMainRX", 256, NULL, TASK_PRIORITY_COMM_MAIN_RX, &comm_Main_Recv_Task_Handle);
     if (xResult != pdPASS) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
     /* 创建串口发送任务 */
-    xResult = xTaskCreate(comm_Main_Send_Task, "CommMainTX", 128, NULL, TASK_PRIORITY_COMM_MAIN_TX, &comm_Main_Send_Task_Handle);
+    xResult = xTaskCreate(comm_Main_Send_Task, "CommMainTX", 160, NULL, TASK_PRIORITY_COMM_MAIN_TX, &comm_Main_Send_Task_Handle);
     if (xResult != pdPASS) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
@@ -306,8 +306,6 @@ static void comm_Main_Send_Task(void * argument)
             }
         }
         if (ucResult == 0) { /* 重发失败处理 */
-            memset(sendInfo.buff, 0xAA, sendInfo.length);
-            serialSendStartDMA(COMM_MAIN_SERIAL_INDEX, sendInfo.buff, sendInfo.length, 30);
         }
         xQueueReceive(comm_Main_SendQueue, &sendInfo, 0); /* 释放发送队列 */
     }

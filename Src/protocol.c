@@ -315,7 +315,7 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
         return PROTOCOL_PARSE_OK;
     }
 
-    soft_timer_Temp_Comm_Set(eComm_Out, 1);
+    soft_timer_Temp_Comm_Set(eComm_Out, 1); /* 通讯接收成功 使能本串口温度上送 */
 
     error = protocol_Parse_AnswerACK(eComm_Out, pInBuff[3]); /* 发送回应包 */
     switch (pInBuff[5]) {                                    /* 进一步处理 功能码 */
@@ -521,6 +521,26 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 error |= PROTOCOL_PARSE_EMIT_ERROR;
             }
             break;
+        case eProtocolEmitPack_Client_CMD_STATUS: /* 状态信息查询帧 (首帧) */
+            pInBuff[0] = 0x00;
+            pInBuff[1] = 0x00;
+            error |= comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_ERR, pInBuff, 2); /* 错误信息 */
+
+            pInBuff[0] = 0x00;
+            pInBuff[1] = 0x00;
+            pInBuff[2] = 0x00;
+            pInBuff[3] = 0x00;
+            error |= comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_TMP, pInBuff, 4); /* 温度信息 */
+
+            pInBuff[0] = 0x00;
+            pInBuff[1] = 0x00;
+            pInBuff[2] = 0x00;
+            pInBuff[3] = 0x00;
+            error |= comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_VER, pInBuff, 4); /* 软件版本信息 */
+
+            pInBuff[0] = 0x00;
+            error |= comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, pInBuff, 1); /* 托盘状态信息 */
+            break;
         case eProtocolEmitPack_Client_CMD_UPGRADE: /* 下位机升级命令帧 0x0F */
                                                    /* TO DO */
             break;
@@ -540,13 +560,83 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
  */
 eProtocolParseResult protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
 {
+    eProtocolParseResult error = PROTOCOL_PARSE_OK;
+    uint8_t result;
+    sMotor_Fun motor_fun;
+
     if (pInBuff[5] == eProtocoleRespPack_Client_ACK) { /* 收到对方回应帧 */
         comm_Main_Send_ACK_Notify(pInBuff[6]);         /* 通知串口发送任务 回应包收到 */
         return PROTOCOL_PARSE_OK;                      /* 直接返回 */
     }
 
-    /* 其他命令帧 */
-    return protocol_Parse_Emit(eComm_Main, pInBuff, length); /* 后续详细处理 */
+    if (pInBuff[4] == PROTOCOL_DEVICE_ID_SAMP) {             /* ID为数据板的数据包 直接透传 调试用 */
+        pInBuff[4] = PROTOCOL_DEVICE_ID_CTRL;                /* 修正装置ID */
+        pInBuff[length - 1] = CRC8(pInBuff + 4, length - 5); /* 重新校正CRC */
+        comm_Data_SendTask_QueueEmitCover(pInBuff, length);  /* 提交到采集板发送任务 */
+        return PROTOCOL_PARSE_OK;
+    }
+
+    soft_timer_Temp_Comm_Set(eComm_Main, 1); /* 通讯接收成功 使能本串口温度上送 */
+
+    error = protocol_Parse_AnswerACK(eComm_Main, pInBuff[3]); /* 发送回应包 */
+    switch (pInBuff[5]) {                                     /* 进一步处理 功能码 */
+        case eProtocolEmitPack_Client_CMD_START:              /* 开始测量帧 0x01 */
+            comm_Data_Sample_Send_Conf();                     /* 发送测试配置 */
+            soft_timer_Temp_Pause();                          /* 暂停温度上送 */
+            motor_fun.fun_type = eMotor_Fun_Sample_Start;     /* 开始测试 */
+            motor_Emit(&motor_fun, 0);                        /* 提交到电机队列 */
+            break;
+        case eProtocolEmitPack_Client_CMD_ABRUPT:    /* 仪器测量取消命令帧 0x02 */
+            comm_Data_Sample_Force_Stop();           /* 强行停止采样定时器 */
+            motor_Sample_Info(eMotorNotifyValue_BR); /* 提交打断信息 */
+            break;
+        case eProtocolEmitPack_Client_CMD_CONFIG:     /* 测试项信息帧 0x03 */
+            comm_Data_Sample_Apply_Conf(&pInBuff[6]); /* 保存测试配置 */
+            break;
+        case eProtocolEmitPack_Client_CMD_FORWARD: /* 打开托盘帧 0x04 */
+            motor_fun.fun_type = eMotor_Fun_Out;   /* 配置电机动作套餐类型 出仓 */
+            motor_Emit(&motor_fun, 0);             /* 交给电机任务 出仓 */
+            break;
+        case eProtocolEmitPack_Client_CMD_REVERSE: /* 关闭托盘命令帧 0x05 */
+            motor_fun.fun_type = eMotor_Fun_In;    /* 配置电机动作套餐类型 进仓 */
+            motor_Emit(&motor_fun, 0);             /* 交给电机任务 进仓 */
+            break;
+        case eProtocolEmitPack_Client_CMD_READ_ID:     /* ID卡读取命令帧 0x06 */
+            result = storgeReadConfInfo(0, 4096, 200); /* 暂无定义 按最大读取 */
+            if (result == 0 && storgeTaskNotification(eStorgeHardwareType_EEPROM, eStorgeRWType_Read, eComm_Main) == pdPASS) { /* 通知存储任务 */
+                error = PROTOCOL_PARSE_OK;
+            } else {
+                error |= PROTOCOL_PARSE_EMIT_ERROR;
+            }
+            break;
+        case eProtocolEmitPack_Client_CMD_STATUS: /* 状态信息查询帧 (首帧) */
+            pInBuff[0] = 0x00;
+            pInBuff[1] = 0x00;
+            error |= comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_ERR, pInBuff, 2); /* 错误信息 */
+
+            pInBuff[0] = 0x00;
+            pInBuff[1] = 0x00;
+            pInBuff[2] = 0x00;
+            pInBuff[3] = 0x00;
+            error |= comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_TMP, pInBuff, 4); /* 温度信息 */
+
+            pInBuff[0] = 0x00;
+            pInBuff[1] = 0x00;
+            pInBuff[2] = 0x00;
+            pInBuff[3] = 0x00;
+            error |= comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_VER, pInBuff, 4); /* 软件版本信息 */
+
+            pInBuff[0] = 0x00;
+            error |= comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, pInBuff, 1); /* 托盘状态信息 */
+            break;
+        case eProtocolEmitPack_Client_CMD_UPGRADE: /* 下位机升级命令帧 0x0F */
+                                                   /* TO DO */
+            break;
+        default:
+            error |= PROTOCOL_PARSE_CMD_ERROR;
+            break;
+    }
+    return error;
 }
 
 /**
