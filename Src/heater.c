@@ -154,7 +154,7 @@ void beater_TOP_Output_Stop(void)
 void heater_TOP_Output_Init(void)
 {
     // Prepare PID controller for operation
-    pid_ctrl_init(&gHeater_TOP_PID_Conf, HEATER_TOP_SAMPLE, &top_input, &top_output, &top_setpoint, 5000, 40000, 0); /* 37摄氏度 kp 7650 临界波动点 */
+    pid_ctrl_init(&gHeater_TOP_PID_Conf, HEATER_TOP_SAMPLE, &top_input, &top_output, &top_setpoint, 5000, 40000, 50); /* 37摄氏度 kp 7650 临界波动点 */
     // Set controler output limits from 0 to 200
     pid_ctrl_limits(&gHeater_TOP_PID_Conf, 0, 100);
     // Allow PID to compute and change output

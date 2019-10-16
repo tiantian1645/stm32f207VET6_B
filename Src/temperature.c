@@ -178,6 +178,12 @@ float temp_fabs(float f)
     return f;
 }
 
+/**
+ * @brief  上加热体温度 PID输入处理
+ * @note   37度附近时取偏离最远温度值 其他情况取平均值
+ * @param  pData length 数组描述
+ * @retval 温度值 摄氏度
+ */
 float temp_Deal_Temp_Data(float * pData, uint8_t length)
 {
     uint8_t i;
@@ -208,8 +214,8 @@ float temp_Deal_Temp_Data(float * pData, uint8_t length)
 }
 
 /**
- * @brief  温度 ADC 获取温度值 上加热体
- * @note   采用平均值
+ * @brief  温度 ADC 获取温度值 上加热体 最大偏差值
+ * @note   37度附近 采用 temp_Deal_Temp_Data 取最大偏差值
  * @param  None
  * @retval 温度值 摄氏度
  */
@@ -279,5 +285,11 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef * hadc)
             }
         }
         ++gTempADC_Conv_Cnt;
+        if (gTempADC_Conv_Cnt % TEMP_STA_NUM == 0) {
+            temp_Filter_Deal();
+            if (gTempADC_Conv_Cnt == 0xffffffa0) {
+                gTempADC_Conv_Cnt = 0;
+            }
+        }
     }
 }

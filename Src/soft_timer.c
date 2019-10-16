@@ -46,7 +46,6 @@ static uint8_t gSoft_Timer_Comm_Ctl = 0;
  */
 void soft_timer_Heater_Call_Back(TimerHandle_t xTimer)
 {
-    temp_Filter_Deal();
     heater_BTM_Output_Keep_Deal();
     heater_TOP_Output_Keep_Deal();
     beep_Deal(SOFT_TIMER_HEATER_PER);
@@ -142,7 +141,7 @@ void soft_timer_Temp_Call_Back(TimerHandle_t xTimer)
     uint8_t buffer[10], length;
     uint16_t temp_btm, temp_top;
 
-    if (comm_Out_SendTask_Queue_GetWaiting() > 2) { /* 队列内未处理数据多于2 */
+    if (comm_Out_SendTask_Queue_GetWaiting() > 0) { /* 发送队列内有未处理数据 */
         return;
     }
     if (soft_timer_Temp_Comm_Get(eComm_Out) == 0 && soft_timer_Temp_Comm_Get(eComm_Main) == 0) { /* 无需进行串口发送 */

@@ -7,8 +7,8 @@
 /* Private includes ----------------------------------------------------------*/
 
 /* Exported macro ------------------------------------------------------------*/
-#define TEMP_PSC (60 - 1) /* 1000 000 C/S */
-#define TEMP_ARR (50 - 1) /* 50C -> 50uS 每毫秒20个采样点 */
+#define TEMP_PSC (60 - 1)  /* 1000 000 C/S */
+#define TEMP_ARR (500 - 1) /* 500C -> 500uS 每毫秒2个采样点 */
 
 /* Exported types ------------------------------------------------------------*/
 
@@ -18,7 +18,7 @@
 uint32_t temp_Get_Conv_Cnt(void);
 HAL_StatusTypeDef temp_Start_ADC_DMA(void);
 HAL_StatusTypeDef temp_Stop_ADC_DMA(void);
-void temp_Filter_Deal(void);
+
 float temp_Get_Temp_Data(uint8_t idx);
 float temp_Get_Temp_Data_TOP(void);
 float temp_Get_Temp_Data_BTM(void);
