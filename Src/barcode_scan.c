@@ -57,7 +57,8 @@ typedef struct {
 #define BARCODE_MOTOR_IS_BUSY (dSPIN_Busy_HW())                                                         /* 扫码电机忙碌位读取 */
 #define BARCODE_MOTOR_IS_FLAG (dSPIN_Flag())                                                            /* 扫码电机标志脚读取 */
 #define BARCODE_MOTOR_MAX_DISP 16000                                                                    /* 扫码电机运动最大步数 物理限制步数 */
-#define BARCODE_UART huart3
+#define BARCODE_UART huart3                                                                             /* 扫码串口 */
+#define BARCODE_MOTOR_MAX_GO_UNTIL_SPEED 600000                                                         /* 扫码电机归零最大速度 */
 
 /* Private variables ---------------------------------------------------------*/
 static sMotorRunStatus gBarcodeMotorRunStatus;
@@ -278,7 +279,7 @@ eBarcodeState barcode_Motor_Run(void)
                 break;
         }
     } else {
-        dSPIN_Go_Until(ACTION_RESET, FWD, 30000);
+        dSPIN_Go_Until(ACTION_RESET, FWD, BARCODE_MOTOR_MAX_GO_UNTIL_SPEED);
     }
 
     result = gBarcodeMotorRunCmdInfo.pfLeave(); /* 出口回调 */
@@ -351,7 +352,7 @@ eBarcodeState barcode_Motor_Init(void)
         barcode_Motor_Deal_Status();
     }
 
-    dSPIN_Go_Until(ACTION_RESET, FWD, 30000);
+    dSPIN_Go_Until(ACTION_RESET, FWD, BARCODE_MOTOR_MAX_GO_UNTIL_SPEED);
     m_l6470_release(); /* 释放SPI总线资源*/
     return eBarcodeState_OK;
 }
@@ -397,9 +398,9 @@ void barcode_sn2707_Init(void)
     //    if (se2707_check_param(&huart3, icParam, 1000, 5) != 0) {
     //        Error_Handler();
     //    }
-    if (se2707_reset_param(&huart3, 1500, 1) != 0) {
-        error_Emit(eComm_Out, eError_Peripheral_Scanner, eError_Scanner_Recv_None);
-    }
+    // if (se2707_reset_param(&huart3, 1500, 1) != 0) {
+    //     error_Emit(eComm_Out, eError_Peripheral_Scanner, eError_Scanner_Recv_None);
+    // }
 }
 
 /**
@@ -448,6 +449,25 @@ eBarcodeState barcode_Read_From_Serial(uint8_t * pOut_length, uint8_t * pData, u
     }
     HAL_GPIO_WritePin(BC_TRIG_N_GPIO_Port, BC_TRIG_N_Pin, GPIO_PIN_SET);
     return result;
+}
+
+/**
+ * @brief  扫码执行 按索引 移动电机
+ * @param  index   条码位置索引
+ * @retval 扫码结果数据长度
+ */
+eBarcodeState barcode_Motor_Run_By_Index(eBarcodeIndex index)
+{
+    motor_CMD_Info_Set_PF_Enter(&gBarcodeMotorRunCmdInfo, barcode_Motor_Enter); /* 配置启动前回调 */
+    motor_CMD_Info_Set_Tiemout(&gBarcodeMotorRunCmdInfo, 1500);                 /* 运动超时时间 1500mS */
+    if (index != eBarcodeIndex_0) {
+        barcode_Motor_Calculate((index >> 5) << 3);                                             /* 计算运动距离 及方向 32细分转8细分 */
+        motor_CMD_Info_Set_PF_Leave(&gBarcodeMotorRunCmdInfo, barcode_Motor_Leave_On_Busy_Bit); /* 等待驱动状态位空闲 */
+    } else {
+        motor_CMD_Info_Set_PF_Leave(&gBarcodeMotorRunCmdInfo, barcode_Motor_Leave_On_OPT); /* 等待驱动状态位空闲 */
+        motor_CMD_Info_Set_Step(&gBarcodeMotorRunCmdInfo, 0xFFFFFF);
+    }
+    return barcode_Motor_Run(); /* 执行电机运动 */
 }
 
 /**
@@ -500,17 +520,7 @@ eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index)
         default:
             return eBarcodeState_Error;
     }
-
-    motor_CMD_Info_Set_PF_Enter(&gBarcodeMotorRunCmdInfo, barcode_Motor_Enter); /* 配置启动前回调 */
-    motor_CMD_Info_Set_Tiemout(&gBarcodeMotorRunCmdInfo, 1500);                 /* 运动超时时间 1500mS */
-    if (index != eBarcodeIndex_0) {
-        barcode_Motor_Calculate((index >> 5) << 3);                                             /* 计算运动距离 及方向 32细分转8细分 */
-        motor_CMD_Info_Set_PF_Leave(&gBarcodeMotorRunCmdInfo, barcode_Motor_Leave_On_Busy_Bit); /* 等待驱动状态位空闲 */
-    } else {
-        motor_CMD_Info_Set_PF_Leave(&gBarcodeMotorRunCmdInfo, barcode_Motor_Leave_On_OPT); /* 等待驱动状态位空闲 */
-        motor_CMD_Info_Set_Step(&gBarcodeMotorRunCmdInfo, 0xFFFFFF);
-    }
-    result = barcode_Motor_Run(); /* 执行电机运动 */
+    result = barcode_Motor_Run_By_Index(index); /* 执行电机运动 */
     if (result != eBarcodeState_OK) {
         pResult->length = 0;
         pResult->state = eBarcodeState_Error;
@@ -520,7 +530,8 @@ eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index)
             pResult->pData[0] = idx;
             pResult->pData[1] = pResult->length;
             if (index != eBarcodeIndex_6 || pResult->length > 0) {
-                comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_BARCODE, pResult->pData, pResult->length + 2);
+                comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_BARCODE, pResult->pData, pResult->length + 2);
+                comm_Out_SendTask_QueueEmitWithModify(pResult->pData, pResult->length + 2, 0);
             }
         }
     }

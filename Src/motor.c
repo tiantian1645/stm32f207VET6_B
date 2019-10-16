@@ -62,9 +62,10 @@ void motor_Resource_Init(void)
     m_drv8824_Init();  /* 上加热体电机初始化 */
     tray_Motor_Init(); /* 托盘电机初始化 */
 
-    barcode_Motor_Reset_Pos(); /* 重置扫码电机位置 */
-    tray_Motor_Reset_Pos();    /* 重置托盘电机位置 */
-    heat_Motor_Down();         /* 砸下上加热体电机 */
+    barcode_Motor_Reset_Pos();                   /* 重置扫码电机位置 */
+    tray_Motor_Reset_Pos();                      /* 重置托盘电机位置 */
+    heat_Motor_Down();                           /* 砸下上加热体电机 */
+    barcode_Motor_Run_By_Index(eBarcodeIndex_6); /* 二位码位置就位 */
 }
 
 /**
@@ -78,7 +79,7 @@ void motor_Init(void)
     if (motor_Fun_Queue_Handle == NULL) {
         Error_Handler();
     }
-    if (xTaskCreate(motor_Task, "Motor Task", 160, NULL, TASK_PRIORITY_MOTOR, &motor_Task_Handle) != pdPASS) {
+    if (xTaskCreate(motor_Task, "Motor Task", 192, NULL, TASK_PRIORITY_MOTOR, &motor_Task_Handle) != pdPASS) {
         Error_Handler();
     }
 }
@@ -131,24 +132,28 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
 
     if (heat_Motor_Position_Is_Up() == 0 && heat_Motor_Up() != 0) { /* 上加热体光耦位置未被阻挡 则抬起上加热体电机 */
         buffer[0] = 0x00;                                           /* 抬起上加热体失败 */
-        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
+        comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
+        comm_Out_SendTask_QueueEmitWithModify(buffer, 1, 0);
         beep_Start_With_Conf(eBeep_Freq_do, 300, 0, 1);
         return;
     };
     if (tray_Move_By_Index(index, 5000) == eTrayState_OK) { /* 运动托盘电机 */
         if (index == eTrayIndex_0) {                        /* 托盘在检测位置 */
             buffer[0] = 0x01;
-            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1);
+            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1);
+            comm_Out_SendTask_QueueEmitWithModify(buffer, 1, 0);
             beep_Start_With_Conf(eBeep_Freq_re, 300, 0, 1);
         } else if (index == eTrayIndex_2) { /* 托盘在加样位置 */
             buffer[0] = 0x02;
-            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1);
+            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1);
+            comm_Out_SendTask_QueueEmitWithModify(buffer, 1, 0);
             beep_Start_With_Conf(eBeep_Freq_mi, 300, 0, 1);
         }
         return;
     } else {
-        buffer[0] = 0x00;                                                                     /* 托盘电机运动失败 */
-        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
+        buffer[0] = 0x00;                                                                      /* 托盘电机运动失败 */
+        comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
+        comm_Out_SendTask_QueueEmitWithModify(buffer, 1, 0);
         beep_Start_With_Conf(eBeep_Freq_fa, 300, 0, 1);
         return;
     }
@@ -234,11 +239,13 @@ static void motor_Task(void * argument)
                         break;
                     }
                 }
-                heat_Motor_Up();                        /* 采样结束 抬起加热体电机 */
-                white_Motor_PD();                       /* 运动白板电机 PD位置 清零位置 */
-                motor_Tray_Move_By_Index(eTrayIndex_2); /* 运动托盘电机 */
-                comm_Data_Sample_Owari();               /* 上送采样结束报文 */
-                soft_timer_Temp_Resume();               /* 恢复温度上送 */
+                heat_Motor_Up();                             /* 采样结束 抬起加热体电机 */
+                white_Motor_PD();                            /* 运动白板电机 PD位置 清零位置 */
+                motor_Tray_Move_By_Index(eTrayIndex_2);      /* 运动托盘电机 */
+                barcode_Motor_Run_By_Index(eBarcodeIndex_0); /* 复位 */
+                barcode_Motor_Run_By_Index(eBarcodeIndex_6); /* 二位码位置就位 */
+                comm_Data_Sample_Owari();                    /* 上送采样结束报文 */
+                soft_timer_Temp_Resume();                    /* 恢复温度上送 */
                 break;
             case eMotor_Fun_SYK:            /* 交错 */
                 if (heat_Motor_Up() != 0) { /* 抬起上加热体电机 失败 */
