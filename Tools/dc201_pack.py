@@ -41,9 +41,9 @@ class DC201_PACK:
 
     def iterIntactPack(self, pack):
         try:
-            if len(pack) < 6:
-                yield self.pack_info_nt("M", pack.startswith(self.pack_head), self.checkCRC(pack), pack, bytesPuttyPrint(pack))
-            while len(pack) >= 6:
+            if len(pack) < 7:
+                yield self.pack_info_nt("M", pack.startswith(self.pack_head), self.checkCRC(pack[4:]), pack, bytesPuttyPrint(pack))
+            while len(pack) >= 7:
                 try:
                     start = pack.index(self.pack_head)
                 except ValueError:
@@ -54,15 +54,15 @@ class DC201_PACK:
                     pack = pack[start:]
                     yield self.pack_info_nt("M", True, False, pack, bytesPuttyPrint(pack))
                     continue
-                pack_length = pack[start + 2] + 5
+                pack_length = pack[start + 2] + 4
                 self.dealJunkPack(pack, start)
                 sub_pack = pack[start : start + pack_length]
                 pack = pack[start + pack_length :]
-                if len(pack) <= 6:
+                if len(pack) <= 7:
                     type_s = "O"
                 else:
                     type_s = "M"
-                yield self.pack_info_nt(type_s, sub_pack.startswith(self.pack_head), self.checkCRC(sub_pack), sub_pack, bytesPuttyPrint(sub_pack))
+                yield self.pack_info_nt(type_s, sub_pack.startswith(self.pack_head), self.checkCRC(sub_pack[4:]), sub_pack, bytesPuttyPrint(sub_pack))
 
         except Exception:
             logger.error("iter intact pack exception\n{}".format(stackprinter.format()))

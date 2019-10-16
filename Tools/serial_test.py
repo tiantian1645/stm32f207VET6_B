@@ -47,54 +47,45 @@ def read_pack_generator(pack_index, cmd_type, addr, num):
     return pack
 
 
-ser = serial.Serial(port=None, baudrate=115200, timeout=1)
-ser.port = "COM3"
-
-
-ser.open()
-write_queue = queue.Queue()
-
-
-def read_task():
+def read_task(ser, write_queue):
     recv_buffer = b""
-    last_recv_pack = b""
     while True:
         iw = ser.in_waiting
         if iw <= 0:
-            time.sleep(0.1)
+            time.sleep(0.001)
             continue
 
         recv_data = ser.read(iw)
+        logger.debug("get raw bytes | {}".format(bytesPuttyPrint(recv_data)))
         recv_buffer += recv_data
-        if len(recv_buffer) < 8:
+        if len(recv_buffer) < 7:
             continue
 
-        for i in range(len(recv_buffer)):
-            head = recv_buffer[i : i + 2]
-            if head != b"\x69\xaa":
-                continue
-            data_length = recv_buffer[i + 2]
-            end = i + 3 + data_length + 1
-            if end > len(recv_buffer):
-                break
-            if dd.crc8(recv_buffer[i + 4 : i + 3 + data_length + 1]) == b"\x00":
-                recv_pack = recv_buffer[i:end]
-                logger.success("get recv pack | {}".format(bytesPuttyPrint(recv_pack)))
-                recv_buffer = recv_buffer[end:]
-                ack = recv_pack[3]
-                fun_code = recv_pack[5]
-                if fun_code != 0xAA and last_recv_pack != recv_pack:
-                    write_queue.put(dd.buildPack(0x13, 0xFF - ack, 0xAA, (ack,)))
-                last_recv_pack = recv_pack
+        for info in dd.iterIntactPack(recv_buffer):
+            logger.success("recv pack | {}".format(info.text))
+            recv_pack = info.content
+            ack = recv_pack[3]
+            fun_code = recv_pack[5]
+            if fun_code != 0xAA:
+                write_queue.put(dd.buildPack(0x13, 0xFF - ack, 0xAA, (ack,)))
+            if info.type == "O":
+                if info.is_head:
+                    if not info.is_crc:
+                        recv_buffer = recv_pack
+                    else:
+                        recv_buffer = b""
+                else:
+                    logger.error("junk part | {}".format(info.text))
+                    recv_buffer = b""
 
 
-def send_task():
+def send_task(ser, write_queue):
     while True:
         try:
             send_data = write_queue.get()
             if isinstance(send_data, bytes):
                 time.sleep(1)
-                logger.warning("get send pack | {}".format(bytesPuttyPrint(send_data)))
+                logger.warning("send pack | {}".format(bytesPuttyPrint(send_data)))
                 ser.write(send_data)
             else:
                 logger.error("send data type error | {} | {}".format(type(send_data), send_data))
@@ -105,25 +96,17 @@ def send_task():
             continue
 
 
-def input_task():
-    idx = 0
-    while True:
-        send_text = input()
-        if send_text in ("1", "2", "3", "4", "5"):
-            send_data = dd.buildPack(0x13, idx & 0xFF, int(send_text))
-        else:
-            send_data = str2Bytes(send_text)
-        if len(send_data) > 0:
-            write_queue.put(send_data)
-            idx += 1
+ser = serial.Serial(port=None, baudrate=115200, timeout=1)
+ser.port = "COM3"
+ser.open()
+write_queue = queue.Queue()
 
-
-rt = threading.Thread(target=read_task)
-st = threading.Thread(target=send_task)
-wt = threading.Thread(target=input_task)
+rt = threading.Thread(target=read_task, args=(ser, write_queue))
+st = threading.Thread(target=send_task, args=(ser, write_queue))
+rt.setDaemon(True)
+st.setDaemon(True)
 rt.start()
 st.start()
-wt.start()
 
 
 def serial_test(*args, **kwargs):
