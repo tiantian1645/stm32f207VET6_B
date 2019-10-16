@@ -259,8 +259,8 @@ static void comm_Main_Recv_Task(void * argument)
     eProtocolParseResult pResult;
 
     for (;;) {
-        if (xQueueReceive(comm_Main_RecvQueue, &recvInfo, pdMS_TO_TICKS(5)) != pdPASS) { /* 检查接收队列 */
-            continue;                                                                    /* 队列空 */
+        if (xQueueReceive(comm_Main_RecvQueue, &recvInfo, portMAX_DELAY) != pdPASS) { /* 检查接收队列 */
+            continue;                                                                 /* 队列空 */
         }
 
         pResult = protocol_Parse_Main(recvInfo.buff, recvInfo.length); /* 数据包协议解析 */
@@ -285,7 +285,7 @@ static void comm_Main_Send_Task(void * argument)
             vTaskDelay(5);
             continue;
         }
-        if (xQueuePeek(comm_Main_SendQueue, &sendInfo, pdMS_TO_TICKS(5)) != pdPASS) { /* 发送队列为空 */
+        if (xQueuePeek(comm_Main_SendQueue, &sendInfo, portMAX_DELAY) != pdPASS) { /* 发送队列为空 */
             continue;
         }
         ucResult = 0; /* 发送结果初始化 */

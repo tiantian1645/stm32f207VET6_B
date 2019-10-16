@@ -186,9 +186,6 @@ uint8_t protocol_is_comp(uint8_t * pBuff, uint16_t length)
     if (CRC8(pBuff + 4, length - 5) == pBuff[length - 1]) { /* CRC8 校验完整性 */
         return 1;
     }
-    if (length == 237) {
-        return 0;
-    }
     return 0;
 }
 
@@ -664,7 +661,7 @@ eProtocolParseResult protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
             for (i = 0; i < pInBuff[6]; ++i) {                /* 具体数据 */
                 gComm_Data_Sample_Buffer.data[i] = pInBuff[8 + (i * 2)] + (pInBuff[9 + (i * 2)] << 8);
             }
-            comm_Out_SendTask_QueueEmitWithBuild(eProtocoleRespPack_Client_SAMP_DATA, &pInBuff[6], (gComm_Data_Sample_Buffer.num * 2) + 2, 20); /* 调试输出 */
+            comm_Main_SendTask_QueueEmitWithBuild(eProtocoleRespPack_Client_SAMP_DATA, &pInBuff[6], (gComm_Data_Sample_Buffer.num * 2) + 2, 20); /* 调试输出 */
             break;
         case eComm_Data_Inbound_CMD_OVER:     /* 采集数据完成帧 */
             comm_Data_Sample_Complete_Deal(); /* 释放采样完成信号量 */

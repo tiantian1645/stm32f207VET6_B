@@ -58,6 +58,9 @@ typedef eProtocolParseResult (*pfProtocolFun)(uint8_t * pInBuff, uint8_t length,
 /* Exported defines ----------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/
+uint8_t gProtocol_ACK_IndexGet(eProtocol_COMM_Index index);
+void gProtocol_ACK_IndexAutoIncrease(eProtocol_COMM_Index index);
+
 uint8_t buildPackOrigin(eProtocol_COMM_Index index, uint8_t cmdType, uint8_t * pData, uint8_t dataLength);
 unsigned char CRC8(unsigned char * p, uint16_t len);
 unsigned char CRC8_Check(unsigned char * p, uint16_t len);

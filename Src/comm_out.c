@@ -16,7 +16,6 @@
 #include "tray_run.h"
 #include "m_drv8824.h"
 #include "soft_timer.h"
-#include "beep.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern UART_HandleTypeDef huart5;
@@ -47,14 +46,16 @@ static uint8_t gComm_Out_RX_serial_buffer[COMM_OUT_SER_RX_SIZE];
 
 /* 串口接收队列 */
 static xQueueHandle comm_Out_RecvQueue = NULL;
-/* 串口接收ACK帧号缓存 */
-static uint8_t gComm_Out_Recv_ACK_Buffer[COMM_OUT_RECV_QUEU_LENGTH * 2];
 
 /* 串口发送队列 */
 static xQueueHandle comm_Out_SendQueue = NULL;
 
 /* 串口DMA发送资源信号量 */
 static xSemaphoreHandle comm_Out_Send_Sem = NULL;
+
+/* 串口收发任务句柄 */
+static xTaskHandle comm_Out_Recv_Task_Handle = NULL;
+static xTaskHandle comm_Out_Send_Task_Handle = NULL;
 
 /* Private constants ---------------------------------------------------------*/
 
@@ -73,8 +74,6 @@ static BaseType_t comm_Out_RecvTask_QueueEmit_ISR(uint8_t * pData, uint16_t leng
  */
 void comm_Out_ConfInit(void)
 {
-    uint8_t i = 0;
-
     vComm_Out_DMA_RX_Conf.pDMA_Buff = gComm_Out_RX_dma_buffer;
     vComm_Out_DMA_RX_Conf.buffLength = ARRAY_LEN(gComm_Out_RX_dma_buffer);
     vComm_Out_DMA_RX_Conf.curPos = 0;
@@ -88,10 +87,6 @@ void comm_Out_ConfInit(void)
     vComm_Out_Serial_Record.has_tail = protocol_has_tail;
     vComm_Out_Serial_Record.is_cmop = protocol_is_comp;
     vComm_Out_Serial_Record.callback = comm_Out_RecvTask_QueueEmit_ISR;
-
-    for (i = 0; i < ARRAY_LEN(gComm_Out_Recv_ACK_Buffer); ++i) {
-        gComm_Out_Recv_ACK_Buffer[i] = 0;
-    }
 }
 
 /**
@@ -178,12 +173,12 @@ void comm_Out_Init(void)
     }
 
     /* 创建串口接收任务 */
-    xResult = xTaskCreate(comm_Out_Recv_Task, "CommOutRX", 256, NULL, TASK_PRIORITY_COMM_OUT_RX, NULL);
+    xResult = xTaskCreate(comm_Out_Recv_Task, "CommOutRX", 256, NULL, TASK_PRIORITY_COMM_OUT_RX, &comm_Out_Recv_Task_Handle);
     if (xResult != pdPASS) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
     /* 创建串口发送任务 */
-    xResult = xTaskCreate(comm_Out_Send_Task, "CommOutTX", 160, NULL, TASK_PRIORITY_COMM_OUT_TX, NULL);
+    xResult = xTaskCreate(comm_Out_Send_Task, "CommOutTX", 192, NULL, TASK_PRIORITY_COMM_OUT_TX, &comm_Out_Send_Task_Handle);
     if (xResult != pdPASS) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
@@ -238,11 +233,34 @@ BaseType_t comm_Out_SendTask_QueueEmit(uint8_t * pData, uint8_t length, uint32_t
 
     memcpy(sendInfo.buff, pData, length);
     sendInfo.length = length;
-    if (protocol_is_NeedWaitRACK(sendInfo.buff)) {
-        xResult = xQueueSendToBack(comm_Out_SendQueue, &sendInfo, pdMS_TO_TICKS(timeout));
-    } else {
-        xResult = xQueueSendToFront(comm_Out_SendQueue, &sendInfo, pdMS_TO_TICKS(timeout));
+    xResult = xQueueSendToBack(comm_Out_SendQueue, &sendInfo, pdMS_TO_TICKS(timeout));
+    return xResult;
+}
+
+/**
+ * @brief  加入串口发送队列
+ * @param  pData   数据指针
+ * @param  length  数据长度
+ * @param  timeout 超时时间
+ * @retval 加入发送队列结果
+ */
+BaseType_t comm_Out_SendTask_QueueEmitWithModify(uint8_t * pData, uint8_t length, uint32_t timeout)
+{
+    BaseType_t xResult;
+    sComm_Out_SendInfo sendInfo;
+
+    length += 7;
+    if (length == 0 || pData == NULL) {
+        return pdFALSE;
     }
+
+    memcpy(sendInfo.buff, pData, length);
+    sendInfo.length = length;
+    sendInfo.buff[4] = PROTOCOL_DEVICE_ID_CTRL;
+    sendInfo.buff[length - 1] = CRC8(sendInfo.buff + 4, length - 5);
+    gProtocol_ACK_IndexAutoIncrease(eComm_Out);
+    sendInfo.buff[3] = gProtocol_ACK_IndexGet(eComm_Out);
+    xResult = xQueueSendToBack(comm_Out_SendQueue, &sendInfo, pdMS_TO_TICKS(timeout));
     return xResult;
 }
 
@@ -268,28 +286,7 @@ BaseType_t comm_Out_SendTask_QueueEmitWithBuild(uint8_t cmdType, uint8_t * pData
  */
 BaseType_t comm_Out_Send_ACK_Notify(uint8_t packIndex)
 {
-    static uint8_t i = 0;
-
-    gComm_Out_Recv_ACK_Buffer[i % ARRAY_LEN(gComm_Out_Recv_ACK_Buffer)] = packIndex;
-    ++i;
-    return 1;
-}
-
-uint8_t comm_Out_Send_ACK_Match(uint8_t packIndex, uint32_t timeout)
-{
-    uint8_t i;
-    TickType_t xTick;
-
-    xTick = xTaskGetTickCount();
-    do {
-        for (i = 0; i < ARRAY_LEN(gComm_Out_Recv_ACK_Buffer); ++i) {
-            if (gComm_Out_Recv_ACK_Buffer[i] == packIndex) {
-                return 1;
-            }
-        }
-        vTaskDelay(5);
-    } while (xTaskGetTickCount() - xTick < timeout);
-    return 0;
+    return xTaskNotify(comm_Out_Send_Task_Handle, packIndex, eSetValueWithoutOverwrite);
 }
 
 /**
@@ -323,6 +320,7 @@ static void comm_Out_Send_Task(void * argument)
 {
     sComm_Out_SendInfo sendInfo;
     uint8_t i, ucResult;
+    uint32_t ulNotifyValue;
 
     for (;;) {
         if (uxSemaphoreGetCount(comm_Out_Send_Sem) == 0) { /* DMA发送未完成 此时从接收队列提取数据覆盖发送指针会干扰DMA发送 */
@@ -342,14 +340,17 @@ static void comm_Out_Send_Task(void * argument)
                 ucResult = 2;                                        /* 无需等待回应包默认成功 */
                 break;
             }
-            if (comm_Out_Send_ACK_Match(sendInfo.buff[3], COMM_OUT_SER_TX_RETRY_INT)) { /* 等待任务通知 */
-                ucResult = 1;                                                           /* 置位发送成功 */
-                break;
+            if (xTaskNotifyWait(0, 0xFFFFFFFF, &ulNotifyValue, COMM_OUT_SER_TX_RETRY_INT) == pdPASS) { /* 等待任务通知 */
+                if (ulNotifyValue == sendInfo.buff[3]) {
+                    ucResult = 1; /* 置位发送成功 */
+                    break;
+                } else {
+                    ucResult = 0;
+                }
             } else {
                 ucResult = 0;
             }
         }
-
         if (ucResult == 0) {                        /* 重发失败处理 */
             soft_timer_Temp_Comm_Set(eComm_Out, 0); /* 关闭本串口温度上送 */
         }

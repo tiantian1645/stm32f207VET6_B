@@ -12,6 +12,7 @@
 #include "stdio.h"
 #include "comm_data.h"
 #include "comm_out.h"
+#include "comm_main.h"
 #include "motor.h"
 
 /* Extern variables ----------------------------------------------------------*/
@@ -524,8 +525,11 @@ BaseType_t comm_Data_Sample_Complete_Deal(void)
 BaseType_t comm_Data_Sample_Owari(void)
 {
     uint8_t buffer[7];
+    BaseType_t result;
 
-    return comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_SAMP_OVER, buffer, 0);
+    result = comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_SAMP_OVER, buffer, 0);
+    comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_SAMP_OVER, buffer, 0);
+    return result;
 }
 
 /**
