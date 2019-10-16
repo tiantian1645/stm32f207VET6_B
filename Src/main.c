@@ -1219,7 +1219,6 @@ static void LED_Task(void * argument)
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void const * argument)
 {
-
     /* USER CODE BEGIN 5 */
     /* Infinite loop */
     uint32_t a = 0;
