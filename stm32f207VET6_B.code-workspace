@@ -21,7 +21,8 @@
 			"storge_task.h": "c",
 			"main.h": "c",
 			"error.h": "c",
-			"comm_main.h": "c"
+			"comm_main.h": "c",
+			"protocol.h": "c"
 		}
 	}
 }
