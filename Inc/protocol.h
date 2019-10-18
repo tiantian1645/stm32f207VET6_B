@@ -55,6 +55,11 @@ typedef enum {
 
 typedef eProtocolParseResult (*pfProtocolFun)(uint8_t * pInBuff, uint8_t length, uint8_t * pOutBuff, uint8_t * pOutLength);
 
+typedef struct {
+    TickType_t tick;
+    uint8_t ack_idx;
+} sProcol_COMM_ACK_Record;
+
 /* Exported defines ----------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/

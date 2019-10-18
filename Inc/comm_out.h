@@ -13,7 +13,7 @@
 #define COMM_OUT_SER_TX_SIZE 255
 
 #define COMM_OUT_SER_TX_RETRY_NUM 3
-#define COMM_OUT_SER_TX_RETRY_INT 2000
+#define COMM_OUT_SER_TX_RETRY_INT 5000
 #define COMM_OUT_SER_TX_RETRY_SUM ((COMM_OUT_SER_TX_RETRY_NUM) * (COMM_OUT_SER_TX_RETRY_INT))
 
 /* Exported types ------------------------------------------------------------*/
@@ -35,6 +35,8 @@ typedef struct {
 void comm_Out_Init(void);
 void comm_Out_IRQ_RX_Deal(UART_HandleTypeDef * huart);
 void comm_Out_DMA_TX_CallBack(void);
+
+BaseType_t comm_Out_DMA_TX_Wait(uint32_t timeout);
 BaseType_t comm_Out_DMA_TX_Enter(uint32_t timeout);
 void comm_Out_DMA_TX_Error(void);
 
@@ -49,7 +51,7 @@ BaseType_t comm_Out_SendTask_QueueEmitWithBuild(uint8_t cmdType, uint8_t * pData
 #define comm_Out_SendTask_QueueEmitWithBuildCover(cmdType, pdata, length)                                                                                      \
     comm_Out_SendTask_QueueEmitWithBuild((cmdType), (pdata), (length), (COMM_OUT_SER_TX_RETRY_SUM))
 
-BaseType_t comm_Out_Send_ACK_Notify(uint8_t packIndex);
+BaseType_t comm_Out_Send_ACK_Give(uint8_t packIndex);
 
 /* Private defines -----------------------------------------------------------*/
 

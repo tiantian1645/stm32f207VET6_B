@@ -11,14 +11,19 @@
 #include "protocol.h"
 #include "stdio.h"
 #include "comm_main.h"
+#include "soft_timer.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern UART_HandleTypeDef huart1;
 extern DMA_HandleTypeDef hdma_usart1_rx;
+extern UART_HandleTypeDef huart5;
 
 /* Private define ------------------------------------------------------------*/
 #define COMM_MAIN_SERIAL_INDEX eSerialIndex_1
 #define COMM_MAIN_UART_HANDLE huart1
+
+#define COMM_MAIN_RECV_QUEU_LENGTH 3
+#define COMM_MAIN_SEND_QUEU_LENGTH 6
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -48,6 +53,9 @@ static xSemaphoreHandle comm_Main_Send_Sem = NULL;
 /* 串口收发任务句柄 */
 static xTaskHandle comm_Main_Recv_Task_Handle = NULL;
 static xTaskHandle comm_Main_Send_Task_Handle = NULL;
+
+/* 串口接收ACK记录 */
+static sProcol_COMM_ACK_Record gComm_Main_ACK_Records[COMM_MAIN_SEND_QUEU_LENGTH];
 
 static sComm_Main_SendInfo gComm_Main_SendInfo;
 static uint8_t gComm_Main_SendInfoFlag = 1;
@@ -110,6 +118,25 @@ void comm_Main_DMA_TX_CallBack(void)
 }
 
 /**
+ * @brief  串口DMA发送信号量等待
+ * @param  timeout 超时时间
+ * @retval None
+ */
+BaseType_t comm_Main_DMA_TX_Wait(uint32_t timeout)
+{
+    TickType_t tick;
+
+    tick = xTaskGetTickCount();
+    do {
+        vTaskDelay(pdMS_TO_TICKS(5));
+        if (uxSemaphoreGetCount(comm_Main_Send_Sem) > 0) {
+            return pdPASS;
+        }
+    } while (xTaskGetTickCount() - tick < timeout);
+    return pdFALSE;
+}
+
+/**
  * @brief  串口DMA发送开始前准备
  * @param  timeout 超时时间
  * @retval None
@@ -144,7 +171,7 @@ void comm_Main_Init(void)
     comm_Main_ConfInit();
 
     /* 接收队列 */
-    comm_Main_RecvQueue = xQueueCreate(3, sizeof(sComm_Main_RecvInfo));
+    comm_Main_RecvQueue = xQueueCreate(COMM_MAIN_RECV_QUEU_LENGTH, sizeof(sComm_Main_RecvInfo));
     if (comm_Main_RecvQueue == NULL) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
@@ -157,7 +184,7 @@ void comm_Main_Init(void)
     xSemaphoreGive(comm_Main_Send_Sem);
 
     /* 发送队列 */
-    comm_Main_SendQueue = xQueueCreate(6, sizeof(sComm_Main_SendInfo));
+    comm_Main_SendQueue = xQueueCreate(COMM_MAIN_SEND_QUEU_LENGTH, sizeof(sComm_Main_SendInfo));
     if (comm_Main_SendQueue == NULL) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
@@ -239,13 +266,42 @@ BaseType_t comm_Main_SendTask_QueueEmitWithBuild(uint8_t cmdType, uint8_t * pDat
 }
 
 /**
+ * @brief  串口接收回应包 帧号接收
+ * @param  packIndex   回应包中帧号
+ * @retval 加入发送队列结果
+ */
+BaseType_t comm_Main_Send_ACK_Give(uint8_t packIndex)
+{
+    static uint8_t idx = 0;
+    gComm_Main_ACK_Records[idx].tick = xTaskGetTickCount();
+    gComm_Main_ACK_Records[idx].ack_idx = packIndex;
+    ++idx;
+    if (idx >= ARRAY_LEN(gComm_Main_ACK_Records)) {
+        idx = 0;
+    }
+    return pdPASS;
+}
+
+/**
  * @brief  串口接收回应包收到处理
  * @param  packIndex   回应包中帧号
  * @retval 加入发送队列结果
  */
-BaseType_t comm_Main_Send_ACK_Notify(uint8_t packIndex)
+BaseType_t comm_Main_Send_ACK_Wait(uint8_t packIndex, uint32_t timeout)
 {
-    return xTaskNotify(comm_Main_Send_Task_Handle, packIndex, eSetValueWithoutOverwrite);
+    uint8_t i;
+    TickType_t tick;
+
+    tick = xTaskGetTickCount();
+    do {
+        for (i = 0; i < ARRAY_LEN(gComm_Main_ACK_Records); ++i) {
+            if (gComm_Main_ACK_Records[i].ack_idx == packIndex) {
+                return pdPASS;
+            }
+        }
+        vTaskDelay(5);
+    } while (xTaskGetTickCount() - tick < timeout);
+    return pdFALSE;
 }
 
 /**
@@ -278,14 +334,14 @@ static void comm_Main_Send_Task(void * argument)
 {
     sComm_Main_SendInfo sendInfo;
     uint8_t i, ucResult;
-    uint32_t ulNotifyValue;
 
     for (;;) {
         if (uxSemaphoreGetCount(comm_Main_Send_Sem) == 0) { /* DMA发送未完成 此时从接收队列提取数据覆盖发送指针会干扰DMA发送 */
-            vTaskDelay(5);
+            vTaskDelay(pdMS_TO_TICKS(10));
             continue;
         }
         if (xQueuePeek(comm_Main_SendQueue, &sendInfo, portMAX_DELAY) != pdPASS) { /* 发送队列为空 */
+            vTaskDelay(pdMS_TO_TICKS(10));
             continue;
         }
         ucResult = 0; /* 发送结果初始化 */
@@ -298,14 +354,16 @@ static void comm_Main_Send_Task(void * argument)
                 ucResult = 2;                                        /* 无需等待回应包默认成功 */
                 break;
             }
-            if (xTaskNotifyWait(0, 0xFFFFFFFF, &ulNotifyValue, COMM_MAIN_SER_TX_RETRY_INT) == pdPASS) { /* 等待任务通知 */
-                if (ulNotifyValue == sendInfo.buff[3]) {
-                    ucResult = 1; /* 置位发送成功 */
-                    break;
-                }
+            comm_Main_DMA_TX_Wait(30);
+            if (comm_Main_Send_ACK_Wait(sendInfo.buff[3], COMM_MAIN_SER_TX_RETRY_INT) == pdPASS) { /* 等待ACK回应包 */
+                ucResult = 1;                                                                      /* 置位发送成功 */
+                break;
+            } else {
+                ucResult = 0;
             }
         }
-        if (ucResult == 0) { /* 重发失败处理 */
+        if (ucResult == 0) {                         /* 重发失败处理 */
+            soft_timer_Temp_Comm_Set(eComm_Main, 0); /* 关闭本串口温度上送 */
         }
         xQueueReceive(comm_Main_SendQueue, &sendInfo, 0); /* 释放发送队列 */
     }

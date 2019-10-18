@@ -233,17 +233,17 @@ eProtocolParseResult protocol_Parse_AnswerACK(eProtocol_COMM_Index index, uint8_
     sendLength = buildPackOrigin(index, eProtocoleRespPack_Client_ACK, send_buff, 1); /* 构造回应包 */
     switch (index) {
         case eComm_Out:
-            if (comm_Out_SendTask_QueueEmit(send_buff, sendLength, 50) != pdPASS) { /* 提交回应包 */
+            if (serialSendStartDMA(eSerialIndex_5, send_buff, sendLength, 50) != pdPASS || comm_Out_DMA_TX_Wait(30) != pdPASS) { /* 发送回应包并等待发送完成 */
                 return PROTOCOL_PARSE_EMIT_ERROR;
             }
             break;
         case eComm_Main:
-            if (comm_Main_SendTask_QueueEmit(send_buff, sendLength, 50) != pdPASS) { /* 提交回应包 */
+            if (serialSendStartDMA(eSerialIndex_1, send_buff, sendLength, 50) != pdPASS || comm_Main_DMA_TX_Wait(30) != pdPASS) { /* 发送回应包并等待发送完成 */
                 return PROTOCOL_PARSE_EMIT_ERROR;
             }
             break;
         case eComm_Data:
-            if (comm_Data_SendTask_QueueEmit(send_buff, sendLength, 50) != pdPASS) { /* 提交回应包 */
+            if (serialSendStartDMA(eSerialIndex_2, send_buff, sendLength, 50) != pdPASS || comm_Data_DMA_TX_Wait(30) != pdPASS) { /* 发送回应包并等待发送完成 */
                 return PROTOCOL_PARSE_EMIT_ERROR;
             }
             break;
@@ -301,7 +301,7 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
     sMotor_Fun motor_fun;
 
     if (pInBuff[5] == eProtocoleRespPack_Client_ACK) { /* 收到对方回应帧 */
-        comm_Out_Send_ACK_Notify(pInBuff[6]);          /* 通知串口发送任务 回应包收到 */
+        comm_Out_Send_ACK_Give(pInBuff[6]);            /* 通知串口发送任务 回应包收到 */
         return PROTOCOL_PARSE_OK;                      /* 直接返回 */
     }
 
@@ -562,7 +562,7 @@ eProtocolParseResult protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
     sMotor_Fun motor_fun;
 
     if (pInBuff[5] == eProtocoleRespPack_Client_ACK) { /* 收到对方回应帧 */
-        comm_Main_Send_ACK_Notify(pInBuff[6]);         /* 通知串口发送任务 回应包收到 */
+        comm_Main_Send_ACK_Give(pInBuff[6]);           /* 通知串口发送任务 回应包收到 */
         return PROTOCOL_PARSE_OK;                      /* 直接返回 */
     }
 
@@ -653,15 +653,15 @@ eProtocolParseResult protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
         return PROTOCOL_PARSE_OK;                      /* 直接返回 */
     }
 
-    error = protocol_Parse_AnswerACK(eComm_Data, pInBuff[3]); /* 发送回应包 */
-    switch (pInBuff[5]) {                                     /* 进一步处理 功能码 */
-        case eComm_Data_Inbound_CMD_DATA:                     /* 采集数据帧 */
-            gComm_Data_Sample_Buffer.num = pInBuff[6];        /* 数据个数 u16 */
-            gComm_Data_Sample_Buffer.channel = pInBuff[7];    /* 通道编码 */
-            for (i = 0; i < pInBuff[6]; ++i) {                /* 具体数据 */
+    error = protocol_Parse_AnswerACK(eComm_Data, pInBuff[3]);    /* 发送回应包 */
+    switch (pInBuff[5]) {                                        /* 进一步处理 功能码 */
+        case eComm_Data_Inbound_CMD_DATA:                        /* 采集数据帧 */
+            gComm_Data_Sample_Buffer.num = pInBuff[6];           /* 数据个数 u16 */
+            gComm_Data_Sample_Buffer.channel = pInBuff[7];       /* 通道编码 */
+            for (i = 0; i < gComm_Data_Sample_Buffer.num; ++i) { /* 具体数据 */
                 gComm_Data_Sample_Buffer.data[i] = pInBuff[8 + (i * 2)] + (pInBuff[9 + (i * 2)] << 8);
             }
-            comm_Main_SendTask_QueueEmitWithBuild(eProtocoleRespPack_Client_SAMP_DATA, &pInBuff[6], (gComm_Data_Sample_Buffer.num * 2) + 2, 20); /* 调试输出 */
+            comm_Out_SendTask_QueueEmitWithBuild(eProtocoleRespPack_Client_SAMP_DATA, &pInBuff[6], (gComm_Data_Sample_Buffer.num * 2) + 2, 20); /* 调试输出 */
             break;
         case eComm_Data_Inbound_CMD_OVER:     /* 采集数据完成帧 */
             comm_Data_Sample_Complete_Deal(); /* 释放采样完成信号量 */

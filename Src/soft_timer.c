@@ -141,9 +141,6 @@ void soft_timer_Temp_Call_Back(TimerHandle_t xTimer)
     uint8_t buffer[10], length;
     uint16_t temp_btm, temp_top;
 
-    if (comm_Out_SendTask_Queue_GetWaiting() > 0) { /* 发送队列内有未处理数据 */
-        return;
-    }
     if (soft_timer_Temp_Comm_Get(eComm_Out) == 0 && soft_timer_Temp_Comm_Get(eComm_Main) == 0) { /* 无需进行串口发送 */
         return;
     }
@@ -156,7 +153,7 @@ void soft_timer_Temp_Call_Back(TimerHandle_t xTimer)
     buffer[2] = temp_top & 0xFF; /* 小端模式 */
     buffer[3] = temp_top >> 8;
 
-    if (soft_timer_Temp_Comm_Get(eComm_Out)) {
+    if (soft_timer_Temp_Comm_Get(eComm_Out) && comm_Out_SendTask_Queue_GetWaiting() == 0) {
         length = buildPackOrigin(eComm_Out, eProtocoleRespPack_Client_TMP, buffer, 4);
         comm_Out_SendTask_QueueEmitCover(buffer, length);
     }
@@ -167,7 +164,7 @@ void soft_timer_Temp_Call_Back(TimerHandle_t xTimer)
     buffer[3] = temp_top >> 8;
     if (soft_timer_Temp_Comm_Get(eComm_Main)) {
         length = buildPackOrigin(eComm_Main, eProtocoleRespPack_Client_TMP, buffer, 4);
-        comm_Main_SendTask_QueueEmitCover(buffer, length);
+        //comm_Main_SendTask_QueueEmitCover(buffer, length);
     }
 }
 
