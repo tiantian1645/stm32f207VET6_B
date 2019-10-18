@@ -182,7 +182,7 @@ BaseType_t storgeTaskNotification(eStorgeHardwareType hw, eStorgeRWType rw, ePro
  */
 void storgeTaskInit(void)
 {
-    if (xTaskCreate(storgeTask, "StorgeTask", 160, NULL, TASK_PRIORITY_STORGE, &storgeTaskHandle) != pdPASS) {
+    if (xTaskCreate(storgeTask, "StorgeTask", 192, NULL, TASK_PRIORITY_STORGE, &storgeTaskHandle) != pdPASS) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
 }
@@ -254,10 +254,13 @@ static void storgeTask(void * argument)
                     readCnt =
                         (gStorgeTaskInfo.num >= STORGE_EEPROM_PART_NUM * (i + 1)) ? (STORGE_EEPROM_PART_NUM) : (gStorgeTaskInfo.num % STORGE_EEPROM_PART_NUM);
                     length = I2C_EEPROM_Read(gStorgeTaskInfo.addr + STORGE_EEPROM_PART_NUM * i, buff + 5, readCnt, 30);
-                    length = readCnt;                                                     /* 调试用! */
-                    memset(buff, i, ARRAY_LEN(buff));                                     /* 调试用! */
-                    buff[0] = gStorgeTaskInfo.num & 0xFF;                                 /* 信息总长度 小端模式 */
-                    buff[1] = gStorgeTaskInfo.num >> 8;                                   /* 信息总长度 小端模式 */
+                    if (length == 0) {
+                        buff[0] = 0;                                 	/* 信息总长度 小端模式 */
+                        buff[1] = 0;                                   	/* 信息总长度 小端模式 */
+                    } else {
+                        buff[0] = gStorgeTaskInfo.num & 0xFF;                                 /* 信息总长度 小端模式 */
+                        buff[1] = gStorgeTaskInfo.num >> 8;                                   /* 信息总长度 小端模式 */
+                    }
                     buff[2] = (gStorgeTaskInfo.addr + STORGE_EEPROM_PART_NUM * i) & 0xFF; /* 地址信息 小端模式 */
                     buff[3] = (gStorgeTaskInfo.addr + STORGE_EEPROM_PART_NUM * i) >> 8;   /* 地址信息 小端模式 */
                     buff[4] = length;                                                     /* 数据长度 小端模式 */
@@ -272,6 +275,9 @@ static void storgeTask(void * argument)
                         if (xResult != pdPASS) {
                             break;
                         }
+                    }
+                    if (length == 0) {
+                    	break;
                     }
                 }
                 break;
