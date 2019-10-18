@@ -385,7 +385,7 @@ static void MX_I2C1_Init(void)
 
     /* USER CODE END I2C1_Init 1 */
     hi2c1.Instance = I2C1;
-    hi2c1.Init.ClockSpeed = 100000;
+    hi2c1.Init.ClockSpeed = 1000;
     hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
     hi2c1.Init.OwnAddress1 = 0;
     hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
@@ -1204,6 +1204,9 @@ static void LED_Task(void * argument)
                 fan_rate = 0;
             }
             fan_Adjust(fan_rate);
+            HAL_GPIO_TogglePin(LAMP1_GPIO_Port, LAMP1_Pin);
+            HAL_GPIO_TogglePin(LAMP2_GPIO_Port, LAMP2_Pin);
+            HAL_GPIO_TogglePin(LAMP3_GPIO_Port, LAMP3_Pin);
         }
     }
 }
