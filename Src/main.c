@@ -1167,7 +1167,7 @@ static void LED_Task(void * argument)
 {
     TickType_t xTick, last_tick;
     uint32_t xCnt, last_cnt;
-    float temp_env, fan_rate = 0;
+    float temp_env;
 
     temp_Start_ADC_DMA();
 
@@ -1178,32 +1178,34 @@ static void LED_Task(void * argument)
     last_cnt = xCnt;
 
     fan_Start();
-    fan_Adjust(fan_rate);
+    fan_Adjust(0.1);
     /* Infinite loop */
     printf("temp start | %ld\n", xTaskGetTickCount());
 
     for (;;) {
         HAL_GPIO_TogglePin(LED_RUN_GPIO_Port, LED_RUN_Pin);
         temp_env = temp_Get_Temp_Data_ENV();
+        if (temp_env < 25) {
+            fan_Adjust(0.1);
+        } else if (temp_env > 30) {
+            fan_Adjust(1.0);
+        } else {
+            fan_Adjust(0.18 * temp_env - 4.4);
+        }
+
         vTaskDelayUntil(&xTick, (1800 - 30 * temp_env > 0) ? (200) : (200));
         if (xTick - last_tick >= 2000) {
             xCnt = temp_Get_Conv_Cnt();
-            temp_env = temp_Get_Temp_Data_ENV();
-            // printf("\n========\ntask tick | %4lu | adc cnt | %4lu | ", xTick - last_tick, xCnt - last_cnt);
-            // printf("env temp | %d.%03d \n", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
-            // temp_env = temp_Get_Temp_Data_BTM();
-            // printf("tick | %ld | btm temp | %d.%03d | ", xTaskGetTickCount(), (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
-            // temp_env = temp_Get_Temp_Data_TOP();
-            // printf("top temp | %d.%03d |\n", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
+            printf("\n========\ntask tick | %4lu | adc cnt | %4lu | ", xTick - last_tick, xCnt - last_cnt);
+            printf("env temp | %d.%03d \n", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
+            temp_env = temp_Get_Temp_Data_BTM();
+            printf("tick | %ld | btm temp | %d.%03d | ", xTaskGetTickCount(), (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
+            temp_env = temp_Get_Temp_Data_TOP();
+            printf("top temp | %d.%03d |\n", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
             last_cnt = xCnt;
             last_tick = xTick;
             heater_BTM_Log_PID();
             heater_TOP_Log_PID();
-            fan_rate += 0.1;
-            if (fan_rate > 1.1) {
-                fan_rate = 0;
-            }
-            fan_Adjust(fan_rate);
             HAL_GPIO_TogglePin(LAMP1_GPIO_Port, LAMP1_Pin);
             HAL_GPIO_TogglePin(LAMP2_GPIO_Port, LAMP2_Pin);
             HAL_GPIO_TogglePin(LAMP3_GPIO_Port, LAMP3_Pin);
