@@ -79,7 +79,7 @@ void motor_Init(void)
     if (motor_Fun_Queue_Handle == NULL) {
         Error_Handler();
     }
-    if (xTaskCreate(motor_Task, "Motor Task", 192, NULL, TASK_PRIORITY_MOTOR, &motor_Task_Handle) != pdPASS) {
+    if (xTaskCreate(motor_Task, "Motor Task", 200, NULL, TASK_PRIORITY_MOTOR, &motor_Task_Handle) != pdPASS) {
         Error_Handler();
     }
 }
@@ -209,14 +209,18 @@ static void motor_Task(void * argument)
                 heat_Motor_Down();                      /* 砸下上加热体电机 */
                 white_Motor_WH();                       /* 运动白板电机 */
                 break;
-            case eMotor_Fun_Sample_Start:               /* 准备测试 */
-                motor_Tray_Move_By_Index(eTrayIndex_1); /* 运动托盘电机 */
-                barcode_Scan_Whole();                   /* 执行扫码 */
-                motor_Tray_Move_By_Index(eTrayIndex_0); /* 运动托盘电机 */
-                heat_Motor_Down();                      /* 砸下上加热体电机 */
-                white_Motor_WH();                       /* 运动白板电机 白物质位置 */
-                vTaskDelay(1500);                       /* 延时 */
-                comm_Data_Sample_Start();               /* 启动定时器同步发包 开始采样 */
+            case eMotor_Fun_Sample_Start:                     /* 准备测试 */
+                motor_Tray_Move_By_Index(eTrayIndex_1);       /* 运动托盘电机 */
+                barcode_Scan_Whole();                         /* 执行扫码 */
+                motor_Tray_Move_By_Index(eTrayIndex_0);       /* 运动托盘电机 */
+                heat_Motor_Down();                            /* 砸下上加热体电机 */
+                if (gComm_Data_Sample_Max_Point_Get() == 0) { /* 无测试项目 */
+                    soft_timer_Temp_Resume();                 /* 恢复温度上送 */
+                    break;                                    /* 提前结束 */
+                }
+                white_Motor_WH();         /* 运动白板电机 白物质位置 */
+                vTaskDelay(1500);         /* 延时 */
+                comm_Data_Sample_Start(); /* 启动定时器同步发包 开始采样 */
                 for (;;) {
                     xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(6000)); /* 等待任务通知 */
                     if (xResult != pdTRUE || xNotifyValue == eMotorNotifyValue_BR) {              /* 超时 或 收到中终止命令 直接退出循环 */
@@ -245,6 +249,7 @@ static void motor_Task(void * argument)
                 barcode_Motor_Run_By_Index(eBarcodeIndex_0); /* 复位 */
                 barcode_Motor_Run_By_Index(eBarcodeIndex_6); /* 二位码位置就位 */
                 comm_Data_Sample_Owari();                    /* 上送采样结束报文 */
+                gComm_Data_Sample_Max_Point_Clear();         /* 清除需要测试点数 */
                 soft_timer_Temp_Resume();                    /* 恢复温度上送 */
                 break;
             case eMotor_Fun_SYK:            /* 交错 */

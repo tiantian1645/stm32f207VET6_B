@@ -65,6 +65,7 @@ typedef enum {
     Target_Video_Frame_Size = 0xF048,
     Video_View_Finder_Image_Size = 0xF049,
     Video_Resolution = 0xF19B,
+    Continuous_Bar_Code_Read = 0xF189,
 } eSE2707_Image_Capture_Param;
 
 typedef struct {

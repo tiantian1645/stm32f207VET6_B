@@ -187,6 +187,25 @@ void comm_Data_DMA_TX_CallBack(void)
 }
 
 /**
+ * @brief  串口DMA发送信号量等待
+ * @param  timeout 超时时间
+ * @retval None
+ */
+BaseType_t comm_Data_DMA_TX_Wait(uint32_t timeout)
+{
+    TickType_t tick;
+
+    tick = xTaskGetTickCount();
+    do {
+        vTaskDelay(pdMS_TO_TICKS(5));
+        if (uxSemaphoreGetCount(comm_Data_Send_Sem) > 0) {
+            return pdPASS;
+        }
+    } while (xTaskGetTickCount() - tick < timeout);
+    return pdFALSE;
+}
+
+/**
  * @brief  串口DMA发送开始前准备
  * @param  timeout 超时时间
  * @retval None
@@ -434,12 +453,12 @@ void comm_Data_Init(void)
     }
 
     /* 创建串口接收任务 */
-    xResult = xTaskCreate(comm_Data_Recv_Task, "CommDataRX", 160, NULL, TASK_PRIORITY_COMM_DATA_RX, &comm_Data_Recv_Task_Handle);
+    xResult = xTaskCreate(comm_Data_Recv_Task, "CommDataRX", 192, NULL, TASK_PRIORITY_COMM_DATA_RX, &comm_Data_Recv_Task_Handle);
     if (xResult != pdPASS) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
     /* 创建串口发送任务 */
-    xResult = xTaskCreate(comm_Data_Send_Task, "CommDataTX", 160, NULL, TASK_PRIORITY_COMM_DATA_TX, &comm_Data_Send_Task_Handle);
+    xResult = xTaskCreate(comm_Data_Send_Task, "CommDataTX", 192, NULL, TASK_PRIORITY_COMM_DATA_TX, &comm_Data_Send_Task_Handle);
     if (xResult != pdPASS) {
         FL_Error_Handler(__FILE__, __LINE__);
     }

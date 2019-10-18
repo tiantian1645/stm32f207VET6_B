@@ -77,6 +77,8 @@ sBarcodeStatistic gBarcodeStatistics[7];
 
 TaskHandle_t barcodeTaskHandle = NULL;
 
+uint8_t gBarcodeIsContinuousScan = 0;
+
 /* Private constants ---------------------------------------------------------*/
 const char BAR_SAM_LDH_[] = "1419190801";
 const char BAR_SAM_HB__[] = "1415190701";
@@ -382,24 +384,49 @@ void barcode_Motor_Calculate(uint32_t target_step)
  * @param  None
  * @retval None
  */
+uint8_t gBarcodeIsContinuousScan_Get(void)
+{
+    return gBarcodeIsContinuousScan;
+}
+
+/**
+ * @brief  扫码模块硬件初始化
+ * @param  None
+ * @retval None
+ */
+void gBarcodeIsContinuousScan_Set(uint8_t i)
+{
+    gBarcodeIsContinuousScan = i;
+}
+
+/**
+ * @brief  扫码模块硬件初始化
+ * @param  None
+ * @retval None
+ */
 void barcode_sn2707_Init(void)
 {
-    //    sSE2707_Image_Capture_Param icParam;
+    // sSE2707_Image_Capture_Param icParam;
 
     HAL_GPIO_WritePin(BC_AIM_WK_N_GPIO_Port, BC_AIM_WK_N_Pin, GPIO_PIN_RESET);
     HAL_Delay(1);
     HAL_GPIO_WritePin(BC_AIM_WK_N_GPIO_Port, BC_AIM_WK_N_Pin, GPIO_PIN_SET);
 
-    //    icParam.param = Decoding_Illumination;
-    //    icParam.data = 0;
-    //    if (se2707_conf_param(&huart3, &icParam, 1000, 5) != 0) {
-    //        Error_Handler();
-    //    }
-    //    if (se2707_check_param(&huart3, icParam, 1000, 5) != 0) {
-    //        Error_Handler();
-    //    }
-    // if (se2707_reset_param(&huart3, 1500, 1) != 0) {
-    //     error_Emit(eComm_Out, eError_Peripheral_Scanner, eError_Scanner_Recv_None);
+    if (se2707_reset_param(&BARCODE_UART, 1500, 1) != 0) {
+        error_Emit(eComm_Out, eError_Peripheral_Scanner, eError_Scanner_Recv_None);
+    }
+
+    // icParam.param = Continuous_Bar_Code_Read;
+    // icParam.data = 1;
+    // if (se2707_conf_param(&BARCODE_UART, &icParam, 1500, 2) != 0) {
+    //     Error_Handler();
+    //     gBarcodeIsContinuousScan_Set(0);
+    //     return;
+    // }
+    // if (se2707_check_param(&BARCODE_UART, icParam, 1500, 2) != 0) {
+    //     Error_Handler();
+    // } else {
+    //     gBarcodeIsContinuousScan_Set(1);
     // }
 }
 
@@ -485,32 +512,32 @@ eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index)
         case eBarcodeIndex_0:
             pResult = &(gBarcodeDecodeResult[6]);
             max_read_length = BARCODE_BA_LENGTH;
-            idx = 6;
+            idx = 1;
             break;
         case eBarcodeIndex_1:
             pResult = &(gBarcodeDecodeResult[5]);
             max_read_length = BARCODE_BA_LENGTH;
-            idx = 5;
+            idx = 2;
             break;
         case eBarcodeIndex_2:
             pResult = &(gBarcodeDecodeResult[4]);
             max_read_length = BARCODE_BA_LENGTH;
-            idx = 4;
+            idx = 3;
             break;
         case eBarcodeIndex_3:
             pResult = &(gBarcodeDecodeResult[3]);
             max_read_length = BARCODE_BA_LENGTH;
-            idx = 3;
+            idx = 4;
             break;
         case eBarcodeIndex_4:
             pResult = &(gBarcodeDecodeResult[2]);
             max_read_length = BARCODE_BA_LENGTH;
-            idx = 2;
+            idx = 5;
             break;
         case eBarcodeIndex_5:
             pResult = &(gBarcodeDecodeResult[1]);
             max_read_length = BARCODE_BA_LENGTH;
-            idx = 1;
+            idx = 6;
             break;
         case eBarcodeIndex_6:
             pResult = &(gBarcodeDecodeResult[0]);
@@ -530,8 +557,7 @@ eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index)
             pResult->pData[0] = idx;
             pResult->pData[1] = pResult->length;
             if (index != eBarcodeIndex_6 || pResult->length > 0) {
-                comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_BARCODE, pResult->pData, pResult->length + 2);
-                comm_Out_SendTask_QueueEmitWithModify(pResult->pData, pResult->length + 2, 0);
+                comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_BARCODE, pResult->pData, pResult->length + 2);
             }
         }
     }

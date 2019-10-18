@@ -191,12 +191,12 @@ uint16_t se2707_build_pack_reset_Default(uint8_t * pResult)
  */
 uint16_t se2707_send_pack(UART_HandleTypeDef * puart, uint8_t * pData, uint16_t length)
 {
-    uint8_t nn[1] = {0};
+    uint8_t nn[2] = {0};
 
-    if (HAL_UART_Transmit(puart, nn, 1, 10) != HAL_OK) {
+    if (HAL_UART_Transmit(puart, nn, 2, 10) != HAL_OK) {
         return 1;
     }
-    HAL_Delay(40);
+    vTaskDelay(40);
 
     if (HAL_UART_Transmit(puart, pData, length, 10) != HAL_OK) {
         return 1;
@@ -281,7 +281,7 @@ uint8_t se2707_decode_param(uint8_t * pData, uint8_t length, sSE2707_Image_Captu
  */
 uint8_t se2707_conf_param(UART_HandleTypeDef * puart, sSE2707_Image_Capture_Param * pICP, uint32_t timeout, uint8_t retry)
 {
-    uint8_t buffer[7], result;
+    uint8_t buffer[10], result;
     uint16_t length;
 
     do {
@@ -293,7 +293,7 @@ uint8_t se2707_conf_param(UART_HandleTypeDef * puart, sSE2707_Image_Capture_Para
         if (result == 0) {
             break;
         }
-        HAL_Delay(1000);
+        vTaskDelay(1000);
     } while (--retry > 0);
     return result;
 }
@@ -319,7 +319,7 @@ uint8_t se2707_check_param(UART_HandleTypeDef * puart, sSE2707_Image_Capture_Par
         length = se2707_recv_pack(puart, buffer, 10, timeout);
         result = se2707_decode_param(buffer, length, &icp);
         if (result != 0) {
-            HAL_Delay(1000);
+            vTaskDelay(1000);
             continue;
         }
         if (icp.param != conf.param) {
@@ -329,7 +329,7 @@ uint8_t se2707_check_param(UART_HandleTypeDef * puart, sSE2707_Image_Capture_Par
             result = 4;
         }
         break;
-        HAL_Delay(1000);
+        vTaskDelay(1000);
     } while (--retry > 0);
     return result;
 }
