@@ -57,6 +57,12 @@ static xSemaphoreHandle comm_Out_Send_Sem = NULL;
 /* 串口接收ACK记录 */
 static sProcol_COMM_ACK_Record gComm_Out_ACK_Records[COMM_OUT_SEND_QUEU_LENGTH];
 
+/* 添加到串口发送队列数据缓存 */
+static sComm_Out_SendInfo gSendInfoTemp;
+
+/* 添加到串口发送队列数据缓存 资源占用标识 初始化为无占用 */
+static uint8_t gSendInfoTempLock = 0;
+
 /* Private constants ---------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -244,20 +250,27 @@ UBaseType_t comm_Out_SendTask_Queue_GetWaiting(void)
 BaseType_t comm_Out_SendTask_QueueEmit(uint8_t * pData, uint8_t length, uint32_t timeout)
 {
     BaseType_t xResult;
-    sComm_Out_SendInfo sendInfo;
 
     if (length == 0 || pData == NULL) {
         return pdFALSE;
     }
 
-    memcpy(sendInfo.buff, pData, length);
-    sendInfo.length = length;
-    xResult = xQueueSendToBack(comm_Out_SendQueue, &sendInfo, pdMS_TO_TICKS(timeout));
+    if (gSendInfoTempLock == 1) { /* 重入判断 占用中 */
+        return pdFALSE;
+    } else {
+        gSendInfoTempLock = 1; /* 标识占用中 */
+    }
+
+    memcpy(gSendInfoTemp.buff, pData, length);
+    gSendInfoTemp.length = length;
+    xResult = xQueueSendToBack(comm_Out_SendQueue, &gSendInfoTemp, pdMS_TO_TICKS(timeout));
+    gSendInfoTempLock = 0; /* 解除占用标识 */
     return xResult;
 }
 
 /**
- * @brief  加入串口发送队列
+ * @brief  加入串口发送队列 用于发送相同内容 不同通道 修改
+ * @note   只需要修改数组第3位 帧号  其余 第4位 ID 最后一位 CRC 均不需他要修改
  * @param  pData   数据指针
  * @param  length  数据长度
  * @param  timeout 超时时间
@@ -266,20 +279,22 @@ BaseType_t comm_Out_SendTask_QueueEmit(uint8_t * pData, uint8_t length, uint32_t
 BaseType_t comm_Out_SendTask_QueueEmitWithModify(uint8_t * pData, uint8_t length, uint32_t timeout)
 {
     BaseType_t xResult;
-    sComm_Out_SendInfo sendInfo;
 
-    length += 7;
     if (length == 0 || pData == NULL) {
         return pdFALSE;
     }
 
-    memcpy(sendInfo.buff, pData, length);
-    sendInfo.length = length;
-    sendInfo.buff[4] = PROTOCOL_DEVICE_ID_CTRL;
-    sendInfo.buff[length - 1] = CRC8(sendInfo.buff + 4, length - 5);
-    gProtocol_ACK_IndexAutoIncrease(eComm_Out);
-    sendInfo.buff[3] = gProtocol_ACK_IndexGet(eComm_Out);
-    xResult = xQueueSendToBack(comm_Out_SendQueue, &sendInfo, pdMS_TO_TICKS(timeout));
+    if (gSendInfoTempLock == 1) { /* 重入判断 占用中 */
+        return pdFALSE;
+    } else {
+        gSendInfoTempLock = 1; /* 标识占用中 */
+    }
+    gSendInfoTemp.length = length;                                                          /* 照搬长度 */
+    memcpy(gSendInfoTemp.buff, pData, length);                                              /* 复制到缓存 */
+    gProtocol_ACK_IndexAutoIncrease(eComm_Out);                                             /* 自增帧号 */
+    gSendInfoTemp.buff[3] = gProtocol_ACK_IndexGet(eComm_Out);                              /* 应用帧号 */
+    xResult = xQueueSendToBack(comm_Out_SendQueue, &gSendInfoTemp, pdMS_TO_TICKS(timeout)); /* 加入队列 */
+    gSendInfoTempLock = 0;                                                                  /* 解除占用标识 */
     return xResult;
 }
 

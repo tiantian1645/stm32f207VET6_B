@@ -50,7 +50,7 @@ static const unsigned char CRC8Table[256] = {
 };
 
 static sProtocol_ACK_Record gProtocol_ACK_Record = {1, 1, 1};
-static eComm_Data_Sample gComm_Data_Sample_Buffer;
+static eComm_Data_Sample gComm_Data_Sample_Buffer[6];
 
 /* Private function prototypes -----------------------------------------------*/
 
@@ -71,7 +71,7 @@ uint8_t gProtocol_ACK_IndexGet(eProtocol_COMM_Index index)
         case eComm_Data:
             return gProtocol_ACK_Record.ACK_Data;
     }
-    return 0;
+    return 1;
 }
 
 /**
@@ -491,7 +491,7 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             break;
         case eProtocolEmitPack_Client_CMD_START:          /* 开始测量帧 0x01 */
             comm_Data_Sample_Send_Conf();                 /* 发送测试配置 */
-            temp_Upload_Pause();                      /* 暂停温度上送 */
+            temp_Upload_Pause();                          /* 暂停温度上送 */
             motor_fun.fun_type = eMotor_Fun_Sample_Start; /* 开始测试 */
             motor_Emit(&motor_fun, 0);                    /* 提交到电机队列 */
             break;
@@ -579,7 +579,7 @@ eProtocolParseResult protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
     switch (pInBuff[5]) {                                     /* 进一步处理 功能码 */
         case eProtocolEmitPack_Client_CMD_START:              /* 开始测量帧 0x01 */
             comm_Data_Sample_Send_Conf();                     /* 发送测试配置 */
-            temp_Upload_Pause();                          /* 暂停温度上送 */
+            temp_Upload_Pause();                              /* 暂停温度上送 */
             motor_fun.fun_type = eMotor_Fun_Sample_Start;     /* 开始测试 */
             motor_Emit(&motor_fun, 0);                        /* 提交到电机队列 */
             break;
@@ -646,22 +646,27 @@ eProtocolParseResult protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
 eProtocolParseResult protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
 {
     eProtocolParseResult error = PROTOCOL_PARSE_OK;
-    uint8_t i;
+    uint8_t i, cnt;
 
     if (pInBuff[5] == eProtocoleRespPack_Client_ACK) { /* 收到对方回应帧 */
         comm_Data_Send_ACK_Notify(pInBuff[6]);         /* 通知串口发送任务 回应包收到 */
         return PROTOCOL_PARSE_OK;                      /* 直接返回 */
     }
 
-    error = protocol_Parse_AnswerACK(eComm_Data, pInBuff[3]);    /* 发送回应包 */
-    switch (pInBuff[5]) {                                        /* 进一步处理 功能码 */
-        case eComm_Data_Inbound_CMD_DATA:                        /* 采集数据帧 */
-            gComm_Data_Sample_Buffer.num = pInBuff[6];           /* 数据个数 u16 */
-            gComm_Data_Sample_Buffer.channel = pInBuff[7];       /* 通道编码 */
-            for (i = 0; i < gComm_Data_Sample_Buffer.num; ++i) { /* 具体数据 */
-                gComm_Data_Sample_Buffer.data[i] = pInBuff[8 + (i * 2)] + (pInBuff[9 + (i * 2)] << 8);
+    error = protocol_Parse_AnswerACK(eComm_Data, pInBuff[3]); /* 发送回应包 */
+    switch (pInBuff[5]) {                                     /* 进一步处理 功能码 */
+        case eComm_Data_Inbound_CMD_DATA:                     /* 采集数据帧 */
+            if (pInBuff[7] < 1 || pInBuff[7] > 6) {           /* 检查通道编码 */
+                break;
             }
-            comm_Out_SendTask_QueueEmitWithBuild(eProtocoleRespPack_Client_SAMP_DATA, &pInBuff[6], (gComm_Data_Sample_Buffer.num * 2) + 2, 20); /* 调试输出 */
+            gComm_Data_Sample_Buffer[pInBuff[7] - 1].num = pInBuff[6];           /* 数据个数 u16 */
+            gComm_Data_Sample_Buffer[pInBuff[7] - 1].channel = pInBuff[7];       /* 通道编码 */
+            for (i = 0; i < gComm_Data_Sample_Buffer[pInBuff[7] - 1].num; ++i) { /* 具体数据 */
+                gComm_Data_Sample_Buffer[pInBuff[7] - 1].data[i] = pInBuff[8 + (i * 2)] + (pInBuff[9 + (i * 2)] << 8);
+            }
+            cnt = pInBuff[6] * 2 + 2;
+            comm_Main_SendTask_QueueEmitWithBuild(eProtocoleRespPack_Client_SAMP_DATA, &pInBuff[6], cnt, 20);
+            comm_Out_SendTask_QueueEmitWithModify(pInBuff + 6, length, 0);
             break;
         case eComm_Data_Inbound_CMD_OVER:     /* 采集数据完成帧 */
             comm_Data_Sample_Complete_Deal(); /* 释放采样完成信号量 */

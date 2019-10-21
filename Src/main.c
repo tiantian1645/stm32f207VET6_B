@@ -1228,26 +1228,21 @@ void temp_Upload_Deal(void)
         return;
     }
 
-    temp_btm = (uint16_t)(temp_Get_Temp_Data_BTM() * 100);
-    temp_top = (uint16_t)(temp_Get_Temp_Data_TOP() * 100);
+    temp_btm = (uint16_t)(temp_Get_Temp_Data_BTM() * 100); /* 下加热体温度 */
+    temp_top = (uint16_t)(temp_Get_Temp_Data_TOP() * 100); /* 上加热体温度 */
 
-    buffer[0] = temp_btm & 0xFF; /* 小端模式 */
-    buffer[1] = temp_btm >> 8;
-    buffer[2] = temp_top & 0xFF; /* 小端模式 */
-    buffer[3] = temp_top >> 8;
+    buffer[0] = temp_btm & 0xFF; /* 小端模式 低8位 */
+    buffer[1] = temp_btm >> 8;   /* 小端模式 高8位 */
+    buffer[2] = temp_top & 0xFF; /* 小端模式 低8位 */
+    buffer[3] = temp_top >> 8;   /* 小端模式 高8位 */
 
-    if (temp_Upload_Comm_Get(eComm_Out) && comm_Out_SendTask_Queue_GetWaiting() == 0) {
-        length = buildPackOrigin(eComm_Out, eProtocoleRespPack_Client_TMP, buffer, 4);
-        comm_Out_SendTask_QueueEmitCover(buffer, length);
+    length = buildPackOrigin(eComm_Main, eProtocoleRespPack_Client_TMP, buffer, 4); /* 构造数据包 以主板为基准 */
+
+    if (temp_Upload_Comm_Get(eComm_Main) && comm_Main_SendTask_Queue_GetWaiting() == 0) { /* 允许发送且发送队列内没有其他数据包 */
+        comm_Main_SendTask_QueueEmitCover(buffer, length);                                /* 提交到发送队列 */
     }
-
-    buffer[0] = temp_btm & 0xFF; /* 小端模式 */
-    buffer[1] = temp_btm >> 8;
-    buffer[2] = temp_top & 0xFF; /* 小端模式 */
-    buffer[3] = temp_top >> 8;
-    if (temp_Upload_Comm_Get(eComm_Main)) {
-        length = buildPackOrigin(eComm_Main, eProtocoleRespPack_Client_TMP, buffer, 4);
-        // comm_Main_SendTask_QueueEmitCover(buffer, length);
+    if (temp_Upload_Comm_Get(eComm_Out) && comm_Out_SendTask_Queue_GetWaiting() == 0) { /* 允许发送且发送队列内没有其他数据包 */
+        comm_Out_SendTask_QueueEmitWithModify(buffer, length, 100);                     /* 串口基准不同 修改后 提交到发送队列 */
     }
 }
 
