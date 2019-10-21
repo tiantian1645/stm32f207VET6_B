@@ -20,7 +20,7 @@
 /* Private macro -------------------------------------------------------------*/
 #define TRAY_MOTOR_IS_OPT_1 (HAL_GPIO_ReadPin(OPTSW_OUT1_GPIO_Port, OPTSW_OUT1_Pin) == GPIO_PIN_RESET) /* 光耦输入 */
 #define TRAY_MOTOR_IS_OPT_2 (HAL_GPIO_ReadPin(OPTSW_OUT2_GPIO_Port, OPTSW_OUT2_Pin) == GPIO_PIN_RESET) /* 光耦输入 */
-#define TRAY_MOTOR_IS_BUSY (dSPIN_Busy_SW())                                                           /* 托盘电机忙碌位读取 */
+#define TRAY_MOTOR_IS_BUSY (dSPIN_Busy_HW())                                                           /* 托盘电机忙碌位读取 */
 #define TRAY_MOTOR_IS_FLAG (dSPIN_Flag())                                                              /* 托盘电机标志脚读取 */
 #define TRAY_MOTOR_MAX_DISP 6400                                                                       /* 出仓步数 (1/8) 物理限制步数 */
 #define TRAY_MOTOR_SCAN_DISP 1400                                                                      /* 扫码步数 (1/8) */
@@ -230,6 +230,7 @@ eTrayState tray_Motor_Run(void)
                 dSPIN_Move(REV, gTray_Motor_Run_CMD_Info.step); /* 向驱动发送指令 */
                 break;
         }
+        vTaskDelay(5);
     } else {
         cnt = 0;
         if (TRAY_MOTOR_IS_OPT_1) {
