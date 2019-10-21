@@ -62,15 +62,16 @@ def read_task(ser, write_queue, delay=0.5):
             continue
 
         for info in dd.iterIntactPack(recv_buffer):
-            logger.success("recv pack | {}".format(info.text))
             recv_pack = info.content
-            ack = recv_pack[3]
-            fun_code = recv_pack[5]
-            if fun_code != 0xAA:
-                time.sleep(delay)
-                send_data = dd.buildPack(0x13, 0xFF - ack, 0xAA, (ack,))
-                ser.write(send_data)
-                logger.warning("send pack | {}".format(bytesPuttyPrint(send_data)))
+            if info.is_head and info.is_crc and len(recv_pack) >= 7:
+                logger.success("recv pack | {}".format(info.text))
+                ack = recv_pack[3]
+                fun_code = recv_pack[5]
+                if fun_code != 0xAA:
+                    time.sleep(delay)
+                    send_data = dd.buildPack(0x13, 0xFF - ack, 0xAA, (ack,))
+                    ser.write(send_data)
+                    logger.warning("send pack | {}".format(bytesPuttyPrint(send_data)))
             if info.is_head:
                 if not info.is_crc:
                     recv_buffer = recv_pack

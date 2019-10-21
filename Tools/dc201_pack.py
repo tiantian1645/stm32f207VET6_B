@@ -42,7 +42,7 @@ class DC201_PACK:
     def iterIntactPack(self, pack):
         try:
             if len(pack) < 7:
-                yield self.pack_info_nt("M", pack.startswith(self.pack_head), self.checkCRC(pack[4:]), pack, bytesPuttyPrint(pack))
+                yield self.pack_info_nt("M", pack.startswith(self.pack_head), False, pack, bytesPuttyPrint(pack))
             while len(pack) >= 7:
                 try:
                     start = pack.index(self.pack_head)
