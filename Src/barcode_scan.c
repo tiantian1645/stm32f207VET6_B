@@ -412,9 +412,9 @@ void barcode_sn2707_Init(void)
     HAL_Delay(1);
     HAL_GPIO_WritePin(BC_AIM_WK_N_GPIO_Port, BC_AIM_WK_N_Pin, GPIO_PIN_SET);
 
-    if (se2707_reset_param(&BARCODE_UART, 1500, 1) != 0) {
-        error_Emit(eComm_Out, eError_Peripheral_Scanner, eError_Scanner_Recv_None);
-    }
+    // if (se2707_reset_param(&BARCODE_UART, 1500, 1) != 0) {
+    //     error_Emit(eComm_Out, eError_Peripheral_Scanner, eError_Scanner_Recv_None);
+    // }
 
     // icParam.param = Continuous_Bar_Code_Read;
     // icParam.data = 1;
@@ -454,9 +454,6 @@ eBarcodeState barcode_Read_From_Serial(uint8_t * pOut_length, uint8_t * pData, u
     HAL_StatusTypeDef status;
     eBarcodeState result;
 
-    HAL_GPIO_WritePin(BC_AIM_WK_N_GPIO_Port, BC_AIM_WK_N_Pin, GPIO_PIN_RESET);
-    vTaskDelay(1);
-    HAL_GPIO_WritePin(BC_AIM_WK_N_GPIO_Port, BC_AIM_WK_N_Pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(BC_TRIG_N_GPIO_Port, BC_TRIG_N_Pin, GPIO_PIN_RESET);
     status = HAL_UART_Receive(&BARCODE_UART, pData, max_read_length, pdMS_TO_TICKS(timeout));
     *pOut_length = max_read_length - BARCODE_UART.RxXferCount;
