@@ -16,8 +16,8 @@ typedef enum {
 /* Exported macro ------------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/
-uint16_t I2C_EEPROM_Read(uint32_t memAddr, uint8_t * pOutBuff, uint16_t length, uint32_t timeout);
-uint16_t I2C_EEPROM_Write(uint32_t memAddr, uint8_t * pOutBuff, uint16_t length, uint32_t timeout);
+uint16_t I2C_EEPROM_Read(uint16_t memAddr, uint8_t * pOutBuff, uint16_t length, uint32_t timeout);
+uint16_t I2C_EEPROM_Write(uint16_t memAddr, uint8_t * pOutBuff, uint16_t length, uint32_t timeout);
 
 /* Private defines -----------------------------------------------------------*/
 

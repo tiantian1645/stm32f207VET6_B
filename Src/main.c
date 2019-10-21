@@ -190,11 +190,11 @@ int main(void)
     printf("Start scheduler\n");
     /* Start the scheduler. */
     vTaskStartScheduler();
-
+#if 0
     /* USER CODE END 2 */
 
     osKernelInitialize();
-#if 0
+
     /* USER CODE BEGIN RTOS_MUTEX */
     /* add mutexes, ... */
     /* USER CODE END RTOS_MUTEX */
@@ -391,7 +391,7 @@ static void MX_I2C1_Init(void)
 
     /* USER CODE END I2C1_Init 1 */
     hi2c1.Instance = I2C1;
-    hi2c1.Init.ClockSpeed = 1000;
+    hi2c1.Init.ClockSpeed = 100000;
     hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
     hi2c1.Init.OwnAddress1 = 0;
     hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
@@ -1319,7 +1319,7 @@ static void Miscellaneous_Task(void * argument)
         }
 
         if (cnt % 50 == 0) {    /* 5S 上送一次温度 */
-            temp_Upload_Deal(); /* 温度主动上送 */
+            // temp_Upload_Deal(); /* 温度主动上送 */
         }
 
         vTaskDelayUntil(&xTick, 100);

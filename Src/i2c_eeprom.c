@@ -10,6 +10,9 @@ extern I2C_HandleTypeDef hi2c1;
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
+#define I2C_HW 0
+
+#define AT24CXX_UNIT_LENGTH 16
 #define AT24CXX_DEV_ADDR 0xA0
 #define AT24CXX_MEM_ADDR_SIZE I2C_MEMADD_SIZE_8BIT
 #define AT24CXX_I2C_HANDLE hi2c1
@@ -30,7 +33,7 @@ void delay_us(uint32_t timeout)
 {
     uint32_t i;
     do {
-        for (i = 0; i < 120; i++)
+        for (i = 0; i < 12; i++)
             ;
     } while (--timeout);
 }
@@ -275,46 +278,55 @@ void AT24Cxx_WriteTwoByte(uint16_t addr, uint16_t dt)
  * @param  timeout     超时时间
  * @retval 读取数量
  */
-uint16_t I2C_EEPROM_Read(uint32_t memAddr, uint8_t * pOutBuff, uint16_t length, uint32_t timeout)
+uint16_t I2C_EEPROM_Read(uint16_t memAddr, uint8_t * pOutBuff, uint16_t length, uint32_t timeout)
 {
-    //    uint8_t dealNum;
-    //    uint16_t readCnt = 0;
-    //
-    //    if (length == 0) { /* 长度数据无效 */
-    //        return readCnt;
-    //    }
-    //
-    //    dealNum = 16 - memAddr % 16; /* 首次操作长度 */
-    //    if (dealNum > length) {
-    //        dealNum = length;
-    //    }
-    //
-    //    do {
-    //        if (HAL_I2C_Mem_Read(&AT24CXX_I2C_HANDLE, AT24CXX_DEV_ADDR, memAddr, AT24CXX_MEM_ADDR_SIZE, pOutBuff, dealNum, timeout) != HAL_OK) {
-    //            return readCnt;
-    //        }
-    //        readCnt += dealNum; /* 已读取数量 */
-    //        length -= dealNum;  /* 待处理长度缩减 */
-    //        if (length == 0) {  /* 操作完成 提前返回 */
-    //            return readCnt;
-    //        }
-    //        vTaskDelay(2);                              /* 操作间隔延时 */
-    //        pOutBuff += dealNum;                        /* 数据指针位移 */
-    //        memAddr += dealNum;                         /* 操作地址位移 */
-    //        dealNum = (length >= 16) ? (16) : (length); /* 下次处理长度 */
-    //    } while (length);
-    //    return readCnt;
+#if I2C_HW
+    uint8_t dealNum;
+    uint16_t readCnt = 0;
+
+    if (length == 0) { /* 长度数据无效 */
+        return readCnt;
+    }
+
+    dealNum = AT24CXX_UNIT_LENGTH - memAddr % AT24CXX_UNIT_LENGTH; /* 首次操作长度 */
+    if (dealNum > length) {
+        dealNum = length;
+    }
+
+    do {
+        if (HAL_I2C_Mem_Read(&AT24CXX_I2C_HANDLE, (uint16_t)(AT24CXX_DEV_ADDR), memAddr, AT24CXX_MEM_ADDR_SIZE, pOutBuff, dealNum, timeout) != HAL_OK) {
+            return readCnt;
+        }
+        readCnt += dealNum; /* 已读取数量 */
+        length -= dealNum;  /* 待处理长度缩减 */
+        if (length == 0) {  /* 操作完成 提前返回 */
+            return readCnt;
+        }
+        vTaskDelay(2);                                                                /* 操作间隔延时 */
+        pOutBuff += dealNum;                                                          /* 数据指针位移 */
+        memAddr += dealNum;                                                           /* 操作地址位移 */
+        dealNum = (length >= AT24CXX_UNIT_LENGTH) ? (AT24CXX_UNIT_LENGTH) : (length); /* 下次处理长度 */
+    } while (length);
+    return readCnt;
+#else
+    uint8_t flag = 0; /* 读取内容全0xFF标识 未插卡情况下读取全为0xFF */
     uint16_t i;
 
-    if (HAL_GPIO_ReadPin(CARD_IN_GPIO_Port, CARD_IN_Pin) == GPIO_PIN_SET) {
-        return 0;
-    }
     I2C_SCL_OUT();
     I2C_SDA_OUT();
     for (i = 0; i < length; ++i) {
-        pOutBuff[i] = AT24Cxx_ReadOneByte(memAddr + i);
+        pOutBuff[i] = AT24Cxx_ReadOneByte(memAddr + i); /* 软件I2C读取单字节 */
+        if (pOutBuff[i] != 0xFF) {                      /* 存在非0xFF数据 */
+            flag = 1;
+        }
+    }
+    if (flag == 0) {                                                            /* 全为0xFF */
+        if (HAL_GPIO_ReadPin(CARD_IN_GPIO_Port, CARD_IN_Pin) == GPIO_PIN_SET) { /* 检查ID卡是否插入 */
+            return 0;                                                           /* 未插入直接返回0 */
+        }
     }
     return length;
+#endif
 }
 
 /**
@@ -325,7 +337,7 @@ uint16_t I2C_EEPROM_Read(uint32_t memAddr, uint8_t * pOutBuff, uint16_t length, 
  * @param  timeout     超时时间
  * @retval 写入数量
  */
-uint16_t I2C_EEPROM_Write(uint32_t memAddr, uint8_t * pOutBuff, uint16_t length, uint32_t timeout)
+uint16_t I2C_EEPROM_Write(uint16_t memAddr, uint8_t * pOutBuff, uint16_t length, uint32_t timeout)
 {
     uint8_t dealNum;
     uint16_t wroteCnt = 0;
@@ -334,13 +346,13 @@ uint16_t I2C_EEPROM_Write(uint32_t memAddr, uint8_t * pOutBuff, uint16_t length,
         return wroteCnt;
     }
 
-    dealNum = 16 - memAddr % 16; /* 首次操作长度 */
+    dealNum = AT24CXX_UNIT_LENGTH - memAddr % AT24CXX_UNIT_LENGTH; /* 首次操作长度 */
     if (dealNum > length) {
         dealNum = length;
     }
 
     do {
-        if (HAL_I2C_Mem_Write(&AT24CXX_I2C_HANDLE, AT24CXX_DEV_ADDR, memAddr, AT24CXX_MEM_ADDR_SIZE, pOutBuff, dealNum, timeout) != HAL_OK) {
+        if (HAL_I2C_Mem_Write(&AT24CXX_I2C_HANDLE, (uint16_t)AT24CXX_DEV_ADDR, memAddr, AT24CXX_MEM_ADDR_SIZE, pOutBuff, dealNum, timeout) != HAL_OK) {
             return wroteCnt;
         }
         wroteCnt += dealNum; /* 已写入数量 */
@@ -348,10 +360,10 @@ uint16_t I2C_EEPROM_Write(uint32_t memAddr, uint8_t * pOutBuff, uint16_t length,
         if (length == 0) {   /* 操作完成 提前返回 */
             return wroteCnt;
         }
-        vTaskDelay(4);                              /* 操作间隔延时 */
-        pOutBuff += dealNum;                        /* 数据指针位移 */
-        memAddr += dealNum;                         /* 操作地址位移 */
-        dealNum = (length >= 16) ? (16) : (length); /* 下次处理长度 */
+        vTaskDelay(4);                                                                /* 操作间隔延时 */
+        pOutBuff += dealNum;                                                          /* 数据指针位移 */
+        memAddr += dealNum;                                                           /* 操作地址位移 */
+        dealNum = (length >= AT24CXX_UNIT_LENGTH) ? (AT24CXX_UNIT_LENGTH) : (length); /* 下次处理长度 */
     } while (length);
     return wroteCnt;
 }
