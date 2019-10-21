@@ -38,6 +38,7 @@
 #include "barcode_scan.h"
 #include "fan.h"
 #include "beep.h"
+#include "led.h"
 
 /* USER CODE END Includes */
 
@@ -1311,9 +1312,10 @@ static void Miscellaneous_Task(void * argument)
     for (;;) {
         fan_Ctrl_Deal(temp_Get_Temp_Data_ENV()); /* 根据环境温度调整风扇输出 */
         beep_Deal(100);                          /* 蜂鸣器处处理 */
+        led_Out_Deal(xTick);                     /* 外接LED板处理 */
 
-        if (cnt % 5 == 0) {                                     /* 500mS 翻转一次 */
-            HAL_GPIO_TogglePin(LED_RUN_GPIO_Port, LED_RUN_Pin); /* 控制板上LED翻转 */
+        if (cnt % 5 == 0) {           /* 500mS */
+            led_Board_Green_Toggle(); /* 板上运行灯闪烁 */
         }
 
         if (cnt % 50 == 0) {    /* 5S 上送一次温度 */
