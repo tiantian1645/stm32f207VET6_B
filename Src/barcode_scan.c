@@ -159,24 +159,6 @@ uint8_t barcode_Motor_Brake(void)
 }
 
 /**
- * @brief  电机运动前回调
- * @param  None
- * @retval 运动结果 0 正常 1 异常
- */
-eBarcodeState barcode_Motor_Enter(void)
-{
-    if (m_l6470_Index_Switch(eM_L6470_Index_0, 500) != 0) { /* 获取SPI总线资源 */
-        return eBarcodeState_Tiemout;
-    }
-
-    if (dSPIN_Busy_HW()) { /* 软件检测忙碌状态 */
-        return eBarcodeState_Busy;
-    } else {
-        return eBarcodeState_OK;
-    }
-}
-
-/**
  * @brief  根据电机驱动状态设置电机状态
  * @note
  * @param  status 电机驱动状态值 dSPIN_STATUS_Masks_TypeDef
@@ -204,6 +186,28 @@ void barcode_Motor_Deal_Status()
         return;
     }
     return;
+}
+
+/**
+ * @brief  电机运动前回调
+ * @param  None
+ * @retval 运动结果 0 正常 1 异常
+ */
+eBarcodeState barcode_Motor_Enter(void)
+{
+    if (m_l6470_Index_Switch(eM_L6470_Index_0, 500) != 0) { /* 获取SPI总线资源 */
+        return eBarcodeState_Tiemout;
+    }
+
+    if (dSPIN_Flag()) {
+        barcode_Motor_Deal_Status();
+    }
+
+    if (dSPIN_Busy_HW()) { /* 软件检测忙碌状态 */
+        return eBarcodeState_Busy;
+    } else {
+        return eBarcodeState_OK;
+    }
 }
 
 /**
@@ -554,7 +558,8 @@ eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index)
             pResult->pData[0] = idx;
             pResult->pData[1] = pResult->length;
             if (index != eBarcodeIndex_6 || pResult->length > 0) {
-                comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_BARCODE, pResult->pData, pResult->length + 2);
+                comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_BARCODE, pResult->pData, pResult->length + 2);
+                comm_Out_SendTask_QueueEmitWithModify(pResult->pData, pResult->length + 2 + 7, 0);
             }
         }
     }

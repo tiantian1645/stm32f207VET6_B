@@ -108,24 +108,6 @@ uint8_t tray_Motor_Brake(void)
 }
 
 /**
- * @brief  电机运动前回调
- * @param  None
- * @retval 运动结果 0 正常 1 异常
- */
-eTrayState tray_Motor_Enter(void)
-{
-    if (m_l6470_Index_Switch(eM_L6470_Index_1, 500) != 0) { /* 获取SPI总线资源 */
-        return eTrayState_Tiemout;
-    }
-
-    if (dSPIN_Busy_HW()) { /* 软件检测忙碌状态 */
-        return eTrayState_Busy;
-    } else {
-        return eTrayState_OK;
-    }
-}
-
-/**
  * @brief  根据电机驱动状态设置电机状态
  * @note
  * @param  status 电机驱动状态值 dSPIN_STATUS_Masks_TypeDef
@@ -153,6 +135,28 @@ void tray_Motor_Deal_Status()
         return;
     }
     return;
+}
+
+/**
+ * @brief  电机运动前回调
+ * @param  None
+ * @retval 运动结果 0 正常 1 异常
+ */
+eTrayState tray_Motor_Enter(void)
+{
+    if (m_l6470_Index_Switch(eM_L6470_Index_1, 500) != 0) { /* 获取SPI总线资源 */
+        return eTrayState_Tiemout;
+    }
+
+    if (dSPIN_Flag()) {
+    	tray_Motor_Deal_Status();
+    }
+
+    if (dSPIN_Busy_HW()) { /* 软件检测忙碌状态 */
+        return eTrayState_Busy;
+    } else {
+        return eTrayState_OK;
+    }
 }
 
 /**
@@ -230,7 +234,6 @@ eTrayState tray_Motor_Run(void)
                 dSPIN_Move(REV, gTray_Motor_Run_CMD_Info.step); /* 向驱动发送指令 */
                 break;
         }
-        vTaskDelay(5);
     } else {
         cnt = 0;
         if (TRAY_MOTOR_IS_OPT_1) {
@@ -270,6 +273,7 @@ uint8_t tray_Motor_Reset_Pos()
         if (tray_Motor_Enter() != eTrayState_Tiemout) {
             tray_Motor_Brake();                                    /* 刹车 */
             dSPIN_Reset_Pos();                                     /* 重置电机驱动步数记录 */
+            tray_Motor_Deal_Status();                              /* 状态处理 */
             m_l6470_release();                                     /* 释放SPI总线资源*/
             motor_Status_Set_Position(&gTray_Motor_Run_Status, 0); /* 重置电机状态步数记录 */
             return 0;
