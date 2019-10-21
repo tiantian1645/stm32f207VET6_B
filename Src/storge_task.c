@@ -208,7 +208,7 @@ static void storgeTask(void * argument)
         if (xResult != pdPASS) {
             continue;
         }
-        soft_timer_Temp_Pause(); /* 暂停温度上送 */
+        temp_Upload_Pause(); /* 暂停温度上送 */
         switch (ulNotifyValue & STORGE_TASK_NOTIFY_IN) {
             case STORGE_TASK_NOTIFY_IN_FLASH_READ:
                 for (i = 0; i < ((gStorgeTaskInfo.num + STORGE_FLASH_PART_NUM - 1) / STORGE_FLASH_PART_NUM); ++i) {
@@ -255,11 +255,11 @@ static void storgeTask(void * argument)
                         (gStorgeTaskInfo.num >= STORGE_EEPROM_PART_NUM * (i + 1)) ? (STORGE_EEPROM_PART_NUM) : (gStorgeTaskInfo.num % STORGE_EEPROM_PART_NUM);
                     length = I2C_EEPROM_Read(gStorgeTaskInfo.addr + STORGE_EEPROM_PART_NUM * i, buff + 5, readCnt, 30);
                     if (length == 0) {
-                        buff[0] = 0;                                 	/* 信息总长度 小端模式 */
-                        buff[1] = 0;                                   	/* 信息总长度 小端模式 */
+                        buff[0] = 0; /* 信息总长度 小端模式 */
+                        buff[1] = 0; /* 信息总长度 小端模式 */
                     } else {
-                        buff[0] = gStorgeTaskInfo.num & 0xFF;                                 /* 信息总长度 小端模式 */
-                        buff[1] = gStorgeTaskInfo.num >> 8;                                   /* 信息总长度 小端模式 */
+                        buff[0] = gStorgeTaskInfo.num & 0xFF; /* 信息总长度 小端模式 */
+                        buff[1] = gStorgeTaskInfo.num >> 8;   /* 信息总长度 小端模式 */
                     }
                     buff[2] = (gStorgeTaskInfo.addr + STORGE_EEPROM_PART_NUM * i) & 0xFF; /* 地址信息 小端模式 */
                     buff[3] = (gStorgeTaskInfo.addr + STORGE_EEPROM_PART_NUM * i) >> 8;   /* 地址信息 小端模式 */
@@ -277,7 +277,7 @@ static void storgeTask(void * argument)
                         }
                     }
                     if (length == 0) {
-                    	break;
+                        break;
                     }
                 }
                 break;
@@ -305,6 +305,6 @@ static void storgeTask(void * argument)
                 break;
         }
         gStorgeTaskInfoLockRelease(); /* 解锁 */
-        soft_timer_Temp_Resume();     /* 恢复温度上送 */
+        temp_Upload_Resume();         /* 恢复温度上送 */
     }
 }

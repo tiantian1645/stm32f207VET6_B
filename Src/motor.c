@@ -148,7 +148,7 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
         }
         return;
     } else {
-        buffer[0] = 0x00;                                                                      /* 托盘电机运动失败 */
+        buffer[0] = 0x00;                                                                     /* 托盘电机运动失败 */
         comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
         beep_Start_With_Conf(eBeep_Freq_fa, 300, 0, 1);
         return;
@@ -211,7 +211,7 @@ static void motor_Task(void * argument)
                 motor_Tray_Move_By_Index(eTrayIndex_0);       /* 运动托盘电机 */
                 heat_Motor_Down();                            /* 砸下上加热体电机 */
                 if (gComm_Data_Sample_Max_Point_Get() == 0) { /* 无测试项目 */
-                    soft_timer_Temp_Resume();                 /* 恢复温度上送 */
+                    temp_Upload_Resume();                     /* 恢复温度上送 */
                     break;                                    /* 提前结束 */
                 }
                 white_Motor_WH();         /* 运动白板电机 白物质位置 */
@@ -246,7 +246,7 @@ static void motor_Task(void * argument)
                 barcode_Motor_Run_By_Index(eBarcodeIndex_6); /* 二位码位置就位 */
                 comm_Data_Sample_Owari();                    /* 上送采样结束报文 */
                 gComm_Data_Sample_Max_Point_Clear();         /* 清除需要测试点数 */
-                soft_timer_Temp_Resume();                    /* 恢复温度上送 */
+                temp_Upload_Resume();                        /* 恢复温度上送 */
                 break;
             case eMotor_Fun_SYK:            /* 交错 */
                 if (heat_Motor_Up() != 0) { /* 抬起上加热体电机 失败 */

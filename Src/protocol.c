@@ -312,7 +312,7 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
         return PROTOCOL_PARSE_OK;
     }
 
-    soft_timer_Temp_Comm_Set(eComm_Out, 1); /* 通讯接收成功 使能本串口温度上送 */
+    temp_Upload_Comm_Set(eComm_Out, 1); /* 通讯接收成功 使能本串口温度上送 */
 
     error = protocol_Parse_AnswerACK(eComm_Out, pInBuff[3]); /* 发送回应包 */
     switch (pInBuff[5]) {                                    /* 进一步处理 功能码 */
@@ -491,7 +491,7 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             break;
         case eProtocolEmitPack_Client_CMD_START:          /* 开始测量帧 0x01 */
             comm_Data_Sample_Send_Conf();                 /* 发送测试配置 */
-            soft_timer_Temp_Pause();                      /* 暂停温度上送 */
+            temp_Upload_Pause();                      /* 暂停温度上送 */
             motor_fun.fun_type = eMotor_Fun_Sample_Start; /* 开始测试 */
             motor_Emit(&motor_fun, 0);                    /* 提交到电机队列 */
             break;
@@ -573,13 +573,13 @@ eProtocolParseResult protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
         return PROTOCOL_PARSE_OK;
     }
 
-    soft_timer_Temp_Comm_Set(eComm_Main, 1); /* 通讯接收成功 使能本串口温度上送 */
+    temp_Upload_Comm_Set(eComm_Main, 1); /* 通讯接收成功 使能本串口温度上送 */
 
     error = protocol_Parse_AnswerACK(eComm_Main, pInBuff[3]); /* 发送回应包 */
     switch (pInBuff[5]) {                                     /* 进一步处理 功能码 */
         case eProtocolEmitPack_Client_CMD_START:              /* 开始测量帧 0x01 */
             comm_Data_Sample_Send_Conf();                     /* 发送测试配置 */
-            soft_timer_Temp_Pause();                          /* 暂停温度上送 */
+            temp_Upload_Pause();                          /* 暂停温度上送 */
             motor_fun.fun_type = eMotor_Fun_Sample_Start;     /* 开始测试 */
             motor_Emit(&motor_fun, 0);                        /* 提交到电机队列 */
             break;

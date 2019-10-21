@@ -39,6 +39,7 @@ extern "C" {
 #include "semphr.h"
 #include "string.h"
 #include "error.h"
+#include "protocol.h"
 
 /* USER CODE END Includes */
 
@@ -73,6 +74,10 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 void FL_Error_Handler(char * file, int line);
+void temp_Upload_Resume(void);
+void temp_Upload_Pause(void);
+void temp_Upload_Comm_Set(eProtocol_COMM_Index comm_index, uint8_t sw);
+
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/

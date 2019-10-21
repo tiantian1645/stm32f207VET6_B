@@ -87,8 +87,10 @@ DMA_HandleTypeDef hdma_usart1_tx;
 DMA_HandleTypeDef hdma_usart2_rx;
 DMA_HandleTypeDef hdma_usart2_tx;
 
-osThreadId defaultTaskHandle;
+osThreadId_t defaultTaskHandle;
 /* USER CODE BEGIN PV */
+static uint8_t gTemp_Upload_Comm_Ctl = 0;
+static uint8_t gTemp_Upload_Comm_Suspend = 0;
 
 /* USER CODE END PV */
 
@@ -112,10 +114,10 @@ static void MX_SPI1_Init(void);
 static void MX_TIM6_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM10_Init(void);
-void StartDefaultTask(void const * argument);
+void StartDefaultTask(void * argument);
 
 /* USER CODE BEGIN PFP */
-static void LED_Task(void * argument);
+static void Miscellaneous_Task(void * argument);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -180,7 +182,7 @@ int main(void)
     motor_Init();
     storgeTaskInit();
 
-    if (xTaskCreate(LED_Task, "TASK_LED", 160, NULL, 1, NULL) != pdPASS) {
+    if (xTaskCreate(Miscellaneous_Task, "TASK_MISC", 160, NULL, 1, NULL) != pdPASS) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
 
@@ -190,6 +192,8 @@ int main(void)
 
     /* USER CODE END 2 */
 
+    osKernelInitialize();
+#if 0
     /* USER CODE BEGIN RTOS_MUTEX */
     /* add mutexes, ... */
     /* USER CODE END RTOS_MUTEX */
@@ -208,8 +212,8 @@ int main(void)
 
     /* Create the thread(s) */
     /* definition and creation of defaultTask */
-    osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
-    defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
+    const osThreadAttr_t defaultTask_attributes = {.name = "defaultTask", .priority = (osPriority_t)osPriorityNormal, .stack_size = 128};
+    defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
     /* USER CODE BEGIN RTOS_THREADS */
     /* add threads, ... */
@@ -227,6 +231,7 @@ int main(void)
 
         /* USER CODE BEGIN 3 */
     }
+#endif
     /* USER CODE END 3 */
 }
 
@@ -1158,58 +1163,170 @@ void FL_Error_Handler(char * file, int line)
     printf("error handle invoked in FILE: %s | LINE: %d \n", file, line);
 }
 
+void temp_Upload_Resume(void)
+{
+    gTemp_Upload_Comm_Suspend = 0;
+}
+
+void temp_Upload_Pause(void)
+{
+    gTemp_Upload_Comm_Suspend = 1;
+}
+
+uint8_t temp_Upload_Is_Suspend(void)
+{
+    if (gTemp_Upload_Comm_Suspend > 0) {
+        return 1;
+    }
+    return 0;
+}
+
+/**
+ * @brief  温度主动上送 串口发送许可 设置
+ * @param  comm_index 串口索引
+ * @param  sw 操作  1 使能  0 失能
+ * @retval None
+ */
+void temp_Upload_Comm_Set(eProtocol_COMM_Index comm_index, uint8_t sw)
+{
+    if (sw > 0) {
+        gTemp_Upload_Comm_Ctl |= (1 << comm_index);
+    } else {
+        gTemp_Upload_Comm_Ctl &= 0xFF - (1 << comm_index);
+    }
+}
+
+/**
+ * @brief  温度主动上送 串口发送许可 获取
+ * @param  comm_index 串口索引
+ * @retval 1 使能  0 失能
+ */
+uint8_t temp_Upload_Comm_Get(eProtocol_COMM_Index comm_index)
+{
+    if (gTemp_Upload_Comm_Ctl & (1 << comm_index)) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+/**
+ * @brief  温度主动上送处理
+ * @param  None
+ * @retval None
+ */
+void temp_Upload_Deal(void)
+{
+    uint8_t buffer[10], length;
+    uint16_t temp_btm, temp_top;
+
+    if (temp_Upload_Is_Suspend()) {
+        return;
+    }
+
+    if (temp_Upload_Comm_Get(eComm_Out) == 0 && temp_Upload_Comm_Get(eComm_Main) == 0) { /* 无需进行串口发送 */
+        return;
+    }
+
+    temp_btm = (uint16_t)(temp_Get_Temp_Data_BTM() * 100);
+    temp_top = (uint16_t)(temp_Get_Temp_Data_TOP() * 100);
+
+    buffer[0] = temp_btm & 0xFF; /* 小端模式 */
+    buffer[1] = temp_btm >> 8;
+    buffer[2] = temp_top & 0xFF; /* 小端模式 */
+    buffer[3] = temp_top >> 8;
+
+    if (temp_Upload_Comm_Get(eComm_Out) && comm_Out_SendTask_Queue_GetWaiting() == 0) {
+        length = buildPackOrigin(eComm_Out, eProtocoleRespPack_Client_TMP, buffer, 4);
+        comm_Out_SendTask_QueueEmitCover(buffer, length);
+    }
+
+    buffer[0] = temp_btm & 0xFF; /* 小端模式 */
+    buffer[1] = temp_btm >> 8;
+    buffer[2] = temp_top & 0xFF; /* 小端模式 */
+    buffer[3] = temp_top >> 8;
+    if (temp_Upload_Comm_Get(eComm_Main)) {
+        length = buildPackOrigin(eComm_Main, eProtocoleRespPack_Client_TMP, buffer, 4);
+        // comm_Main_SendTask_QueueEmitCover(buffer, length);
+    }
+}
+
+/**
+ * @brief  风扇风速控制处理
+ * @param  temp_env 环境温度
+ * @note  低于25度保持低速 高于30度全速 25～30之间线性调整转速
+ * @retval None
+ */
+void fan_Ctrl_Deal(float temp_env)
+{
+    if (temp_env < 25) {
+        fan_Adjust(0.1);
+    } else if (temp_env > 30) {
+        fan_Adjust(1.0);
+    } else {
+        fan_Adjust(0.18 * temp_env - 4.4);
+    }
+}
+
+void temp_Log(void)
+{
+    static TickType_t xTick = 0, last_tick = 0;
+    static uint32_t xCnt = 0, last_cnt = 0;
+    float temp_env;
+
+    temp_env = temp_Get_Temp_Data_ENV();
+    xTick = xTaskGetTickCount();
+    xCnt = temp_Get_Conv_Cnt();
+
+    if (last_tick == 0) {
+        last_tick = xTick;
+        printf("temp start | %ld\n", xTick);
+    }
+
+    printf("\n========\ntask tick | %4lu | adc cnt | %4lu | ", xTick - last_tick, xCnt - last_cnt);
+    printf("env temp | %d.%03d \n", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
+    temp_env = temp_Get_Temp_Data_BTM();
+    printf("tick | %ld | btm temp | %d.%03d | ", xTick, (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
+    temp_env = temp_Get_Temp_Data_TOP();
+    printf("top temp | %d.%03d |\n", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
+    last_cnt = xCnt;
+    last_tick = xTick;
+    heater_BTM_Log_PID();
+    heater_TOP_Log_PID();
+}
+
 /**
  * @brief  LED 闪烁任务
  * @param  argument: Not used
  * @retval None
  */
-static void LED_Task(void * argument)
+static void Miscellaneous_Task(void * argument)
 {
-    TickType_t xTick, last_tick;
-    uint32_t xCnt, last_cnt;
-    float temp_env;
+    TickType_t xTick;
+    uint32_t cnt = 0;
 
-    temp_Start_ADC_DMA();
-
-    xTick = xTaskGetTickCount();
-    last_tick = xTick;
-
-    xCnt = temp_Get_Conv_Cnt();
-    last_cnt = xCnt;
-
-    fan_Start();
-    fan_Adjust(0.1);
-    /* Infinite loop */
-    printf("temp start | %ld\n", xTaskGetTickCount());
+    temp_Start_ADC_DMA();                /* 启动ADC转换 */
+    fan_Start();                         /* 启动风扇PWM输出 */
+    fan_Adjust(0.1);                     /* 调整PWM占空比 */
+    temp_Upload_Comm_Set(eComm_Out, 0);  /* 关闭外串口发送 */
+    temp_Upload_Comm_Set(eComm_Main, 0); /* 关闭主板发送 */
+    beep_Init();                         /* 蜂鸣器初始化 */
+    xTick = xTaskGetTickCount();         /* 获取系统时刻 */
 
     for (;;) {
-        HAL_GPIO_TogglePin(LED_RUN_GPIO_Port, LED_RUN_Pin);
-        temp_env = temp_Get_Temp_Data_ENV();
-        if (temp_env < 25) {
-            fan_Adjust(0.1);
-        } else if (temp_env > 30) {
-            fan_Adjust(1.0);
-        } else {
-            fan_Adjust(0.18 * temp_env - 4.4);
+        fan_Ctrl_Deal(temp_Get_Temp_Data_ENV()); /* 根据环境温度调整风扇输出 */
+        beep_Deal(100);                          /* 蜂鸣器处处理 */
+
+        if (cnt % 5 == 0) {                                     /* 500mS 翻转一次 */
+            HAL_GPIO_TogglePin(LED_RUN_GPIO_Port, LED_RUN_Pin); /* 控制板上LED翻转 */
         }
 
-        vTaskDelayUntil(&xTick, (1800 - 30 * temp_env > 0) ? (200) : (200));
-        if (xTick - last_tick >= 2000) {
-            xCnt = temp_Get_Conv_Cnt();
-            printf("\n========\ntask tick | %4lu | adc cnt | %4lu | ", xTick - last_tick, xCnt - last_cnt);
-            printf("env temp | %d.%03d \n", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
-            temp_env = temp_Get_Temp_Data_BTM();
-            printf("tick | %ld | btm temp | %d.%03d | ", xTaskGetTickCount(), (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
-            temp_env = temp_Get_Temp_Data_TOP();
-            printf("top temp | %d.%03d |\n", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
-            last_cnt = xCnt;
-            last_tick = xTick;
-            heater_BTM_Log_PID();
-            heater_TOP_Log_PID();
-            HAL_GPIO_TogglePin(LAMP1_GPIO_Port, LAMP1_Pin);
-            HAL_GPIO_TogglePin(LAMP2_GPIO_Port, LAMP2_Pin);
-            HAL_GPIO_TogglePin(LAMP3_GPIO_Port, LAMP3_Pin);
+        if (cnt % 50 == 0) {    /* 5S 上送一次温度 */
+            temp_Upload_Deal(); /* 温度主动上送 */
         }
+
+        vTaskDelayUntil(&xTick, 100);
+        ++cnt;
     }
 }
 
@@ -1222,7 +1339,7 @@ static void LED_Task(void * argument)
  * @retval None
  */
 /* USER CODE END Header_StartDefaultTask */
-void StartDefaultTask(void const * argument)
+void StartDefaultTask(void * argument)
 {
     /* USER CODE BEGIN 5 */
     /* Infinite loop */
