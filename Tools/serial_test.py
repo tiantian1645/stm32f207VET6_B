@@ -47,7 +47,7 @@ def read_pack_generator(pack_index, cmd_type, addr, num):
     return pack
 
 
-def read_task(ser, write_queue):
+def read_task(ser, write_queue, delay=0.5):
     recv_buffer = b""
     while True:
         iw = ser.in_waiting
@@ -67,16 +67,18 @@ def read_task(ser, write_queue):
             ack = recv_pack[3]
             fun_code = recv_pack[5]
             if fun_code != 0xAA:
-                write_queue.put(dd.buildPack(0x13, 0xFF - ack, 0xAA, (ack,)))
-            if info.type == "O":
-                if info.is_head:
-                    if not info.is_crc:
-                        recv_buffer = recv_pack
-                    else:
-                        recv_buffer = b""
+                time.sleep(delay)
+                send_data = dd.buildPack(0x13, 0xFF - ack, 0xAA, (ack,))
+                ser.write(send_data)
+                logger.warning("send pack | {}".format(bytesPuttyPrint(send_data)))
+            if info.is_head:
+                if not info.is_crc:
+                    recv_buffer = recv_pack
                 else:
-                    logger.error("junk part | {}".format(info.text))
                     recv_buffer = b""
+            else:
+                logger.error("junk part | {}".format(info.text))
+                recv_buffer = b""
 
 
 def send_task(ser, write_queue):
@@ -84,7 +86,6 @@ def send_task(ser, write_queue):
         try:
             send_data = write_queue.get()
             if isinstance(send_data, bytes):
-                time.sleep(1)
                 logger.warning("send pack | {}".format(bytesPuttyPrint(send_data)))
                 ser.write(send_data)
             else:
@@ -101,7 +102,7 @@ ser.port = "COM3"
 ser.open()
 write_queue = queue.Queue()
 
-rt = threading.Thread(target=read_task, args=(ser, write_queue))
+rt = threading.Thread(target=read_task, args=(ser, write_queue, 0.1))
 st = threading.Thread(target=send_task, args=(ser, write_queue))
 rt.setDaemon(True)
 st.setDaemon(True)
