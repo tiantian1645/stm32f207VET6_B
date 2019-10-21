@@ -203,7 +203,7 @@ void comm_Out_Init(void)
         FL_Error_Handler(__FILE__, __LINE__);
     }
     /* 创建串口发送任务 */
-    xResult = xTaskCreate(comm_Out_Send_Task, "CommOutTX", 192, NULL, TASK_PRIORITY_COMM_OUT_TX, NULL);
+    xResult = xTaskCreate(comm_Out_Send_Task, "CommOutTX", 160, NULL, TASK_PRIORITY_COMM_OUT_TX, NULL);
     if (xResult != pdPASS) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
