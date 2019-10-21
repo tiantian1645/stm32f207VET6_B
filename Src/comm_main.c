@@ -23,7 +23,7 @@ extern UART_HandleTypeDef huart5;
 #define COMM_MAIN_UART_HANDLE huart1
 
 #define COMM_MAIN_RECV_QUEU_LENGTH 3
-#define COMM_MAIN_SEND_QUEU_LENGTH 6
+#define COMM_MAIN_SEND_QUEU_LENGTH 12
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -350,7 +350,7 @@ static void comm_Main_Send_Task(void * argument)
             vTaskDelay(pdMS_TO_TICKS(10));
             continue;
         }
-        if (xQueuePeek(comm_Main_SendQueue, &sendInfo, portMAX_DELAY) != pdPASS) { /* 发送队列为空 */
+        if (xQueueReceive(comm_Main_SendQueue, &sendInfo, portMAX_DELAY) != pdPASS) { /* 发送队列为空 */
             vTaskDelay(pdMS_TO_TICKS(10));
             continue;
         }
@@ -364,7 +364,7 @@ static void comm_Main_Send_Task(void * argument)
                 ucResult = 2;                                        /* 无需等待回应包默认成功 */
                 break;
             }
-            comm_Main_DMA_TX_Wait(30);
+            comm_Main_DMA_TX_Wait(30);                                                             /* 等待发送完成 */
             if (comm_Main_Send_ACK_Wait(sendInfo.buff[3], COMM_MAIN_SER_TX_RETRY_INT) == pdPASS) { /* 等待ACK回应包 */
                 ucResult = 1;                                                                      /* 置位发送成功 */
                 break;
@@ -372,9 +372,11 @@ static void comm_Main_Send_Task(void * argument)
                 ucResult = 0;
             }
         }
-        if (ucResult == 0) {                     /* 重发失败处理 */
-            temp_Upload_Comm_Set(eComm_Main, 0); /* 关闭本串口温度上送 */
+        if (ucResult == 0) {                                         /* 重发失败处理 */
+            temp_Upload_Comm_Set(eComm_Main, 0);                     /* 关闭本串口温度上送 */
+            while (xQueueReceive(comm_Main_SendQueue, &sendInfo, 0)) /* 清空发送队列 */
+                ;
         }
-        xQueueReceive(comm_Main_SendQueue, &sendInfo, 0); /* 释放发送队列 */
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
