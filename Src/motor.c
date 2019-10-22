@@ -54,8 +54,7 @@ static void motor_Tray_Move_By_Index(eTrayIndex index);
  */
 void motor_Resource_Init(void)
 {
-    m_l6470_Init(); /* 驱动资源及参数初始化 */
-
+    m_l6470_Init(); 	  /* 驱动资源及参数初始化 */
     barcode_Motor_Init(); /* 扫码电机初始化 */
 
     /* 警告 上加热体电机不抬起 不允许操作托盘电机 */
