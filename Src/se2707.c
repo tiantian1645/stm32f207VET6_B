@@ -23,16 +23,61 @@
 /* Private includes ----------------------------------------------------------*/
 
 /* Private typedef -----------------------------------------------------------*/
+/* CMD list */
+typedef enum {
+    ABORT_MACRO_PDF = 0x11,
+    AIM_OFF = 0xC4,
+    AIM_ON = 0xC5,
+    BATCH_DATA = 0xD6,
+    BATCH_REQUEST = 0xD5,
+    BEEP = 0xE6,
+    CAPABILITIES_REQUEST = 0xD3,
+    CAPABILITIES_REPLY = 0xD4,
+    CHANGE_ALL_CODE_TYPES = 0xC9,
+    CMD_ACK = 0xD0,
+    CMD_ACK_ACTION = 0xD8,
+    CMD_NAK = 0xD1,
+    CUSTOM_DEFAULTS = 0x12,
+    DECODE_DATA = 0xF3,
+    EVENT = 0xF6,
+    FLUSH_MACRO_PDF = 0x10,
+    FLUSH_QUEUE = 0xD2,
+    ILLUMINATION_OFF = 0xC0,
+    ILLUMINATION_ON = 0xC1,
+    IMAGE_DATA = 0xB1,
+    IMAGER_MODE = 0xF7,
+    LED_OFF = 0xE8,
+    LED_ON = 0xE7,
+    PAGER_MOTOR_ACTIVATION = 0xCA,
+    PARAM_DEFAULTS = 0xC8,
+    PARAM_REQUEST = 0xC7,
+    PARAM_SEND = 0xC6,
+    REPLY_REVISION = 0xA4,
+    REQUEST_REVISION = 0xA3,
+    SCAN_DISABLE = 0xEA,
+    SCAN_ENABLE = 0xE9,
+    SLEEP = 0xEB,
+    SSI_MGMT_COMMAND = 0x80,
+    START_SESSION = 0xE4,
+    STOP_SESSION = 0xE5,
+    VIDEO_DATA = 0xB4,
+    WAKEUP = 0,
+} eSE2707_CMD;
 
 /* Private define ------------------------------------------------------------*/
+/* 2进制补码配置 */
 #define SE2707_COMP_LENGTH 16
 #define SE2707_COMP_MANDAN (1 << SE2707_COMP_LENGTH)
 
-const uint8_t cSe2707_ACK_PACK[] = {0x04, 0xD0, 0x00, 0x00, 0xFF, 0x2C};
+/* 延时函数定义 */
+#define SE2707_DELAY HAL_Delay /* vTaskDelay */
 
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
+
+/* Private constants ---------------------------------------------------------*/
+const uint8_t cSe2707_ACK_PACK[] = {0x04, 0xD0, 0x00, 0x00, 0xFF, 0x2C};
 
 /* Private function prototypes -----------------------------------------------*/
 
@@ -86,14 +131,14 @@ uint8_t se2707_checksum_check(uint8_t * pData, uint16_t length)
 
 /**
  * @brief  se2707 ssi 协议组包
- * @param  cmd 命令字
+ * @param  cmd 命令字 eSE2707_CMD
  * @param  status 状态字
  * @param  pPayload 实际负载区指针
  * @param  payload_length 实际负载区长度
  * @param  pResult 结果存放指针
  * @retval 结果长度
  */
-uint16_t se2707_build_pack(uint8_t cmd, eSE2707_Set_Param_status status, uint8_t * pPayload, uint8_t payload_length, uint8_t * pResult)
+uint16_t se2707_build_pack(eSE2707_CMD cmd, eSE2707_Set_Param_status status, uint8_t * pPayload, uint8_t payload_length, uint8_t * pResult)
 {
     uint16_t checksum;
 
@@ -102,7 +147,7 @@ uint16_t se2707_build_pack(uint8_t cmd, eSE2707_Set_Param_status status, uint8_t
     }
 
     pResult[0] = payload_length + 4;
-    pResult[1] = cmd;
+    pResult[1] = (uint8_t)(cmd);
     pResult[2] = 0x04;
     pResult[3] = status;
     if (payload_length > 0) {
@@ -121,7 +166,7 @@ uint16_t se2707_build_pack(uint8_t cmd, eSE2707_Set_Param_status status, uint8_t
  */
 uint16_t se2707_build_pack_ack(uint8_t * pResult)
 {
-    return se2707_build_pack(0xD0, Set_Param_Tempory, NULL, 0, pResult);
+    return se2707_build_pack(CMD_ACK, Set_Param_Tempory, NULL, 0, pResult);
 }
 
 /**
@@ -135,7 +180,7 @@ uint16_t se2707_build_pack_beep_conf(uint8_t beep_code, eSE2707_Set_Param_status
     uint8_t payload[1];
 
     payload[0] = beep_code;
-    return se2707_build_pack(0xE6, status, payload, 1, pResult);
+    return se2707_build_pack(BEEP, status, payload, 1, pResult);
 }
 
 /**
@@ -150,7 +195,7 @@ uint16_t se2707_build_pack_param_read(uint16_t param_type, uint8_t * pResult)
 
     payload[0] = param_type >> 8;
     payload[1] = param_type & 0xFF;
-    return se2707_build_pack(0xC7, Set_Param_Tempory, payload, 2, pResult);
+    return se2707_build_pack(PARAM_REQUEST, Set_Param_Tempory, payload, 2, pResult);
 }
 
 /**
@@ -169,7 +214,7 @@ uint16_t se2707_build_pack_param_write(uint16_t param_type, eSE2707_Set_Param_st
     payload[1] = param_type >> 8;
     payload[2] = param_type & 0xFF;
     payload[3] = conf;
-    return se2707_build_pack(0xC6, status, payload, 4, pResult);
+    return se2707_build_pack(PARAM_SEND, status, payload, 4, pResult);
 }
 
 /**
@@ -179,7 +224,7 @@ uint16_t se2707_build_pack_param_write(uint16_t param_type, eSE2707_Set_Param_st
  */
 uint16_t se2707_build_pack_reset_Default(uint8_t * pResult)
 {
-    return se2707_build_pack(0xC8, Set_Param_Tempory, NULL, 0, pResult);
+    return se2707_build_pack(PARAM_DEFAULTS, Set_Param_Tempory, NULL, 0, pResult);
 }
 
 /**
@@ -191,12 +236,12 @@ uint16_t se2707_build_pack_reset_Default(uint8_t * pResult)
  */
 uint16_t se2707_send_pack(UART_HandleTypeDef * puart, uint8_t * pData, uint16_t length)
 {
-    uint8_t nn[2] = {0};
+    uint8_t nn[1] = {0};
 
-    if (HAL_UART_Transmit(puart, nn, 2, 10) != HAL_OK) {
+    if (HAL_UART_Transmit(puart, nn, 1, 10) != HAL_OK) {
         return 1;
     }
-    vTaskDelay(40);
+    SE2707_DELAY(100);
 
     if (HAL_UART_Transmit(puart, pData, length, 10) != HAL_OK) {
         return 1;
@@ -260,7 +305,7 @@ uint8_t se2707_check_recv_ack(uint8_t * pData, uint8_t length)
 uint8_t se2707_decode_param(uint8_t * pData, uint8_t length, sSE2707_Image_Capture_Param * pResult)
 {
 
-    if (length < 10 || pData == NULL || pData[1] != 0xC6) {
+    if (length < 10 || pData == NULL || pData[1] != PARAM_SEND) {
         return 1;
     }
     if (se2707_checksum_check(pData, 10) != 0) {
@@ -293,7 +338,7 @@ uint8_t se2707_conf_param(UART_HandleTypeDef * puart, sSE2707_Image_Capture_Para
         if (result == 0) {
             break;
         }
-        vTaskDelay(1000);
+        SE2707_DELAY(1000);
     } while (--retry > 0);
     return result;
 }
@@ -319,7 +364,7 @@ uint8_t se2707_check_param(UART_HandleTypeDef * puart, sSE2707_Image_Capture_Par
         length = se2707_recv_pack(puart, buffer, 10, timeout);
         result = se2707_decode_param(buffer, length, &icp);
         if (result != 0) {
-            vTaskDelay(1000);
+            SE2707_DELAY(1000);
             continue;
         }
         if (icp.param != conf.param) {
@@ -329,7 +374,7 @@ uint8_t se2707_check_param(UART_HandleTypeDef * puart, sSE2707_Image_Capture_Par
             result = 4;
         }
         break;
-        vTaskDelay(1000);
+        SE2707_DELAY(1000);
     } while (--retry > 0);
     return result;
 }

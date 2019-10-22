@@ -413,12 +413,12 @@ void barcode_sn2707_Init(void)
     // sSE2707_Image_Capture_Param icParam;
 
     HAL_GPIO_WritePin(BC_AIM_WK_N_GPIO_Port, BC_AIM_WK_N_Pin, GPIO_PIN_RESET);
-    HAL_Delay(1);
+    HAL_Delay(100);
     HAL_GPIO_WritePin(BC_AIM_WK_N_GPIO_Port, BC_AIM_WK_N_Pin, GPIO_PIN_SET);
 
-    // if (se2707_reset_param(&BARCODE_UART, 1500, 1) != 0) {
-    //     error_Emit(eComm_Out, eError_Peripheral_Scanner, eError_Scanner_Recv_None);
-    // }
+    if (se2707_reset_param(&BARCODE_UART, 1500, 2) != 0) {
+        error_Emit(eError_Peripheral_Scanner, eError_Scanner_Recv_None);
+    }
 
     // icParam.param = Continuous_Bar_Code_Read;
     // icParam.data = 1;
