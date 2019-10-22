@@ -111,6 +111,13 @@ rt.start()
 st.start()
 
 
+write_queue.put(dd.buildPack(0x13, 0, 0x01))
+write_queue.put(dd.buildPack(0x13, 0, 0x03, test_conf(lambda x: x % 3 + 1, lambda x: x % 3 + 1, lambda x: 10)))
+write_queue.put(dd.buildPack(0x13, 0, 0x04))
+write_queue.put(dd.buildPack(0x13, 0, 0x05))
+write_queue.put(dd.buildPack(0x13, 0, 0x06))
+
+
 def serial_test(*args, **kwargs):
     try:
         if not ser.isOpen():
