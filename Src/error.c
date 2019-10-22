@@ -34,19 +34,12 @@
  * @param  detail 具体故障内容
  * @retval None
  */
-void error_Emit(eProtocol_COMM_Index ci, eError_Peripheral pp, uint8_t detail)
+void error_Emit(eError_Peripheral pp, uint8_t detail)
 {
-    uint8_t buff[8];
+    uint8_t buff[9];
 
     buff[0] = pp;
     buff[1] = detail;
-    switch (ci) {
-        case eComm_Out:
-            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_ERR, buff, 2);
-            break;
-        case eComm_Main:
-        default:
-            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_ERR, buff, 2);
-            break;
-    }
+    comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_ERR, buff, 2); /* 发送给主板串口 */
+    comm_Out_SendTask_QueueEmitWithModify(buff, 9, 0);                                  /* 转发给外串口 但不能阻塞主板串口 */
 }

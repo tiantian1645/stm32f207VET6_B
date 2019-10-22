@@ -88,7 +88,7 @@ typedef struct {
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/
-void error_Emit(eProtocol_COMM_Index ci, eError_Peripheral pp, uint8_t detail);
+void error_Emit(eError_Peripheral pp, uint8_t detail);
 
 /* Private defines -----------------------------------------------------------*/
 
