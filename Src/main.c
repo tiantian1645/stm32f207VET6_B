@@ -1319,7 +1319,7 @@ static void Miscellaneous_Task(void * argument)
         }
 
         if (cnt % 50 == 0) {    /* 5S 上送一次温度 */
-            // temp_Upload_Deal(); /* 温度主动上送 */
+            temp_Upload_Deal(); /* 温度主动上送 */
         }
 
         vTaskDelayUntil(&xTick, 100);
