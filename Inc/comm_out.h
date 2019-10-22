@@ -35,6 +35,7 @@ typedef struct {
 void comm_Out_Init(void);
 void comm_Out_IRQ_RX_Deal(UART_HandleTypeDef * huart);
 void comm_Out_DMA_TX_CallBack(void);
+void comm_Out_DMA_RX_Restore(void);
 
 BaseType_t comm_Out_DMA_TX_Wait(uint32_t timeout);
 BaseType_t comm_Out_DMA_TX_Enter(uint32_t timeout);

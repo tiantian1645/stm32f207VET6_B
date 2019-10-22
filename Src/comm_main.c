@@ -24,6 +24,7 @@ extern UART_HandleTypeDef huart5;
 
 #define COMM_MAIN_RECV_QUEU_LENGTH 3
 #define COMM_MAIN_SEND_QUEU_LENGTH 12
+#define COMM_MAIN_ERROR_SEND_QUEU_LENGTH 1
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -46,6 +47,7 @@ static xQueueHandle comm_Main_RecvQueue = NULL;
 
 /* 串口发送队列 */
 static xQueueHandle comm_Main_SendQueue = NULL;
+static xQueueHandle comm_Main_Error_Info_SendQueue = NULL;
 
 /* 串口DMA发送资源信号量 */
 static xSemaphoreHandle comm_Main_Send_Sem = NULL;
@@ -160,6 +162,19 @@ void comm_Main_DMA_TX_Error(void)
 }
 
 /**
+ * @brief  串口DMA发送接收异常处理
+ * @note   https://community.st.com/s/question/0D50X00009XkfN8SAJ/restore-circular-dma-rx-after-uart-error
+ * @param  None
+ * @retval None
+ */
+void comm_Main_DMA_RX_Restore(void)
+{
+    if (HAL_UART_Receive_DMA(&COMM_MAIN_UART_HANDLE, gComm_Main_RX_dma_buffer, ARRAY_LEN(gComm_Main_RX_dma_buffer)) != HAL_OK) {
+        FL_Error_Handler(__FILE__, __LINE__);
+    }
+}
+
+/**
  * @brief  串口任务初始化
  * @param  None
  * @retval None
@@ -188,6 +203,10 @@ void comm_Main_Init(void)
     if (comm_Main_SendQueue == NULL) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
+    comm_Main_Error_Info_SendQueue = xQueueCreate(COMM_MAIN_ERROR_SEND_QUEU_LENGTH, sizeof(sError_Info));
+    if (comm_Main_Error_Info_SendQueue == NULL) {
+        FL_Error_Handler(__FILE__, __LINE__);
+    }
 
     /* Start DMA */
     if (HAL_UART_Receive_DMA(&COMM_MAIN_UART_HANDLE, gComm_Main_RX_dma_buffer, ARRAY_LEN(gComm_Main_RX_dma_buffer)) != HAL_OK) {
@@ -200,7 +219,7 @@ void comm_Main_Init(void)
         FL_Error_Handler(__FILE__, __LINE__);
     }
     /* 创建串口发送任务 */
-    xResult = xTaskCreate(comm_Main_Send_Task, "CommMainTX", 160, NULL, TASK_PRIORITY_COMM_MAIN_TX, &comm_Main_Send_Task_Handle);
+    xResult = xTaskCreate(comm_Main_Send_Task, "CommMainTX", 192, NULL, TASK_PRIORITY_COMM_MAIN_TX, &comm_Main_Send_Task_Handle);
     if (xResult != pdPASS) {
         FL_Error_Handler(__FILE__, __LINE__);
     }

@@ -155,6 +155,72 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef * huart)
 }
 
 /**
+ * @brief  串口异常处理
+ * @param  huart 串口句柄
+ * @retval None
+ * @note   https://community.st.com/s/question/0D50X00009XkfN8SAJ/restore-circular-dma-rx-after-uart-error
+ * Heath Raftery (Community Member)
+ *
+ * Edited by STM Community July 21, 2018 at 5:37 PM
+ * Posted on June 01, 2018 at 11:04
+ *
+ *
+ *
+ *
+ * We also have a 'standard' CubeMX circular DMA UART setup, which stops on error. Caused us some headaches, but ultimately able to resolve it thusly:
+ *
+ * In DMA mode, a comms error actually triggers a DMA end of transfer interrupt (not a UART error). The DMA HAL picks this up, aborts the DMA and then calls the
+ * registered
+ *
+ * XferAbortCallback
+ *
+ * (see
+ * stm32f4xx_hal_dma.c:883
+ *
+ * ) which is actually
+ * UART_DMAAbortOnError
+ *
+ * . That then calls
+ * HAL_UART_ErrorCallback
+ *
+ * , so once that callback runs the DMA is already aborted. Further, it turns out only a deliberate call to
+ * HAL_UART_Abort_IT
+ *
+ * ends up calling
+ * HAL_UART_AbortCpltCallback
+ *
+ * , so in DMA mode UART DMA restoration needs to happen in
+ * HAL_UART_ErrorCallback
+ *
+ * .
+ * In the end, all we did is call
+ *
+ * HAL_UART_Receive_DMA()
+ *
+ * from
+ * HAL_UART_ErrorCallback
+ *
+ * (once the error is logged/otherwise dealt with). No init/de-init, flag clearing or error suppressing necessary.
+ * To the OP: is it possible you missed the simplest one-statement option in your efforts?
+ *
+ * Anyone else solved it otherwise?
+ */
+void HAL_UART_ErrorCallback(UART_HandleTypeDef * huart)
+{
+    switch ((uint32_t)(huart->Instance)) {
+        case (uint32_t)USART1:
+            comm_Main_DMA_RX_Restore();
+            break;
+        case (uint32_t)USART2:
+            comm_Data_DMA_RX_Restore();
+            break;
+        case (uint32_t)UART5:
+            comm_Out_DMA_RX_Restore();
+            break;
+    }
+}
+
+/**
  * @brief  DMA发送完成中断回调
  * @param  argument: Not used
  * @retval None

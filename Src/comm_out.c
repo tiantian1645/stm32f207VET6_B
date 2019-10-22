@@ -163,6 +163,19 @@ void comm_Out_DMA_TX_Error(void)
 }
 
 /**
+ * @brief  串口DMA发送接收异常处理
+ * @note   https://community.st.com/s/question/0D50X00009XkfN8SAJ/restore-circular-dma-rx-after-uart-error
+ * @param  None
+ * @retval None
+ */
+void comm_Out_DMA_RX_Restore(void)
+{
+    if (HAL_UART_Receive_DMA(&COMM_OUT_UART_HANDLE, gComm_Out_RX_dma_buffer, ARRAY_LEN(gComm_Out_RX_dma_buffer)) != HAL_OK) {
+        FL_Error_Handler(__FILE__, __LINE__);
+    }
+}
+
+/**
  * @brief  串口任务初始化
  * @param  None
  * @retval None

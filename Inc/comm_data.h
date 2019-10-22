@@ -77,6 +77,8 @@ void comm_Data_Init(void);
 void comm_Data_IRQ_RX_Deal(UART_HandleTypeDef * huart);
 
 BaseType_t comm_Data_DMA_TX_Wait(uint32_t timeout);
+void comm_Data_DMA_RX_Restore(void);
+
 void comm_Data_DMA_TX_CallBack(void);
 BaseType_t comm_Data_DMA_TX_Enter(uint32_t timeout);
 
