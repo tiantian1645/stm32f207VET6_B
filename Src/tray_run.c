@@ -265,21 +265,23 @@ uint8_t tray_Motor_Reset_Pos()
     TickType_t xTick;
 
     xTick = xTaskGetTickCount();
-    while ((!TRAY_MOTOR_IS_OPT_1) && xTaskGetTickCount() - xTick < 5000) { /* 检测光耦是否被遮挡 */
+    while ((!TRAY_MOTOR_IS_OPT_1) && xTaskGetTickCount() - xTick < 3000) { /* 检测光耦是否被遮挡 */
         vTaskDelay(1);
     }
 
-    if (TRAY_MOTOR_IS_OPT_1) {
-        if (tray_Motor_Enter() != eTrayState_Tiemout) {
-            tray_Motor_Brake();                                    /* 刹车 */
-            dSPIN_Reset_Pos();                                     /* 重置电机驱动步数记录 */
-            tray_Motor_Deal_Status();                              /* 状态处理 */
-            m_l6470_release();                                     /* 释放SPI总线资源*/
-            motor_Status_Set_Position(&gTray_Motor_Run_Status, 0); /* 重置电机状态步数记录 */
-            return 0;
-        }
+    if (tray_Motor_Enter() == eTrayState_Tiemout) { /* 获取资源失败 */
         return 2;
     }
+
+    tray_Motor_Brake();                                        /* 无条件刹车 */
+    if (TRAY_MOTOR_IS_OPT_1) {                                 /* 光耦被遮挡 */
+        dSPIN_Reset_Pos();                                     /* 重置电机驱动步数记录 */
+        tray_Motor_Deal_Status();                              /* 状态处理 */
+        motor_Status_Set_Position(&gTray_Motor_Run_Status, 0); /* 重置电机状态步数记录 */
+        m_l6470_release();                                     /* 释放SPI总线资源*/
+        return 0;
+    }
+    m_l6470_release(); /* 释放SPI总线资源*/
     return 1;
 }
 

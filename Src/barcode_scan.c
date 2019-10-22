@@ -307,19 +307,17 @@ uint8_t barcode_Motor_Reset_Pos(void)
 
     xTick = xTaskGetTickCount();
 
-    while ((!BARCODE_MOTOR_IS_OPT) && xTaskGetTickCount() - xTick < 5000) { /* 检测光耦是否被遮挡 */
+    while ((!BARCODE_MOTOR_IS_OPT) && xTaskGetTickCount() - xTick < 1000) { /* 检测光耦是否被遮挡 */
         vTaskDelay(1);
     }
 
-    if (!BARCODE_MOTOR_IS_OPT) { /* 超时时间到 光耦未遮挡 初始化位置失败 */
-        return 1;
-    }
     result = barcode_Motor_Enter();
     if (result == eBarcodeState_Tiemout) { /* 获取SPI资源失败 */
         return 2;
     }
     if (result == eBarcodeState_Busy) { /* 电机忙 */
-        m_l6470_release();              /* 释放SPI总线资源*/
+        barcode_Motor_Brake();      /* 无条件刹车 */
+        m_l6470_release(); /* 释放SPI总线资源*/
         return 3;
     }
     barcode_Motor_Brake();                                 /* 刹车 */
@@ -416,7 +414,7 @@ void barcode_sn2707_Init(void)
     HAL_Delay(100);
     HAL_GPIO_WritePin(BC_AIM_WK_N_GPIO_Port, BC_AIM_WK_N_Pin, GPIO_PIN_SET);
 
-    if (se2707_reset_param(&BARCODE_UART, 1500, 2) != 0) {
+    if (se2707_reset_param(&BARCODE_UART, 1500, 1) != 0) {
         error_Emit(eError_Peripheral_Scanner, eError_Scanner_Recv_None);
     }
 
