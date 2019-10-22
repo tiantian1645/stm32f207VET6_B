@@ -72,14 +72,10 @@ def read_task(ser, write_queue, delay=0.5):
                     send_data = dd.buildPack(0x13, 0xFF - ack, 0xAA, (ack,))
                     ser.write(send_data)
                     logger.warning("send pack | {}".format(bytesPuttyPrint(send_data)))
-            if info.is_head:
-                if not info.is_crc:
-                    recv_buffer = recv_pack
-                else:
-                    recv_buffer = b""
-            else:
-                logger.error("junk part | {}".format(info.text))
-                recv_buffer = b""
+        if info.is_head and info.is_crc:
+            recv_buffer = b""
+        else:
+            recv_buffer = info.content
 
 
 def send_task(ser, write_queue):

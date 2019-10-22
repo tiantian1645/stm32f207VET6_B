@@ -63,6 +63,8 @@ class DC201_PACK:
                 else:
                     type_s = "M"
                 yield self.pack_info_nt(type_s, sub_pack.startswith(self.pack_head), self.checkCRC(sub_pack[4:]), sub_pack, bytesPuttyPrint(sub_pack))
+            if pack:
+                yield self.pack_info_nt("O", pack.startswith(self.pack_head), self.checkCRC(pack[4:]), pack, bytesPuttyPrint(pack))
 
         except Exception:
             logger.error("iter intact pack exception\n{}".format(stackprinter.format()))
