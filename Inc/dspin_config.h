@@ -126,7 +126,7 @@
 /* Alarm settings via bitmap enum dSPIN_ALARM_EN_TypeDef */
 #define dSPIN_CONF_PARAM_ALARM_EN                                                                                                                              \
     (dSPIN_ALARM_EN_OVERCURRENT | dSPIN_ALARM_EN_THERMAL_SHUTDOWN | dSPIN_ALARM_EN_THERMAL_WARNING | dSPIN_ALARM_EN_UNDER_VOLTAGE |                            \
-     dSPIN_ALARM_EN_STALL_DET_A | dSPIN_ALARM_EN_STALL_DET_B | dSPIN_ALARM_EN_SW_TURN_ON | dSPIN_ALARM_EN_WRONG_NPERF_CMD)
+     dSPIN_ALARM_EN_STALL_DET_A | dSPIN_ALARM_EN_STALL_DET_B | dSPIN_ALARM_EN_WRONG_NPERF_CMD)
 
 /* Register : STEP_MODE - field : STEP_MODE */
 /* Step mode settings via enum dSPIN_STEP_SEL_TypeDef */
