@@ -28,6 +28,7 @@ extern DMA_HandleTypeDef hdma_uart5_rx;
 
 #define COMM_OUT_RECV_QUEU_LENGTH 3
 #define COMM_OUT_SEND_QUEU_LENGTH 6
+#define COMM_OUT_ERROR_SEND_QUEU_LENGTH 22
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -50,6 +51,7 @@ static xQueueHandle comm_Out_RecvQueue = NULL;
 
 /* 串口发送队列 */
 static xQueueHandle comm_Out_SendQueue = NULL;
+static xQueueHandle comm_Out_Error_Info_SendQueue = NULL;
 
 /* 串口DMA发送资源信号量 */
 static xSemaphoreHandle comm_Out_Send_Sem = NULL;
@@ -204,6 +206,11 @@ void comm_Out_Init(void)
     if (comm_Out_SendQueue == NULL) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
+    /* 发送队列 错误信息专用 */
+    comm_Out_Error_Info_SendQueue = xQueueCreate(COMM_OUT_ERROR_SEND_QUEU_LENGTH, sizeof(sError_Info));
+    if (comm_Out_Error_Info_SendQueue == NULL) {
+        FL_Error_Handler(__FILE__, __LINE__);
+    }
 
     /* Start DMA */
     if (HAL_UART_Receive_DMA(&COMM_OUT_UART_HANDLE, gComm_Out_RX_dma_buffer, ARRAY_LEN(gComm_Out_RX_dma_buffer)) != HAL_OK) {
@@ -327,6 +334,20 @@ BaseType_t comm_Out_SendTask_QueueEmitWithBuild(uint8_t cmdType, uint8_t * pData
 }
 
 /**
+ * @brief  加入串口发送队列
+ * @param  pData   数据指针
+ * @param  length  数据长度
+ * @param  timeout 超时时间
+ * @retval 加入发送队列结果
+ */
+BaseType_t comm_Out_SendTask_ErrorInfoQueueEmit(sError_Info * pErrorInfo, uint32_t timeout)
+{
+    BaseType_t xResult;
+    xResult = xQueueSendToBack(comm_Out_Error_Info_SendQueue, pErrorInfo, pdMS_TO_TICKS(timeout));
+    return xResult;
+}
+
+/**
  * @brief  串口接收回应包 帧号接收
  * @param  packIndex   回应包中帧号
  * @retval 加入发送队列结果
@@ -393,6 +414,7 @@ static void comm_Out_Recv_Task(void * argument)
  */
 static void comm_Out_Send_Task(void * argument)
 {
+    sError_Info errorInfo;
     sComm_Out_SendInfo sendInfo;
     uint8_t i, ucResult;
 
@@ -401,8 +423,11 @@ static void comm_Out_Send_Task(void * argument)
             vTaskDelay(pdMS_TO_TICKS(10));
             continue;
         }
-        if (xQueueReceive(comm_Out_SendQueue, &sendInfo, portMAX_DELAY) != pdPASS) { /* 发送队列为空 */
-            vTaskDelay(pdMS_TO_TICKS(10));
+        if (xQueueReceive(comm_Out_Error_Info_SendQueue, &errorInfo, 0) == pdPASS) {                       /* 查看错误信息队列 */
+            sendInfo.buff[0] = errorInfo.peripheral;                                                       /* 设备标识 */
+            sendInfo.buff[1] = errorInfo.type;                                                             /* 错误类型 */
+            sendInfo.length = buildPackOrigin(eComm_Out, eProtocoleRespPack_Client_ERR, sendInfo.buff, 2); /* 构造数据包 */
+        } else if (xQueueReceive(comm_Out_SendQueue, &sendInfo, pdMS_TO_TICKS(10)) != pdPASS) {            /* 发送队列为空 */
             continue;
         }
         ucResult = 0; /* 发送结果初始化 */

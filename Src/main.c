@@ -213,7 +213,11 @@ int main(void)
 
     /* Create the thread(s) */
     /* definition and creation of defaultTask */
-    const osThreadAttr_t defaultTask_attributes = {.name = "defaultTask", .priority = (osPriority_t)osPriorityNormal, .stack_size = 128};
+  const osThreadAttr_t defaultTask_attributes = {
+    .name = "defaultTask",
+    .priority = (osPriority_t) osPriorityNormal,
+    .stack_size = 128
+  };
     defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
     /* USER CODE BEGIN RTOS_THREADS */
@@ -1321,7 +1325,6 @@ static void Miscellaneous_Task(void * argument)
         if (cnt % 50 == 0) {    /* 5S 上送一次温度 */
             temp_Upload_Deal(); /* 温度主动上送 */
         }
-
         vTaskDelayUntil(&xTick, 100);
         ++cnt;
     }

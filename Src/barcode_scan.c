@@ -261,6 +261,7 @@ eBarcodeState barcode_Motor_Run(void)
 {
     eBarcodeState result;
 
+    error_Emit(eError_Peripheral_Motor_Scan, 0xFF);
     if (gBarcodeMotorRunCmdInfo.step == 0) {
         return eBarcodeState_OK;
     }
@@ -269,6 +270,11 @@ eBarcodeState barcode_Motor_Run(void)
     if (result != eBarcodeState_OK) { /* 入口回调 */
         if (result != eBarcodeState_Tiemout) {
             m_l6470_release(); /* 释放SPI总线资源*/
+        }
+        if (result == eBarcodeState_Busy) {
+            error_Emit(eError_Peripheral_Motor_Scan, eError_Motor_Busy);
+        } else if (result == eBarcodeState_Tiemout) {
+            error_Emit(eError_Peripheral_Motor_Scan, eError_Motor_Timeout);
         }
         return result;
     }
@@ -313,11 +319,13 @@ uint8_t barcode_Motor_Reset_Pos(void)
 
     result = barcode_Motor_Enter();
     if (result == eBarcodeState_Tiemout) { /* 获取SPI资源失败 */
+        error_Emit(eError_Peripheral_Motor_Scan, eError_Motor_Timeout);
         return 2;
     }
     if (result == eBarcodeState_Busy) { /* 电机忙 */
-        barcode_Motor_Brake();      /* 无条件刹车 */
-        m_l6470_release(); /* 释放SPI总线资源*/
+        barcode_Motor_Brake();          /* 无条件刹车 */
+        m_l6470_release();              /* 释放SPI总线资源*/
+        error_Emit(eError_Peripheral_Motor_Scan, eError_Motor_Busy);
         return 3;
     }
     barcode_Motor_Brake();                                 /* 刹车 */
@@ -337,10 +345,16 @@ eBarcodeState barcode_Motor_Init(void)
     eBarcodeState result;
     uint32_t cnt = 0;
 
+    error_Emit(eError_Peripheral_Motor_Scan, 0xFF);
     result = barcode_Motor_Enter();
     if (result != eBarcodeState_OK) { /* 入口回调 */
         if (result != eBarcodeState_Tiemout) {
             m_l6470_release(); /* 释放SPI总线资源*/
+        }
+        if (result == eBarcodeState_Busy) {
+            error_Emit(eError_Peripheral_Motor_Scan, eError_Motor_Busy);
+        } else if (result == eBarcodeState_Tiemout) {
+            error_Emit(eError_Peripheral_Motor_Scan, eError_Motor_Timeout);
         }
         return result;
     }
@@ -411,8 +425,9 @@ void barcode_sn2707_Init(void)
     // sSE2707_Image_Capture_Param icParam;
 
     HAL_GPIO_WritePin(BC_AIM_WK_N_GPIO_Port, BC_AIM_WK_N_Pin, GPIO_PIN_RESET);
-    HAL_Delay(100);
+    HAL_Delay(5);
     HAL_GPIO_WritePin(BC_AIM_WK_N_GPIO_Port, BC_AIM_WK_N_Pin, GPIO_PIN_SET);
+    HAL_Delay(200);
 
     if (se2707_reset_param(&BARCODE_UART, 1500, 1) != 0) {
         error_Emit(eError_Peripheral_Scanner, eError_Scanner_Recv_None);

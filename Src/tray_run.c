@@ -211,6 +211,7 @@ eTrayState tray_Motor_Run(void)
     eTrayState result;
     uint32_t cnt = 0;
 
+    error_Emit(eError_Peripheral_Motor_Tray, 0xFF);
     if (gTray_Motor_Run_CMD_Info.step == 0) {
         return eTrayState_OK;
     }
@@ -219,6 +220,11 @@ eTrayState tray_Motor_Run(void)
     if (result != eTrayState_OK) { /* 入口回调 */
         if (result != eTrayState_Tiemout) {
             m_l6470_release(); /* 释放SPI总线资源*/
+        }
+        if (result == eTrayState_Busy) {
+            error_Emit(eError_Peripheral_Motor_Tray, eError_Motor_Busy);
+        } else if (result == eTrayState_Tiemout) {
+            error_Emit(eError_Peripheral_Motor_Tray, eError_Motor_Timeout);
         }
         return result;
     }
@@ -295,10 +301,16 @@ eTrayState tray_Motor_Init(void)
     eTrayState result;
     TickType_t xTick;
 
+    error_Emit(eError_Peripheral_Motor_Tray, 0xFF);
     result = tray_Motor_Enter();
     if (result != eTrayState_OK) { /* 入口回调 */
         if (result != eTrayState_Tiemout) {
             m_l6470_release(); /* 释放SPI总线资源*/
+        }
+        if (result == eTrayState_Busy) {
+            error_Emit(eError_Peripheral_Motor_Tray, eError_Motor_Busy);
+        } else if (result == eTrayState_Tiemout) {
+            error_Emit(eError_Peripheral_Motor_Tray, eError_Motor_Timeout);
         }
         return result;
     }

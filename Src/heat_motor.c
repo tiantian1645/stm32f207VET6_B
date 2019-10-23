@@ -169,7 +169,6 @@ uint8_t heat_Motor_Wait_Stop(uint32_t timeout)
                 if (heat_Motor_Position_Is_Up()) {
                     heat_Motor_Deactive();
                     PWM_AW_Stop();
-                    m_drv8824_release();
                     gHeat_Motor_Position_Clr();
                     return 0;
                 }
@@ -196,6 +195,7 @@ uint8_t heat_Motor_Wait_Stop(uint32_t timeout)
  */
 uint8_t heat_Motor_Run(eMotorDir dir, uint32_t timeout)
 {
+    error_Emit(eError_Peripheral_Motor_Heater, 0xFF);
     if (heat_Motor_Position_Is_Up()) { /* 光耦被遮挡 处于抬起状态 */
         heat_Motor_Deactive();
         gHeat_Motor_Position_Clr(); /* 清空位置记录 */
@@ -216,14 +216,18 @@ uint8_t heat_Motor_Run(eMotorDir dir, uint32_t timeout)
     __HAL_TIM_SET_COUNTER(&htim1, 0);                         /* 清零定时器计数寄存器 */
     __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 0);          /* 占空比为0 */
     if (HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1) != HAL_OK) { /* 启动PWM输出 */
+        m_drv8824_release();
         return 2;
     }
 
     PWM_AW_IRQ_CallBcak();
 
     if (heat_Motor_Wait_Stop(timeout) == 0) {
+        m_drv8824_release();
         return 0;
     }
+    error_Emit(eError_Peripheral_Motor_Heater, eError_Motor_Timeout);
+    m_drv8824_release();
     return 3;
 }
 

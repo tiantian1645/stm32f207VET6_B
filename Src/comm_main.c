@@ -24,7 +24,7 @@ extern UART_HandleTypeDef huart5;
 
 #define COMM_MAIN_RECV_QUEU_LENGTH 3
 #define COMM_MAIN_SEND_QUEU_LENGTH 12
-#define COMM_MAIN_ERROR_SEND_QUEU_LENGTH 1
+#define COMM_MAIN_ERROR_SEND_QUEU_LENGTH 22
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -59,8 +59,9 @@ static xTaskHandle comm_Main_Send_Task_Handle = NULL;
 /* 串口接收ACK记录 */
 static sProcol_COMM_ACK_Record gComm_Main_ACK_Records[COMM_MAIN_SEND_QUEU_LENGTH];
 
-static sComm_Main_SendInfo gComm_Main_SendInfo;
-static uint8_t gComm_Main_SendInfoFlag = 1;
+static sComm_Main_SendInfo gComm_Main_SendInfo; /* 提交发送任务到队列用缓存 */
+static uint8_t gComm_Main_SendInfoFlag = 1;     /* 上述缓存使用锁 */
+static uint8_t gComm_Main_Connected = 0;        /* 通信正常标志 */
 
 /* Private constants ---------------------------------------------------------*/
 
@@ -203,6 +204,7 @@ void comm_Main_Init(void)
     if (comm_Main_SendQueue == NULL) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
+    /* 发送队列 错误信息专用 */
     comm_Main_Error_Info_SendQueue = xQueueCreate(COMM_MAIN_ERROR_SEND_QUEU_LENGTH, sizeof(sError_Info));
     if (comm_Main_Error_Info_SendQueue == NULL) {
         FL_Error_Handler(__FILE__, __LINE__);
@@ -295,6 +297,38 @@ BaseType_t comm_Main_SendTask_QueueEmitWithBuild(uint8_t cmdType, uint8_t * pDat
 }
 
 /**
+ * @brief  加入串口发送队列
+ * @param  pData   数据指针
+ * @param  length  数据长度
+ * @param  timeout 超时时间
+ * @retval 加入发送队列结果
+ */
+BaseType_t comm_Main_SendTask_ErrorInfoQueueEmit(sError_Info * pErrorInfo, uint32_t timeout)
+{
+    BaseType_t xResult;
+    xResult = xQueueSendToBack(comm_Main_Error_Info_SendQueue, pErrorInfo, pdMS_TO_TICKS(timeout));
+    return xResult;
+}
+
+uint8_t comm_MainSendTask_ErrorInfo_IsAble(void)
+{
+    if (gComm_Main_Connected > 0) {
+        return 1;
+    }
+    return 0;
+}
+
+void gComm_Main_Connected_Set_Disbale(void)
+{
+    gComm_Main_Connected = 0;
+}
+
+void gComm_Main_Connected_Set_Enable(void)
+{
+    gComm_Main_Connected = 1;
+}
+
+/**
  * @brief  串口接收回应包 帧号接收
  * @param  packIndex   回应包中帧号
  * @retval 加入发送队列结果
@@ -362,6 +396,7 @@ static void comm_Main_Recv_Task(void * argument)
 static void comm_Main_Send_Task(void * argument)
 {
     sComm_Main_SendInfo sendInfo;
+    sError_Info errorInfo;
     uint8_t i, ucResult;
 
     for (;;) {
@@ -369,8 +404,11 @@ static void comm_Main_Send_Task(void * argument)
             vTaskDelay(pdMS_TO_TICKS(10));
             continue;
         }
-        if (xQueueReceive(comm_Main_SendQueue, &sendInfo, portMAX_DELAY) != pdPASS) { /* 发送队列为空 */
-            vTaskDelay(pdMS_TO_TICKS(10));
+        if (comm_MainSendTask_ErrorInfo_IsAble() && (xQueueReceive(comm_Main_Error_Info_SendQueue, &errorInfo, 0) == pdPASS)) { /* 查看错误信息队列 */
+            sendInfo.buff[0] = errorInfo.peripheral;                                                                            /* 设备标识 */
+            sendInfo.buff[1] = errorInfo.type;                                                                                  /* 错误类型 */
+            sendInfo.length = buildPackOrigin(eComm_Main, eProtocoleRespPack_Client_ERR, sendInfo.buff, 2);                     /* 构造数据包 */
+        } else if (xQueueReceive(comm_Main_SendQueue, &sendInfo, pdMS_TO_TICKS(10)) != pdPASS) {                                /* 发送队列为空 */
             continue;
         }
         ucResult = 0; /* 发送结果初始化 */
@@ -395,6 +433,7 @@ static void comm_Main_Send_Task(void * argument)
             temp_Upload_Comm_Set(eComm_Main, 0);                     /* 关闭本串口温度上送 */
             while (xQueueReceive(comm_Main_SendQueue, &sendInfo, 0)) /* 清空发送队列 */
                 ;
+            gComm_Main_Connected_Set_Disbale(); /* 标记通信失败 */
         }
         vTaskDelay(pdMS_TO_TICKS(10));
     }

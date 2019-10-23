@@ -169,7 +169,6 @@ uint8_t white_Motor_Wait_Stop(uint32_t timeout)
                 if (white_Motor_Position_Is_In()) {
                     white_Motor_Deactive();
                     PWM_AW_Stop();
-                    m_drv8824_release();
                     gWhite_Motor_Position_Clr();
                     return 0;
                 }
@@ -182,7 +181,6 @@ uint8_t white_Motor_Wait_Stop(uint32_t timeout)
                 if (white_Motor_Position_Is_Out()) {
                     white_Motor_Deactive();
                     PWM_AW_Stop();
-                    m_drv8824_release();
                     return 0;
                 }
                 vTaskDelay(1);
@@ -199,6 +197,7 @@ uint8_t white_Motor_Wait_Stop(uint32_t timeout)
  */
 uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout)
 {
+    error_Emit(eError_Peripheral_Motor_White, 0xFF);
     if (white_Motor_Position_Is_In()) { /* 光耦被遮挡 处于收起状态 */
         white_Motor_Deactive();
         gWhite_Motor_Position_Clr(); /* 清空位置记录 */
@@ -218,6 +217,7 @@ uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout)
     __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE);                /* 清除更新事件标志位 */
     __HAL_TIM_SET_COUNTER(&htim1, 0);                         /* 清零定时器计数寄存器 */
     if (HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1) != HAL_OK) { /* 启动PWM输出 */
+        m_drv8824_release();
         return 2;
     }
 
@@ -227,6 +227,8 @@ uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout)
         m_drv8824_release();
         return 0;
     }
+    m_drv8824_release();
+    error_Emit(eError_Peripheral_Motor_White, eError_Motor_Timeout);
     return 3;
 }
 

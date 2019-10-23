@@ -36,10 +36,10 @@
  */
 void error_Emit(eError_Peripheral pp, uint8_t detail)
 {
-    uint8_t buff[9];
+    sError_Info errorInfo;
 
-    buff[0] = pp;
-    buff[1] = detail;
-    comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_ERR, buff, 2); /* 发送给主板串口 */
-    comm_Out_SendTask_QueueEmitWithModify(buff, 9, 0);                                  /* 转发给外串口 但不能阻塞主板串口 */
+    errorInfo.peripheral = pp;
+    errorInfo.type = detail;
+    comm_Main_SendTask_ErrorInfoQueueEmit(&errorInfo, 0); /* 发送给主板串口 */
+    comm_Out_SendTask_ErrorInfoQueueEmit(&errorInfo, 0);  /* 发送给外串口 */
 }

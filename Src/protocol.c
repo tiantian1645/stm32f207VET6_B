@@ -561,16 +561,10 @@ eProtocolParseResult protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
     uint8_t result;
     sMotor_Fun motor_fun;
 
+    gComm_Main_Connected_Set_Enable();                 /* 标记通信成功 */
     if (pInBuff[5] == eProtocoleRespPack_Client_ACK) { /* 收到对方回应帧 */
         comm_Main_Send_ACK_Give(pInBuff[6]);           /* 通知串口发送任务 回应包收到 */
         return PROTOCOL_PARSE_OK;                      /* 直接返回 */
-    }
-
-    if (pInBuff[4] == PROTOCOL_DEVICE_ID_SAMP) {             /* ID为数据板的数据包 直接透传 调试用 */
-        pInBuff[4] = PROTOCOL_DEVICE_ID_CTRL;                /* 修正装置ID */
-        pInBuff[length - 1] = CRC8(pInBuff + 4, length - 5); /* 重新校正CRC */
-        comm_Data_SendTask_QueueEmitCover(pInBuff, length);  /* 提交到采集板发送任务 */
-        return PROTOCOL_PARSE_OK;
     }
 
     temp_Upload_Comm_Set(eComm_Main, 1); /* 通讯接收成功 使能本串口温度上送 */
