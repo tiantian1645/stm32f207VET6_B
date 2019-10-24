@@ -22,6 +22,7 @@
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
+static eLED_Mode gLED_Mode = eLED_Mode_Keep_Green;
 
 /* Private constants ---------------------------------------------------------*/
 
@@ -56,6 +57,26 @@ void led_Board_Green_Off(void)
 void led_Board_Green_Toggle(void)
 {
     HAL_GPIO_TogglePin(LED_RUN_GPIO_Port, LED_RUN_Pin);
+}
+
+/**
+ * @brief  外接LED板控制 灯运行模式
+ * @param  mode 参考 eLED_Mode
+ * @retval None
+ */
+void led_Mode_Set(eLED_Mode mode)
+{
+    gLED_Mode = mode;
+}
+
+/**
+ * @brief  外接LED板控制 灯运行模式
+ * @param  None
+ * @retval mode 参考 eLED_Mode
+ */
+eLED_Mode led_Mode_Get(void)
+{
+    return gLED_Mode;
 }
 
 /**
@@ -113,15 +134,31 @@ eLED_OUT_D1_D2_Index led_Out_D1_D2_Get(void)
  */
 void led_Out_Deal(TickType_t inTick)
 {
-    static uint32_t cnt = 0;
-    static TickType_t xTick = 0;
-
-    if (inTick - xTick >= 500) {
-        if (++cnt % 2 == 0) {
-            led_Out_D1_D2_Set(eLED_OUT_D1_D2_Index_00);
-        } else {
+    switch (led_Mode_Get()) {
+        case eLED_Mode_Keep_Green:
             led_Out_D1_D2_Set(eLED_OUT_D1_D2_Index_GG);
-        }
-        xTick = inTick;
+            break;
+        case eLED_Mode_Kirakira_Green:
+            if (inTick % 1000 < 500) {
+                led_Out_D1_D2_Set(eLED_OUT_D1_D2_Index_00);
+            } else {
+                led_Out_D1_D2_Set(eLED_OUT_D1_D2_Index_GG);
+            }
+
+            break;
+        case eLED_Mode_Keep_Red:
+            led_Out_D1_D2_Set(eLED_OUT_D1_D2_Index_RR);
+            break;
+        case eLED_Mode_Kirakira_Red:
+            if (inTick % 1000 < 500) {
+                led_Out_D1_D2_Set(eLED_OUT_D1_D2_Index_00);
+            } else {
+                led_Out_D1_D2_Set(eLED_OUT_D1_D2_Index_RR);
+            }
+            break;
+        default:
+            led_Mode_Set(eLED_Mode_Keep_Green);
+            led_Out_D1_D2_Set(eLED_OUT_D1_D2_Index_GG);
+            break;
     }
 }
