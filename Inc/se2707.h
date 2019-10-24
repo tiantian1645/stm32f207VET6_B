@@ -87,6 +87,7 @@ uint16_t se2707_build_pack_param_write(uint16_t param_type, eSE2707_Set_Param_st
 uint16_t se2707_build_pack_reset_Default(uint8_t * pResult);
 
 uint16_t se2707_send_pack(UART_HandleTypeDef * puart, uint8_t * pData, uint16_t length);
+void se2707_clear_recv(UART_HandleTypeDef * puart);
 uint16_t se2707_recv_pack(UART_HandleTypeDef * puart, uint8_t * pData, uint16_t length, uint32_t timeout);
 uint8_t se2707_check_recv_ack(uint8_t * pdata, uint8_t length);
 uint8_t se2707_decode_param(uint8_t * pData, uint8_t length, sSE2707_Image_Capture_Param * pResult);

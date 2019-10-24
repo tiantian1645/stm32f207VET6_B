@@ -70,7 +70,7 @@ typedef enum {
 #define SE2707_COMP_MANDAN (1 << SE2707_COMP_LENGTH)
 
 /* 延时函数定义 */
-#define SE2707_DELAY HAL_Delay /* vTaskDelay */
+#define SE2707_DELAY HAL_Delay /* use vTaskDelay cause HAL_BUSY*/
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -236,22 +236,33 @@ uint16_t se2707_build_pack_reset_Default(uint8_t * pResult)
  */
 uint16_t se2707_send_pack(UART_HandleTypeDef * puart, uint8_t * pData, uint16_t length)
 {
-    uint8_t nn[1] = {0};
+    uint8_t nn[2] = {0};
 
-    if (HAL_UART_Transmit(puart, nn, 1, 10) != HAL_OK) {
+    if (HAL_UART_Transmit(puart, nn, 2, 10) != HAL_OK) {
         return 1;
     }
-    SE2707_DELAY(20);
-
-    if (HAL_UART_Transmit(puart, nn, 1, 10) != HAL_OK) {
-        return 1;
-    }
-    SE2707_DELAY(40);
+    SE2707_DELAY(50);
 
     if (HAL_UART_Transmit(puart, pData, length, 10) != HAL_OK) {
         return 1;
     }
     return 0;
+}
+
+/**
+ * @brief  se2707 ssi 清空串口缓冲
+ * @param  puart 串口句柄指针
+ * @retval 接收长度
+ */
+void se2707_clear_recv(UART_HandleTypeDef * puart)
+{
+    uint8_t buffer;
+    HAL_StatusTypeDef status = HAL_OK;
+
+    __HAL_UART_FLUSH_DRREGISTER(puart);
+    while (status != HAL_OK) {
+        status = HAL_UART_Receive(puart, &buffer, 1, 50);
+    }
 }
 
 /**
