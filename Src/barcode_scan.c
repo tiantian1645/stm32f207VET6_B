@@ -60,9 +60,6 @@ typedef struct {
 #define BARCODE_MOTOR_MAX_DISP 16000                                                                    /* 扫码电机运动最大步数 物理限制步数 */
 #define BARCODE_UART huart3                                                                             /* 扫码串口 */
 #define BARCODE_MOTOR_MAX_GO_UNTIL_SPEED 600000                                                         /* 扫码电机归零最大速度 */
-#define BARCODE_MOTOR_DISPLACEMENT 39000000                                                             /* 扫码电机整段移动距离 */
-#define BARCODE_MOTOR_SCAN_GO_UNTIL_SPEED 6000                                                          /* 连续扫码归零速度 */
-#define BARCODE_CONTINUE_INT (BARCODE_MOTOR_DISPLACEMENT / BARCODE_MOTOR_SCAN_GO_UNTIL_SPEED / 7)       /* 连续扫码读取间隔 */
 
 /* Private variables ---------------------------------------------------------*/
 static sMotorRunStatus gBarcodeMotorRunStatus;
@@ -404,58 +401,40 @@ void barcode_Motor_Calculate(uint32_t target_step)
  * @param  None
  * @retval None
  */
-uint8_t gBarcodeIsContinuousScan_Get(void)
-{
-    return gBarcodeIsContinuousScan;
-}
-
-/**
- * @brief  扫码模块硬件初始化
- * @param  None
- * @retval None
- */
-void gBarcodeIsContinuousScan_Set(uint8_t i)
-{
-    gBarcodeIsContinuousScan = i;
-}
-
-/**
- * @brief  扫码模块硬件初始化
- * @param  None
- * @retval None
- */
 void barcode_sn2707_Init(void)
 {
     sSE2707_Image_Capture_Param icParam;
+    uint8_t result = 0, error_flag = 0;
 
     HAL_GPIO_WritePin(BC_AIM_WK_N_GPIO_Port, BC_AIM_WK_N_Pin, GPIO_PIN_RESET);
     HAL_Delay(5);
     HAL_GPIO_WritePin(BC_AIM_WK_N_GPIO_Port, BC_AIM_WK_N_Pin, GPIO_PIN_SET);
 
-    icParam.param = Continuous_Bar_Code_Read;
+    icParam.param = Decode_Aiming_Pattern;
     icParam.data = 0;
-    if (se2707_check_param(&BARCODE_UART, icParam, 2000, 2) != 0) {
-        Error_Handler();
-    } else {
-        beep_Start_With_Conf(eBeep_Freq_mi, 100, 100, 2);
-        gBarcodeIsContinuousScan_Set(1);
-        return;
+    result = se2707_check_param(&BARCODE_UART, &icParam, 2000, 2);    /* 检查参数项 */
+    if (result != 0) {                                                /* 参数项不匹配 */
+        result = se2707_conf_param(&BARCODE_UART, &icParam, 2000, 2); /* 重新配置参数项 */
+    }
+    if (result != 0) {
+        error_flag = 1;
     }
 
-    if (se2707_reset_param(&BARCODE_UART, 1500, 2) != 0) {
-        error_Emit(eError_Peripheral_Scanner, eError_Scanner_Recv_None);
+    icParam.param = Illumination_Brightness;
+    icParam.data = 1;
+    result = se2707_check_param(&BARCODE_UART, &icParam, 2000, 2);    /* 检查参数项 */
+    if (result != 0) {                                                /* 参数项不匹配 */
+        result = se2707_conf_param(&BARCODE_UART, &icParam, 2000, 2); /* 重新配置参数项 */
     }
-    if (se2707_conf_param(&BARCODE_UART, &icParam, 2000, 2) != 0) {
-        Error_Handler();
-        gBarcodeIsContinuousScan_Set(0);
-        beep_Start_With_Conf(eBeep_Freq_re, 100, 0, 1);
-        return;
+    if (result != 0) {
+        error_flag = 1;
     }
-    if (se2707_check_param(&BARCODE_UART, icParam, 2000, 2) != 0) {
-        Error_Handler();
-    } else {
-        beep_Start_With_Conf(eBeep_Freq_mi, 100, 100, 2);
-        gBarcodeIsContinuousScan_Set(1);
+
+    if (error_flag != 0) {                                               /* 存在错误 */
+        error_Emit(eError_Peripheral_Scanner, eError_Scanner_Recv_None); /* 报错 */
+        beep_Start_With_Conf(eBeep_Freq_re, 100, 100, 1);                /* RE 一声 */
+    } else {                                                             /* 参数项匹配 或 设置成功 */
+        beep_Start_With_Conf(eBeep_Freq_mi, 100, 100, 2);                /* MI 两声 */
     }
 }
 
@@ -598,63 +577,22 @@ eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index)
  */
 eBarcodeState barcode_Scan_Whole(void)
 {
-    uint8_t i, recv_length;
+    uint8_t i;
     eBarcodeState result;
-    TickType_t xTick;
-    int32_t pos;
 
-    if (gBarcodeIsContinuousScan_Get() == 0) {                               /* 非连续模式 */
-        if (barcode_Scan_By_Index(eBarcodeIndex_6) != eBarcodeState_Error) { /* 先扫二维码 */
-            if (gBarcodeDecodeResult[0].length > 0) {                        /* 扫码结果非空 */
-                return eBarcodeState_OK;                                     /* 提前返回 */
-            }
+    if (barcode_Scan_By_Index(eBarcodeIndex_6) != eBarcodeState_Error) { /* 先扫二维码 */
+        if (gBarcodeDecodeResult[0].length > 0) {                        /* 扫码结果非空 */
+            return eBarcodeState_OK;                                     /* 提前返回 */
         }
-
-        for (i = 0; i < ARRAY_LEN(cBarCodeIndex); ++i) {      /* 不存在有效QR Code */
-            result = barcode_Scan_By_Index(cBarCodeIndex[i]); /* 扫码位置索引倒序 */
-            if (result == eBarcodeState_Error) {              /* 扫码电机故障 */
-                return eBarcodeState_Error;                   /* 提前返回 */
-            }
-        }
-        return eBarcodeState_OK;
-    } else { /* 连续模式 */
-        result = barcode_Motor_Run_By_Index(eBarcodeIndex_6);
-        if (result != eBarcodeState_OK) { /* 移动到二维条码位置 */
-            return result;                /* 提前返回 */
-        }
-        result = barcode_Motor_Enter();        /* 获取电机驱动资源 */
-        if (result == eBarcodeState_Tiemout) { /* 获取资源超时 */
-            return result;                     /* 提前返回 */
-        }
-        i = 0; /* 扫码枪串口读取计数 */
-
-        xTick = xTaskGetTickCount();                                          /* 电机运动计时起始点 */
-        dSPIN_Go_Until(ACTION_RESET, FWD, BARCODE_MOTOR_SCAN_GO_UNTIL_SPEED); /* 移动到零点 */
-        while (xTaskGetTickCount() - xTick < 10000) {                         /* 限时时间内 (39000000 / BARCODE_MOTOR_SCAN_GO_UNTIL_SPEED)mS */
-            pos = barcode_Motor_Read_Position() * 4;
-            if (pos > 0 && cBarCodeIndex[i] + 400 > pos) {
-                HAL_GPIO_WritePin(BC_TRIG_N_GPIO_Port, BC_TRIG_N_Pin, GPIO_PIN_RESET);                                             /* 打开触发脚 */
-                recv_length = se2707_recv_pack(&BARCODE_UART, gBarcodeDecodeData_0 + 2, ARRAY_LEN(gBarcodeDecodeData_0) - 2, 320); /* 读取数据 */
-                HAL_GPIO_WritePin(BC_TRIG_N_GPIO_Port, BC_TRIG_N_Pin, GPIO_PIN_SET);                                               /* 关闭触发脚 */
-                gBarcodeDecodeData_0[0] = 7 - i;                                                                                   /* 通道号 */
-                gBarcodeDecodeData_0[1] = recv_length; /* 接收到的数据长度 */
-                comm_Out_SendTask_QueueEmitWithBuild(eProtocoleRespPack_Client_BARCODE, gBarcodeDecodeData_0, recv_length + 2, 0); /* 发送回应报文 */
-                ++i; /* 扫码枪串口读取计数 +1 */
-            }
-            if (BARCODE_MOTOR_IS_BUSY == 0 || BARCODE_MOTOR_IS_OPT) {  /* 已配置硬件检测停车 电机驱动空闲状态 */
-                barcode_Motor_Brake();                                 /* 刹车 */
-                dSPIN_Reset_Pos();                                     /* 重置电机驱动步数记录 */
-                motor_Status_Set_Position(&gBarcodeMotorRunStatus, 0); /* 重置电机状态步数记录 */
-                se2707_clear_recv(&BARCODE_UART);                      /* 清空串口 */
-                break;
-            }
-            vTaskDelay(10);
-        }
-        barcode_Motor_Brake();       /* 刹车 */
-        barcode_Motor_Deal_Status(); /* 读取电机驱动状态清除标志 */
-        m_l6470_release();           /* 释放SPI总线资源*/
-        return result;
     }
+
+    for (i = 0; i < ARRAY_LEN(cBarCodeIndex); ++i) {      /* 不存在有效QR Code */
+        result = barcode_Scan_By_Index(cBarCodeIndex[i]); /* 扫码位置索引倒序 */
+        if (result == eBarcodeState_Error) {              /* 扫码电机故障 */
+            return eBarcodeState_Error;                   /* 提前返回 */
+        }
+    }
+    return eBarcodeState_OK;
 }
 
 /**
