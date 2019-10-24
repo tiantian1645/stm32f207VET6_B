@@ -7,12 +7,22 @@ import random
 import time
 import queue
 import threading
-
+from collections import namedtuple
 
 logger = loguru.logger
-logger.add(r"E:\pylog\stm32f207_serial.log")
+logger.add(r"E:\pylog\stm32f207_serial.log", enqueue=True, rotation="10 MB")
 
 dd = dc201_pack.DC201_PACK()
+
+BarcodeInfo = namedtuple("BarcodeInfo", "name data")
+BARCODE_LIST = (
+    BarcodeInfo("HB", "1415190701"),
+    BarcodeInfo("AMY", "1411190601"),
+    BarcodeInfo("UA", "1413190703"),
+    BarcodeInfo("HB", "1415190502"),
+    BarcodeInfo("AMY", "1411190703"),
+    BarcodeInfo("CREA", "1418190602"),
+)
 
 
 def dep32(n):
@@ -47,6 +57,30 @@ def read_pack_generator(pack_index, cmd_type, addr, num):
     return pack
 
 
+def decode_pack(info):
+    raw_byte = info.content
+    cmd_type = raw_byte[5]
+    if cmd_type == 0xB2:
+        channel = raw_byte[6]
+        length = raw_byte[7]
+        if length == 0:
+            payload = None
+        else:
+            try:
+                payload = raw_byte[8 : 8 + length].decode("utf-8")
+                for bi in BARCODE_LIST:
+                    if payload == bi.data:
+                        payload = "{0.name} --> {0.data}".format(bi)
+            except UnicodeDecodeError:
+                payload = bytesPuttyPrint(raw_byte[8 : 8 + length])
+            except Exception:
+                payload = stackprinter.format()
+        logger.success("recv scan data | channel {} | length {:2d} | payload {}".format(channel, length, payload))
+        return
+    logger.success("recv pack | {}".format(info.text))
+    return
+
+
 def read_task(ser, write_queue, delay=0.5):
     recv_buffer = b""
     while True:
@@ -64,7 +98,7 @@ def read_task(ser, write_queue, delay=0.5):
         for info in dd.iterIntactPack(recv_buffer):
             recv_pack = info.content
             if info.is_head and info.is_crc and len(recv_pack) >= 7:
-                logger.success("recv pack | {}".format(info.text))
+                decode_pack(info)
                 ack = recv_pack[3]
                 fun_code = recv_pack[5]
                 if fun_code != 0xAA:
