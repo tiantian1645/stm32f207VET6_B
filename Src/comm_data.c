@@ -136,7 +136,7 @@ void gComm_Data_Sample_PD_WH_Idx_Set(uint8_t idx)
  */
 void gComm_Data_Sample_PD_WH_Idx_Clear(void)
 {
-    gComm_Data_Sample_PD_WH_Idx = 0xFF;
+    gComm_Data_Sample_PD_WH_Idx_Set(0xFF);
 }
 
 /**

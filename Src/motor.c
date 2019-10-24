@@ -217,9 +217,10 @@ static void motor_Task(void * argument)
                     temp_Upload_Resume();                     /* 恢复温度上送 */
                     break;                                    /* 提前结束 */
                 }
-                white_Motor_WH();         /* 运动白板电机 白物质位置 */
-                vTaskDelay(1500);         /* 延时 */
-                comm_Data_Sample_Start(); /* 启动定时器同步发包 开始采样 */
+                white_Motor_WH();                                 /* 运动白板电机 白物质位置 */
+                vTaskDelay(1500);                                 /* 延时 */
+                xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0); /* 清除任务通知 */
+                comm_Data_Sample_Start();                         /* 启动定时器同步发包 开始采样 */
                 for (;;) {
                     xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(6000)); /* 等待任务通知 */
                     if (xResult != pdTRUE || xNotifyValue == eMotorNotifyValue_BR) {              /* 超时 或 收到中终止命令 直接退出循环 */
