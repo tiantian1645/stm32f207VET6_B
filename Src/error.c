@@ -38,6 +38,9 @@ void error_Emit(eError_Peripheral pp, uint8_t detail)
 {
     sError_Info errorInfo;
 
+    if (detail == 0xFF) { /* 错误信息压力测试用 */
+        return;
+    }
     errorInfo.peripheral = pp;
     errorInfo.type = detail;
     comm_Main_SendTask_ErrorInfoQueueEmit(&errorInfo, 0); /* 发送给主板串口 */
