@@ -573,6 +573,7 @@ eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index)
 /**
  * @brief  扫码执行 电机任务调用
  * @param  None
+ * @note   Bug 进入此函数前 若电机已经发生位置偏移 则所有结果均不可信
  * @retval 扫码结果
  */
 eBarcodeState barcode_Scan_Whole(void)
