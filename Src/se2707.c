@@ -23,46 +23,6 @@
 /* Private includes ----------------------------------------------------------*/
 
 /* Private typedef -----------------------------------------------------------*/
-/* CMD list */
-typedef enum {
-    ABORT_MACRO_PDF = 0x11,
-    AIM_OFF = 0xC4,
-    AIM_ON = 0xC5,
-    BATCH_DATA = 0xD6,
-    BATCH_REQUEST = 0xD5,
-    BEEP = 0xE6,
-    CAPABILITIES_REQUEST = 0xD3,
-    CAPABILITIES_REPLY = 0xD4,
-    CHANGE_ALL_CODE_TYPES = 0xC9,
-    CMD_ACK = 0xD0,
-    CMD_ACK_ACTION = 0xD8,
-    CMD_NAK = 0xD1,
-    CUSTOM_DEFAULTS = 0x12,
-    DECODE_DATA = 0xF3,
-    EVENT = 0xF6,
-    FLUSH_MACRO_PDF = 0x10,
-    FLUSH_QUEUE = 0xD2,
-    ILLUMINATION_OFF = 0xC0,
-    ILLUMINATION_ON = 0xC1,
-    IMAGE_DATA = 0xB1,
-    IMAGER_MODE = 0xF7,
-    LED_OFF = 0xE8,
-    LED_ON = 0xE7,
-    PAGER_MOTOR_ACTIVATION = 0xCA,
-    PARAM_DEFAULTS = 0xC8,
-    PARAM_REQUEST = 0xC7,
-    PARAM_SEND = 0xC6,
-    REPLY_REVISION = 0xA4,
-    REQUEST_REVISION = 0xA3,
-    SCAN_DISABLE = 0xEA,
-    SCAN_ENABLE = 0xE9,
-    SLEEP = 0xEB,
-    SSI_MGMT_COMMAND = 0x80,
-    START_SESSION = 0xE4,
-    STOP_SESSION = 0xE5,
-    VIDEO_DATA = 0xB4,
-    WAKEUP = 0,
-} eSE2707_CMD;
 
 /* Private define ------------------------------------------------------------*/
 /* 2进制补码配置 */
@@ -142,8 +102,8 @@ uint16_t se2707_build_pack(eSE2707_CMD cmd, eSE2707_Set_Param_status status, uin
 {
     uint16_t checksum;
 
-    if (pPayload == NULL && payload_length > 0) {
-        return 0;
+    if (pPayload == NULL) {
+        payload_length = 0;
     }
 
     pResult[0] = payload_length + 4;
@@ -354,7 +314,7 @@ uint8_t se2707_conf_param(UART_HandleTypeDef * puart, sSE2707_Image_Capture_Para
         if (result == 0) {
             break;
         }
-        SE2707_DELAY(1000);
+        se2707_clear_recv(puart);
     } while (--retry > 0);
     return result;
 }
@@ -367,30 +327,29 @@ uint8_t se2707_conf_param(UART_HandleTypeDef * puart, sSE2707_Image_Capture_Para
  * @param  retry 重试次数 0 时尝试到死
  * @retval 0 解析成功 1 数据不正常 2 数据校验错误
  */
-uint8_t se2707_check_param(UART_HandleTypeDef * puart, sSE2707_Image_Capture_Param conf, uint32_t timeout, uint8_t retry)
+uint8_t se2707_check_param(UART_HandleTypeDef * puart, sSE2707_Image_Capture_Param * pICP, uint32_t timeout, uint8_t retry)
 {
     uint8_t buffer[10], result;
     uint16_t length;
     sSE2707_Image_Capture_Param icp;
 
     do {
-        length = se2707_build_pack_param_read(conf.param, buffer);
+        length = se2707_build_pack_param_read(pICP->param, buffer);
         se2707_send_pack(puart, buffer, length);
         memset(buffer, 0, ARRAY_LEN(buffer));
         length = se2707_recv_pack(puart, buffer, 10, timeout);
         result = se2707_decode_param(buffer, length, &icp);
         if (result != 0) {
-            SE2707_DELAY(1000);
+            se2707_clear_recv(puart);
             continue;
         }
-        if (icp.param != conf.param) {
+        if (icp.param != pICP->param) {
             result = 3;
         }
-        if (icp.data != conf.data) {
+        if (icp.data != pICP->data) {
             result = 4;
         }
         break;
-        SE2707_DELAY(1000);
     } while (--retry > 0);
     return result;
 }
@@ -416,7 +375,33 @@ uint8_t se2707_reset_param(UART_HandleTypeDef * puart, uint32_t timeout, uint8_t
         if (result == 0) {
             break;
         }
-        se2707_recv_pack(puart, buffer, ARRAY_LEN(buffer), 1000); /* nak 报文长度为7清除串口缓冲 */
+        se2707_clear_recv(puart); /* nak 报文长度为7清除串口缓冲 */
+    } while (--retry > 0);
+    return result;
+}
+
+/**
+ * @brief  se2707 ssi 单指令发送
+ * @param  puart 串口句柄指针
+ * @param  timeout 接收超时时间
+ * @param  retry 重试次数 0 时尝试到死
+ * @retval 0 重置成功 1 数据不正常 2 数据校验错误
+ */
+uint8_t se2707_send_cmd(UART_HandleTypeDef * puart, eSE2707_CMD cmd, uint8_t * pPayload, uint8_t payload_length, uint32_t timeout, uint8_t retry)
+{
+    uint8_t buffer[10], result;
+    uint16_t length;
+
+    do {
+        length = se2707_build_pack(cmd, Set_Param_Permanent, pPayload, payload_length, buffer);
+        se2707_send_pack(puart, buffer, length);
+        memset(buffer, 0, ARRAY_LEN(buffer));
+        length = se2707_recv_pack(puart, buffer, 6, timeout); /* ack 报文长度为6 */
+        result = se2707_check_recv_ack(buffer, length);
+        if (result == 0) {
+            break;
+        }
+        se2707_clear_recv(puart); /* nak 报文长度为7清除串口缓冲 */
     } while (--retry > 0);
     return result;
 }
