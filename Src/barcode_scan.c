@@ -262,7 +262,7 @@ eBarcodeState barcode_Motor_Run(void)
 {
     eBarcodeState result;
 
-    error_Emit(eError_Peripheral_Motor_Scan, 0xFF);
+    error_Emit(eError_Peripheral_Motor_Scan, ERROR_TYPE_DEBUG);
     if (gBarcodeMotorRunCmdInfo.step == 0) {
         return eBarcodeState_OK;
     }
@@ -346,7 +346,7 @@ eBarcodeState barcode_Motor_Init(void)
     eBarcodeState result;
     uint32_t cnt = 0;
 
-    error_Emit(eError_Peripheral_Motor_Scan, 0xFF);
+    error_Emit(eError_Peripheral_Motor_Scan, ERROR_TYPE_DEBUG);
     result = barcode_Motor_Enter();
     if (result != eBarcodeState_OK) { /* 入口回调 */
         if (result != eBarcodeState_Tiemout) {
@@ -430,11 +430,11 @@ void barcode_sn2707_Init(void)
         error_flag = 1;
     }
 
-    if (error_flag != 0) {                                               /* 存在错误 */
-        error_Emit(eError_Peripheral_Scanner, eError_Scanner_Recv_None); /* 报错 */
-        beep_Start_With_Conf(eBeep_Freq_re, 100, 100, 1);                /* RE 一声 */
-    } else {                                                             /* 参数项匹配 或 设置成功 */
-        beep_Start_With_Conf(eBeep_Freq_mi, 100, 100, 2);                /* MI 两声 */
+    if (error_flag != 0) {                                                 /* 存在错误 */
+        error_Emit(eError_Peripheral_Scanner, eError_Scanner_Conf_Failed); /* 报错 */
+        beep_Start_With_Conf(eBeep_Freq_re, 100, 100, 1);                  /* RE 一声 */
+    } else {                                                               /* 参数项匹配 或 设置成功 */
+        beep_Start_With_Conf(eBeep_Freq_mi, 100, 100, 2);                  /* MI 两声 */
     }
 }
 

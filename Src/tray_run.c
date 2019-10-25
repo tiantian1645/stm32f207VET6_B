@@ -211,7 +211,7 @@ eTrayState tray_Motor_Run(void)
     eTrayState result;
     uint32_t cnt = 0;
 
-    error_Emit(eError_Peripheral_Motor_Tray, 0xFF);
+    error_Emit(eError_Peripheral_Motor_Tray, ERROR_TYPE_DEBUG);
     if (gTray_Motor_Run_CMD_Info.step == 0) {
         return eTrayState_OK;
     }
@@ -301,7 +301,7 @@ eTrayState tray_Motor_Init(void)
     eTrayState result;
     TickType_t xTick;
 
-    error_Emit(eError_Peripheral_Motor_Tray, 0xFF);
+    error_Emit(eError_Peripheral_Motor_Tray, ERROR_TYPE_DEBUG);
     result = tray_Motor_Enter();
     if (result != eTrayState_OK) { /* 入口回调 */
         if (result != eTrayState_Tiemout) {
