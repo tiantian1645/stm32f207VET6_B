@@ -1163,21 +1163,42 @@ int _write(int file, char * ptr, int len)
     return len;
 }
 
+/**
+ * @brief  调试打印
+ * @param  file 文件名
+ * @param  line 行数
+ * @retval None
+ */
 void FL_Error_Handler(char * file, int line)
 {
     printf("error handle invoked in FILE: %s | LINE: %d \n", file, line);
 }
 
+/**
+ * @brief  温度主动上送 从暂停中恢复
+ * @param  None
+ * @retval None
+ */
 void temp_Upload_Resume(void)
 {
     gTemp_Upload_Comm_Suspend = 0;
 }
 
+/**
+ * @brief  温度主动上送 暂停
+ * @param  None
+ * @retval None
+ */
 void temp_Upload_Pause(void)
 {
     gTemp_Upload_Comm_Suspend = 1;
 }
 
+/**
+ * @brief  温度主动上送 暂停标志检查
+ * @param  None
+ * @retval 1 暂停中 0 没暂停
+ */
 uint8_t temp_Upload_Is_Suspend(void)
 {
     if (gTemp_Upload_Comm_Suspend > 0) {
@@ -1223,9 +1244,10 @@ uint8_t temp_Upload_Comm_Get(eProtocol_COMM_Index comm_index)
 void temp_Upload_Deal(void)
 {
     uint8_t buffer[10], length;
-    uint16_t temp_btm, temp_top;
+    float temp_top, temp_btm;
+    static uint32_t cnt_btm_low = 0, cnt_btm_high = 0, cnt_top_low = 0, cnt_top_high = 0;
 
-    if (temp_Upload_Is_Suspend()) {
+    if (temp_Upload_Is_Suspend()) { /* 暂停标志位 */
         return;
     }
 
@@ -1233,21 +1255,61 @@ void temp_Upload_Deal(void)
         return;
     }
 
-    temp_btm = (uint16_t)(temp_Get_Temp_Data_BTM() * 100); /* 下加热体温度 */
-    temp_top = (uint16_t)(temp_Get_Temp_Data_TOP() * 100); /* 上加热体温度 */
-
-    buffer[0] = temp_btm & 0xFF; /* 小端模式 低8位 */
-    buffer[1] = temp_btm >> 8;   /* 小端模式 高8位 */
-    buffer[2] = temp_top & 0xFF; /* 小端模式 低8位 */
-    buffer[3] = temp_top >> 8;   /* 小端模式 高8位 */
-
+    temp_btm = temp_Get_Temp_Data_BTM();                                            /* 下加热体温度 */
+    buffer[0] = ((uint16_t)temp_btm * 100) & 0xFF;                                  /* 小端模式 低8位 */
+    buffer[1] = ((uint16_t)temp_btm * 100) >> 8;                                    /* 小端模式 高8位 */
+    temp_top = temp_Get_Temp_Data_TOP();                                            /* 上加热体温度 */
+    buffer[2] = ((uint16_t)temp_top * 100) & 0xFF;                                  /* 小端模式 低8位 */
+    buffer[3] = ((uint16_t)temp_top * 100) >> 8;                                    /* 小端模式 高8位 */
     length = buildPackOrigin(eComm_Main, eProtocoleRespPack_Client_TMP, buffer, 4); /* 构造数据包 以主板为基准 */
 
+    if (temp_btm < 36.5) {                                               /* 温度值低于36.5 */
+        cnt_btm_low++;                                                   /* 温度过低计数+1 */
+        cnt_btm_high = 0;                                                /* 温度过高计数清零 */
+        if (cnt_btm_low > 600 / 5) {                                     /* 过低持续次数大于120次 5 S * 120=10 Min */
+            error_Emit(eError_Peripheral_Temp_Btm, eError_Temp_Too_Low); /* 报错 */
+        }
+    } else if (temp_btm > 37.5) {                                          /* 温度值高于37.5 */
+        cnt_btm_high++;                                                    /* 温度过高计数+1 */
+        cnt_btm_low = 0;                                                   /* 温度过低计数清零 */
+        if (cnt_btm_low > 60 / 5) {                                        /* 过低持续次数大于12次 5 S * 12 = 1 Min */
+            error_Emit(eError_Peripheral_Temp_Btm, eError_Temp_Too_Hight); /* 报错 */
+        }
+    } else if (temp_btm == TEMP_INVALID_DATA) {                  /* 温度值为无效值 */
+        error_Emit(eError_Peripheral_Temp_Btm, eError_Temp_Nai); /* 报错 */
+    } else {                                                     /* 温度值为36.5～37.5 */
+        cnt_btm_low = 0;                                         /* 温度过低计数清零 */
+        cnt_btm_high = 0;                                        /* 温度过高计数清零 */
+    }
+
+    if (temp_top < 36.5) {                                               /* 温度值低于36.5 */
+        cnt_top_low++;                                                   /* 温度过低计数+1 */
+        cnt_top_high = 0;                                                /* 温度过高计数清零 */
+        if (cnt_top_low > 600 / 5) {                                     /* 过低持续次数大于120次 5 S * 120=10 Min */
+            error_Emit(eError_Peripheral_Temp_Top, eError_Temp_Too_Low); /* 报错 */
+        }
+    } else if (temp_top > 37.5) {                                          /* 温度值高于37.5 */
+        cnt_top_high++;                                                    /* 温度过高计数+1 */
+        cnt_top_low = 0;                                                   /* 温度过低计数清零 */
+        if (cnt_top_low > 60 / 5) {                                        /* 过低持续次数大于12次 5 S * 12 = 1 Min */
+            error_Emit(eError_Peripheral_Temp_Top, eError_Temp_Too_Hight); /* 报错 */
+        }
+    } else if (temp_top == TEMP_INVALID_DATA) {                  /* 温度值为无效值 */
+        error_Emit(eError_Peripheral_Temp_Top, eError_Temp_Nai); /* 报错 */
+    } else {                                                     /* 温度值为36.5～37.5 */
+        cnt_top_low = 0;                                         /* 温度过低计数清零 */
+        cnt_top_high = 0;                                        /* 温度过高计数清零 */
+    }
+
     if (temp_Upload_Comm_Get(eComm_Main) && comm_Main_SendTask_Queue_GetWaiting() == 0) { /* 允许发送且发送队列内没有其他数据包 */
-        comm_Main_SendTask_QueueEmitCover(buffer, length);                                /* 提交到发送队列 */
+        if (temp_btm != TEMP_INVALID_DATA && temp_top != TEMP_INVALID_DATA) {             /* 温度值都不是无效值 */
+            comm_Main_SendTask_QueueEmitCover(buffer, length);                            /* 提交到发送队列 */
+        }
     }
     if (temp_Upload_Comm_Get(eComm_Out) && comm_Out_SendTask_Queue_GetWaiting() == 0) { /* 允许发送且发送队列内没有其他数据包 */
-        comm_Out_SendTask_QueueEmitWithModify(buffer, length, 100);                     /* 串口基准不同 修改后 提交到发送队列 */
+        if (temp_btm != TEMP_INVALID_DATA && temp_top != TEMP_INVALID_DATA) {           /* 温度值都不是无效值 */
+            comm_Out_SendTask_QueueEmitWithModify(buffer, length, 100);                 /* 串口基准不同 修改后 提交到发送队列 */
+        }
     }
 }
 
@@ -1259,7 +1321,7 @@ void temp_Upload_Deal(void)
  */
 void fan_Ctrl_Deal(float temp_env)
 {
-    if (temp_env < 25) {
+    if (temp_env < 25 || temp_env == TEMP_INVALID_DATA) {
         fan_Adjust(0.1);
     } else if (temp_env > 30) {
         fan_Adjust(1.0);
