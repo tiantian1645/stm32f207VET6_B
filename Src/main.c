@@ -1302,12 +1302,12 @@ void temp_Upload_Deal(void)
     }
 
     if (temp_Upload_Comm_Get(eComm_Main) && comm_Main_SendTask_Queue_GetWaiting() == 0) { /* 允许发送且发送队列内没有其他数据包 */
-        if (temp_btm != TEMP_INVALID_DATA && temp_top != TEMP_INVALID_DATA) {             /* 温度值都不是无效值 */
+        if (temp_btm != TEMP_INVALID_DATA || temp_top != TEMP_INVALID_DATA) {             /* 温度值都不是无效值 */
             comm_Main_SendTask_QueueEmitCover(buffer, length);                            /* 提交到发送队列 */
         }
     }
     if (temp_Upload_Comm_Get(eComm_Out) && comm_Out_SendTask_Queue_GetWaiting() == 0) { /* 允许发送且发送队列内没有其他数据包 */
-        if (temp_btm != TEMP_INVALID_DATA && temp_top != TEMP_INVALID_DATA) {           /* 温度值都不是无效值 */
+        if (temp_btm != TEMP_INVALID_DATA || temp_top != TEMP_INVALID_DATA) {           /* 温度值都不是无效值 */
             comm_Out_SendTask_QueueEmitWithModify(buffer, length, 100);                 /* 串口基准不同 修改后 提交到发送队列 */
         }
     }
