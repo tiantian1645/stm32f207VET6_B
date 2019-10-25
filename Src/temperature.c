@@ -190,7 +190,7 @@ float temp_Deal_Temp_Data(float * pData, uint8_t length)
     float max, min, sum;
 
     if (length == 0) {
-        return 0;
+        return TEMP_INVALID_DATA;
     }
 
     max = pData[0];
@@ -256,7 +256,7 @@ float temp_Get_Temp_Data_BTM(void)
     if (valid > 0) {
         return sum / valid;
     } else {
-        return 0;
+        return TEMP_INVALID_DATA;
     }
 }
 
@@ -267,7 +267,12 @@ float temp_Get_Temp_Data_BTM(void)
  */
 float temp_Get_Temp_Data_ENV(void)
 {
-    return temp_Get_Temp_Data(TEMP_NTC_ENV_1);
+    float temp = 0;
+    temp = temp_Get_Temp_Data(TEMP_NTC_ENV_1);
+    if (temp > 0 && temp < 55) {
+        return temp;
+    }
+    return TEMP_INVALID_DATA;
 }
 
 /**
