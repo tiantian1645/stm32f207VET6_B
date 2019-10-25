@@ -454,7 +454,7 @@ void barcode_Init(void)
  * @param  pOut_length 读取到的数据长度
  * @param  pdata   结果存放指针
  * @param  timeout 等待时间
- * @note   串口统一按最大长度24读取
+ * @param  max_read_length 读取长度
  * @retval 扫码结果
  */
 eBarcodeState barcode_Read_From_Serial(uint8_t * pOut_length, uint8_t * pData, uint8_t max_read_length, uint32_t timeout)
@@ -557,8 +557,12 @@ eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index)
         pResult->length = 0;
         pResult->state = eBarcodeState_Error;
     } else {
-        pResult->state = barcode_Read_From_Serial(&(pResult->length), pResult->pData + 2, max_read_length, 500);
-        if (pResult->state != eBarcodeState_Error) { /* 存在有效QR Code */
+        pResult->state = barcode_Read_From_Serial(&(pResult->length), pResult->pData + 2, max_read_length, 400);     /* 第一次扫描 */
+        if (pResult->length < 10) {                                                                                  /* 扫描结果为空 */
+            vTaskDelay(100);                                                                                          /* 延时 */
+            pResult->state = barcode_Read_From_Serial(&(pResult->length), pResult->pData + 2, max_read_length, 800); /* 第二次扫描 */
+        }
+        if (pResult->state != eBarcodeState_Error) {
             pResult->pData[0] = idx;
             pResult->pData[1] = pResult->length;
             if (index != eBarcodeIndex_6 || pResult->length > 0) {
