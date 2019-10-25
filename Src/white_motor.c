@@ -197,7 +197,7 @@ uint8_t white_Motor_Wait_Stop(uint32_t timeout)
  */
 uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout)
 {
-    error_Emit(eError_Peripheral_Motor_White, 0xFF);
+    error_Emit(eError_Peripheral_Motor_White, ERROR_TYPE_DEBUG);
     if (white_Motor_Position_Is_In()) { /* 光耦被遮挡 处于收起状态 */
         white_Motor_Deactive();
         gWhite_Motor_Position_Clr(); /* 清空位置记录 */
@@ -210,6 +210,7 @@ uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout)
 
     gWhite_Motor_Position_Rst();                               /* 重置位置记录置非法值 0xFFFFFFFF */
     m_drv8824_Index_Switch(eM_DRV8824_Index_0, portMAX_DELAY); /* 等待PWM资源 */
+    m_drv8824_Clear_Flag();                                    /* 清理故障标志 */
     m_drv8824_SetDir(dir);                                     /* 运动方向设置 硬件管脚 */
     gWhite_Motor_Dir_Set(dir);                                 /* 运动方向设置 目标方向 */
 

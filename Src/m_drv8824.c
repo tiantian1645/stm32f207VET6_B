@@ -218,6 +218,46 @@ uint8_t m_drv8824_Index_Switch(eM_DRV8824_Index index, uint32_t timeout)
 }
 
 /**
+ * @brief  清理故障情况
+ * @param  index       索引值
+ * @note   index 参考 eM_DRV8824_Index 顺手切换使能管脚
+ * @retval 0 无故障 1 有故障但重置后消除 2 重置后故障仍存在
+ */
+uint8_t m_drv8824_Clear_Flag(void)
+{
+    switch (gMDRV8824Index) {
+        case eM_DRV8824_Index_0:
+            if (m_drv8824_Get_Flag()) {
+                HAL_GPIO_WritePin(STEP_NCS1_GPIO_Port, STEP_NCS1_Pin, GPIO_PIN_RESET);
+                HAL_Delay(1);
+                HAL_GPIO_WritePin(STEP_NCS1_GPIO_Port, STEP_NCS1_Pin, GPIO_PIN_SET);
+                HAL_Delay(1);
+                if (m_drv8824_Get_Flag()) {
+                    return 2;
+                }
+                return 1;
+            }
+            return 0;
+            break;
+        case eM_DRV8824_Index_1:
+            if (m_drv8824_Get_Flag()) {
+                HAL_GPIO_WritePin(STEP_NCS2_GPIO_Port, STEP_NCS2_Pin, GPIO_PIN_RESET);
+                HAL_Delay(1);
+                HAL_GPIO_WritePin(STEP_NCS2_GPIO_Port, STEP_NCS2_Pin, GPIO_PIN_SET);
+                HAL_Delay(1);
+                if (m_drv8824_Get_Flag()) {
+                    return 2;
+                }
+                return 1;
+            }
+            return 0;
+        default:
+            break;
+    }
+    return 3;
+}
+
+/**
  * @brief  脉冲计数 获取
  * @param  None
  * @retval 脉冲计数

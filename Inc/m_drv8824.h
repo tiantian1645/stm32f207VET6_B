@@ -30,6 +30,7 @@ void m_drv8824_Reset_All(void);
 uint8_t m_drv8824_release(void);
 uint8_t m_drv8824_release_ISR(void);
 uint8_t m_drv8824_Index_Switch(eM_DRV8824_Index index, uint32_t timeout);
+uint8_t m_drv8824_Clear_Flag(void);
 
 uint32_t gPWM_TEST_AW_CNT_Get(void);
 void gPWM_TEST_AW_CNT_Inc(void);
