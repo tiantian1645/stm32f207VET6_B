@@ -8,6 +8,7 @@
 #include "protocol.h"
 
 /* Exported macro ------------------------------------------------------------*/
+#define ERROR_TYPE_DEBUG 0xFF
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum {
@@ -16,15 +17,9 @@ typedef enum {
     eError_Peripheral_Motor_Tray,   /* 托盘电机 */
     eError_Peripheral_Motor_Scan,   /* 扫码电机 */
 
-    eError_Peripheral_Temp_T1,  /* 上加热体温度探头1 */
-    eError_Peripheral_Temp_T2,  /* 上加热体温度探头2 */
-    eError_Peripheral_Temp_T3,  /* 上加热体温度探头3 */
-    eError_Peripheral_Temp_T4,  /* 上加热体温度探头4 */
-    eError_Peripheral_Temp_T5,  /* 上加热体温度探头5 */
-    eError_Peripheral_Temp_T6,  /* 上加热体温度探头6 */
-    eError_Peripheral_Temp_B1,  /* 下加热体温度探头1 */
-    eError_Peripheral_Temp_B2,  /* 下加热体温度探头2 */
-    eError_Peripheral_Temp_Env, /* 环境温度探头 */
+    eError_Peripheral_Temp_Top, /* 上加热体温度 */
+    eError_Peripheral_Temp_Btm, /* 下加热体温度 */
+    eError_Peripheral_Temp_Env, /* 环境温度 */
 
     eError_Peripheral_Heater_Top, /* 上加热体温控 */
     eError_Peripheral_Heater_Btm, /* 下加热体温控 */
@@ -38,46 +33,40 @@ typedef enum {
 
     eError_Peripheral_Scanner, /* 扫码枪 */
     eError_Peripheral_Fan,     /* 风扇 */
-
 } eError_Peripheral;
 
 typedef enum {
-    eError_Motor_Busy,         /* 资源不可用 */
-    eError_Motor_Timeout,      /* 电机运动超时 */
-    eError_Motor_Status_Warui, /* 电机驱动异常 */
+    eError_Motor_Busy = 0x01,         /* 资源不可用 */
+    eError_Motor_Timeout = 0x02,      /* 电机运动超时 */
+    eError_Motor_Status_Warui = 0x04, /* 电机驱动异常 */
 } eError_Motor;
 
 typedef enum {
-    eError_Temp_Nai,       /* ADC采样值无值 */
-    eError_Temp_Too_Low,   /* 温度超过理论下限 */
-    eError_Temp_Too_Hight, /* 温度超过理论上限 */
+    eError_Temp_Nai = 0x01,       /* 温度值无效 */
+    eError_Temp_Too_Low = 0x02,   /* 温度持续过低 */
+    eError_Temp_Too_Hight = 0x04, /* 温度持续过高 */
 } eError_Temp;
 
 typedef enum {
-    eError_Heater_Block_Low, /* 升温失效 */
-    eError_Heater_Over_Temp, /* 温度过高 */
-} eError_Heater;
-
-typedef enum {
-    eError_Storge_Busy,        /* 资源不可用 */
-    eError_Storge_Read_Error,  /* 读取失败 */
-    eError_Storge_Write_Error, /* 写入失败 */
+    eError_Storge_Busy = 0x01,        /* 资源不可用 */
+    eError_Storge_Read_Error = 0x02,  /* 读取失败 */
+    eError_Storge_Write_Error = 0x04, /* 写入失败 */
 } eError_Storge;
 
 typedef enum {
-    eError_COMM_Busy,        /* 资源不可用 */
-    eError_COMM_Send_Failed, /* 发送失败 */
-    eError_COMM_Wrong_ACK,   /* 回应帧号不正确 */
-    eError_COMM_Recv_None,   /* 无回应 */
+    eError_COMM_Busy = 0x01,        /* 资源不可用 */
+    eError_COMM_Send_Failed = 0x02, /* 发送失败 */
+    eError_COMM_Wrong_ACK = 0x04,   /* 回应帧号不正确 */
+    eError_COMM_Recv_None = 0x08,   /* 无回应 */
 } eError_COMM;
 
 typedef enum {
-    eError_Scanner_Recv_None, /* 通讯无接收 */
+    eError_Scanner_Conf_Failed = 0x01, /* 配置失败 */
 } eError_Scanner;
 
 typedef enum {
-    eError_Fan_Speed_None, /* 转速为零 */
-    eError_Fan_Speed_Lost, /* 失速 */
+    eError_Fan_Speed_None = 0x01, /* 转速为零 */
+    eError_Fan_Speed_Lost = 0x02, /* 失速 */
 } eError_Fan;
 
 typedef struct {
@@ -89,6 +78,8 @@ typedef struct {
 
 /* Exported functions prototypes ---------------------------------------------*/
 void error_Emit(eError_Peripheral pp, uint8_t detail);
+void error_Clear(eError_Peripheral pp);
+void error_Handle(TickType_t xTick);
 
 /* Private defines -----------------------------------------------------------*/
 

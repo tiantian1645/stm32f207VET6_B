@@ -28,7 +28,7 @@ extern DMA_HandleTypeDef hdma_uart5_rx;
 
 #define COMM_OUT_RECV_QUEU_LENGTH 3
 #define COMM_OUT_SEND_QUEU_LENGTH 12
-#define COMM_OUT_ERROR_SEND_QUEU_LENGTH 22
+#define COMM_OUT_ERROR_SEND_QUEU_LENGTH 16
 
 /* Private typedef -----------------------------------------------------------*/
 

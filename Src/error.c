@@ -38,7 +38,7 @@ void error_Emit(eError_Peripheral pp, uint8_t detail)
 {
     sError_Info errorInfo;
 
-    if (detail == 0xFF) { /* 错误信息压力测试用 */
+    if (detail == ERROR_TYPE_DEBUG) { /* 错误信息压力测试用 */
         return;
     }
     errorInfo.peripheral = pp;
