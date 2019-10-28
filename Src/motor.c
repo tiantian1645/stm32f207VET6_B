@@ -136,7 +136,16 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
         comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                   /* 转发至外串口但不允许阻塞 */
         beep_Start_With_Conf(eBeep_Freq_do, 300, 0, 1);
         return;
-    };
+    }
+    /* 托盘保持力矩不足 托盘容易位置会发生变化 实际位置与驱动记录位置不匹配 每次移动托盘电机必须重置 */
+    tray_Motor_Init();                                                                         /* 托盘电机初始化 */
+    if (tray_Motor_Reset_Pos() != 0) {                                                         /* 重置托盘电机位置 */
+        buffer[0] = 0x00;                                                                      /* 托盘电机运动失败 */
+        comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
+        comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                   /* 转发至外串口但不允许阻塞 */
+        beep_Start_With_Conf(eBeep_Freq_fa, 300, 0, 1);
+        return;
+    }
     if (tray_Move_By_Index(index, 5000) == eTrayState_OK) { /* 运动托盘电机 */
         if (index == eTrayIndex_0) {                        /* 托盘在检测位置 */
             buffer[0] = 0x01;
