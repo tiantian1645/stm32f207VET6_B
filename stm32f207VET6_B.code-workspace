@@ -1,16 +1,13 @@
 {
-	"folders": [
-		{
-			"path": "."
-		}
-	],
+	"folders": [{
+		"path": "."
+	}],
 	"settings": {
 		"clang-format.executable": "C:\\Users\\Administrator\\.vscode\\extensions\\ms-vscode.cpptools-0.25.1\\LLVM\\bin\\clang-format.exe",
 		"C_Cpp.clang_format_sortIncludes": false,
 		"clang-format.fallbackStyle": "WebKit",
-		"editor.formatOnSave": true,
 		"formatFiles.extensionsToInclude": "c,h",
-		"formatFiles.excludePattern": "**/node_modules,**/.vscode,**/dist/**,**/.chrome,**/Drivers,**/Debug,**/FreeRTOS,**/Release,**/Startup,**/Src/main.c,**/Src/sys*,**/Src/stm32*,**/Inc/sys*,**/Inc/stm32*,**/Inc/main*,**/FreeRTOS*",
+		"formatFiles.excludePattern": "**/node_modules,**/.vscode,**/dist/**,**/.chrome,**/Drivers,**/Debug,**/FreeRTOS,**/Release,**/Startup,**/Src/main.c,**/Src/sys*,**/Src/stm32*,**/Inc/sys*,**/Inc/stm32*,**/Inc/main*,**/FreeRTOS*,**/Src/system_stm32f2xx.c",
 		"files.associations": {
 			"comm_out.h": "c",
 			"m_drv8824.h": "c",
