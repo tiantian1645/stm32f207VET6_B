@@ -28,60 +28,18 @@
 /* Private variables ---------------------------------------------------------*/
 static sMotorRunStatus gTray_Motor_Run_Status;
 static sMoptorRunCmdInfo gTray_Motor_Run_CMD_Info;
-static uint8_t gTray_Motor_Lock = 0;
 
 /* Private function prototypes -----------------------------------------------*/
 
 /* Private user code ---------------------------------------------------------*/
-
 /**
- * @brief  托盘电机运动锁 获取
+ * @brief  托盘电机 获取电机运动记录中位置
  * @param  None
- * @retval 托盘电机运动锁
+ * @retval 运动状态记录的步数
  */
-uint8_t gTray_Motor_Lock_Get(void)
+int32_t tray_Motor_Get_Status_Position(void)
 {
-    return gTray_Motor_Lock;
-}
-
-/**
- * @brief  托盘电机运动锁 设置
- * @param  lock 托盘电机运动锁
- * @retval None
- */
-void gTray_Motor_Lock_Set(uint8_t lock)
-{
-    gTray_Motor_Lock = lock;
-}
-
-/**
- * @brief  托盘电机运动锁 设置
- * @param  lock 托盘电机运动锁
- * @retval None
- */
-uint8_t tray_Motor_Lock_Check(void)
-{
-    return gTray_Motor_Lock_Get() == 0;
-}
-
-/**
- * @brief  托盘电机运动锁 设置
- * @param  lock 托盘电机运动锁
- * @retval None
- */
-void tray_Motor_Lock_Occupy(void)
-{
-    gTray_Motor_Lock_Set(1);
-}
-
-/**
- * @brief  托盘电机运动锁 设置
- * @param  lock 托盘电机运动锁
- * @retval None
- */
-void tray_Motor_Lock_Release(void)
-{
-    gTray_Motor_Lock_Set(0);
+    return motor_Status_Get_Position(&gTray_Motor_Run_Status);
 }
 
 /**
@@ -363,10 +321,6 @@ void tray_Motor_Calculate(uint32_t target_step)
 eTrayState tray_Move_By_Index(eTrayIndex index, uint32_t timeout)
 {
     eTrayState result;
-
-    if (!tray_Motor_Lock_Check()) {
-        return eTrayState_Busy;
-    }
 
     motor_CMD_Info_Set_PF_Enter(&gTray_Motor_Run_CMD_Info, tray_Motor_Enter); /* 配置启动前回调 */
     motor_CMD_Info_Set_Tiemout(&gTray_Motor_Run_CMD_Info, timeout);           /* 运动超时时间 1000mS */

@@ -14,6 +14,7 @@
 #include "beep.h"
 #include "soft_timer.h"
 #include "storge_task.h"
+#include "temperature.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim9;
@@ -191,7 +192,7 @@ uint8_t protocol_is_comp(uint8_t * pBuff, uint16_t length)
 
 /**
  * @brief  上位机及采样板通信协议包构造函数 原地版本
- * @oaram  index  协议出口类型
+ * @param  index  协议出口类型
  * @param  cmdType 命令字
  * @param  pData 数据指针
  * @param  dataLength 数据长度
@@ -220,7 +221,7 @@ uint8_t buildPackOrigin(eProtocol_COMM_Index index, uint8_t cmdType, uint8_t * p
 
 /**
  * @brief  发送回应包
- * @oaram  index  协议出口类型
+ * @param  index  协议出口类型
  * @param  pInbuff 入站包指针
  * @retval 数据包长度
  */
@@ -253,36 +254,22 @@ eProtocolParseResult protocol_Parse_AnswerACK(eProtocol_COMM_Index index, uint8_
 }
 
 /**
- * @brief  协议处理 向其他任务提交信息
- * @oaram  index  协议出口类型
- * @param  pInbuff 入站包指针
- * @retval 数据包长度
+ * @brief  协议处理 获取版本号
+ * @note   4 字节单精度浮点数 堆栈上顺序
+ * @param  pBuff 输出缓冲
+ * @retval None
  */
-eProtocolParseResult protocol_Parse_Emit(eProtocol_COMM_Index index, uint8_t * pInBuff, uint8_t length)
+void protocol_Get_Version(uint8_t * pBuff)
 {
-    eProtocolParseResult error = PROTOCOL_PARSE_OK;
-
-    error = protocol_Parse_AnswerACK(index, pInBuff[3]); /* 发送回应包 */
-    switch (pInBuff[5]) {
-        case eProtocolEmitPack_Client_CMD_START: /* 开始测量帧 */
-            break;
-        case eProtocolEmitPack_Client_CMD_ABRUPT: /* 仪器测量取消命令帧 */
-            break;
-        case eProtocolEmitPack_Client_CMD_CONFIG: /* 测试项信息帧 */
-            break;
-        case eProtocolEmitPack_Client_CMD_FORWARD: /* 打开托盘帧 */
-            break;
-        case eProtocolEmitPack_Client_CMD_REVERSE: /* 关闭托盘命令帧 */
-            break;
-        case eProtocolEmitPack_Client_CMD_READ_ID: /* ID卡读取命令帧 */
-            break;
-        case eProtocolEmitPack_Client_CMD_UPGRADE: /* 下位机升级命令帧 */
-            break;
-        default:
-            error |= PROTOCOL_PARSE_CMD_ERROR;
-            break;
-    }
-    return error;
+    union {
+        float f;
+        uint8_t u8s[4];
+    } vu;
+    vu.f = APP_VERSION;
+    pBuff[0] = vu.u8s[0];
+    pBuff[1] = vu.u8s[1];
+    pBuff[2] = vu.u8s[2];
+    pBuff[3] = vu.u8s[3];
 }
 
 /**
@@ -299,6 +286,7 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
     int32_t step;
     uint8_t result;
     sMotor_Fun motor_fun;
+    float temp;
 
     if (pInBuff[5] == eProtocoleRespPack_Client_ACK) { /* 收到对方回应帧 */
         comm_Out_Send_ACK_Give(pInBuff[6]);            /* 通知串口发送任务 回应包收到 */
@@ -518,28 +506,30 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 error |= PROTOCOL_PARSE_EMIT_ERROR;
             }
             break;
-        case eProtocolEmitPack_Client_CMD_STATUS: /* 状态信息查询帧 (首帧) */
-            pInBuff[0] = 0x00;
-            pInBuff[1] = 0x00;
-            error |= comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_ERR, pInBuff, 2); /* 错误信息 */
-
-            pInBuff[0] = 0x00;
-            pInBuff[1] = 0x00;
-            pInBuff[2] = 0x00;
-            pInBuff[3] = 0x00;
+        case eProtocolEmitPack_Client_CMD_STATUS:                                                          /* 状态信息查询帧 (首帧) */
+            temp = temp_Get_Temp_Data_BTM();                                                               /* 下加热体温度 */
+            pInBuff[0] = ((uint16_t)temp * 100) & 0xFF;                                                    /* 小端模式 低8位 */
+            pInBuff[1] = ((uint16_t)temp * 100) >> 8;                                                      /* 小端模式 高8位 */
+            temp = temp_Get_Temp_Data_TOP();                                                               /* 上加热体温度 */
+            pInBuff[2] = ((uint16_t)temp * 100) & 0xFF;                                                    /* 小端模式 低8位 */
+            pInBuff[3] = ((uint16_t)temp * 100) >> 8;                                                      /* 小端模式 高8位 */
             error |= comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_TMP, pInBuff, 4); /* 温度信息 */
 
-            pInBuff[0] = 0x00;
-            pInBuff[1] = 0x00;
-            pInBuff[2] = 0x00;
-            pInBuff[3] = 0x00;
+            protocol_Get_Version(pInBuff);
             error |= comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_VER, pInBuff, 4); /* 软件版本信息 */
 
-            pInBuff[0] = 0x00;
+            if (tray_Motor_Get_Status_Position() == 0) {
+                pInBuff[0] = 1; /* 托盘处于测试位置 原点 */
+            } else if (tray_Motor_Get_Status_Position() >= (eTrayIndex_2 / 4 - 50) && tray_Motor_Get_Status_Position() <= (eTrayIndex_2 / 4 + 50)) {
+                pInBuff[0] = 2; /* 托盘处于出仓位置 误差范围 +-50步 */
+            } else {
+                pInBuff[0] = 0;
+            }
             error |= comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, pInBuff, 1); /* 托盘状态信息 */
             break;
         case eProtocolEmitPack_Client_CMD_UPGRADE: /* 下位机升级命令帧 0x0F */
-                                                   /* TO DO */
+            vTaskDelay(500);                       /* 适当延时回应ACK */
+            HAL_NVIC_SystemReset();                /* 重新启动进入bootloader */
             break;
         default:
             error |= PROTOCOL_PARSE_CMD_ERROR;
@@ -560,6 +550,7 @@ eProtocolParseResult protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
     eProtocolParseResult error = PROTOCOL_PARSE_OK;
     uint8_t result;
     sMotor_Fun motor_fun;
+    float temp;
 
     gComm_Main_Connected_Set_Enable();                 /* 标记通信成功 */
     if (pInBuff[5] == eProtocoleRespPack_Client_ACK) { /* 收到对方回应帧 */
@@ -600,25 +591,26 @@ eProtocolParseResult protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
                 error |= PROTOCOL_PARSE_EMIT_ERROR;
             }
             break;
-        case eProtocolEmitPack_Client_CMD_STATUS: /* 状态信息查询帧 (首帧) */
-            pInBuff[0] = 0x00;
-            pInBuff[1] = 0x00;
-            error |= comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_ERR, pInBuff, 2); /* 错误信息 */
+        case eProtocolEmitPack_Client_CMD_STATUS:                                                          /* 状态信息查询帧 (首帧) */
+            temp = temp_Get_Temp_Data_BTM();                                                               /* 下加热体温度 */
+            pInBuff[0] = ((uint16_t)temp * 100) & 0xFF;                                                    /* 小端模式 低8位 */
+            pInBuff[1] = ((uint16_t)temp * 100) >> 8;                                                      /* 小端模式 高8位 */
+            temp = temp_Get_Temp_Data_TOP();                                                               /* 上加热体温度 */
+            pInBuff[2] = ((uint16_t)temp * 100) & 0xFF;                                                    /* 小端模式 低8位 */
+            pInBuff[3] = ((uint16_t)temp * 100) >> 8;                                                      /* 小端模式 高8位 */
+            error |= comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_TMP, pInBuff, 4); /* 温度信息 */
 
-            pInBuff[0] = 0x00;
-            pInBuff[1] = 0x00;
-            pInBuff[2] = 0x00;
-            pInBuff[3] = 0x00;
-            error |= comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_TMP, pInBuff, 4); /* 温度信息 */
+            protocol_Get_Version(pInBuff);
+            error |= comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_VER, pInBuff, 4); /* 软件版本信息 */
 
-            pInBuff[0] = 0x00;
-            pInBuff[1] = 0x00;
-            pInBuff[2] = 0x00;
-            pInBuff[3] = 0x00;
-            error |= comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_VER, pInBuff, 4); /* 软件版本信息 */
-
-            pInBuff[0] = 0x00;
-            error |= comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, pInBuff, 1); /* 托盘状态信息 */
+            if (tray_Motor_Get_Status_Position() == 0) {
+                pInBuff[0] = 1; /* 托盘处于测试位置 原点 */
+            } else if (tray_Motor_Get_Status_Position() >= (eTrayIndex_2 / 4 - 50) && tray_Motor_Get_Status_Position() <= (eTrayIndex_2 / 4 + 50)) {
+                pInBuff[0] = 2; /* 托盘处于出仓位置 误差范围 +-50步 */
+            } else {
+                pInBuff[0] = 0;
+            }
+            error |= comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, pInBuff, 1); /* 托盘状态信息 */
             break;
         case eProtocolEmitPack_Client_CMD_UPGRADE: /* 下位机升级命令帧 0x0F */
                                                    /* TO DO */

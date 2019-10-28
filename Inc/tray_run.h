@@ -26,8 +26,7 @@ typedef enum {
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/
-void tray_Motor_Lock_Occupy(void);
-void tray_Motor_Lock_Release(void);
+int32_t tray_Motor_Get_Status_Position(void);
 
 uint8_t tray_Motor_Reset_Pos();
 eTrayState tray_Motor_Init(void);

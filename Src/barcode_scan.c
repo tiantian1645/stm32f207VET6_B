@@ -559,7 +559,7 @@ eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index)
     } else {
         pResult->state = barcode_Read_From_Serial(&(pResult->length), pResult->pData + 2, max_read_length, 400);     /* 第一次扫描 */
         if (pResult->length < 10) {                                                                                  /* 扫描结果为空 */
-            vTaskDelay(100);                                                                                          /* 延时 */
+            vTaskDelay(100);                                                                                         /* 延时 */
             pResult->state = barcode_Read_From_Serial(&(pResult->length), pResult->pData + 2, max_read_length, 800); /* 第二次扫描 */
         }
         if (pResult->state != eBarcodeState_Error) {
