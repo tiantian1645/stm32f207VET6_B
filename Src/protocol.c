@@ -509,11 +509,11 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             break;
         case eProtocolEmitPack_Client_CMD_STATUS:                                                          /* 状态信息查询帧 (首帧) */
             temp = temp_Get_Temp_Data_BTM();                                                               /* 下加热体温度 */
-            pInBuff[0] = ((uint16_t)temp * 100) & 0xFF;                                                    /* 小端模式 低8位 */
-            pInBuff[1] = ((uint16_t)temp * 100) >> 8;                                                      /* 小端模式 高8位 */
+            pInBuff[0] = ((uint16_t)(temp * 100)) & 0xFF;                                                  /* 小端模式 低8位 */
+            pInBuff[1] = ((uint16_t)(temp * 100)) >> 8;                                                    /* 小端模式 高8位 */
             temp = temp_Get_Temp_Data_TOP();                                                               /* 上加热体温度 */
-            pInBuff[2] = ((uint16_t)temp * 100) & 0xFF;                                                    /* 小端模式 低8位 */
-            pInBuff[3] = ((uint16_t)temp * 100) >> 8;                                                      /* 小端模式 高8位 */
+            pInBuff[2] = ((uint16_t)(temp * 100)) & 0xFF;                                                  /* 小端模式 低8位 */
+            pInBuff[3] = ((uint16_t)(temp * 100)) >> 8;                                                    /* 小端模式 高8位 */
             error |= comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_TMP, pInBuff, 4); /* 温度信息 */
 
             protocol_Get_Version(pInBuff);
@@ -597,11 +597,11 @@ eProtocolParseResult protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
             break;
         case eProtocolEmitPack_Client_CMD_STATUS:                                                          /* 状态信息查询帧 (首帧) */
             temp = temp_Get_Temp_Data_BTM();                                                               /* 下加热体温度 */
-            pInBuff[0] = ((uint16_t)temp * 100) & 0xFF;                                                    /* 小端模式 低8位 */
-            pInBuff[1] = ((uint16_t)temp * 100) >> 8;                                                      /* 小端模式 高8位 */
+            pInBuff[0] = ((uint16_t)(temp * 100)) & 0xFF;                                                  /* 小端模式 低8位 */
+            pInBuff[1] = ((uint16_t)(temp * 100)) >> 8;                                                    /* 小端模式 高8位 */
             temp = temp_Get_Temp_Data_TOP();                                                               /* 上加热体温度 */
-            pInBuff[2] = ((uint16_t)temp * 100) & 0xFF;                                                    /* 小端模式 低8位 */
-            pInBuff[3] = ((uint16_t)temp * 100) >> 8;                                                      /* 小端模式 高8位 */
+            pInBuff[2] = ((uint16_t)(temp * 100)) & 0xFF;                                                  /* 小端模式 低8位 */
+            pInBuff[3] = ((uint16_t)(temp * 100)) >> 8;                                                    /* 小端模式 高8位 */
             error |= comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_TMP, pInBuff, 4); /* 温度信息 */
 
             protocol_Get_Version(pInBuff);
