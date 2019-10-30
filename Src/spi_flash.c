@@ -720,3 +720,29 @@ static void spi_FlashWaitForWriteEnd(void)
         ;              /* 判断状态寄存器的忙标志位 */
     spi_FlashSetCS(1); /* 禁能片选 */
 }
+
+/**
+ * @brief  写入升级标志
+ * @param  addr    地址
+ * @param  data    待写入数据
+ * @retval 0 写入成功 1 写入失败 2 回读失败 3 回读数据不匹配
+ **/
+uint8_t spi_FlashWriteAndCheck_Word(uint32_t addr, uint32_t data)
+{
+    uint8_t buffer[4];
+
+    buffer[0] = (data >> 24);
+    buffer[1] = (data >> 16);
+    buffer[2] = (data >> 8);
+    buffer[3] = (data >> 0);
+
+    if (spi_FlashWriteBuffer(addr, buffer, 4) != 4) { /* 写入数据 */
+        return 1;
+    }
+    memset(buffer, 0, 4);                            /* 清空缓存 */
+    if (spi_FlashReadBuffer(addr, buffer, 4) != 4) { /* 回读数据 */
+        return 2;
+    }
+
+    return (((buffer[0] << 24) + (buffer[1] << 16) + (buffer[2] << 8) + (buffer[3] << 0)) != data) ? (3) : (0);
+}

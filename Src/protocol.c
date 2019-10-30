@@ -15,6 +15,7 @@
 #include "soft_timer.h"
 #include "storge_task.h"
 #include "temperature.h"
+#include "spi_flash.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim9;
@@ -409,9 +410,9 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             break;
         case 0xD3:
             if (pInBuff[6] == 0) {
-                heat_Motor_Run(eMotorDir_FWD, 3000);
+                heat_Motor_Up();
             } else {
-                heat_Motor_Run(eMotorDir_REV, 3000);
+                heat_Motor_Down();
             }
             break;
         case 0xD4:
@@ -528,8 +529,11 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             error |= comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, pInBuff, 1); /* 托盘状态信息 */
             break;
         case eProtocolEmitPack_Client_CMD_UPGRADE: /* 下位机升级命令帧 0x0F */
-            vTaskDelay(500);                       /* 适当延时回应ACK */
-            HAL_NVIC_SystemReset();                /* 重新启动进入bootloader */
+            if (spi_FlashWriteAndCheck_Word(0x0000, 0x87654321) == 0) {
+                HAL_NVIC_SystemReset(); /* 重新启动 */
+            } else {
+                error_Emit(eError_Peripheral_Storge_Flash, eError_Storge_Write_Error);
+            }
             break;
         default:
             error |= PROTOCOL_PARSE_CMD_ERROR;
@@ -613,7 +617,11 @@ eProtocolParseResult protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
             error |= comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, pInBuff, 1); /* 托盘状态信息 */
             break;
         case eProtocolEmitPack_Client_CMD_UPGRADE: /* 下位机升级命令帧 0x0F */
-                                                   /* TO DO */
+            if (spi_FlashWriteAndCheck_Word(0x0000, 0x87654321) == 0) {
+                HAL_NVIC_SystemReset(); /* 重新启动 */
+            } else {
+                error_Emit(eError_Peripheral_Storge_Flash, eError_Storge_Write_Error);
+            }
             break;
         default:
             error |= PROTOCOL_PARSE_CMD_ERROR;
