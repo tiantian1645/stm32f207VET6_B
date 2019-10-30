@@ -242,16 +242,16 @@ static void motor_Task(void * argument)
                     if (xNotifyValue == eMotorNotifyValue_PD) {           /* 准备移动到PD位置 */
                         beep_Conf_Set_Period_Cnt(1);                      /* 蜂鸣器配置 */
                         beep_Start_With_Loop();                           /* 蜂鸣器输出调试 */
-                        vTaskDelay(4000);                                 /* 延时等待测量完成 */
+                        vTaskDelay(3000);                    /* 延时等待测量完成 */
                         white_Motor_PD();                                 /* 运动白板电机 PD位置 清零位置 */
                     } else if (xNotifyValue == eMotorNotifyValue_WH) {    /* 准备移动到白板位置 */
                         beep_Conf_Set_Period_Cnt(1);                      /* 蜂鸣器配置 */
                         beep_Start_With_Loop();                           /* 蜂鸣器输出调试 */
-                        vTaskDelay(4000);                                 /* 延时等待测量完成 */
+                        vTaskDelay(3000);                    /* 延时等待测量完成 */
                         white_Motor_WH();                                 /* 运动白板电机 白物质位置 */
                     } else if (xNotifyValue == eMotorNotifyValue_LO) {    /* 等待最后一次测量完成 */
                         beep_Start_With_Conf(eBeep_Freq_re, 100, 100, 5); /* 蜂鸣器输出调试 */
-                        vTaskDelay(4000);                                 /* 延时等待测量完成 */
+                        vTaskDelay(3000);                    /* 延时等待测量完成 */
                         break;
                     } else {
                         break;
