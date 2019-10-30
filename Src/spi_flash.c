@@ -610,45 +610,53 @@ uint32_t spi_FlashReadID(void)
 */
 void spi_FlashReadInfo(void)
 {
-	uint8_t cnt=0;
+    uint8_t cnt = 0;
 
+    g_tSF.ChipID = 0;
     /* 自动识别串行Flash型号 */
-	while (g_tSF.ChipID == 0 && ++cnt < 5){
+    do {
         g_tSF.ChipID = spi_FlashReadID(); /* 芯片ID */
-        vTaskDelay(500);
-	}
-        switch (g_tSF.ChipID) {
-            case SST25VF016B_ID:
-                strcpy(g_tSF.ChipName, "SST25VF016B");
-                g_tSF.TotalSize = 2 * 1024 * 1024; /* 总容量 = 2M */
-                g_tSF.PageSize = 4 * 1024;         /* 页面大小 = 4K */
-                break;
-
-            case MX25L1606E_ID:
-                strcpy(g_tSF.ChipName, "MX25L1606E");
-                g_tSF.TotalSize = 2 * 1024 * 1024; /* 总容量 = 2M */
-                g_tSF.PageSize = 4 * 1024;         /* 页面大小 = 4K */
-                break;
-
-            case W25Q64BV_ID:
-                strcpy(g_tSF.ChipName, "W25Q64BV");
-                g_tSF.TotalSize = 8 * 1024 * 1024; /* 总容量 = 8M */
-                g_tSF.PageSize = 4 * 1024;         /* 页面大小 = 4K */
-                break;
-
-            case W25Q64FW_ID:
-                strcpy(g_tSF.ChipName, "W25Q64FW");
-                g_tSF.TotalSize = 8 * 1024 * 1024; /* 总容量 = 8M */
-                g_tSF.PageSize = 4 * 1024;         /* 页面大小 = 4K */
-                break;
-
-            default:
-                strcpy(g_tSF.ChipName, "Unknow Flash");
-                g_tSF.TotalSize = 2 * 1024 * 1024;
-                g_tSF.PageSize = 4 * 1024;
-                break;
+        if (g_tSF.ChipID > 0) {
+            break;
         }
+        if (++cnt < 5) {
+            HAL_Delay(10 * (1 << cnt));
+        } else {
+            break;
+        }
+    } while (1);
 
+    switch (g_tSF.ChipID) {
+        case SST25VF016B_ID:
+            strcpy(g_tSF.ChipName, "SST25VF016B");
+            g_tSF.TotalSize = 2 * 1024 * 1024; /* 总容量 = 2M */
+            g_tSF.PageSize = 4 * 1024;         /* 页面大小 = 4K */
+            break;
+
+        case MX25L1606E_ID:
+            strcpy(g_tSF.ChipName, "MX25L1606E");
+            g_tSF.TotalSize = 2 * 1024 * 1024; /* 总容量 = 2M */
+            g_tSF.PageSize = 4 * 1024;         /* 页面大小 = 4K */
+            break;
+
+        case W25Q64BV_ID:
+            strcpy(g_tSF.ChipName, "W25Q64BV");
+            g_tSF.TotalSize = 8 * 1024 * 1024; /* 总容量 = 8M */
+            g_tSF.PageSize = 4 * 1024;         /* 页面大小 = 4K */
+            break;
+
+        case W25Q64FW_ID:
+            strcpy(g_tSF.ChipName, "W25Q64FW");
+            g_tSF.TotalSize = 8 * 1024 * 1024; /* 总容量 = 8M */
+            g_tSF.PageSize = 4 * 1024;         /* 页面大小 = 4K */
+            break;
+
+        default:
+            strcpy(g_tSF.ChipName, "Unknow Flash");
+            g_tSF.TotalSize = 2 * 1024 * 1024;
+            g_tSF.PageSize = 4 * 1024;
+            break;
+    }
 }
 
 /*
