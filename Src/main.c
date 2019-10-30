@@ -1256,11 +1256,11 @@ void temp_Upload_Deal(void)
     }
 
     temp_btm = temp_Get_Temp_Data_BTM();                                            /* 下加热体温度 */
-    buffer[0] = ((uint16_t)temp_btm * 100) & 0xFF;                                  /* 小端模式 低8位 */
-    buffer[1] = ((uint16_t)temp_btm * 100) >> 8;                                    /* 小端模式 高8位 */
+    buffer[0] = ((uint16_t)(temp_btm * 100)) & 0xFF;                                  /* 小端模式 低8位 */
+    buffer[1] = ((uint16_t)(temp_btm * 100)) >> 8;                                    /* 小端模式 高8位 */
     temp_top = temp_Get_Temp_Data_TOP();                                            /* 上加热体温度 */
-    buffer[2] = ((uint16_t)temp_top * 100) & 0xFF;                                  /* 小端模式 低8位 */
-    buffer[3] = ((uint16_t)temp_top * 100) >> 8;                                    /* 小端模式 高8位 */
+    buffer[2] = ((uint16_t)(temp_top * 100)) & 0xFF;                                  /* 小端模式 低8位 */
+    buffer[3] = ((uint16_t)(temp_top * 100)) >> 8;                                    /* 小端模式 高8位 */
     length = buildPackOrigin(eComm_Main, eProtocoleRespPack_Client_TMP, buffer, 4); /* 构造数据包 以主板为基准 */
 
     if (temp_btm < 36.5) {                                               /* 温度值低于36.5 */
