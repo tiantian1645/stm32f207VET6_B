@@ -243,6 +243,7 @@ uint8_t tray_Motor_Reset_Pos()
         tray_Motor_Deal_Status();                              /* 状态处理 */
         motor_Status_Set_Position(&gTray_Motor_Run_Status, 0); /* 重置电机状态步数记录 */
         m_l6470_release();                                     /* 释放SPI总线资源*/
+        vTaskDelay(200);
         return 0;
     }
     m_l6470_release(); /* 释放SPI总线资源*/
