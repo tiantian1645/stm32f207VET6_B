@@ -237,13 +237,17 @@ uint8_t tray_Motor_Reset_Pos()
         return 2;
     }
 
-    tray_Motor_Brake();                                        /* 无条件刹车 */
+    tray_Motor_Brake(); /* 无条件刹车 */
+    xTick = xTaskGetTickCount();
+    do {
+        vTaskDelay(100);
+    } while (TRAY_MOTOR_IS_BUSY && xTaskGetTickCount() - xTick < 1000);
+
     if (TRAY_MOTOR_IS_OPT_1) {                                 /* 光耦被遮挡 */
         dSPIN_Reset_Pos();                                     /* 重置电机驱动步数记录 */
         tray_Motor_Deal_Status();                              /* 状态处理 */
         motor_Status_Set_Position(&gTray_Motor_Run_Status, 0); /* 重置电机状态步数记录 */
         m_l6470_release();                                     /* 释放SPI总线资源*/
-        vTaskDelay(200);
         return 0;
     }
     m_l6470_release(); /* 释放SPI总线资源*/
