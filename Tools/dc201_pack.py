@@ -28,14 +28,18 @@ class DC201_PACK:
             logger.debug("discard junk pack | {}".format(bytesPuttyPrint(junk_pack)))
 
     def buildPack(self, device_id, pack_index, cmd_type, payload=None):
+        pack_index = pack_index & 0xFF
         if payload is None:
             payload_len = 0
             pack_bytes_wc = self.pack_head + struct.pack("BBBB", payload_len + 3, pack_index, device_id, cmd_type)
         else:
             payload_len = len(payload)
-            pack_bytes_wc = self.pack_head + struct.pack(
-                "BBBB{}".format("B" * payload_len), payload_len + 3, pack_index, device_id, cmd_type, *payload
-            )
+            if payload_len > 255:
+                pack_bytes_wc = self.pack_head + struct.pack("BBBB{}".format("B" * payload_len), 0, pack_index, device_id, cmd_type, *payload)
+            else:
+                pack_bytes_wc = self.pack_head + struct.pack(
+                    "BBBB{}".format("B" * payload_len), payload_len + 3, pack_index, device_id, cmd_type, *payload
+                )
         pack_bytes = pack_bytes_wc + self.crc8(pack_bytes_wc[4:])
         return pack_bytes
 

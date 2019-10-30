@@ -1,16 +1,22 @@
-from bytes_helper import bytesPuttyPrint, str2Bytes
-import dc201_pack
-import serial
-import loguru
-import stackprinter
-import random
-import time
+import os
 import queue
+import random
 import threading
+import time
 from collections import namedtuple
+
+import loguru
+import serial
+import stackprinter
+
+import dc201_pack
+from bytes_helper import bytesPuttyPrint
 
 logger = loguru.logger
 logger.add(r"E:\pylog\stm32f207_serial.log", enqueue=True, rotation="10 MB")
+
+TEST_BIN_PATH = r"C:\Users\Administrator\STM32CubeIDE\workspace_1.0.2\stm32F207VET6_Bootloader_APP\Debug\stm32F207VET6_Bootloader_APP.bin"
+REAL_BIN_PATH = r"C:\Users\Administrator\STM32CubeIDE\workspace_1.0.2\stm32f207VET6_B\Debug\stm32f207VET6_B.bin"
 
 dd = dc201_pack.DC201_PACK()
 
@@ -57,6 +63,62 @@ def read_pack_generator(pack_index, cmd_type, addr, num):
     return pack
 
 
+def iter_test_bin(file_path=TEST_BIN_PATH, chunk_size=224):
+    try:
+        with open(file_path, "rb") as f:
+            while True:
+                data = f.read(chunk_size)
+                if not data:
+                    break
+                yield (data)
+    except Exception:
+        logger.error("read file error \n{}".format(stackprinter.format()))
+
+
+def write_firmware_pack():
+    total = os.path.getsize(TEST_BIN_PATH)
+    chunk_size = 224
+    addr = 0
+    pack_index = 1
+    for data in iter_test_bin(TEST_BIN_PATH, chunk_size):
+        pack = dd.buildPack(0x13, pack_index, 0xDC, (*dep32(total)[::-1], *dep32(addr)[::-1], len(data), *(i for i in data)))
+        addr += chunk_size
+        pack_index += 1
+        yield pack
+
+
+def iter_test_bin_FC(file_path=REAL_BIN_PATH, chunk_size=1024):
+    try:
+        with open(file_path, "rb") as f:
+            while True:
+                data = f.read(chunk_size)
+                if len(data) > 0 and len(data) < chunk_size:
+                    if len(data) > 512:
+                        chunk_size = 1024
+                    elif chunk_size > 256:
+                        chunk_size = 512
+                    else:
+                        chunk_size = 256
+                    data = data.ljust(chunk_size, b"\x00")
+                if not data:
+                    break
+                yield (data)
+    except Exception:
+        logger.error("read file error \n{}".format(stackprinter.format()))
+
+
+def write_firmware_pack_FC(chunk_size=1024):
+    # total = os.path.getsize(REAL_BIN_PATH)
+    addr = 0
+    pack_index = 1
+    for data in iter_test_bin_FC(REAL_BIN_PATH, chunk_size):
+        pack = dd.buildPack(0x13, pack_index, 0xFC, (len(data) // 256, *(i for i in data)))
+        addr += chunk_size
+        pack_index += 1
+        yield pack
+    yield dd.buildPack(0x13, pack_index, 0xFC, (0,))
+
+
 def decode_pack(info):
     raw_byte = info.content
     cmd_type = raw_byte[5]
@@ -77,11 +139,16 @@ def decode_pack(info):
                 payload = stackprinter.format()
         logger.success("recv scan data | channel {} | length {:2d} | payload {}".format(channel, length, payload))
         return
+    if cmd_type == 0xA0:
+        temp_btm = int.from_bytes(raw_byte[6:8], byteorder="little") / 100
+        temp_top = int.from_bytes(raw_byte[8:10], byteorder="little") / 100
+        logger.success("recv temp data | buttom {:.2f} | top {:.2f}".format(temp_btm, temp_top))
+        return
     logger.success("recv pack | {}".format(info.text))
     return
 
 
-def read_task(ser, write_queue, delay=0.5):
+def read_task(ser, write_queue, firm_queue, delay=0.5):
     recv_buffer = b""
     while True:
         iw = ser.in_waiting
@@ -106,6 +173,8 @@ def read_task(ser, write_queue, delay=0.5):
                     send_data = dd.buildPack(0x13, 0xFF - ack, 0xAA, (ack,))
                     ser.write(send_data)
                     logger.warning("send pack | {}".format(bytesPuttyPrint(send_data)))
+                    if fun_code in (0xDC, 0xFB):
+                        firm_queue.put(recv_pack[6])
         if info.is_head and info.is_crc:
             recv_buffer = b""
         else:
@@ -129,16 +198,67 @@ def send_task(ser, write_queue):
 
 
 ser = serial.Serial(port=None, baudrate=115200, timeout=1)
-ser.port = "COM3"
+ser.port = "COM9"
 ser.open()
 write_queue = queue.Queue()
+firm_queue = queue.Queue()
 
-rt = threading.Thread(target=read_task, args=(ser, write_queue, 0.1))
+rt = threading.Thread(target=read_task, args=(ser, write_queue, firm_queue, 0.1))
 st = threading.Thread(target=send_task, args=(ser, write_queue))
 rt.setDaemon(True)
 st.setDaemon(True)
 rt.start()
 st.start()
+
+
+while True:
+    try:
+        firm_queue.get_nowait()
+    except queue.Empty:
+        break
+start = time.time()
+real_size = 0
+for pack in write_firmware_pack_FC(chunk_size=1024):
+    write_queue.put(pack)
+    if len(pack) > 8:
+        delta = len(pack) - 8
+        logger.info("write pack addr 0x{:08X} ~ 0x{:08X}".format(real_size, real_size + delta))
+        real_size += delta
+    try:
+        result = firm_queue.get(timeout=5)
+        if result != 0:
+            if result == 2:
+                logger.success("get all recv")
+            else:
+                logger.error("get error recv")
+            break
+    except queue.Empty:
+        logger.error("get recv timeout")
+        break
+    except Exception:
+        logger.error("other error\n{}".format(stackprinter.format()))
+        break
+total_size = os.path.getsize(REAL_BIN_PATH)
+logger.info(
+    "finish loop file | complete {:.2%} | {} / {} Byte | in {:.2f}S".format(real_size / total_size, real_size, total_size, time.time() - start)
+)
+
+# C0F7830B3EA77504D202F2DF3407CAAD
+# A24C047DD2E7E72D02E5C397A2346EFE
+
+for pack in write_firmware_pack():
+    write_queue.put(pack)
+    try:
+        result = firm_queue.get(timeout=2)
+        if result != 0:
+            if result == 4:
+                logger.success("get all recv")
+            else:
+                logger.error("get error recv")
+            break
+    except queue.Empty:
+        logger.error("get recv timeout")
+        break
 
 
 write_queue.put(dd.buildPack(0x13, 0, 0x01))
