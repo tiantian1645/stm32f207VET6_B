@@ -179,6 +179,9 @@ uint8_t heat_Motor_Wait_Stop(uint32_t timeout)
         default:
             do {
                 if (heat_Motor_Position_Is_Down()) {
+                    if (heat_Motor_Position_Is_Up()) {
+                        return 2;
+                    }
                     return 0;
                 }
                 vTaskDelay(1);

@@ -181,6 +181,9 @@ uint8_t white_Motor_Wait_Stop(uint32_t timeout)
                 if (white_Motor_Position_Is_Out()) {
                     white_Motor_Deactive();
                     PWM_AW_Stop();
+                    if (white_Motor_Position_Is_In()) {
+                    	return 2;
+                    }
                     return 0;
                 }
                 vTaskDelay(1);
