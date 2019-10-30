@@ -161,7 +161,7 @@ def read_task(ser, write_queue, firm_queue, delay=0.5):
         recv_buffer += recv_data
         if len(recv_buffer) < 7:
             continue
-
+        info = None
         for info in dd.iterIntactPack(recv_buffer):
             recv_pack = info.content
             if info.is_head and info.is_crc and len(recv_pack) >= 7:
@@ -175,10 +175,11 @@ def read_task(ser, write_queue, firm_queue, delay=0.5):
                     logger.warning("send pack | {}".format(bytesPuttyPrint(send_data)))
                     if fun_code in (0xDC, 0xFB):
                         firm_queue.put(recv_pack[6])
-        if info.is_head and info.is_crc:
-            recv_buffer = b""
-        else:
-            recv_buffer = info.content
+        if info is not None:
+            if info.is_head and info.is_crc:
+                recv_buffer = b""
+            else:
+                recv_buffer = info.content
 
 
 def send_task(ser, write_queue):
@@ -211,6 +212,8 @@ rt.start()
 st.start()
 
 
+write_queue.put(dd.buildPack(0x13, 0, 0xDD))
+time.sleep(5)
 while True:
     try:
         firm_queue.get_nowait()
