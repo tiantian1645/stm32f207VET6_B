@@ -1,21 +1,26 @@
 # http://doc.qt.io/qt-5/qt.html
 
+import functools
+import queue
 import sys
 import time
+
 import loguru
-import queue
-from PyQt5.QtCore import Qt, QThreadPool, QRunnable, pyqtSlot, pyqtSignal, QObject
-from PyQt5.QtWidgets import QApplication, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QMainWindow, QPushButton, QWidget, QComboBox
+import numpy as np
 import serial
 import serial.tools.list_ports
+import stackprinter
+from PyQt5.QtCore import QObject, QRunnable, Qt, QThreadPool, pyqtSignal, pyqtSlot
+from PyQt5.QtWidgets import QApplication, QComboBox, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QMainWindow, QPushButton, QWidget
+
 import dc201_pack
 from bytes_helper import bytesPuttyPrint
-import stackprinter
-import functools
-
+from matplotlib.backends.backend_qt5agg import FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.figure import Figure
 
 BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
-TEMPERAUTRE_NAMES = ("下加热体", "上加热体")
+TEMPERAUTRE_NAMES = ("下:", "上:")
 
 logger = loguru.logger
 
@@ -69,10 +74,10 @@ class SerialWorker(QRunnable):
                     self.logger.error("write data type error | {}".format(write_data))
 
                 # check recv task
-                iw = self.serial.in_waiting
-                if iw <= 0:
+                recv_data = self.serial.read(2048)
+                if len(recv_data) <= 0:
                     continue
-                recv_data = self.serial.read(iw)
+
                 self.logger.debug("get raw bytes | {}".format(bytesPuttyPrint(recv_data)))
                 recv_buffer += recv_data
                 if len(recv_buffer) < 7:
@@ -107,7 +112,7 @@ class MainWindow(QMainWindow):
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
         self.setWindowTitle("My Awesome App")
-        self.serial = serial.Serial(port=None, baudrate=115200, timeout=1)
+        self.serial = serial.Serial(port=None, baudrate=115200, timeout=0.01)
         self.task_queue = queue.Queue()
         self.threadpool = QThreadPool()
         self.dd = dc201_pack.DC201_PACK()
@@ -123,27 +128,33 @@ class MainWindow(QMainWindow):
         self.createMotor()
         self.createTemperature()
         self.createSerial()
+        self.createMathplot()
         widget = QWidget()
         layout = QGridLayout(widget)
-        layout.addWidget(self.barcode_gb, 0, 0)
-        layout.addWidget(self.motor_bg, 0, 1)
-        layout.addWidget(self.temperautre_gb, 1, 0)
-        layout.addWidget(self.serial_gb, 2, 0)
+        layout.addWidget(self.barcode_gb, 0, 0, 6, 1)
+        layout.addWidget(self.motor_bg, 6, 0, 8, 1)
+        layout.addWidget(self.temperautre_gb, 14, 0, 2, 1)
+        layout.addWidget(self.serial_gb, 16, 0, 3, 1)
+        layout.addWidget(self.static_canvas, 0, 1, 19, 1)
         self.setCentralWidget(widget)
 
     def createBarcode(self):
         self.barcode_gb = QGroupBox("扫码")
         barcode_ly = QGridLayout(self.barcode_gb)
         self.barcode_lbs = [QLabel("*" * 10) for i in range(7)]
+        self.motor_scan_bts = [QPushButton(BARCODE_NAMES[i]) for i in range(7)]
         for i in range(7):
             if i == 6:
                 barcode_ly.addWidget(QLabel("QR"), i, 0)
             else:
                 barcode_ly.addWidget(QLabel("B{:1d}".format(i + 1)), i, 0)
             barcode_ly.addWidget(self.barcode_lbs[i], i, 1)
+            barcode_ly.addWidget(self.motor_scan_bts[i], i, 2)
         self.barcode_scan_bt = QPushButton("开始")
         barcode_ly.addWidget(self.barcode_scan_bt, 7, 0, 1, 2)
         self.barcode_scan_bt.clicked.connect(self.onBarcodeScan)
+        for i in range(7):
+            self.motor_scan_bts[i].clicked.connect(functools.partial(self.onMotorScan, idx=i))
 
     def onBarcodeScan(self, event):
         for lb in self.barcode_lbs:
@@ -174,9 +185,7 @@ class MainWindow(QMainWindow):
         self.motor_white_bg = QGroupBox("白板")
         motor_white_ly = QHBoxLayout(self.motor_white_bg)
         self.motor_tray_bg = QGroupBox("托盘")
-        motor_tray_ly = QHBoxLayout(self.motor_tray_bg)
-        self.motor_scan_bg = QGroupBox("扫码")
-        motor_scan_ly = QHBoxLayout(self.motor_scan_bg)
+        motor_tray_ly = QGridLayout(self.motor_tray_bg)
 
         self.motor_heater_up_bt = QPushButton("上")
         self.motor_heater_down_bt = QPushButton("下")
@@ -191,20 +200,13 @@ class MainWindow(QMainWindow):
         self.motor_tray_in_bt = QPushButton("进仓")
         self.motor_tray_scan_bt = QPushButton("扫码")
         self.motor_tray_out_bt = QPushButton("出仓")
-        motor_tray_ly.addWidget(self.motor_tray_in_bt)
-        motor_tray_ly.addWidget(self.motor_tray_scan_bt)
-        motor_tray_ly.addWidget(self.motor_tray_out_bt)
-
-        self.motor_scan_bts = []
-        for i in range(7):
-            bt = QPushButton(BARCODE_NAMES[i])
-            self.motor_scan_bts.append(bt)
-            motor_scan_ly.addWidget(bt)
+        motor_tray_ly.addWidget(self.motor_tray_in_bt, 0, 0)
+        motor_tray_ly.addWidget(self.motor_tray_scan_bt, 1, 0)
+        motor_tray_ly.addWidget(self.motor_tray_out_bt, 0, 1)
 
         motor_ly.addWidget(self.motor_heater_bg, 0, 0, 1, 1)
-        motor_ly.addWidget(self.motor_white_bg, 0, 1, 1, 1)
-        motor_ly.addWidget(self.motor_tray_bg, 0, 2, 1, 1)
-        motor_ly.addWidget(self.motor_scan_bg, 1, 0, 1, 3)
+        motor_ly.addWidget(self.motor_white_bg, 1, 0, 1, 1)
+        motor_ly.addWidget(self.motor_tray_bg, 2, 0, 1, 1)
 
         self.motor_heater_up_bt.clicked.connect(self.onMotorHeaterUp)
         self.motor_heater_down_bt.clicked.connect(self.onMotorHeaterDown)
@@ -213,8 +215,6 @@ class MainWindow(QMainWindow):
         self.motor_tray_in_bt.clicked.connect(self.onMotorTrayIn)
         self.motor_tray_scan_bt.clicked.connect(self.onMotorTrayScan)
         self.motor_tray_out_bt.clicked.connect(self.onMotorTrayOut)
-        for i in range(7):
-            self.motor_scan_bts[i].clicked.connect(functools.partial(self.onMotorScan, idx=i))
 
     def onMotorHeaterUp(self, event):
         self.__serialSendPack(0xD3, (0,))
@@ -239,15 +239,17 @@ class MainWindow(QMainWindow):
 
     def onMotorScan(self, event, idx):
         logger.debug("click motor scan idx | {}".format(idx))
+        self.barcode_lbs[idx].setText("*" * 10)
         self.__serialSendPack(0xD0, (idx,))
 
     def createTemperature(self):
-        self.temperautre_gb = QGroupBox("温度")
-        temperautre_ly = QGridLayout(self.temperautre_gb)
+        self.temperautre_gb = QGroupBox("加热体温度")
+        temperautre_ly = QHBoxLayout(self.temperautre_gb)
         self.temperautre_lbs = [QLabel("-" * 8) for _ in TEMPERAUTRE_NAMES]
         for i, name in enumerate(TEMPERAUTRE_NAMES):
-            temperautre_ly.addWidget(QLabel(name), i, 0)
-            temperautre_ly.addWidget(self.temperautre_lbs[i], i, 1)
+            temperautre_ly.addWidget(QLabel(name))
+            temperautre_ly.addWidget(self.temperautre_lbs[i])
+            temperautre_ly.addSpacing(1)
 
     def updateTemperautre(self, info):
         temp_btm = int.from_bytes(info.content[6:8], byteorder="little") / 100
@@ -320,6 +322,13 @@ class MainWindow(QMainWindow):
             self.updateTemperautre(info)
         elif cmd_type == 0xB2:
             self.updateBarcode(info)
+
+    def createMathplot(self):
+        self.static_canvas = FigureCanvas(Figure(figsize=(5, 3)))
+        self.addToolBar(NavigationToolbar(self.static_canvas, self.static_canvas))
+        self._static_ax = self.static_canvas.figure.subplots()
+        t = np.linspace(0, 10, 501)
+        self._static_ax.plot(t, np.tan(t), ".")
 
 
 if __name__ == "__main__":
