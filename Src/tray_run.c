@@ -78,20 +78,24 @@ void tray_Motor_Deal_Status()
     status = dSPIN_Get_Status(); /* 读取电机状态 */
 
     if (((status & dSPIN_STATUS_STEP_LOSS_A) == 0) || ((status & dSPIN_STATUS_STEP_LOSS_B) == 0)) { /* 发生失步 */
-        // m_l6470_Reset_HW();                                                                         /* 硬件重置 */
-        // m_l6470_Params_Init();                                                                      /* 初始化参数 */
+        m_l6470_Reset_HW();                                                                         /* 硬件重置 */
+        m_l6470_Params_Init();                                                                      /* 初始化参数 */
+        error_Emit(eError_Peripheral_Motor_Tray, eError_Motor_Status_Warui);                        /* 提交错误信息 */
         return;
     }
-    if (((status & dSPIN_STATUS_UVLO)) == 0) { /* 低压 */
-                                               // m_l6470_Reset_HW();                    /* 硬件重置 */
-        // m_l6470_Params_Init();                 /* 初始化参数 */
+    if (((status & dSPIN_STATUS_UVLO)) == 0) {                               /* 低压 */
+        m_l6470_Reset_HW();                                                  /* 硬件重置 */
+        m_l6470_Params_Init();                                               /* 初始化参数 */
+        error_Emit(eError_Peripheral_Motor_Tray, eError_Motor_Status_Warui); /* 提交错误信息 */
         return;
     }
     if (((status & dSPIN_STATUS_TH_WRN)) == 0 || ((status & dSPIN_STATUS_TH_SD)) == 0 || ((status & dSPIN_STATUS_OCD)) == 0) { /* 高温 超温 过流 */
-        // m_l6470_Reset_HW();                                                                                                    /* 硬件重置 */
-        // m_l6470_Params_Init();                                                                                                 /* 初始化参数 */
+        m_l6470_Reset_HW();                                                                                                    /* 硬件重置 */
+        m_l6470_Params_Init();                                                                                                 /* 初始化参数 */
+        error_Emit(eError_Peripheral_Motor_Tray, eError_Motor_Status_Warui);                                                   /* 提交错误信息 */
         return;
     }
+    error_Emit(eError_Peripheral_Motor_Tray, ERROR_TYPE_DEBUG); /* 压力测试 */
     return;
 }
 
@@ -237,12 +241,12 @@ uint8_t tray_Motor_Reset_Pos()
         return 2;
     }
 
-    tray_Motor_Brake(); /* 无条件刹车 */
+    tray_Motor_Brake();                                        /* 无条件刹车 */
     if (TRAY_MOTOR_IS_OPT_1) {                                 /* 光耦被遮挡 */
         dSPIN_Reset_Pos();                                     /* 重置电机驱动步数记录 */
         tray_Motor_Deal_Status();                              /* 状态处理 */
         motor_Status_Set_Position(&gTray_Motor_Run_Status, 0); /* 重置电机状态步数记录 */
-        vTaskDelay(200);									   /* 延时 */
+        vTaskDelay(400);                                       /* 延时 */
         m_l6470_release();                                     /* 释放SPI总线资源*/
         return 0;
     }
