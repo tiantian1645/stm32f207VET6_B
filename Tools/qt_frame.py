@@ -30,10 +30,11 @@ from bytes_helper import bytesPuttyPrint
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
-import random
+
 
 BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
 TEMPERAUTRE_NAMES = ("下:", "上:")
+PLAO_STYLES = ("r^-", "gv-", "b<-", "c>-", "m*-", "k+-")
 
 logger = loguru.logger
 
@@ -331,26 +332,63 @@ class MainWindow(QMainWindow):
             self.updateTemperautre(info)
         elif cmd_type == 0xB2:
             self.updateBarcode(info)
+        elif cmd_type == 0xB3:
+            self.updateMatplotData(info)
+        elif cmd_type == 0xB6:
+            self.updateMatplotPlot()
 
     def createMatplot(self):
+        self.matplot_data = {}
         self.matplot_wg = QWidget(self)
         matplot_ly = QVBoxLayout(self.matplot_wg)
         self.matplot_canvas = FigureCanvas(Figure(figsize=(10, 10), dpi=100, tight_layout=True))
+        self.matplot_ax = self.matplot_canvas.figure.add_subplot(111)
         self.matplot_wg.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.matplot_wg.updateGeometry()
         self.matplotToolbar = NavigationToolbar(self.matplot_canvas, self.matplot_canvas)
+        self.matplot_start_bt = QPushButton("测试")
         matplot_ly.addWidget(self.matplotToolbar)
         matplot_ly.addWidget(self.matplot_canvas)
-        self.matplotDraw()
+        matplot_ly.addWidget(self.matplot_start_bt)
+        self.matplot_start_bt.clicked.connect(self.onMatplotStart)
+        self.updateMatplotPlot()
 
-    def matplotDraw(self, data=None):
-        if data is None:
-            ax = self.matplot_canvas.figure.add_subplot(111)
-            data = [random.random() for i in range(250)]
-            ax.plot(data, "r-", linewidth=0.5)
-            t = np.linspace(0, 10, 501)
-            ax.plot(t, np.tan(t), ".")
-            self.matplot_canvas.draw()
+    def testGenConf(self, fn_a, fn_g, fn_c):
+        """
+        testGenConf(lambda x: x % 3 + 1, lambda x: x % 3 + 1, lambda x: x + 1)
+        """
+        result = []
+        for i in range(6):
+            result.append(fn_a(i))
+            result.append(fn_g(i))
+            result.append(fn_c(i))
+        return result
+
+    def onMatplotStart(self, event):
+        self.__serialSendPack(0x03, self.testGenConf(lambda x: x % 3 + 1, lambda x: x % 3 + 1, lambda x: 1))
+        self.__serialSendPack(0x01)
+
+    def updateMatplotPlot(self):
+        self.matplot_ax.clear()
+        self.matplot_ax.grid(True)
+        if len(self.matplot_data.items()) == 0:
+            return
+        i = 0
+        for k, v in self.matplot_data.items():
+            self.matplot_ax.plot(v, PLAO_STYLES[i % len(PLAO_STYLES)], linewidth=0.5)
+            i += 1
+        self.matplot_canvas.draw()
+
+    def updateMatplotData(self, info):
+        length = info.content[6]
+        channel = info.content[7]
+        if len(info.content) != 2 * length + 9:
+            logger.error("error data length | {} --> {} | {}".format(len(info.content), length, info.text))
+            self.matplot_data[channel] = None
+            return
+        data = tuple((int.from_bytes(info.content[8 + i * 2 : 9 + i * 2], byteorder="little") for i in range(length)))
+        self.matplot_data[channel] = data
+        logger.debug("get data in channel | {} | {}".format(channel, data))
 
 
 if __name__ == "__main__":
