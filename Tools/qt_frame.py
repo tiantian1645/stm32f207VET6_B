@@ -11,13 +11,26 @@ import serial
 import serial.tools.list_ports
 import stackprinter
 from PyQt5.QtCore import QObject, QRunnable, Qt, QThreadPool, pyqtSignal, pyqtSlot
-from PyQt5.QtWidgets import QApplication, QComboBox, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QMainWindow, QPushButton, QWidget
+from PyQt5.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QPushButton,
+    QWidget,
+    QVBoxLayout,
+    QSizePolicy,
+)
 
 import dc201_pack
 from bytes_helper import bytesPuttyPrint
-from matplotlib.backends.backend_qt5agg import FigureCanvas
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
+import random
 
 BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
 TEMPERAUTRE_NAMES = ("下:", "上:")
@@ -128,14 +141,14 @@ class MainWindow(QMainWindow):
         self.createMotor()
         self.createTemperature()
         self.createSerial()
-        self.createMathplot()
+        self.createMatplot()
         widget = QWidget()
         layout = QGridLayout(widget)
         layout.addWidget(self.barcode_gb, 0, 0, 6, 1)
         layout.addWidget(self.motor_bg, 6, 0, 8, 1)
         layout.addWidget(self.temperautre_gb, 14, 0, 2, 1)
         layout.addWidget(self.serial_gb, 16, 0, 3, 1)
-        layout.addWidget(self.static_canvas, 0, 1, 19, 1)
+        layout.addWidget(self.matplot_wg, 0, 1, 19, 1)
         self.setCentralWidget(widget)
 
     def createBarcode(self):
@@ -144,12 +157,8 @@ class MainWindow(QMainWindow):
         self.barcode_lbs = [QLabel("*" * 10) for i in range(7)]
         self.motor_scan_bts = [QPushButton(BARCODE_NAMES[i]) for i in range(7)]
         for i in range(7):
-            if i == 6:
-                barcode_ly.addWidget(QLabel("QR"), i, 0)
-            else:
-                barcode_ly.addWidget(QLabel("B{:1d}".format(i + 1)), i, 0)
+            barcode_ly.addWidget(self.motor_scan_bts[i], i, 0)
             barcode_ly.addWidget(self.barcode_lbs[i], i, 1)
-            barcode_ly.addWidget(self.motor_scan_bts[i], i, 2)
         self.barcode_scan_bt = QPushButton("开始")
         barcode_ly.addWidget(self.barcode_scan_bt, 7, 0, 1, 2)
         self.barcode_scan_bt.clicked.connect(self.onBarcodeScan)
@@ -323,12 +332,25 @@ class MainWindow(QMainWindow):
         elif cmd_type == 0xB2:
             self.updateBarcode(info)
 
-    def createMathplot(self):
-        self.static_canvas = FigureCanvas(Figure(figsize=(5, 3)))
-        self.addToolBar(NavigationToolbar(self.static_canvas, self.static_canvas))
-        self._static_ax = self.static_canvas.figure.subplots()
-        t = np.linspace(0, 10, 501)
-        self._static_ax.plot(t, np.tan(t), ".")
+    def createMatplot(self):
+        self.matplot_wg = QWidget(self)
+        matplot_ly = QVBoxLayout(self.matplot_wg)
+        self.matplot_canvas = FigureCanvas(Figure(figsize=(10, 10), dpi=100, tight_layout=True))
+        self.matplot_wg.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.matplot_wg.updateGeometry()
+        self.matplotToolbar = NavigationToolbar(self.matplot_canvas, self.matplot_canvas)
+        matplot_ly.addWidget(self.matplotToolbar)
+        matplot_ly.addWidget(self.matplot_canvas)
+        self.matplotDraw()
+
+    def matplotDraw(self, data=None):
+        if data is None:
+            ax = self.matplot_canvas.figure.add_subplot(111)
+            data = [random.random() for i in range(250)]
+            ax.plot(data, "r-", linewidth=0.5)
+            t = np.linspace(0, 10, 501)
+            ax.plot(t, np.tan(t), ".")
+            self.matplot_canvas.draw()
 
 
 if __name__ == "__main__":
