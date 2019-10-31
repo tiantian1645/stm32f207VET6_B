@@ -559,7 +559,8 @@ BaseType_t comm_Data_Sample_Owari(void)
     uint8_t buffer[7];
     BaseType_t result;
 
-    result = comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_SAMP_OVER, buffer, 0);
+    result = comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_SAMP_OVER, buffer, 0);
+    comm_Out_SendTask_QueueEmitWithModify(buffer, 7, 0);
     return result;
 }
 
