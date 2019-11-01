@@ -41,15 +41,15 @@
 
 /* Register : ACC */
 /* Acceleration rate in step/s2, range 14.55 to 59590 steps/s2 */
-#define dSPIN_CONF_PARAM_ACC (2182.5)
+#define dSPIN_CONF_PARAM_ACC (2008.164)
 
 /* Register : DEC */
 /* Deceleration rate in step/s2, range 14.55 to 59590 steps/s2 */
-#define dSPIN_CONF_PARAM_DEC (2182.5)
+#define dSPIN_CONF_PARAM_DEC (2008.164)
 
 /* Register : MAX_SPEED */
 /* Maximum speed in step/s, range 15.25 to 15610 steps/s */
-#define dSPIN_CONF_PARAM_MAX_SPEED (800.0)
+#define dSPIN_CONF_PARAM_MAX_SPEED (793.457)
 
 /* Register : MIN_SPEED */
 /* Minimum speed in step/s, range 0 to 976.3 steps/s */
@@ -67,15 +67,15 @@
 
 /* Register : KVAL_RUN */
 /* Run duty cycle (torque) in %, range 0 to 99.6% */
-#define dSPIN_CONF_PARAM_KVAL_RUN (1054.69)
+#define dSPIN_CONF_PARAM_KVAL_RUN (1601.56)
 
 /* Register : KVAL_ACC */
 /* Acceleration duty cycle (torque) in %, range 0 to 99.6% */
-#define dSPIN_CONF_PARAM_KVAL_ACC (1054.69)
+#define dSPIN_CONF_PARAM_KVAL_ACC (1601.56)
 
 /* Register : KVAL_DEC */
 /* Deceleration duty cycle (torque) in %, range 0 to 99.6% */
-#define dSPIN_CONF_PARAM_KVAL_DEC (1054.69)
+#define dSPIN_CONF_PARAM_KVAL_DEC (1601.56)
 
 /* Register : CONFIG - field : EN_VSCOMP */
 /* Motor Supply Voltage Compensation enabling , enum dSPIN_CONFIG_EN_VSCOMP_TypeDef */
