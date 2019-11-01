@@ -9,9 +9,10 @@ import loguru
 import serial
 import serial.tools.list_ports
 import stackprinter
-from PyQt5.QtCore import QObject, QRunnable, Qt, QThreadPool, pyqtSignal, pyqtSlot, QTimer
+from PyQt5.QtCore import QObject, QRunnable, Qt, QThreadPool, QTimer, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import (
     QApplication,
+    QCheckBox,
     QComboBox,
     QGridLayout,
     QGroupBox,
@@ -19,18 +20,19 @@ from PyQt5.QtWidgets import (
     QLabel,
     QMainWindow,
     QPushButton,
-    QWidget,
-    QVBoxLayout,
     QSizePolicy,
-    QStatusBar
+    QSpinBox,
+    QStatusBar,
+    QVBoxLayout,
+    QWidget,
 )
 
 import dc201_pack
+import pyperclip
 from bytes_helper import bytesPuttyPrint
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
-
 
 BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
 TEMPERAUTRE_NAMES = ("下加热体:", "上加热体:")
@@ -45,6 +47,7 @@ class SeialWorkerSignals(QObject):
     error = pyqtSignal(tuple)
     result = pyqtSignal(object)
     serial_statistic = pyqtSignal(object)
+
 
 class SerialWorker(QRunnable):
     def __init__(self, serial, task_queue, logger=loguru.logger):
@@ -160,7 +163,7 @@ class MainWindow(QMainWindow):
         self.status_bar = QStatusBar(self)
         self.status_bar.layout().setContentsMargins(0, 5, 0, 0)
         self.status_bar.layout().setSpacing(0)
-        
+
         temperautre_wg = QWidget()
         temperautre_ly = QHBoxLayout(temperautre_wg)
         temperautre_ly.setContentsMargins(2, 2, 5, 5)
@@ -172,7 +175,7 @@ class MainWindow(QMainWindow):
 
         motor_tray_position_wg = QWidget()
         motor_tray_position_ly = QHBoxLayout(motor_tray_position_wg)
-        motor_tray_position_ly.setContentsMargins(0, 0, 0,0)
+        motor_tray_position_ly.setContentsMargins(0, 0, 0, 0)
         motor_tray_position_ly.setSpacing(5)
         self.motor_tray_position = QLabel("******")
         motor_tray_position_ly.addWidget(QLabel("托盘电机位置"))
@@ -248,7 +251,13 @@ class MainWindow(QMainWindow):
                 text = raw_bytes.decode("ascii")
             except Exception:
                 text = bytesPuttyPrint(raw_bytes)
-        self.barcode_lbs[channel - 1].setText(text)
+        chunks, chunk_size = len(text) // 13, 13
+        tip = "\n".join(text[i : i + chunk_size] for i in range(0, chunks, chunk_size))
+        self.barcode_lbs[channel - 1].setToolTip(tip)
+        if len(text) > 13:
+            self.barcode_lbs[channel - 1].setText("{}...".format(text[:10]))
+        else:
+            self.barcode_lbs[channel - 1].setText(text)
 
     def createMotor(self):
         self.motor_bg = QGroupBox("电机控制")
@@ -273,9 +282,11 @@ class MainWindow(QMainWindow):
         self.motor_tray_in_bt = QPushButton("进仓")
         self.motor_tray_scan_bt = QPushButton("扫码")
         self.motor_tray_out_bt = QPushButton("出仓")
+        self.motor_tray_debug_cb = QCheckBox("调试")
         motor_tray_ly.addWidget(self.motor_tray_in_bt, 0, 0)
         motor_tray_ly.addWidget(self.motor_tray_scan_bt, 1, 0)
         motor_tray_ly.addWidget(self.motor_tray_out_bt, 0, 1)
+        motor_tray_ly.addWidget(self.motor_tray_debug_cb, 1, 1)
 
         motor_ly.addWidget(self.motor_heater_bg, 0, 0, 1, 1)
         motor_ly.addWidget(self.motor_white_bg, 1, 0, 1, 1)
@@ -287,7 +298,10 @@ class MainWindow(QMainWindow):
         self.motor_white_od_bt.clicked.connect(self.onMotorWhiteOD)
         self.motor_tray_in_bt.clicked.connect(self.onMotorTrayIn)
         self.motor_tray_scan_bt.clicked.connect(self.onMotorTrayScan)
+        self.motor_tray_scan_bt.setEnabled(False)
         self.motor_tray_out_bt.clicked.connect(self.onMotorTrayOut)
+        self.motor_tray_debug_cb.setChecked(False)
+        self.motor_tray_debug_cb.stateChanged.connect(self.onMotorTrayDebug)
 
     def onMotorHeaterUp(self, event):
         self.__serialSendPack(0xD3, (0,))
@@ -302,13 +316,27 @@ class MainWindow(QMainWindow):
         self.__serialSendPack(0xD4, (1,))
 
     def onMotorTrayIn(self, event):
-        self.__serialSendPack(0xD1, (0,))
+        if self.motor_tray_debug_cb.isChecked():
+            self.__serialSendPack(0xD1, (0,))
+        else:
+            self.__serialSendPack(0x05)
 
     def onMotorTrayScan(self, event):
         self.__serialSendPack(0xD1, (1,))
 
     def onMotorTrayOut(self, event):
-        self.__serialSendPack(0xD1, (2,))
+        if self.motor_tray_debug_cb.isChecked():
+            self.__serialSendPack(0xD1, (2,))
+        else:
+            self.__serialSendPack(0x04)
+
+    def onMotorTrayDebug(self, event):
+        logger.debug("motor tray debug checkbox event | {}".format(event))
+        if event == 0:
+            self.motor_tray_scan_bt.setEnabled(False)
+        elif event == 2:
+            self.__serialSendPack(0xD3, (0,))
+            self.motor_tray_scan_bt.setEnabled(True)
 
     def onMotorScan(self, event, idx):
         logger.debug("click motor scan idx | {}".format(idx))
@@ -387,14 +415,14 @@ class MainWindow(QMainWindow):
             self.updateMatplotData(info)
         elif cmd_type == 0xB6:
             self.updateMatplotPlot()
-    
+
     def onSerialStatistic(self, info):
-        if info[0] == 'w':
+        if info[0] == "w":
             self.kirakira_send_lb.setStyleSheet("background-color : green; color : #3d3d3d;")
-            QTimer.singleShot(100, lambda : self.kirakira_send_lb.setStyleSheet("background-color : white; color : #3d3d3d;"))
-        elif info[0] == 'r':
+            QTimer.singleShot(100, lambda: self.kirakira_send_lb.setStyleSheet("background-color : white; color : #3d3d3d;"))
+        elif info[0] == "r":
             self.kirakira_recv_lb.setStyleSheet("background-color : red; color : #3d3d3d;")
-            QTimer.singleShot(100, lambda : self.kirakira_recv_lb.setStyleSheet("background-color : white; color : #3d3d3d;"))
+            QTimer.singleShot(100, lambda: self.kirakira_recv_lb.setStyleSheet("background-color : white; color : #3d3d3d;"))
 
     def createMatplot(self):
         self.matplot_data = {}
@@ -441,9 +469,12 @@ class MainWindow(QMainWindow):
         if len(self.matplot_data.items()) == 0:
             return
         i = 0
+        records = []
         for k, v in self.matplot_data.items():
             self.matplot_ax.plot(v, PLAO_STYLES[i % len(PLAO_STYLES)], linewidth=0.5, label=k)
             i += 1
+            records.append("{} | {}".format(k, v))
+        pyperclip.copy("\n".join(records))
         self.matplot_canvas.draw()
 
     def updateMatplotData(self, info):
