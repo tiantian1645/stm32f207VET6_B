@@ -256,7 +256,7 @@ static void motor_Task(void * argument)
                 }
                 comm_Data_Sample_Start(); /* 启动定时器同步发包 开始采样 */
                 for (;;) {
-                    xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(6000)); /* 等待任务通知 */
+                    xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(8500)); /* 等待任务通知 */
                     if (xResult != pdTRUE || xNotifyValue == eMotorNotifyValue_BR) {              /* 超时 或 收到中终止命令 直接退出循环 */
                         beep_Start_With_Conf(eBeep_Freq_mi, 500, 500, 3);                         /* 蜂鸣器输出调试 */
                         break;
@@ -265,6 +265,7 @@ static void motor_Task(void * argument)
                         beep_Conf_Set_Period_Cnt(1);                      /* 蜂鸣器配置 */
                         beep_Start_With_Loop();                           /* 蜂鸣器输出调试 */
                         white_Motor_PD();                                 /* 运动白板电机 PD位置 清零位置 */
+                        comm_Data_PD_Next_Flag_Mark();                    /* 标记发送下一包 */
                     } else if (xNotifyValue == eMotorNotifyValue_WH) {    /* 准备移动到白板位置 */
                         beep_Conf_Set_Period_Cnt(1);                      /* 蜂鸣器配置 */
                         beep_Start_With_Loop();                           /* 蜂鸣器输出调试 */

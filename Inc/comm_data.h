@@ -17,7 +17,7 @@
 #define COMM_DATA_SER_TX_RETRY_SUM ((COMM_DATA_SER_TX_RETRY_NUM) * (COMM_DATA_SER_TX_RETRY_INT))
 
 #define COMM_DATA_PD_TIMER_PRESCALER (12000 - 1)
-#define COMM_DATA_PD_TIMER_PERIOD (1000 - 1) /* 200 mS */
+#define COMM_DATA_PD_TIMER_PERIOD (100 - 1) /* 20 mS */
 
 /* Exported types ------------------------------------------------------------*/
 /* 采集板串口 接收数据定义*/
@@ -107,6 +107,8 @@ BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData);
 BaseType_t comm_Data_Sample_Send_Conf(void);
 
 BaseType_t comm_Data_Sample_Owari(void);
+
+void comm_Data_PD_Next_Flag_Mark(void);
 
 /* Private defines -----------------------------------------------------------*/
 

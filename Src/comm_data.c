@@ -66,6 +66,8 @@ static uint32_t gComm_Data_Sample_ISR_Cnt = 0;
 static uint8_t gComm_Data_Sample_PD_WH_Idx = 0xFF;
 static uint8_t gCoMM_Data_Sample_ISR_Buffer[16];
 
+static uint8_t gComm_Data_PD_Next_Flag = 0;
+
 /* Private constants ---------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -303,6 +305,21 @@ uint8_t gComm_Data_TIM_StartFlag_Check(void)
     return gComm_Data_TIM_StartFlag == 1;
 }
 
+uint8_t comm_Data_PD_Next_Flag_Get(void)
+{
+    return gComm_Data_PD_Next_Flag;
+}
+
+void comm_Data_PD_Next_Flag_Clear(void)
+{
+    gComm_Data_PD_Next_Flag = 0;
+}
+
+void comm_Data_PD_Next_Flag_Mark(void)
+{
+    gComm_Data_PD_Next_Flag = 1;
+}
+
 /**
  * @brief  串口定时器中断处理 用于同步发送开始采集信号
  * @note   200 mS 回调一次
@@ -318,9 +335,9 @@ void comm_Data_PD_Time_Deal_FromISR(void)
         pair_cnt = 0;
     }
 
-    if (gComm_Data_Sample_ISR_Cnt % 25 == 0) {                                                                /* 每 25 次  5S 构造一个新包  */
-        gCoMM_Data_Sample_ISR_Buffer[0] = (gComm_Data_Sample_ISR_Cnt / 25) % 2 + 1;                           /* 采样类型 白物质 -> PD */
-        gComm_Data_Sample_PD_WH_Idx_Set(gCoMM_Data_Sample_ISR_Buffer[0]);                                     /* 更新当前采样项目 */
+    if (gComm_Data_Sample_ISR_Cnt % 500 == 0 || comm_Data_PD_Next_Flag_Get()) { /* 每 500 次  10S 或者 存在下包标记 构造一个新包  */
+        gCoMM_Data_Sample_ISR_Buffer[0] = pair_cnt % 2 + 1;                     /* 采样类型 白物质 -> PD */
+        gComm_Data_Sample_PD_WH_Idx_Set(gCoMM_Data_Sample_ISR_Buffer[0]);       /* 更新当前采样项目 */
         length = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_START, gCoMM_Data_Sample_ISR_Buffer, 1); /* 构造下一个数据包 */
         last_idx = gCoMM_Data_Sample_ISR_Buffer[3];                                                           /* 记录帧号 */
 
@@ -329,8 +346,12 @@ void comm_Data_PD_Time_Deal_FromISR(void)
         } else {
             ++pair_cnt;
         }
-        start_cnt = gComm_Data_Sample_ISR_Cnt;                                                    /* 记录当前中断次数 */
-    } else if (gComm_Data_TIM_StartFlag_Check() && gComm_Data_RecvConfirm_Check(last_idx) == 0) { /* 其余时刻处理是否需要重发 收到的回应帧号不匹配 */
+        start_cnt = gComm_Data_Sample_ISR_Cnt; /* 记录当前中断次数 */
+        if (comm_Data_PD_Next_Flag_Get()) {
+            comm_Data_PD_Next_Flag_Clear();
+        }
+    } else if (gComm_Data_Sample_ISR_Cnt % 10 == 0 && gComm_Data_TIM_StartFlag_Check() && /* 其余时刻 每10次 200mS 处理是否需要重发 */
+               gComm_Data_RecvConfirm_Check(last_idx) == 0) {                             /* 收到的回应帧号不匹配 */
 
         if (HAL_UART_Transmit_DMA(&COMM_DATA_UART_HANDLE, gCoMM_Data_Sample_ISR_Buffer, length) != HAL_OK) { /* 执行重发 */
             FL_Error_Handler(__FILE__, __LINE__);
