@@ -6,11 +6,10 @@ import sys
 import time
 
 import loguru
-import numpy as np
 import serial
 import serial.tools.list_ports
 import stackprinter
-from PyQt5.QtCore import QObject, QRunnable, Qt, QThreadPool, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import QObject, QRunnable, Qt, QThreadPool, pyqtSignal, pyqtSlot, QTimer
 from PyQt5.QtWidgets import (
     QApplication,
     QComboBox,
@@ -23,6 +22,7 @@ from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QSizePolicy,
+    QStatusBar
 )
 
 import dc201_pack
@@ -33,7 +33,7 @@ from matplotlib.figure import Figure
 
 
 BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
-TEMPERAUTRE_NAMES = ("下:", "上:")
+TEMPERAUTRE_NAMES = ("下加热体:", "上加热体:")
 PLAO_STYLES = ("r^-", "gv-", "b<-", "c>-", "m*-", "k+-")
 
 logger = loguru.logger
@@ -44,7 +44,7 @@ class SeialWorkerSignals(QObject):
     finished = pyqtSignal()
     error = pyqtSignal(tuple)
     result = pyqtSignal(object)
-
+    serial_statistic = pyqtSignal(object)
 
 class SerialWorker(QRunnable):
     def __init__(self, serial, task_queue, logger=loguru.logger):
@@ -84,6 +84,7 @@ class SerialWorker(QRunnable):
                 if isinstance(write_data, bytes):
                     logger.debug("serial write data | {}".format(bytesPuttyPrint(write_data)))
                     self.serial.write(write_data)
+                    self.signals.serial_statistic.emit(("w", write_data))
                 elif write_data is not None:
                     self.logger.error("write data type error | {}".format(write_data))
 
@@ -93,6 +94,7 @@ class SerialWorker(QRunnable):
                     continue
 
                 self.logger.debug("get raw bytes | {}".format(bytesPuttyPrint(recv_data)))
+                self.signals.serial_statistic.emit(("r", recv_data))
                 recv_buffer += recv_data
                 if len(recv_buffer) < 7:
                     continue
@@ -103,9 +105,10 @@ class SerialWorker(QRunnable):
                         ack = recv_pack[3]
                         fun_code = recv_pack[5]
                         if fun_code != 0xAA:
-                            send_data = self.dd.buildPack(0x13, 0xFF - ack, 0xAA, (ack,))
-                            self.serial.write(send_data)
-                            self.logger.warning("send pack | {}".format(bytesPuttyPrint(send_data)))
+                            write_data = self.dd.buildPack(0x13, 0xFF - ack, 0xAA, (ack,))
+                            self.serial.write(write_data)
+                            self.signals.serial_statistic.emit(("w", write_data))
+                            self.logger.warning("send pack | {}".format(bytesPuttyPrint(write_data)))
                             self.signals.result.emit(info)
                 if info is not None:
                     if info.is_head and info.is_crc:
@@ -140,17 +143,77 @@ class MainWindow(QMainWindow):
     def initUI(self):
         self.createBarcode()
         self.createMotor()
-        self.createTemperature()
         self.createSerial()
         self.createMatplot()
+        self.createStatusBar()
         widget = QWidget()
         layout = QGridLayout(widget)
         layout.addWidget(self.barcode_gb, 0, 0, 6, 1)
         layout.addWidget(self.motor_bg, 6, 0, 8, 1)
-        layout.addWidget(self.temperautre_gb, 14, 0, 2, 1)
-        layout.addWidget(self.serial_gb, 16, 0, 3, 1)
-        layout.addWidget(self.matplot_wg, 0, 1, 19, 1)
+        layout.addWidget(self.serial_gb, 14, 0, 3, 1)
+        layout.addWidget(self.matplot_wg, 0, 1, 17, 1)
+        layout.setContentsMargins(0, 5, 0, 0)
+        layout.setSpacing(0)
         self.setCentralWidget(widget)
+
+    def createStatusBar(self):
+        self.status_bar = QStatusBar(self)
+        self.status_bar.layout().setContentsMargins(0, 5, 0, 0)
+        self.status_bar.layout().setSpacing(0)
+        
+        temperautre_wg = QWidget()
+        temperautre_ly = QHBoxLayout(temperautre_wg)
+        temperautre_ly.setContentsMargins(2, 2, 5, 5)
+        temperautre_ly.setSpacing(5)
+        self.temperautre_lbs = [QLabel("-" * 8) for _ in TEMPERAUTRE_NAMES]
+        for i, name in enumerate(TEMPERAUTRE_NAMES):
+            temperautre_ly.addWidget(QLabel(name))
+            temperautre_ly.addWidget(self.temperautre_lbs[i])
+
+        motor_tray_position_wg = QWidget()
+        motor_tray_position_ly = QHBoxLayout(motor_tray_position_wg)
+        motor_tray_position_ly.setContentsMargins(0, 0, 0,0)
+        motor_tray_position_ly.setSpacing(5)
+        self.motor_tray_position = QLabel("******")
+        motor_tray_position_ly.addWidget(QLabel("托盘电机位置"))
+        motor_tray_position_ly.addWidget(self.motor_tray_position)
+
+        kirakira_wg = QWidget()
+        kirakira_ly = QHBoxLayout(kirakira_wg)
+        kirakira_ly.setContentsMargins(2, 2, 5, 5)
+        kirakira_ly.setSpacing(5)
+        self.kirakira_recv_lb = QLabel("    ")
+        self.kirakira_send_lb = QLabel("    ")
+        kirakira_ly.addWidget(QLabel("发送"))
+        kirakira_ly.addWidget(self.kirakira_send_lb)
+        kirakira_ly.addWidget(QLabel("接收"))
+        kirakira_ly.addWidget(self.kirakira_recv_lb)
+
+        self.status_bar.addWidget(temperautre_wg, 0)
+        self.status_bar.addWidget(motor_tray_position_wg, 0)
+        self.status_bar.addWidget(kirakira_wg, 0)
+        self.setStatusBar(self.status_bar)
+
+    def updateTemperautre(self, info):
+        temp_btm = int.from_bytes(info.content[6:8], byteorder="little") / 100
+        temp_top = int.from_bytes(info.content[8:10], byteorder="little") / 100
+        self.temperautre_lbs[0].setText("{:03.2f}℃".format(temp_btm))
+        self.temperautre_lbs[1].setText("{:03.2f}℃".format(temp_top))
+
+    def updateMotorTrayPosition(self, info):
+        position = info.content[6]
+        if position == 0:
+            self.motor_tray_position.setStyleSheet("background-color: red;")
+            self.motor_tray_position.setText("故障")
+        elif position == 1:
+            self.motor_tray_position.setStyleSheet("background-color: green;")
+            self.motor_tray_position.setText("检测位")
+        elif position == 2:
+            self.motor_tray_position.setStyleSheet("background-color: yellow;")
+            self.motor_tray_position.setText("加样位")
+        else:
+            self.motor_tray_position.setStyleSheet("background-color: white;")
+            self.motor_tray_position.setText("错误报文")
 
     def createBarcode(self):
         self.barcode_gb = QGroupBox("扫码")
@@ -252,21 +315,6 @@ class MainWindow(QMainWindow):
         self.barcode_lbs[idx].setText("*" * 10)
         self.__serialSendPack(0xD0, (idx,))
 
-    def createTemperature(self):
-        self.temperautre_gb = QGroupBox("加热体温度")
-        temperautre_ly = QHBoxLayout(self.temperautre_gb)
-        self.temperautre_lbs = [QLabel("-" * 8) for _ in TEMPERAUTRE_NAMES]
-        for i, name in enumerate(TEMPERAUTRE_NAMES):
-            temperautre_ly.addWidget(QLabel(name))
-            temperautre_ly.addWidget(self.temperautre_lbs[i])
-            temperautre_ly.addSpacing(1)
-
-    def updateTemperautre(self, info):
-        temp_btm = int.from_bytes(info.content[6:8], byteorder="little") / 100
-        temp_top = int.from_bytes(info.content[8:10], byteorder="little") / 100
-        self.temperautre_lbs[0].setText("{:03.2f}℃".format(temp_btm))
-        self.temperautre_lbs[1].setText("{:03.2f}℃".format(temp_top))
-
     def createSerial(self):
         self.serial_gb = QGroupBox("串口")
         serial_ly = QGridLayout(self.serial_gb)
@@ -304,6 +352,7 @@ class MainWindow(QMainWindow):
             self.worker.signals.finished.connect(self.onSerialWorkerFinish)
             self.worker.signals.error.connect(self.onSerialWorkerError)
             self.worker.signals.result.connect(self.onSerialWorkerResult)
+            self.worker.signals.serial_statistic.connect(self.onSerialStatistic)
             self.threadpool.start(self.worker)
             self.task_queue.put(self.dd.buildPack(self.device_id, self.getPackIndex(), 0x07))
             logger.info("port update {} --> {}".format(old_port, self.serial.port))
@@ -330,12 +379,22 @@ class MainWindow(QMainWindow):
         cmd_type = info.content[5]
         if cmd_type == 0xA0:
             self.updateTemperautre(info)
+        if cmd_type == 0xB0:
+            self.updateMotorTrayPosition(info)
         elif cmd_type == 0xB2:
             self.updateBarcode(info)
         elif cmd_type == 0xB3:
             self.updateMatplotData(info)
         elif cmd_type == 0xB6:
             self.updateMatplotPlot()
+    
+    def onSerialStatistic(self, info):
+        if info[0] == 'w':
+            self.kirakira_send_lb.setStyleSheet("background-color : green; color : #3d3d3d;")
+            QTimer.singleShot(100, lambda : self.kirakira_send_lb.setStyleSheet("background-color : white; color : #3d3d3d;"))
+        elif info[0] == 'r':
+            self.kirakira_recv_lb.setStyleSheet("background-color : red; color : #3d3d3d;")
+            QTimer.singleShot(100, lambda : self.kirakira_recv_lb.setStyleSheet("background-color : white; color : #3d3d3d;"))
 
     def createMatplot(self):
         self.matplot_data = {}
@@ -347,10 +406,15 @@ class MainWindow(QMainWindow):
         self.matplot_wg.updateGeometry()
         self.matplotToolbar = NavigationToolbar(self.matplot_canvas, self.matplot_canvas)
         self.matplot_start_bt = QPushButton("测试")
+        self.matplot_cancel_bt = QPushButton("取消")
         matplot_ly.addWidget(self.matplotToolbar)
         matplot_ly.addWidget(self.matplot_canvas)
-        matplot_ly.addWidget(self.matplot_start_bt)
+        matplot_bt_ly = QHBoxLayout()
+        matplot_bt_ly.addWidget(self.matplot_start_bt)
+        matplot_bt_ly.addWidget(self.matplot_cancel_bt)
+        matplot_ly.addLayout(matplot_bt_ly)
         self.matplot_start_bt.clicked.connect(self.onMatplotStart)
+        self.matplot_cancel_bt.clicked.connect(self.onMatplotCancel)
         self.updateMatplotPlot()
 
     def testGenConf(self, fn_a, fn_g, fn_c):
@@ -365,8 +429,11 @@ class MainWindow(QMainWindow):
         return result
 
     def onMatplotStart(self, event):
-        self.__serialSendPack(0x03, self.testGenConf(lambda x: x % 3 + 1, lambda x: x % 3 + 1, lambda x: 1))
+        self.__serialSendPack(0x03, self.testGenConf(lambda x: x % 3 + 1, lambda x: x % 3 + 1, lambda x: 6))
         self.__serialSendPack(0x01)
+
+    def onMatplotCancel(self, event):
+        self.__serialSendPack(0x02)
 
     def updateMatplotPlot(self):
         self.matplot_ax.clear()
@@ -375,7 +442,7 @@ class MainWindow(QMainWindow):
             return
         i = 0
         for k, v in self.matplot_data.items():
-            self.matplot_ax.plot(v, PLAO_STYLES[i % len(PLAO_STYLES)], linewidth=0.5)
+            self.matplot_ax.plot(v, PLAO_STYLES[i % len(PLAO_STYLES)], linewidth=0.5, label=k)
             i += 1
         self.matplot_canvas.draw()
 
