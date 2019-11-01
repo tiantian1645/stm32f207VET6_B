@@ -131,7 +131,7 @@ class SerialWorker(QRunnable):
 class MainWindow(QMainWindow):
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
-        self.setWindowTitle("My Awesome App")
+        self.setWindowTitle("DC201 工装测试")
         self.serial = serial.Serial(port=None, baudrate=115200, timeout=0.01)
         self.task_queue = queue.Queue()
         self.threadpool = QThreadPool()
@@ -158,6 +158,9 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 5, 0, 0)
         layout.setSpacing(0)
         self.setCentralWidget(widget)
+
+    def logMainwindowSize(self, event):
+        logger.debug("main window size | {}".format(event))
 
     def createStatusBar(self):
         self.status_bar = QStatusBar(self)
@@ -441,6 +444,27 @@ class MainWindow(QMainWindow):
         matplot_bt_ly.addWidget(self.matplot_start_bt)
         matplot_bt_ly.addWidget(self.matplot_cancel_bt)
         matplot_ly.addLayout(matplot_bt_ly)
+
+        matplot_conf_wg = QWidget()
+        matplot_conf_ly = QHBoxLayout(matplot_conf_wg)
+        self.matplot_conf_houhou_cs = [QComboBox() for i in range(6)]
+        self.matplot_conf_wavelength_cs = [QComboBox() for i in range(6)]
+        self.matplot_conf_point_sps = [QSpinBox() for i in range(6)]
+        for i in range(6):
+            self.matplot_conf_houhou_cs[i].addItems(("无项目", "速率法", "终点法", "两点终点法"))
+            self.matplot_conf_houhou_cs[i].setMaximumWidth(90)
+            self.matplot_conf_wavelength_cs[i].addItems(("610", "550", "405"))
+            self.matplot_conf_wavelength_cs[i].setMaximumWidth(90)
+            self.matplot_conf_point_sps[i].setRange(0, 120)
+            self.matplot_conf_point_sps[i].setMaximumWidth(90)
+            matplot_conf_sub_gb = QGroupBox(BARCODE_NAMES[i])
+            matplot_conf_sub_ly = QVBoxLayout(matplot_conf_sub_gb)
+            matplot_conf_sub_ly.addWidget(self.matplot_conf_houhou_cs[i])
+            matplot_conf_sub_ly.addWidget(self.matplot_conf_wavelength_cs[i])
+            matplot_conf_sub_ly.addWidget(self.matplot_conf_point_sps[i])
+            matplot_conf_ly.addWidget(matplot_conf_sub_gb)
+        matplot_ly.addWidget(matplot_conf_wg)
+
         self.matplot_start_bt.clicked.connect(self.onMatplotStart)
         self.matplot_cancel_bt.clicked.connect(self.onMatplotCancel)
         self.updateMatplotPlot()
@@ -457,7 +481,13 @@ class MainWindow(QMainWindow):
         return result
 
     def onMatplotStart(self, event):
-        self.__serialSendPack(0x03, self.testGenConf(lambda x: x % 3 + 1, lambda x: x % 3 + 1, lambda x: 6))
+        conf = []
+        for i in range(6):
+            conf.append(self.matplot_conf_houhou_cs[i].currentIndex())
+            conf.append(self.matplot_conf_wavelength_cs[i].currentIndex() + 1)
+            conf.append(self.matplot_conf_point_sps[i].value())
+        logger.debug("get matplot cnf | {}".format(conf))
+        self.__serialSendPack(0x03, conf)
         self.__serialSendPack(0x01)
 
     def onMatplotCancel(self, event):
