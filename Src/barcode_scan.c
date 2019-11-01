@@ -78,7 +78,7 @@ sBarcodeStatistic gBarcodeStatistics[7];
 
 TaskHandle_t barcodeTaskHandle = NULL;
 
-uint8_t gBarcodeIsContinuousScan = 0;
+static uint8_t gBarcodeInterrupt = 0;
 
 /* Private constants ---------------------------------------------------------*/
 const char BAR_SAM_LDH_[] = "1419190801";
@@ -99,6 +99,35 @@ const eBarcodeIndex cBarCodeIndex[] = {
 /* Private function prototypes -----------------------------------------------*/
 
 /* Private user code ---------------------------------------------------------*/
+/**
+ * @brief  扫码流程中断标志 获取
+ * @param  None
+ * @retval None
+ */
+uint8_t barcode_Interrupt_Flag_Get(void)
+{
+    return (gBarcodeInterrupt > 0) ? (1) : (0);
+}
+
+/**
+ * @brief  扫码流程中断标志 标记
+ * @param  None
+ * @retval None
+ */
+void barcode_Interrupt_Flag_Mark(void)
+{
+    gBarcodeInterrupt = 1;
+}
+
+/**
+ * @brief  扫码流程中断标志 清除
+ * @param  None
+ * @retval None
+ */
+void barcode_Interrupt_Flag_Clear(void)
+{
+    gBarcodeInterrupt = 0;
+}
 
 /**
  * @brief  初始化扫码结果缓存
@@ -591,13 +620,20 @@ eBarcodeState barcode_Scan_Whole(void)
     uint8_t i;
     eBarcodeState result;
 
+    if (barcode_Interrupt_Flag_Get()) {
+        return eBarcodeState_Interrupt;
+    }
+
     if (barcode_Scan_By_Index(eBarcodeIndex_6) != eBarcodeState_Error) { /* 先扫二维码 */
         if (gBarcodeDecodeResult[0].length > 0) {                        /* 扫码结果非空 */
             return eBarcodeState_OK;                                     /* 提前返回 */
         }
     }
 
-    for (i = 0; i < ARRAY_LEN(cBarCodeIndex); ++i) {      /* 不存在有效QR Code */
+    for (i = 0; i < ARRAY_LEN(cBarCodeIndex); ++i) { /* 不存在有效QR Code */
+        if (barcode_Interrupt_Flag_Get()) {
+            return eBarcodeState_Interrupt;
+        }
         result = barcode_Scan_By_Index(cBarCodeIndex[i]); /* 扫码位置索引倒序 */
         if (result == eBarcodeState_Error) {              /* 扫码电机故障 */
             return eBarcodeState_Error;                   /* 提前返回 */

@@ -168,6 +168,20 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
     }
 }
 
+void motor_Sample_Owari(void)
+{
+    heat_Motor_Up();                             /* 采样结束 抬起加热体电机 */
+    white_Motor_PD();                            /* 运动白板电机 PD位置 清零位置 */
+    motor_Tray_Move_By_Index(eTrayIndex_2);      /* 出仓 */
+    barcode_Motor_Run_By_Index(eBarcodeIndex_0); /* 复位 */
+    barcode_Motor_Run_By_Index(eBarcodeIndex_6); /* 二维码位置就位 */
+    gComm_Data_Sample_Max_Point_Clear();         /* 清除需要测试点数 */
+    temp_Upload_Resume();                        /* 恢复温度上送 */
+    led_Mode_Set(eLED_Mode_Keep_Green);          /* LED 绿灯常亮 */
+    barcode_Interrupt_Flag_Clear();              /* 清除打断标志位 */
+    comm_Data_Sample_Owari();                    /* 上送采样结束报文 */
+}
+
 /**
  * @brief  电机任务
  * @param  argument: Not used
@@ -180,6 +194,7 @@ static void motor_Task(void * argument)
     sMotor_Fun mf;
     uint32_t cnt;
     uint8_t buffer[9];
+    eBarcodeState barcode_result;
 
     motor_Resource_Init(); /* 电机驱动、位置初始化 */
     barcode_Init();        /* 扫码枪初始化 */
@@ -218,20 +233,28 @@ static void motor_Task(void * argument)
                 heat_Motor_Down();                      /* 砸下上加热体电机 */
                 white_Motor_WH();                       /* 运动白板电机 */
                 break;
-            case eMotor_Fun_Sample_Start:                     /* 准备测试 */
-                led_Mode_Set(eLED_Mode_Kirakira_Green);       /* LED 绿灯闪烁 */
-                motor_Tray_Move_By_Index(eTrayIndex_1);       /* 运动托盘电机 */
-                barcode_Scan_Whole();                         /* 执行扫码 */
-                motor_Tray_Move_By_Index(eTrayIndex_0);       /* 运动托盘电机 */
+            case eMotor_Fun_Sample_Start:                        /* 准备测试 */
+                led_Mode_Set(eLED_Mode_Kirakira_Green);          /* LED 绿灯闪烁 */
+                motor_Tray_Move_By_Index(eTrayIndex_1);          /* 扫码位置 */
+                barcode_result = barcode_Scan_Whole();           /* 执行扫码 */
+                if (barcode_result == eBarcodeState_Interrupt) { /* 中途打断 */
+                    motor_Sample_Owari();                        /* 清理 */
+                    break;                                       /* 提前结束 */
+                }
+                motor_Tray_Move_By_Index(eTrayIndex_0);       /* 入仓 */
                 heat_Motor_Down();                            /* 砸下上加热体电机 */
                 if (gComm_Data_Sample_Max_Point_Get() == 0) { /* 无测试项目 */
                     temp_Upload_Resume();                     /* 恢复温度上送 */
                     led_Mode_Set(eLED_Mode_Keep_Green);       /* LED 绿灯常亮 */
+                    barcode_Interrupt_Flag_Clear();           /* 清除打断标志位 */
                     break;                                    /* 提前结束 */
                 }
-                white_Motor_WH();                                 /* 运动白板电机 白物质位置 */
-                xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0); /* 清除任务通知 */
-                comm_Data_Sample_Start();                         /* 启动定时器同步发包 开始采样 */
+                white_Motor_WH();                   /* 运动白板电机 白物质位置 */
+                if (barcode_Interrupt_Flag_Get()) { /* 中途打断 */
+                    motor_Sample_Owari();           /* 清理 */
+                    break;                          /* 提前结束 */
+                }
+                comm_Data_Sample_Start(); /* 启动定时器同步发包 开始采样 */
                 for (;;) {
                     xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(6000)); /* 等待任务通知 */
                     if (xResult != pdTRUE || xNotifyValue == eMotorNotifyValue_BR) {              /* 超时 或 收到中终止命令 直接退出循环 */
@@ -253,15 +276,7 @@ static void motor_Task(void * argument)
                         break;
                     }
                 }
-                heat_Motor_Up();                             /* 采样结束 抬起加热体电机 */
-                white_Motor_PD();                            /* 运动白板电机 PD位置 清零位置 */
-                motor_Tray_Move_By_Index(eTrayIndex_2);      /* 运动托盘电机 */
-                barcode_Motor_Run_By_Index(eBarcodeIndex_0); /* 复位 */
-                barcode_Motor_Run_By_Index(eBarcodeIndex_6); /* 二位码位置就位 */
-                comm_Data_Sample_Owari();                    /* 上送采样结束报文 */
-                gComm_Data_Sample_Max_Point_Clear();         /* 清除需要测试点数 */
-                temp_Upload_Resume();                        /* 恢复温度上送 */
-                led_Mode_Set(eLED_Mode_Keep_Green);          /* LED 绿灯常亮 */
+                motor_Sample_Owari(); /* 清理 */
                 break;
             case eMotor_Fun_SYK:            /* 交错 */
                 if (heat_Motor_Up() != 0) { /* 抬起上加热体电机 失败 */
@@ -374,6 +389,7 @@ static void motor_Task(void * argument)
             default:
                 break;
         }
-        xQueueReceive(motor_Fun_Queue_Handle, &mf, portMAX_DELAY);
+        xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0); /* 清除任务通知 */
+        xQueueReceive(motor_Fun_Queue_Handle, &mf, 0);
     }
 }

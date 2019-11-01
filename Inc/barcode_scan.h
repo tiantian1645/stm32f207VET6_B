@@ -33,6 +33,7 @@ typedef enum {
     eBarcodeState_OK,
     eBarcodeState_Tiemout,
     eBarcodeState_Busy,
+    eBarcodeState_Interrupt,
     eBarcodeState_Error,
 } eBarcodeState;
 
@@ -61,6 +62,10 @@ eBarcodeState barcode_Motor_Run_By_Index(eBarcodeIndex index);
 eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index);
 eBarcodeState barcode_Scan_Whole(void);
 eBarcodeState barcode_Read_From_Serial(uint8_t * pOut_length, uint8_t * pData, uint8_t max_read_length, uint32_t timeout);
+
+uint8_t barcode_Interrupt_Flag_Get(void);
+void barcode_Interrupt_Flag_Mark(void);
+void barcode_Interrupt_Flag_Clear(void);
 
 /* Private defines -----------------------------------------------------------*/
 
