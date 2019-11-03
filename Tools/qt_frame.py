@@ -2,10 +2,12 @@
 
 import functools
 import queue
+import random
 import sys
 import time
 
 import loguru
+import pyperclip
 import serial
 import serial.tools.list_ports
 import stackprinter
@@ -26,17 +28,15 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from pyqtgraph import GraphicsLayoutWidget, LabelItem, SignalProxy, mkPen
 
 import dc201_pack
-import pyperclip
 from bytes_helper import bytesPuttyPrint
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-from matplotlib.figure import Figure
 
 BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
 TEMPERAUTRE_NAMES = ("下加热体:", "上加热体:")
-PLAO_STYLES = ("r^-", "gv-", "b<-", "c>-", "m*-", "k+-")
+LINE_COLORS = ("b", "g", "r", "c", "m", "y", "k", "w")
+LINE_SYMBOLS = ("o", "s", "t", "d", "+")
 
 logger = loguru.logger
 
@@ -428,19 +428,23 @@ class MainWindow(QMainWindow):
             QTimer.singleShot(100, lambda: self.kirakira_recv_lb.setStyleSheet("background-color : white; color : #3d3d3d;"))
 
     def createMatplot(self):
-        self.matplot_data = {}
+        self.matplot_data = dict()
         self.matplot_wg = QWidget(self)
         matplot_ly = QVBoxLayout(self.matplot_wg)
-        self.matplot_canvas = FigureCanvas(Figure(figsize=(10, 10), dpi=100, tight_layout=True))
-        self.matplot_ax = self.matplot_canvas.figure.add_subplot(111)
-        self.matplot_wg.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.matplot_wg.updateGeometry()
-        self.matplotToolbar = NavigationToolbar(self.matplot_canvas, self.matplot_canvas)
+
+        self.plot_win = GraphicsLayoutWidget()
+        self.plot_win.setBackground((0, 0, 0, 255))
+        self.plot_lb = LabelItem(justify="right")
+        self.plot_win.addItem(self.plot_lb)
+        self.plot_wg = self.plot_win.addPlot(row=0, col=0)
+        self.plot_wg.addLegend()
+        self.plot_wg.showGrid(x=True, y=True)
+        self.plot_proxy = SignalProxy(self.plot_wg.scene().sigMouseMoved, rateLimit=60, slot=self.onPlotMouseMove)
+        matplot_ly.addWidget(self.plot_win)
+
+        matplot_bt_ly = QHBoxLayout()
         self.matplot_start_bt = QPushButton("测试")
         self.matplot_cancel_bt = QPushButton("取消")
-        matplot_ly.addWidget(self.matplotToolbar)
-        matplot_ly.addWidget(self.matplot_canvas)
-        matplot_bt_ly = QHBoxLayout()
         matplot_bt_ly.addWidget(self.matplot_start_bt)
         matplot_bt_ly.addWidget(self.matplot_cancel_bt)
         matplot_ly.addLayout(matplot_bt_ly)
@@ -469,16 +473,13 @@ class MainWindow(QMainWindow):
         self.matplot_cancel_bt.clicked.connect(self.onMatplotCancel)
         self.updateMatplotPlot()
 
-    def testGenConf(self, fn_a, fn_g, fn_c):
-        """
-        testGenConf(lambda x: x % 3 + 1, lambda x: x % 3 + 1, lambda x: x + 1)
-        """
-        result = []
-        for i in range(6):
-            result.append(fn_a(i))
-            result.append(fn_g(i))
-            result.append(fn_c(i))
-        return result
+    def onPlotMouseMove(self, event):
+        logger.debug("on plot mouse event | {}".format(event[0]))
+        mousePoint = self.plot_wg.vb.mapSceneToView(event[0])
+        self.plot_lb.setText(
+            "<span style='font-size: 14pt; color: white'> x = %0.2f, <span style='color: white'> y = %0.2f</span>" % (mousePoint.x(), mousePoint.y())
+        )
+        logger.debug("{} | {}".format(mousePoint.x(), mousePoint.y()))
 
     def onMatplotStart(self, event):
         conf = []
@@ -489,23 +490,34 @@ class MainWindow(QMainWindow):
         logger.debug("get matplot cnf | {}".format(conf))
         self.__serialSendPack(0x03, conf)
         self.__serialSendPack(0x01)
+        self.updateMatplotPlot()
 
     def onMatplotCancel(self, event):
         self.__serialSendPack(0x02)
 
     def updateMatplotPlot(self):
-        self.matplot_ax.clear()
-        self.matplot_ax.grid(True)
+        self.matplot_data = {
+            1: [random.randint(0, 100) for _ in range(10)],
+            2: [random.randint(-50, 100) for _ in range(10)],
+            3: [random.randint(0, 100) for _ in range(10)],
+            4: [random.randint(-50, 100) for _ in range(10)],
+            5: [random.randint(0, 100) for _ in range(10)],
+            6: [random.randint(-50, 100) for _ in range(10)],
+        }
+        self.plot_wg.clear()
         if len(self.matplot_data.items()) == 0:
             return
         i = 0
         records = []
         for k, v in self.matplot_data.items():
-            self.matplot_ax.plot(v, PLAO_STYLES[i % len(PLAO_STYLES)], linewidth=0.5, label=k)
+            color = LINE_COLORS[i]
+            symbol = LINE_SYMBOLS[i % len(LINE_SYMBOLS)]
+            self.plot_wg.plot(
+                v, name="{}{}".format("\u00A0", k), pen=mkPen(color=color), symbol=symbol, symbolSize=10, symbolBrush=(color),
+            )
             i += 1
             records.append("{} | {}".format(k, v))
         pyperclip.copy("\n".join(records))
-        self.matplot_canvas.draw()
 
     def updateMatplotData(self, info):
         length = info.content[6]
