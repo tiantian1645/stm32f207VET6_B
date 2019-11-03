@@ -6,5 +6,8 @@
         "--ignore=E24,E203",
         "--line-length=150"
     ],
-    "python.formatting.provider": "black"
+    "python.formatting.provider": "black",
+    "python.formatting.blackArgs": [
+        "--line-length=150"
+    ]
 }
