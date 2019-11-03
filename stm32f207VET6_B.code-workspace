@@ -1,7 +1,9 @@
 {
-	"folders": [{
-		"path": "."
-	}],
+	"folders": [
+		{
+			"path": "."
+		}
+	],
 	"settings": {
 		"clang-format.executable": "C:\\Users\\Administrator\\.vscode\\extensions\\ms-vscode.cpptools-0.25.1\\LLVM\\bin\\clang-format.exe",
 		"C_Cpp.clang_format_sortIncludes": false,
@@ -21,6 +23,9 @@
 			"error.h": "c",
 			"comm_main.h": "c",
 			"protocol.h": "c"
-		}
+		},
+		"python.autoComplete.extraPaths": [
+			"Tools/"
+		]
 	}
 }

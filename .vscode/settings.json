@@ -5,5 +5,6 @@
     "python.linting.flake8Args": [
         "--ignore=E24,E203",
         "--line-length=150"
-    ]
+    ],
+    "python.formatting.provider": "black"
 }
