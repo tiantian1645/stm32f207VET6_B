@@ -2,7 +2,6 @@
 
 import functools
 import queue
-import random
 import sys
 import time
 
@@ -435,7 +434,7 @@ class MainWindow(QMainWindow):
         self.plot_win = GraphicsLayoutWidget()
         self.plot_win.setBackground((0, 0, 0, 255))
         self.plot_lb = LabelItem(justify="right")
-        self.plot_win.addItem(self.plot_lb)
+        self.plot_win.addItem(self.plot_lb, 0, 0)
         self.plot_wg = self.plot_win.addPlot(row=0, col=0)
         self.plot_wg.addLegend()
         self.plot_wg.showGrid(x=True, y=True)
@@ -474,12 +473,10 @@ class MainWindow(QMainWindow):
         self.updateMatplotPlot()
 
     def onPlotMouseMove(self, event):
-        logger.debug("on plot mouse event | {}".format(event[0]))
-        mousePoint = self.plot_wg.vb.mapSceneToView(event[0])
+        mouse_point = self.plot_wg.vb.mapSceneToView(event[0])
         self.plot_lb.setText(
-            "<span style='font-size: 14pt; color: white'> x = %0.2f, <span style='color: white'> y = %0.2f</span>" % (mousePoint.x(), mousePoint.y())
+            "<span style='font-size: 14pt; color: white'> x = %0.2f, <span style='color: white'> y = %0.2f</span>" % (mouse_point.x(), mouse_point.y())
         )
-        logger.debug("{} | {}".format(mousePoint.x(), mousePoint.y()))
 
     def onMatplotStart(self, event):
         conf = []
@@ -490,20 +487,11 @@ class MainWindow(QMainWindow):
         logger.debug("get matplot cnf | {}".format(conf))
         self.__serialSendPack(0x03, conf)
         self.__serialSendPack(0x01)
-        self.updateMatplotPlot()
 
     def onMatplotCancel(self, event):
         self.__serialSendPack(0x02)
 
     def updateMatplotPlot(self):
-        self.matplot_data = {
-            1: [random.randint(0, 100) for _ in range(10)],
-            2: [random.randint(-50, 100) for _ in range(10)],
-            3: [random.randint(0, 100) for _ in range(10)],
-            4: [random.randint(-50, 100) for _ in range(10)],
-            5: [random.randint(0, 100) for _ in range(10)],
-            6: [random.randint(-50, 100) for _ in range(10)],
-        }
         self.plot_wg.clear()
         if len(self.matplot_data.items()) == 0:
             return
@@ -513,7 +501,7 @@ class MainWindow(QMainWindow):
             color = LINE_COLORS[i]
             symbol = LINE_SYMBOLS[i % len(LINE_SYMBOLS)]
             self.plot_wg.plot(
-                v, name="{}{}".format("\u00A0", k), pen=mkPen(color=color), symbol=symbol, symbolSize=10, symbolBrush=(color),
+                v, name="{}B{}".format("\u00A0", k), pen=mkPen(color=color), symbol=symbol, symbolSize=10, symbolBrush=(color),
             )
             i += 1
             records.append("{} | {}".format(k, v))
