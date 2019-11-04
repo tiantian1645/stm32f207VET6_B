@@ -9,6 +9,41 @@ logger = loguru.logger.bind(name=__name__)
 PackInfo = namedtuple("PackInfo", "type is_head is_crc content text")
 TestPackInfo = namedtuple("TestPackInfo", "type is_head is_crc content text")
 
+TEST_BIN_PATH = r"C:\Users\Administrator\STM32CubeIDE\workspace_1.0.2\stm32F207VET6_Bootloader_APP\Debug\stm32F207VET6_Bootloader_APP.bin"
+REAL_BIN_PATH = r"C:\Users\Administrator\STM32CubeIDE\workspace_1.0.2\stm32f207VET6_B\Debug\stm32f207VET6_B.bin"
+
+
+def iter_test_bin_FC(file_path=REAL_BIN_PATH, chunk_size=1024):
+    try:
+        with open(file_path, "rb") as f:
+            while True:
+                data = f.read(chunk_size)
+                if len(data) > 0 and len(data) < chunk_size:
+                    if len(data) > 512:
+                        chunk_size = 1024
+                    elif chunk_size > 256:
+                        chunk_size = 512
+                    else:
+                        chunk_size = 256
+                    data = data.ljust(chunk_size, b"\x00")
+                if not data:
+                    break
+                yield (data)
+    except Exception:
+        logger.error("read file error \n{}".format(stackprinter.format()))
+
+
+def write_firmware_pack_FC(dd, file_path=REAL_BIN_PATH, chunk_size=1024):
+    # total = os.path.getsize(REAL_BIN_PATH)
+    addr = 0
+    pack_index = 1
+    for data in iter_test_bin_FC(file_path, chunk_size):
+        pack = dd.buildPack(0x13, pack_index, 0xFC, (len(data) // 256, *(i for i in data)))
+        addr += chunk_size
+        pack_index += 1
+        yield pack
+    yield dd.buildPack(0x13, pack_index, 0xFC, (0,))
+
 
 class DC201_PACK:
     def __init__(self):
@@ -37,9 +72,7 @@ class DC201_PACK:
             if payload_len > 255:
                 pack_bytes_wc = self.pack_head + struct.pack("BBBB{}".format("B" * payload_len), 0, pack_index, device_id, cmd_type, *payload)
             else:
-                pack_bytes_wc = self.pack_head + struct.pack(
-                    "BBBB{}".format("B" * payload_len), payload_len + 3, pack_index, device_id, cmd_type, *payload
-                )
+                pack_bytes_wc = self.pack_head + struct.pack("BBBB{}".format("B" * payload_len), payload_len + 3, pack_index, device_id, cmd_type, *payload)
         pack_bytes = pack_bytes_wc + self.crc8(pack_bytes_wc[4:])
         return pack_bytes
 
@@ -52,6 +85,7 @@ class DC201_PACK:
                     start = pack.index(self.pack_head)
                 except ValueError:
                     self.dealJunkPack(pack, len(pack))
+                    pack = pack[len(pack) :]
                     return
                 if start + 3 > len(pack):
                     self.dealJunkPack(pack, start)
