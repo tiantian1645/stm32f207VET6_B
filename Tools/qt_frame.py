@@ -10,31 +10,57 @@ import loguru
 import serial
 import serial.tools.list_ports
 import stackprinter
-from PyQt5.QtCore import QObject, QRunnable, Qt, QThreadPool, QTimer, pyqtSignal, pyqtSlot
-from PyQt5.QtWidgets import (
-    QApplication,
-    QCheckBox,
-    QComboBox,
-    QDialog,
-    QFileDialog,
-    QGridLayout,
-    QGroupBox,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QMainWindow,
-    QProgressBar,
-    QPushButton,
-    QSpinBox,
-    QStatusBar,
-    QVBoxLayout,
-    QWidget,
-)
 
 import pyperclip
 from bytes_helper import bytesPuttyPrint
 from dc201_pack import DC201_PACK, write_firmware_pack_FC
-from pyqtgraph import GraphicsLayoutWidget, LabelItem, SignalProxy, mkPen
+
+USE_PYSIDE2 = 1
+if USE_PYSIDE2:
+    from PySide2.QtCore import QObject, QRunnable, Qt, QThreadPool, QTimer, Signal as pyqtSignal, Slot as pyqtSlot
+    from PySide2.QtWidgets import (
+        QApplication,
+        QCheckBox,
+        QComboBox,
+        QDialog,
+        QFileDialog,
+        QGridLayout,
+        QGroupBox,
+        QHBoxLayout,
+        QLabel,
+        QLineEdit,
+        QMainWindow,
+        QProgressBar,
+        QPushButton,
+        QSpinBox,
+        QStatusBar,
+        QVBoxLayout,
+        QWidget,
+    )
+    from pyqtgraph import GraphicsLayoutWidget, LabelItem, SignalProxy, mkPen
+else:
+    from PyQt5.QtCore import QObject, QRunnable, Qt, QThreadPool, QTimer, pyqtSignal, pyqtSlot
+    from PyQt5.QtWidgets import (
+        QApplication,
+        QCheckBox,
+        QComboBox,
+        QDialog,
+        QFileDialog,
+        QGridLayout,
+        QGroupBox,
+        QHBoxLayout,
+        QLabel,
+        QLineEdit,
+        QMainWindow,
+        QProgressBar,
+        QPushButton,
+        QSpinBox,
+        QStatusBar,
+        QVBoxLayout,
+        QWidget,
+    )
+    from pyqtgraph import GraphicsLayoutWidget, LabelItem, SignalProxy, mkPen
+
 
 BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
 TEMPERAUTRE_NAMES = ("下加热体:", "上加热体:")
@@ -145,6 +171,7 @@ class MainWindow(QMainWindow):
         self.dd = DC201_PACK()
         self.pack_index = 1
         self.device_id = 0x13
+        self.worker = None
         self.initUI()
 
     def _serialSendPack(self, *args, **kwargs):
@@ -186,6 +213,11 @@ class MainWindow(QMainWindow):
     def resizeEvent(self, event):
         # logger.debug("windows size | {}".format(self.size()))
         pass
+
+    def closeEvent(self, event):
+        logger.debug("invoke close event")
+        if self.worker is not None:
+            self.worker.signals.owari.emit()
 
     def createStatusBar(self):
         self.status_bar = QStatusBar(self)
