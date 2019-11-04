@@ -96,7 +96,7 @@ void white_Motor_Deactive(void)
  */
 uint8_t white_Motor_Position_Is_Out(void)
 {
-    return (gWhite_Motor_Position_Get() != 0xFFFFFFFF) && (gWhite_Motor_Position_Get() > WHITE_MOTOR_PCS_SUM * WHITE_MOTOR_PCS_UNT * 90 / 100);
+    return (gWhite_Motor_Position_Get() != 0xFFFFFFFF) && (gWhite_Motor_Position_Get() > WHITE_MOTOR_PCS_SUM * WHITE_MOTOR_PCS_UNT * 95 / 100);
 }
 
 /**
@@ -107,7 +107,7 @@ uint8_t white_Motor_Position_Is_Out(void)
  */
 uint8_t white_Motor_Position_Is_In(void)
 {
-    if (HAL_GPIO_ReadPin(OPTSW_OUT4_GPIO_Port, OPTSW_OUT4_Pin) == GPIO_PIN_RESET) {
+    if (motor_OPT_Status_Get(eMotor_OPT_Index_White) == eMotor_OPT_Status_OFF) {
         return 1;
     }
     return 0;
@@ -182,7 +182,7 @@ uint8_t white_Motor_Wait_Stop(uint32_t timeout)
                     white_Motor_Deactive();
                     PWM_AW_Stop();
                     if (white_Motor_Position_Is_In()) {
-                    	return 2;
+                        return 2;
                     }
                     return 0;
                 }

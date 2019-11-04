@@ -48,6 +48,169 @@ static void motor_Tray_Move_By_Index(eTrayIndex index);
 
 /* Private user code ---------------------------------------------------------*/
 
+typedef struct {
+    uint8_t cnt_on;
+    uint8_t threshold_on;
+    uint8_t cnt_off;
+    uint8_t threshold_off;
+    eMotor_OPT_Status status_result;
+    eMotor_OPT_Status (*opt_status_get)(void);
+} sMotor_OPT_Record;
+
+static sMotor_OPT_Record gMotor_OPT_Records[4];
+static eMotor_OPT_Status motor_OPT_Status_Get_Scan(void);
+static eMotor_OPT_Status motor_OPT_Status_Get_Tray(void);
+static eMotor_OPT_Status motor_OPT_Status_Get_Heater(void);
+static eMotor_OPT_Status motor_OPT_Status_Get_White(void);
+
+const eMotor_OPT_Status (*gOPT_Status_Get_Funs[])(void) = {motor_OPT_Status_Get_Scan, motor_OPT_Status_Get_Tray, motor_OPT_Status_Get_Heater,
+                                                           motor_OPT_Status_Get_White};
+
+/**
+ * @brief  软定时器光耦状态硬件读取 扫码电机
+ * @param  None
+ * @retval 光耦状态
+ */
+static eMotor_OPT_Status motor_OPT_Status_Get_Scan(void)
+{
+    if (HAL_GPIO_ReadPin(OPTSW_OUT0_GPIO_Port, OPTSW_OUT0_Pin) == GPIO_PIN_RESET) {
+        return eMotor_OPT_Status_OFF;
+    }
+    return eMotor_OPT_Status_ON;
+}
+
+/**
+ * @brief  软定时器光耦状态硬件读取 托盘电机
+ * @param  None
+ * @retval 光耦状态
+ */
+static eMotor_OPT_Status motor_OPT_Status_Get_Tray(void)
+{
+    if (HAL_GPIO_ReadPin(OPTSW_OUT1_GPIO_Port, OPTSW_OUT1_Pin) == GPIO_PIN_RESET) {
+        return eMotor_OPT_Status_OFF;
+    }
+    return eMotor_OPT_Status_ON;
+}
+
+/**
+ * @brief  软定时器光耦状态硬件读取 上加热体电机
+ * @param  None
+ * @retval 光耦状态
+ */
+static eMotor_OPT_Status motor_OPT_Status_Get_Heater(void)
+{
+    if (HAL_GPIO_ReadPin(OPTSW_OUT3_GPIO_Port, OPTSW_OUT3_Pin) == GPIO_PIN_RESET) {
+        return eMotor_OPT_Status_OFF;
+    }
+    return eMotor_OPT_Status_ON;
+}
+
+/**
+ * @brief  软定时器光耦状态硬件读取 白板电机
+ * @param  None
+ * @retval 光耦状态
+ */
+static eMotor_OPT_Status motor_OPT_Status_Get_White(void)
+{
+    if (HAL_GPIO_ReadPin(OPTSW_OUT4_GPIO_Port, OPTSW_OUT4_Pin) == GPIO_PIN_RESET) {
+        return eMotor_OPT_Status_OFF;
+    }
+    return eMotor_OPT_Status_ON;
+}
+
+/**
+ * @brief  软定时器光耦状态初始化
+ * @param  None
+ * @retval None
+ */
+void motor_OPT_Status_Init(void)
+{
+    uint8_t i;
+    for (i = 0; i < ARRAY_LEN(gMotor_OPT_Records); ++i) {
+        gMotor_OPT_Records[i].cnt_on = 0;                               /* 断开计数 */
+        gMotor_OPT_Records[i].cnt_off = 0;                              /* 遮挡计数 */
+        gMotor_OPT_Records[i].threshold_on = 3;                         /* 断开次数阈值 */
+        gMotor_OPT_Records[i].threshold_off = 3;                        /* 遮挡次数阈值 */
+        gMotor_OPT_Records[i].status_result = eMotor_OPT_Status_None;   /* 初始状态 */
+        gMotor_OPT_Records[i].opt_status_get = gOPT_Status_Get_Funs[i]; /* 硬件层光耦状态读取 */
+    }
+}
+
+/**
+ * @brief  软定时器光耦状态初始化 等待完成
+ * @param  None
+ * @retval None
+ */
+uint8_t motor_OPT_Status_Init_Wait_Complete(void)
+{
+    uint8_t i, result, cnt;
+
+    for (cnt = 0; cnt < 10; ++cnt) {
+        result = ARRAY_LEN(gMotor_OPT_Records);
+        for (i = 0; i < ARRAY_LEN(gMotor_OPT_Records); ++i) {
+            if (gMotor_OPT_Records[i].status_result == eMotor_OPT_Status_None) {
+                --result;
+            }
+        }
+        if (result == ARRAY_LEN(gMotor_OPT_Records)) {
+            return 0;
+        }
+        vTaskDelay(10);
+    }
+    return 1;
+}
+
+/**
+ * @brief  软定时器光耦状态更新
+ * @note   http://www.emcu.it/STM32/STM32Discovery-Debounce/STM32Discovery-InputWithDebounce_Output_UART_SPI_SysTick.html
+ * @param  None
+ * @retval None
+ */
+void motor_OPT_Status_Update(void)
+{
+    uint8_t i;
+    eMotor_OPT_Status status_current;
+
+    for (i = 0; i < ARRAY_LEN(gMotor_OPT_Records); ++i) {
+        status_current = gMotor_OPT_Records[i].opt_status_get(); /* 读取当前光耦状态 */
+        if (status_current == eMotor_OPT_Status_ON) {
+            gMotor_OPT_Records[i].cnt_on++;
+            gMotor_OPT_Records[i].cnt_off = 0;
+            if (gMotor_OPT_Records[i].cnt_on >= gMotor_OPT_Records[i].threshold_on) {
+                gMotor_OPT_Records[i].cnt_on = gMotor_OPT_Records[i].threshold_on + 1;
+                gMotor_OPT_Records[i].status_result = eMotor_OPT_Status_ON;
+            }
+        } else {
+            gMotor_OPT_Records[i].cnt_off++;
+            gMotor_OPT_Records[i].cnt_on = 0;
+            if (gMotor_OPT_Records[i].cnt_off >= gMotor_OPT_Records[i].threshold_off) {
+                gMotor_OPT_Records[i].cnt_off = gMotor_OPT_Records[i].threshold_off + 1;
+                gMotor_OPT_Records[i].status_result = eMotor_OPT_Status_OFF;
+            }
+        }
+    }
+}
+
+/**
+ * @brief  软定时器光耦状态结果读取
+ * @param  idx 光耦索引
+ * @retval 光耦状态 去抖后
+ */
+eMotor_OPT_Status motor_OPT_Status_Get(eMotor_OPT_Index idx)
+{
+    switch (idx) {
+        case eMotor_OPT_Index_Scan:
+            return gMotor_OPT_Records[0].status_result;
+        case eMotor_OPT_Index_Tray:
+            return gMotor_OPT_Records[1].status_result;
+        case eMotor_OPT_Index_Heater:
+            return gMotor_OPT_Records[2].status_result;
+        case eMotor_OPT_Index_White:
+            return gMotor_OPT_Records[3].status_result;
+    }
+    return eMotor_OPT_Status_OFF;
+}
+
 /**
  * @brief  电机资源初始化
  * @param  None
@@ -196,8 +359,9 @@ static void motor_Task(void * argument)
     uint8_t buffer[9];
     eBarcodeState barcode_result;
 
-    motor_Resource_Init(); /* 电机驱动、位置初始化 */
-    barcode_Init();        /* 扫码枪初始化 */
+    motor_OPT_Status_Init_Wait_Complete(); /* 等待光耦结果完成 */
+    motor_Resource_Init();                 /* 电机驱动、位置初始化 */
+    barcode_Init();                        /* 扫码枪初始化 */
 
     for (;;) {
         xResult = xQueuePeek(motor_Fun_Queue_Handle, &mf, portMAX_DELAY);

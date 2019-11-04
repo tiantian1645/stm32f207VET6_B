@@ -8,6 +8,8 @@
 #include "main.h"
 #include "heater.h"
 #include "pid_ctrl.h"
+#include "motor.h"
+#include "soft_timer.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim4;
@@ -39,6 +41,7 @@ void soft_timer_Heater_Call_Back(TimerHandle_t xTimer)
 {
     heater_BTM_Output_Keep_Deal();
     heater_TOP_Output_Keep_Deal();
+    motor_OPT_Status_Update();
 }
 
 /**
@@ -52,6 +55,8 @@ void soft_timer_Heater_Init(void)
     if (gTimerHandleHeater == NULL) {
         Error_Handler();
     }
+
+    motor_OPT_Status_Init();
 
     heater_BTM_Output_Init();
     beater_BTM_Output_Start();

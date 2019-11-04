@@ -54,12 +54,12 @@ typedef struct {
 #define BAR_SAM_6 BAR_SAM_LDH_
 
 /* Private macro -------------------------------------------------------------*/
-#define BARCODE_MOTOR_IS_OPT (HAL_GPIO_ReadPin(OPTSW_OUT0_GPIO_Port, OPTSW_OUT0_Pin) == GPIO_PIN_RESET) /* 光耦输入 */
-#define BARCODE_MOTOR_IS_BUSY (dSPIN_Busy_SW())                                                         /* 扫码电机忙碌位读取 */
-#define BARCODE_MOTOR_IS_FLAG (dSPIN_Flag())                                                            /* 扫码电机标志脚读取 */
-#define BARCODE_MOTOR_MAX_DISP 16000                                                                    /* 扫码电机运动最大步数 物理限制步数 */
-#define BARCODE_UART huart3                                                                             /* 扫码串口 */
-#define BARCODE_MOTOR_MAX_GO_UNTIL_SPEED 600000                                                         /* 扫码电机归零最大速度 */
+#define BARCODE_MOTOR_IS_OPT (motor_OPT_Status_Get(eMotor_OPT_Index_Scan) == eMotor_OPT_Status_OFF) /* 光耦输入 */
+#define BARCODE_MOTOR_IS_BUSY (dSPIN_Busy_SW())                                                     /* 扫码电机忙碌位读取 */
+#define BARCODE_MOTOR_IS_FLAG (dSPIN_Flag())                                                        /* 扫码电机标志脚读取 */
+#define BARCODE_MOTOR_MAX_DISP 16000                                                                /* 扫码电机运动最大步数 物理限制步数 */
+#define BARCODE_UART huart3                                                                         /* 扫码串口 */
+#define BARCODE_MOTOR_MAX_GO_UNTIL_SPEED 600000                                                     /* 扫码电机归零最大速度 */
 
 /* Private variables ---------------------------------------------------------*/
 static sMotorRunStatus gBarcodeMotorRunStatus;

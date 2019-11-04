@@ -107,7 +107,7 @@ uint8_t heat_Motor_Position_Is_Down(void)
  */
 uint8_t heat_Motor_Position_Is_Up(void)
 {
-    if (HAL_GPIO_ReadPin(OPTSW_OUT3_GPIO_Port, OPTSW_OUT3_Pin) == GPIO_PIN_RESET) {
+    if (motor_OPT_Status_Get(eMotor_OPT_Index_Heater) == eMotor_OPT_Status_OFF) {
         return 1;
     }
     return 0;

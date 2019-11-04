@@ -71,6 +71,19 @@ typedef enum {
     eMotorNotifyValue_BR = (1 << 3), /* 终止采样 */
 } eMotorNotifyValue;
 
+typedef enum {
+    eMotor_OPT_Status_ON = 0,
+    eMotor_OPT_Status_OFF = 1,
+    eMotor_OPT_Status_None = 0xFF,
+} eMotor_OPT_Status;
+
+typedef enum {
+    eMotor_OPT_Index_Scan = 0,
+    eMotor_OPT_Index_Tray = 1,
+    eMotor_OPT_Index_Heater = 3,
+    eMotor_OPT_Index_White = 4,
+} eMotor_OPT_Index;
+
 /* Exported define -----------------------------------------------------------*/
 #define motor_Status_Set_Position(__RUNSTATUS__, __POSITION__) ((__RUNSTATUS__)->position = (__POSITION__))
 #define motor_Status_Set_TickInit(__RUNSTATUS__, __TICKINIT__) ((__RUNSTATUS__)->tick_init = (__TICKINIT__))
@@ -95,6 +108,11 @@ uint8_t motor_Emit(sMotor_Fun * pFun_type, uint32_t timeout);
 
 BaseType_t motor_Sample_Info_ISR(eMotorNotifyValue info);
 BaseType_t motor_Sample_Info(eMotorNotifyValue info);
+
+void motor_OPT_Status_Init(void);
+uint8_t motor_OPT_Status_Init_Wait_Complete(void);
+void motor_OPT_Status_Update(void);
+eMotor_OPT_Status motor_OPT_Status_Get(eMotor_OPT_Index idx);
 
 /* Exported constants --------------------------------------------------------*/
 
