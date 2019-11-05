@@ -1,17 +1,18 @@
 # http://doc.qt.io/qt-5/qt.html
 
-import functools
 import os
 import queue
 import sys
 import time
+from functools import partial
+from hashlib import sha256
 
 import loguru
+import pyperclip
 import serial
 import serial.tools.list_ports
 import stackprinter
 
-import pyperclip
 from bytes_helper import bytesPuttyPrint
 from dc201_pack import DC201_PACK, write_firmware_pack_FC
 
@@ -34,6 +35,7 @@ if USE_PYSIDE2:
         QPushButton,
         QSpinBox,
         QStatusBar,
+        QTextEdit,
         QVBoxLayout,
         QWidget,
     )
@@ -56,6 +58,7 @@ else:
         QPushButton,
         QSpinBox,
         QStatusBar,
+        QTextEdit,
         QVBoxLayout,
         QWidget,
     )
@@ -168,6 +171,7 @@ class MainWindow(QMainWindow):
         self.task_queue = queue.Queue()
         self.firm_queue = queue.Queue()
         self.threadpool = QThreadPool()
+        self.id_card_data = bytearray(4096)
         self.dd = DC201_PACK()
         self.pack_index = 1
         self.device_id = 0x13
@@ -220,6 +224,7 @@ class MainWindow(QMainWindow):
         logger.debug("invoke close event")
         if self.worker is not None:
             self.worker.signals.owari.emit()
+            time.sleep(1)
 
     def createStatusBar(self):
         self.status_bar = QStatusBar(self)
@@ -292,11 +297,14 @@ class MainWindow(QMainWindow):
         barcode_ly.addWidget(self.barcode_scan_bt, 7, 0, 1, 2)
         self.barcode_scan_bt.clicked.connect(self.onBarcodeScan)
         for i in range(7):
-            self.motor_scan_bts[i].clicked.connect(functools.partial(self.onMotorScan, idx=i))
+            self.motor_scan_bts[i].clicked.connect(partial(self.onMotorScan, idx=i))
 
-    def onBarcodeScan(self, event):
+    def initBarcodeScan(self):
         for lb in self.barcode_lbs:
             lb.setText(("*" * 10))
+
+    def onBarcodeScan(self, event):
+        self.initBarcodeScan()
         self._serialSendPack(0x01)
 
     def updateBarcode(self, info):
@@ -478,8 +486,10 @@ class MainWindow(QMainWindow):
         cmd_type = info.content[5]
         if cmd_type == 0xA0:
             self.updateTemperautre(info)
-        if cmd_type == 0xB0:
+        elif cmd_type == 0xB0:
             self.updateMotorTrayPosition(info)
+        elif cmd_type == 0xB1:
+            self.updateIDCardData(info)
         elif cmd_type == 0xB2:
             self.updateBarcode(info)
         elif cmd_type == 0xB3:
@@ -530,10 +540,13 @@ class MainWindow(QMainWindow):
         for i in range(6):
             self.matplot_conf_houhou_cs[i].addItems(("无项目", "速率法", "终点法", "两点终点法"))
             self.matplot_conf_houhou_cs[i].setMaximumWidth(90)
+            self.matplot_conf_houhou_cs[i].setCurrentIndex(1)
             self.matplot_conf_wavelength_cs[i].addItems(("610", "550", "405"))
             self.matplot_conf_wavelength_cs[i].setMaximumWidth(90)
+            self.matplot_conf_wavelength_cs[i].setCurrentIndex(0)
             self.matplot_conf_point_sps[i].setRange(0, 120)
             self.matplot_conf_point_sps[i].setMaximumWidth(90)
+            self.matplot_conf_point_sps[i].setValue(1)
             matplot_conf_sub_gb = QGroupBox(BARCODE_NAMES[i])
             matplot_conf_sub_ly = QVBoxLayout(matplot_conf_sub_gb)
             matplot_conf_sub_ly.addWidget(self.matplot_conf_houhou_cs[i])
@@ -554,6 +567,7 @@ class MainWindow(QMainWindow):
         )
 
     def onMatplotStart(self, event):
+        self.initBarcodeScan()
         conf = []
         for i in range(6):
             conf.append(self.matplot_conf_houhou_cs[i].currentIndex())
@@ -666,13 +680,12 @@ class MainWindow(QMainWindow):
         self.plot_wg.clear()
         if len(self.matplot_data.items()) == 0:
             return
-        i = 0
         records = []
-        for k, v in self.matplot_data.items():
-            color = LINE_COLORS[i]
-            symbol = LINE_SYMBOLS[i % len(LINE_SYMBOLS)]
+        for k in sorted(self.matplot_data.keys()):
+            v = self.matplot_data.get(k, [0])
+            color = LINE_COLORS[abs(k - 1) % len(LINE_COLORS)]
+            symbol = LINE_SYMBOLS[abs(k - 1) % len(LINE_SYMBOLS)]
             self.plot_wg.plot(v, name="{}B{}".format("\u00A0", k), pen=mkPen(color=color), symbol=symbol, symbolSize=10, symbolBrush=(color))
-            i += 1
             records.append("{} | {}".format(k, v))
         pyperclip.copy("\n".join(records))
 
@@ -692,17 +705,56 @@ class MainWindow(QMainWindow):
         storge_ly = QHBoxLayout(self.storge_wg)
         storge_ly.setContentsMargins(3, 3, 3, 3)
         storge_ly.setSpacing(0)
-        self.storge_id_card_read_bt = QPushButton("ID卡读")
+        self.storge_id_card_dialog_bt = QPushButton("ID卡信息")
         self.storge_flash_read_bt = QPushButton("Flash读")
-        storge_ly.addWidget(self.storge_id_card_read_bt)
+        storge_ly.addWidget(self.storge_id_card_dialog_bt)
         storge_ly.addWidget(self.storge_flash_read_bt)
 
-        self.storge_id_card_read_bt.clicked.connect(self.onID_CardRead)
+        self.id_card_data_dg = QDialog(self)
+        self.id_card_data_dg.setWindowTitle("ID Card")
+        id_card_data_ly = QVBoxLayout(self.id_card_data_dg)
+        self.id_card_data_te = QTextEdit()
+        self.id_card_data_read_bt = QPushButton("读取")
+        id_card_data_ly.addWidget(self.id_card_data_te)
+        id_card_data_ly.addWidget(self.id_card_data_read_bt)
+        self.id_card_data_read_bt.clicked.connect(self.onID_CardRead)
+
+        self.storge_id_card_dialog_bt.clicked.connect(self.onID_CardDialogShow)
         self.storge_flash_read_bt.clicked.connect(self.onFlashRead)
 
-    def onID_CardRead(self, event):
-        # self._serialSendPack(0x06)
-        self._serialSendPack(0xD8, (0x00, 0x00, 0x00, 0x00, 0x00, 0x10))
+    def onID_CardDialogShow(self, event):
+        self.id_card_data_dg.show()
+
+    def onID_CardRead(self):
+        self.id_card_data_dg.setWindowTitle("ID Card")
+        self.id_card_data_te.clear()
+        self._serialSendPack(0x06)
+
+    def genBinaryData(self, data, unit=32):
+        result = []
+        for i in range(0, len(data), unit):
+            b = data[i : i + unit]
+            result.append("0x{:04X} ~ 0x{:04X} | {}".format(i, i + unit - 1, bytesPuttyPrint(b)))
+        return result
+
+    def updateIDCardData(self, info):
+        offset = 0
+        raw_bytes = info.content
+        start = int.from_bytes(raw_bytes[8:10], byteorder="little")
+        length = raw_bytes[10]
+        if start == 0:
+            total = int.from_bytes(raw_bytes[6:8], byteorder="little")
+            offset = total - len(self.id_card_data)
+        elif start + length > len(self.id_card_data):
+            offset = start + length - len(self.id_card_data)
+        if offset > 0:
+            self.id_card_data.extend((0xFF for _ in range(offset)))
+        self.id_card_data[start : start + length] = raw_bytes[11 : 11 + length]
+        if start + length == 4096:
+            self.id_card_data_dg.setWindowTitle("ID Card | sha256 {}".format(sha256(self.id_card_data).hexdigest()))
+        result = self.genBinaryData(self.id_card_data[: start + length])
+        logger.debug("\n".join(result))
+        self.id_card_data_te.setPlainText("\n".join(result))
 
     def onFlashRead(self, event):
         self._serialSendPack(0xD6, (0x00, 0x00, 0x00, 0x00, 0x00, 0x10))

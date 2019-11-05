@@ -9,6 +9,10 @@ logger = loguru.logger.bind(name=__name__)
 PackInfo = namedtuple("PackInfo", "type is_head is_crc content text")
 TestPackInfo = namedtuple("TestPackInfo", "type is_head is_crc content text")
 
+IDCardInfo = namedtuple("IDCardInfo", "ver_len ver_inf branch sample_type channel_confs channel_standards channel_animal_standards")
+ChanelConfInfo = namedtuple("ChanelConfInfo", "name wave houhou unit precision sample_time sample_point start_point stop_point calc_point min max valid_date")
+BaseInfo = namedtuple("BaseInfo", "imi raw")
+
 TEST_BIN_PATH = r"C:\Users\Administrator\STM32CubeIDE\workspace_1.0.2\stm32F207VET6_Bootloader_APP\Debug\stm32F207VET6_Bootloader_APP.bin"
 REAL_BIN_PATH = r"C:\Users\Administrator\STM32CubeIDE\workspace_1.0.2\stm32f207VET6_B\Debug\stm32f207VET6_B.bin"
 
@@ -43,6 +47,82 @@ def write_firmware_pack_FC(dd, file_path=REAL_BIN_PATH, chunk_size=1024):
         pack_index += 1
         yield pack
     yield dd.buildPack(0x13, pack_index, 0xFC, (0,))
+
+
+class DC201_IDCardInfo:
+    def __init__(self, data):
+        self.data = data
+        self.channel_confs = [None] * 6
+        self.channel_standards = [None] * 6
+        self.channel_animal_standards = [None] * 6
+        self.info = None
+
+    def decode(self):
+        self.ver_len = self.data[0]
+        self.ver_inf = self.genIMI_uint32(self.data[1:5])
+        self.branch = self.genIMI_ASCII(self.data[5:15])
+        self.sample_type = self.genIMI_SampleType(self.data[15])
+        for i in range(6):
+            offset = i * 50
+            self.channel_confs[i] = ChanelConfInfo(
+                name=self.genIMI_ASCII(self.data[16 + offset : 32 + offset]),
+                wave=self.genIMI_Wave(self.data[32 + offset]),
+                houhou=self.genIMI_Houhou(self.data[33 + offset]),
+                unit=self.genIMI_ASCII(self.data[34 + offset : 50 + offset]),
+                precision=self.data[50 + offset],
+                sample_time=self.data[51 + offset : 53 + offset],
+                sample_point=self.data[53 + offset],
+                start_point=self.data[54 + offset],
+                stop_point=self.data[55 + offset],
+                calc_point=self.data[56 + offset],
+                min=self.data[57 + offset : 61 + offset],
+                max=self.data[61 + offset : 65 + offset],
+                valid_date=self.data[65 + offset],
+            )
+        self.info = IDCardInfo(
+            ver_len=self.ver_len,
+            ver_inf=self.ver_inf,
+            branch=self.branch,
+            sample_type=self.sample_type,
+            channel_confs=self.channel_confs,
+            channel_standards=self.channel_standards,
+            channel_animal_standards=self.channel_animal_standards,
+        )
+
+    def genIMI_ASCII(self, raw):
+        try:
+            imi = raw[1 : 1 + raw[0]].decode("ascii")
+        except Exception as e:
+            imi = repr(e)
+        return BaseInfo(imi=imi, raw=raw)
+
+    def genIMI_uint32(self, raw):
+        imi = int.from_bytes(raw, byteorder="little")
+        return BaseInfo(imi=imi, raw=raw)
+
+    def genIMI_SampleType(self, raw):
+        sample_types = ("血清", "血浆", "全血", "尿液")
+        imi = []
+        for i, s in enumerate(sample_types):
+            if raw & (1 << i):
+                imi.append(s)
+        return BaseInfo(imi=imi, raw=raw)
+
+    def genIMI_Wave(self, raw):
+        waves = ("610", "550", "405")
+        if raw < 1 or raw > 3:
+            imi = "Unknow Wave"
+        else:
+            imi = waves[raw - 1]
+        return BaseInfo(imi=imi, raw=raw)
+
+    def genIMI_Houhou(self, raw):
+        houhous = ("无项目", "速率法", "终点法", "两点终点法")
+        if raw < 0 or raw > 3:
+            imi = "Unknow Houhou"
+        else:
+            imi = houhous[raw]
+        return BaseInfo(imi=imi, raw=raw)
 
 
 class DC201_PACK:
