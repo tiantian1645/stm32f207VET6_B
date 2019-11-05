@@ -172,6 +172,10 @@ class MainWindow(QMainWindow):
         self.firm_queue = queue.Queue()
         self.threadpool = QThreadPool()
         self.id_card_data = bytearray(4096)
+        self.temp_btm_record = []
+        self.temp_top_record = []
+        self.temp_start_time = None
+        self.temp_time_record = []
         self.dd = DC201_PACK()
         self.pack_index = 1
         self.device_id = 0x13
@@ -224,7 +228,7 @@ class MainWindow(QMainWindow):
         logger.debug("invoke close event")
         if self.worker is not None:
             self.worker.signals.owari.emit()
-            time.sleep(1)
+            time.sleep(0.2)
 
     def createStatusBar(self):
         self.status_bar = QStatusBar(self)
@@ -239,6 +243,24 @@ class MainWindow(QMainWindow):
         for i, name in enumerate(TEMPERAUTRE_NAMES):
             temperautre_ly.addWidget(QLabel(name))
             temperautre_ly.addWidget(self.temperautre_lbs[i])
+        temperautre_wg.mousePressEvent = self.onTemperautreLabelClick
+
+        self.temperature_plot_dg = QDialog(self)
+        self.temperature_plot_dg.setWindowTitle("温度记录")
+        temperature_plot_ly = QVBoxLayout(self.temperature_plot_dg)
+        self.temperature_plot_win = GraphicsLayoutWidget()
+        self.temperature_plot_clear_bt = QPushButton("清零")
+        temperature_plot_ly.addWidget(self.temperature_plot_win)
+        temperature_plot_ly.addWidget(self.temperature_plot_clear_bt)
+        self.temperature_plot_lb = LabelItem(justify="right")
+        self.temperature_plot_win.addItem(self.temperature_plot_lb, 0, 0)
+        self.temperature_plot_wg = self.temperature_plot_win.addPlot(row=0, col=0)
+        self.temperature_plot_wg.addLegend()
+        self.temperature_plot_wg.showGrid(x=True, y=True)
+        self.temperature_plot_proxy = SignalProxy(self.temperature_plot_wg.scene().sigMouseMoved, rateLimit=60, slot=self.onTemperaturePlotMouseMove)
+        self.temperature_btm_plot = self.temperature_plot_wg.plot(self.temp_time_record, self.temp_btm_record, name="\u00A0下加热体", pen=mkPen(color="r"))
+        self.temperature_top_plot = self.temperature_plot_wg.plot(self.temp_time_record, self.temp_top_record, name="\u00A0上加热体", pen=mkPen(color="b"))
+        self.temperature_plot_clear_bt.clicked.connect(self.onTemperautreDataClear)
 
         motor_tray_position_wg = QWidget()
         motor_tray_position_ly = QHBoxLayout(motor_tray_position_wg)
@@ -253,7 +275,9 @@ class MainWindow(QMainWindow):
         kirakira_ly.setContentsMargins(5, 0, 5, 0)
         kirakira_ly.setSpacing(5)
         self.kirakira_recv_lb = QLabel("    ")
+        self.kirakira_recv_time = time.time()
         self.kirakira_send_lb = QLabel("    ")
+        self.kirakira_send_time = time.time()
         kirakira_ly.addWidget(QLabel("发送"))
         kirakira_ly.addWidget(self.kirakira_send_lb)
         kirakira_ly.addWidget(QLabel("接收"))
@@ -264,9 +288,34 @@ class MainWindow(QMainWindow):
         self.status_bar.addWidget(kirakira_wg, 0)
         self.setStatusBar(self.status_bar)
 
+    def onTemperautreLabelClick(self, event):
+        self.temperature_plot_dg.show()
+
+    def onTemperautreDataClear(self, event):
+        self.temp_btm_record.clear()
+        self.temp_top_record.clear()
+        self.temp_start_time = None
+        self.temp_time_record.clear()
+        self.temperature_plot_wg.clear()
+
+    def onTemperaturePlotMouseMove(self, event):
+        mouse_point = self.temperature_plot_wg.vb.mapSceneToView(event[0])
+        self.temperature_plot_lb.setText(
+            "<span style='font-size: 14pt; color: white'> x = %0.2f S, <span style='color: white'> y = %0.2f ℃</span>" % (mouse_point.x(), mouse_point.y())
+        )
+
     def updateTemperautre(self, info):
+        if self.temp_start_time is None:
+            self.temp_start_time = time.time()
+            self.temp_time_record = [0]
+        else:
+            self.temp_time_record.append(time.time() - self.temp_start_time)
         temp_btm = int.from_bytes(info.content[6:8], byteorder="little") / 100
         temp_top = int.from_bytes(info.content[8:10], byteorder="little") / 100
+        self.temp_btm_record.append(temp_btm)
+        self.temp_top_record.append(temp_top)
+        self.temperature_btm_plot.setData(self.temp_time_record, self.temp_btm_record)
+        self.temperature_top_plot.setData(self.temp_time_record, self.temp_top_record)
         self.temperautre_lbs[0].setText("{:03.2f}℃".format(temp_btm))
         self.temperautre_lbs[1].setText("{:03.2f}℃".format(temp_top))
 
@@ -416,7 +465,7 @@ class MainWindow(QMainWindow):
             self._serialSendPack(0xD3, (0,))
             self.motor_tray_scan_bt.setEnabled(True)
 
-    def onMotorScan(self, event, idx):
+    def onMotorScan(self, event=None, idx=0):
         logger.debug("click motor scan idx | {}".format(idx))
         self.barcode_lbs[idx].setText("*" * 10)
         self._serialSendPack(0xD0, (idx,))
@@ -494,14 +543,18 @@ class MainWindow(QMainWindow):
             self.updateBarcode(info)
         elif cmd_type == 0xB3:
             self.updateMatplotData(info)
+        elif cmd_type == 0xB5:
+            self.showWarnInfo(info)
         elif cmd_type == 0xB6:
             self.updateMatplotPlot()
 
     def onSerialStatistic(self, info):
-        if info[0] == "w":
+        if info[0] == "w" and time.time() - self.kirakira_recv_time > 0.1:
+            self.kirakira_recv_time = time.time()
             self.kirakira_send_lb.setStyleSheet("background-color : green; color : #3d3d3d;")
             QTimer.singleShot(100, lambda: self.kirakira_send_lb.setStyleSheet("background-color : white; color : #3d3d3d;"))
-        elif info[0] == "r":
+        elif info[0] == "r" and time.time() - self.kirakira_send_time > 0.1:
+            self.kirakira_send_time = time.time()
             self.kirakira_recv_lb.setStyleSheet("background-color : red; color : #3d3d3d;")
             QTimer.singleShot(100, lambda: self.kirakira_recv_lb.setStyleSheet("background-color : white; color : #3d3d3d;"))
 
@@ -758,6 +811,9 @@ class MainWindow(QMainWindow):
 
     def onFlashRead(self, event):
         self._serialSendPack(0xD6, (0x00, 0x00, 0x00, 0x00, 0x00, 0x10))
+
+    def showWarnInfo(self, info):
+        pass
 
 
 if __name__ == "__main__":
