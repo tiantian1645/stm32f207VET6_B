@@ -22,7 +22,8 @@
 			"main.h": "c",
 			"error.h": "c",
 			"comm_main.h": "c",
-			"protocol.h": "c"
+			"protocol.h": "c",
+			"fan.h": "c"
 		},
 		"python.autoComplete.extraPaths": [
 			"Tools/"

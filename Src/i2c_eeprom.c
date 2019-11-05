@@ -10,7 +10,7 @@ extern I2C_HandleTypeDef hi2c1;
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
-#define I2C_HW 1
+#define I2C_HW 0
 
 #define AT24CXX_UNIT_LENGTH 16
 #define AT24CXX_DEV_ADDR 0xA0
