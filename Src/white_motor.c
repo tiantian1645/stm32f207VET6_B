@@ -262,6 +262,7 @@ uint8_t white_Motor_PWM_Gen_In(void)
 
     gWhite_Motor_SRC_Buffer[0] = (WHITE_MOTOR_PCS_MAX - WHITE_MOTOR_PCS_MIN > WHITE_MOTOR_PCS_GAP * cnt) ? (WHITE_MOTOR_PCS_MAX - WHITE_MOTOR_PCS_GAP * cnt)
                                                                                                          : (WHITE_MOTOR_PCS_MIN); /* 周期长度 */
+    gWhite_Motor_SRC_Buffer[0] = (gWhite_Motor_SRC_Buffer[0] * STEP_REAL_FREQ) / STEP_BASIC_FREQ;                                 /* 标准频率切换 */
     gWhite_Motor_SRC_Buffer[1] = WHITE_MOTOR_PCS_UNT;                                                                             /* 重复次数 */
     gWhite_Motor_SRC_Buffer[2] = (gWhite_Motor_SRC_Buffer[0] + 1) / 2;                                                            /* 占空比 默认50% */
     /* burst模式修改时基单元 */
@@ -287,6 +288,7 @@ uint8_t white_Motor_PWM_Gen_Out(void)
     } else {
         gWhite_Motor_SRC_Buffer[0] = (WHITE_MOTOR_PCS_MAX - WHITE_MOTOR_PCS_MIN > WHITE_MOTOR_PCS_GAP * cnt) ? (WHITE_MOTOR_PCS_MAX - WHITE_MOTOR_PCS_GAP * cnt)
                                                                                                              : (WHITE_MOTOR_PCS_MIN); /* 周期长度 */
+        gWhite_Motor_SRC_Buffer[0] = (gWhite_Motor_SRC_Buffer[0] * STEP_REAL_FREQ) / STEP_BASIC_FREQ;                                 /* 标准频率切换 */
         gWhite_Motor_SRC_Buffer[1] = WHITE_MOTOR_PCS_UNT;                                                                             /* 重复次数 */
         gWhite_Motor_SRC_Buffer[2] = (gWhite_Motor_SRC_Buffer[0] + 1) / 2;                                                            /* 占空比 默认50% */
         /* burst模式修改时基单元 */
