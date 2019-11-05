@@ -289,6 +289,7 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
     sMotor_Fun motor_fun;
     float temp;
 
+    temp_Upload_Comm_Set(eComm_Out, 1);                /* 通讯接收成功 使能本串口温度上送 */
     if (pInBuff[5] == eProtocoleRespPack_Client_ACK) { /* 收到对方回应帧 */
         comm_Out_Send_ACK_Give(pInBuff[6]);            /* 通知串口发送任务 回应包收到 */
         return PROTOCOL_PARSE_OK;                      /* 直接返回 */
@@ -300,8 +301,6 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
         comm_Data_SendTask_QueueEmitCover(pInBuff, length);  /* 提交到采集板发送任务 */
         return PROTOCOL_PARSE_OK;
     }
-
-    temp_Upload_Comm_Set(eComm_Out, 1); /* 通讯接收成功 使能本串口温度上送 */
 
     error = protocol_Parse_AnswerACK(eComm_Out, pInBuff[3]); /* 发送回应包 */
     switch (pInBuff[5]) {                                    /* 进一步处理 功能码 */
