@@ -258,9 +258,10 @@ uint8_t heat_Motor_PWM_Gen_Up(void)
 
     gHeat_Motor_SRC_Buffer[0] = (HEAT_MOTOR_PCS_MAX - HEAT_MOTOR_PCS_MIN > HEAT_MOTOR_PCS_GAP * (total % HEAT_MOTOR_PCS_SUM))
                                     ? (HEAT_MOTOR_PCS_MAX - HEAT_MOTOR_PCS_GAP * (total % HEAT_MOTOR_PCS_SUM))
-                                    : (HEAT_MOTOR_PCS_MAX);          /* 周期长度 */
-    gHeat_Motor_SRC_Buffer[1] = HEAT_MOTOR_PCS_UNT;                  /* 重复次数 */
-    gHeat_Motor_SRC_Buffer[2] = (gHeat_Motor_SRC_Buffer[0] + 1) / 2; /* 占空比 默认50% */
+                                    : (HEAT_MOTOR_PCS_MAX);                                     /* 周期长度 */
+    gHeat_Motor_SRC_Buffer[0] = (gHeat_Motor_SRC_Buffer[0] * STEP_REAL_FREQ) / STEP_BASIC_FREQ; /* 标准频率切换 */
+    gHeat_Motor_SRC_Buffer[1] = HEAT_MOTOR_PCS_UNT;                                             /* 重复次数 */
+    gHeat_Motor_SRC_Buffer[2] = (gHeat_Motor_SRC_Buffer[0] + 1) / 2;                            /* 占空比 默认50% */
     /* burst模式修改时基单元 */
     HAL_TIM_DMABurst_WriteStart(&htim1, TIM_DMABASE_ARR, TIM_DMA_UPDATE, (uint32_t *)gHeat_Motor_SRC_Buffer, TIM_DMABURSTLENGTH_3TRANSFERS);
     gPWM_TEST_AW_CNT_Inc(); /* 自增脉冲计数 */
@@ -284,6 +285,7 @@ uint8_t heat_Motor_PWM_Gen_Down(void)
     } else {
         gHeat_Motor_SRC_Buffer[0] = (HEAT_MOTOR_PCS_MAX - HEAT_MOTOR_PCS_MIN > HEAT_MOTOR_PCS_GAP * cnt) ? (HEAT_MOTOR_PCS_MAX - HEAT_MOTOR_PCS_GAP * cnt)
                                                                                                          : (HEAT_MOTOR_PCS_MIN); /* 周期长度 */
+        gHeat_Motor_SRC_Buffer[0] = (gHeat_Motor_SRC_Buffer[0] * STEP_REAL_FREQ) / STEP_BASIC_FREQ;                              /* 标准频率切换 */
         gHeat_Motor_SRC_Buffer[1] = HEAT_MOTOR_PCS_UNT;                                                                          /* 重复次数 */
         gHeat_Motor_SRC_Buffer[2] = (gHeat_Motor_SRC_Buffer[0] + 1) / 2;                                                         /* 占空比 默认50% */
         /* burst模式修改时基单元 */

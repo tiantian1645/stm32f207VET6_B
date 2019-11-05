@@ -16,7 +16,7 @@
 #define COMM_DATA_SER_TX_RETRY_INT 200 /* 重发间隔 200mS 内应有响应包 */
 #define COMM_DATA_SER_TX_RETRY_SUM ((COMM_DATA_SER_TX_RETRY_NUM) * (COMM_DATA_SER_TX_RETRY_INT))
 
-#define COMM_DATA_PD_TIMER_PRESCALER (12000 - 1)
+#define COMM_DATA_PD_TIMER_PRESCALER (7200 - 1)
 #define COMM_DATA_PD_TIMER_PERIOD (100 - 1) /* 20 mS */
 
 /* Exported types ------------------------------------------------------------*/
