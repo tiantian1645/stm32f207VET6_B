@@ -320,9 +320,10 @@ uint16_t I2C_EEPROM_Read(uint16_t memAddr, uint8_t * pOutBuff, uint16_t length, 
             flag = 1;
         }
     }
-    if (flag == 0) {                                                            /* 全为0xFF */
-        if (HAL_GPIO_ReadPin(CARD_IN_GPIO_Port, CARD_IN_Pin) == GPIO_PIN_SET) { /* 检查ID卡是否插入 */
-            return 0;                                                           /* 未插入直接返回0 */
+    if (flag == 0) {                                                              /* 全为0xFF */
+        if (HAL_GPIO_ReadPin(CARD_IN_GPIO_Port, CARD_IN_Pin) == GPIO_PIN_SET) {   /* 检查ID卡是否插入 */
+            error_Emit(eError_Peripheral_Storge_ID_Card, eError_Storge_Hardware); /* 提交错误信息 */
+            return 0;                                                             /* 未插入直接返回0 */
         }
     }
     return length;

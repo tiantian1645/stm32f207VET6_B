@@ -31,6 +31,7 @@ if USE_PYSIDE2:
         QLabel,
         QLineEdit,
         QMainWindow,
+        QMessageBox,
         QProgressBar,
         QPushButton,
         QSpinBox,
@@ -53,6 +54,7 @@ else:
         QHBoxLayout,
         QLabel,
         QLineEdit,
+        QMessageBox,
         QMainWindow,
         QProgressBar,
         QPushButton,
@@ -812,8 +814,66 @@ class MainWindow(QMainWindow):
     def onFlashRead(self, event):
         self._serialSendPack(0xD6, (0x00, 0x00, 0x00, 0x00, 0x00, 0x10))
 
+    def getPeripheralType(self, p_type):
+        if p_type == 0x00:
+            return "上加热体电机"
+        elif p_type == 0x01:
+            return "白板电机"
+        elif p_type == 0x02:
+            return "托盘电机"
+        elif p_type == 0x03:
+            return "扫码电机"
+        elif p_type == 0x04:
+            return "上加热体温度"
+        elif p_type == 0x05:
+            return "下加热体温度"
+        elif p_type == 0x06:
+            return "环境温度"
+        elif p_type == 0x07:
+            return "上加热体温控"
+        elif p_type == 0x08:
+            return "下加热体温控"
+        elif p_type == 0x09:
+            return "W25Q64 Flash存储芯片"
+        elif p_type == 0x0A:
+            return "ID Code 卡"
+        elif p_type == 0x0B:
+            return "对外串口通信"
+        elif p_type == 0x0C:
+            return "主板通信"
+        elif p_type == 0x0D:
+            return "采集板通信"
+        elif p_type == 0x0E:
+            return "扫码枪"
+        elif p_type == 0x0F:
+            return "风扇"
+
+    def getFaultType(self, p_type, e_type):
+        if p_type in (0x00, 0x01, 0x02, 0x03):
+            error_list = ("资源不可用", "电机运动超时", "电机驱动异常")
+        elif p_type in (0x04, 0x05, 0x06, 0x07, 0x08):
+            error_list = ("温度值无效", "温度持续过低", "温度持续过高")
+        elif p_type in (0x09, 0x0A):
+            error_list = ("硬件故障", "读取失败", "写入失败")
+        elif p_type in (0x0B, 0x0C, 0x0D):
+            error_list = ("资源不可用", "发送失败", "回应帧号不正确", "无回应")
+        elif p_type in (0x0E, ):
+            error_list = ("配置失败", )
+        elif p_type in (0x0F, ):
+            error_list = ("转速为零", "失速")
+        result = []
+        for i, e in enumerate(error_list):
+            if e_type & (1 << i):
+                result.append(e)
+        return " | ".join(result)
+
     def showWarnInfo(self, info):
-        pass
+        p_type, e_type = info.content[6:8]
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Warning)
+        msg.setWindowTitle("故障信息")
+        msg.setText("设备类型: {}\n故障类型: {}".format(self.getPeripheralType(p_type), self.getFaultType(p_type, e_type)))
+        msg.show()
 
 
 if __name__ == "__main__":

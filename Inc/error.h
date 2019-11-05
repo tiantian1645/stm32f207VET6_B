@@ -48,7 +48,7 @@ typedef enum {
 } eError_Temp;
 
 typedef enum {
-    eError_Storge_Busy = 0x01,        /* 资源不可用 */
+    eError_Storge_Hardware = 0x01,    /* 硬件故障 */
     eError_Storge_Read_Error = 0x02,  /* 读取失败 */
     eError_Storge_Write_Error = 0x04, /* 写入失败 */
 } eError_Storge;
