@@ -467,9 +467,9 @@ void barcode_sn2707_Init(void)
 
     if (error_flag != 0) {                                                 /* 存在错误 */
         error_Emit(eError_Peripheral_Scanner, eError_Scanner_Conf_Failed); /* 报错 */
-        beep_Start_With_Conf(eBeep_Freq_re, 100, 100, 1);                  /* RE 一声 */
+        beep_Start_With_Conf(eBeep_Freq_re, 100, 150, 1);                  /* RE 一声 */
     } else {                                                               /* 参数项匹配 或 设置成功 */
-        beep_Start_With_Conf(eBeep_Freq_mi, 100, 100, 2);                  /* MI 两声 */
+        beep_Start_With_Conf(eBeep_Freq_mi, 100, 150, 2);                  /* MI 两声 */
     }
 }
 

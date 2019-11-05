@@ -33,7 +33,7 @@ void delay_us(uint32_t timeout)
 {
     uint32_t i;
     do {
-        for (i = 0; i < 12; i++)
+        for (i = 0; i < 6; i++)
             ;
     } while (--timeout);
 }
