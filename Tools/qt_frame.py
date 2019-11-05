@@ -199,12 +199,14 @@ class MainWindow(QMainWindow):
         self.createSerial()
         self.createMatplot()
         self.createStatusBar()
+        self.createStorge()
         widget = QWidget()
         layout = QGridLayout(widget)
         layout.addWidget(self.barcode_gb, 0, 0, 6, 1)
         layout.addWidget(self.motor_bg, 6, 0, 8, 1)
-        layout.addWidget(self.serial_gb, 14, 0, 3, 1)
-        layout.addWidget(self.matplot_wg, 0, 1, 17, 1)
+        layout.addWidget(self.storge_wg, 14, 0, 1, 1)
+        layout.addWidget(self.serial_gb, 15, 0, 3, 1)
+        layout.addWidget(self.matplot_wg, 0, 1, 18, 1)
         layout.setContentsMargins(0, 5, 0, 0)
         layout.setSpacing(0)
         self.setCentralWidget(widget)
@@ -221,12 +223,12 @@ class MainWindow(QMainWindow):
 
     def createStatusBar(self):
         self.status_bar = QStatusBar(self)
-        self.status_bar.layout().setContentsMargins(0, 5, 0, 0)
+        self.status_bar.layout().setContentsMargins(5, 0, 5, 0)
         self.status_bar.layout().setSpacing(0)
 
         temperautre_wg = QWidget()
         temperautre_ly = QHBoxLayout(temperautre_wg)
-        temperautre_ly.setContentsMargins(2, 2, 5, 5)
+        temperautre_ly.setContentsMargins(5, 0, 5, 0)
         temperautre_ly.setSpacing(5)
         self.temperautre_lbs = [QLabel("-" * 8) for _ in TEMPERAUTRE_NAMES]
         for i, name in enumerate(TEMPERAUTRE_NAMES):
@@ -235,7 +237,7 @@ class MainWindow(QMainWindow):
 
         motor_tray_position_wg = QWidget()
         motor_tray_position_ly = QHBoxLayout(motor_tray_position_wg)
-        motor_tray_position_ly.setContentsMargins(0, 0, 0, 0)
+        motor_tray_position_ly.setContentsMargins(5, 0, 5, 0)
         motor_tray_position_ly.setSpacing(5)
         self.motor_tray_position = QLabel("******")
         motor_tray_position_ly.addWidget(QLabel("托盘电机位置"))
@@ -243,7 +245,7 @@ class MainWindow(QMainWindow):
 
         kirakira_wg = QWidget()
         kirakira_ly = QHBoxLayout(kirakira_wg)
-        kirakira_ly.setContentsMargins(2, 2, 5, 5)
+        kirakira_ly.setContentsMargins(5, 0, 5, 0)
         kirakira_ly.setSpacing(5)
         self.kirakira_recv_lb = QLabel("    ")
         self.kirakira_send_lb = QLabel("    ")
@@ -320,14 +322,22 @@ class MainWindow(QMainWindow):
             self.barcode_lbs[channel - 1].setText(text)
 
     def createMotor(self):
-        self.motor_bg = QGroupBox("电机控制")
+        self.motor_bg = QWidget(self)
         motor_ly = QGridLayout(self.motor_bg)
+        motor_ly.setContentsMargins(5, 3, 5, 3)
+        motor_ly.setSpacing(0)
         self.motor_heater_bg = QGroupBox("上加热体")
         motor_heater_ly = QHBoxLayout(self.motor_heater_bg)
+        motor_heater_ly.setContentsMargins(5, 3, 5, 3)
+        motor_heater_ly.setSpacing(0)
         self.motor_white_bg = QGroupBox("白板")
         motor_white_ly = QHBoxLayout(self.motor_white_bg)
+        motor_white_ly.setContentsMargins(5, 3, 5, 3)
+        motor_white_ly.setSpacing(0)
         self.motor_tray_bg = QGroupBox("托盘")
         motor_tray_ly = QGridLayout(self.motor_tray_bg)
+        motor_tray_ly.setContentsMargins(5, 3, 5, 3)
+        motor_tray_ly.setSpacing(0)
 
         self.motor_heater_up_bt = QPushButton("上")
         self.motor_heater_down_bt = QPushButton("下")
@@ -676,6 +686,26 @@ class MainWindow(QMainWindow):
         data = tuple((int.from_bytes(info.content[8 + i * 2 : 9 + i * 2], byteorder="little") for i in range(length)))
         self.matplot_data[channel] = data
         logger.debug("get data in channel | {} | {}".format(channel, data))
+
+    def createStorge(self):
+        self.storge_wg = QWidget(self)
+        storge_ly = QHBoxLayout(self.storge_wg)
+        storge_ly.setContentsMargins(3, 3, 3, 3)
+        storge_ly.setSpacing(0)
+        self.storge_id_card_read_bt = QPushButton("ID卡读")
+        self.storge_flash_read_bt = QPushButton("Flash读")
+        storge_ly.addWidget(self.storge_id_card_read_bt)
+        storge_ly.addWidget(self.storge_flash_read_bt)
+
+        self.storge_id_card_read_bt.clicked.connect(self.onID_CardRead)
+        self.storge_flash_read_bt.clicked.connect(self.onFlashRead)
+
+    def onID_CardRead(self, event):
+        # self._serialSendPack(0x06)
+        self._serialSendPack(0xD8, (0x00, 0x00, 0x00, 0x00, 0x00, 0x10))
+
+    def onFlashRead(self, event):
+        self._serialSendPack(0xD6, (0x00, 0x00, 0x00, 0x00, 0x00, 0x10))
 
 
 if __name__ == "__main__":
