@@ -395,13 +395,26 @@ static void comm_Out_Recv_Task(void * argument)
 {
     sComm_Out_RecvInfo recvInfo;
     eProtocolParseResult pResult;
+    eError_COMM error_type = 0x00;
 
     for (;;) {
         if (xQueueReceive(comm_Out_RecvQueue, &recvInfo, portMAX_DELAY) != pdPASS) { /* 检查接收队列 */
             continue;                                                                /* 队列空 */
         }
         pResult = protocol_Parse_Out(recvInfo.buff, recvInfo.length); /* 数据包协议解析 */
-        if (pResult == PROTOCOL_PARSE_OK) {                           /* 数据包解析正常 */
+        if (pResult != PROTOCOL_PARSE_OK) {                           /* 数据包解析异常 */
+            if (pResult & PROTOCOL_PARSE_LENGTH_ERROR) {
+                error_type |= eError_COMM_Wrong_Param;
+            }
+            if (pResult & PROTOCOL_PARSE_CMD_ERROR) {
+                error_type |= eError_COMM_Unknow_CMD;
+            }
+            if (pResult & PROTOCOL_PARSE_EMIT_ERROR) {
+                error_type |= eError_COMM_Busy;
+            }
+            if (error_type > 0) {
+                error_Emit(eError_Peripheral_COMM_Out, error_type);
+            }
         }
         vTaskDelay(pdMS_TO_TICKS(10));
     }

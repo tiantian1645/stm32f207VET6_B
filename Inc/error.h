@@ -58,6 +58,8 @@ typedef enum {
     eError_COMM_Send_Failed = 0x02, /* 发送失败 */
     eError_COMM_Wrong_ACK = 0x04,   /* 回应帧号不正确 */
     eError_COMM_Recv_None = 0x08,   /* 无回应 */
+    eError_COMM_Unknow_CMD = 0x10,  /* 未知功能码 */
+    eError_COMM_Wrong_Param = 0x20, /* 参数不正常 */
 } eError_COMM;
 
 typedef enum {

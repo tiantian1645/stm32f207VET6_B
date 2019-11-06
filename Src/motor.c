@@ -218,7 +218,17 @@ eMotor_OPT_Status motor_OPT_Status_Get(eMotor_OPT_Index idx)
  */
 void motor_Resource_Init(void)
 {
-    m_l6470_Init();       /* 驱动资源及参数初始化 */
+
+    uint8_t result;
+
+    result = m_l6470_Init(); /* 驱动资源及参数初始化 */
+    if (result & 0x01) {
+        error_Emit(eError_Peripheral_Motor_Scan, eError_Motor_Status_Warui);
+    }
+    if (result & 0x10) {
+        error_Emit(eError_Peripheral_Motor_Tray, eError_Motor_Status_Warui);
+    }
+
     barcode_Motor_Init(); /* 扫码电机初始化 */
 
     /* 警告 上加热体电机不抬起 不允许操作托盘电机 */

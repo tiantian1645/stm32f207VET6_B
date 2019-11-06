@@ -400,7 +400,7 @@ uint8_t dSPIN_Write_Byte(uint8_t byte);
 /** @} */
 
 void m_l6470_Params_Init(void);
-void m_l6470_Init(void);
+uint8_t m_l6470_Init(void);
 uint8_t m_l6470_release(void);
 uint8_t m_l6470_Index_Switch(eM_L6470_Index index, uint32_t tiemout);
 void m_l6470_Reset_HW(void);

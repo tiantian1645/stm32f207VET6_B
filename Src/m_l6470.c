@@ -239,7 +239,7 @@ uint32_t dSPIN_Registers_Check(dSPIN_RegsStruct_TypeDef * dSPIN_RegsStruct)
     printf("param | %10s | data | %5lu | memory %5u\n", "CONFIG", param, dSPIN_RegsStruct->CONFIG);
 
     param = dSPIN_Get_Param(dSPIN_STATUS);
-    if (param != dSPIN_RegsStruct->STATUS) {
+    if ((param & 0x7e00) < 0x7e00) {
         result |= (1 << dSPIN_STATUS);
     }
     printf("param | %10s | data | %5lu | memory %5u\n", "STATUS", param, dSPIN_RegsStruct->STATUS);
@@ -307,8 +307,10 @@ void m_l6470_Params_Init(void)
  * @param  None
  * @retval None
  */
-void m_l6470_Init(void)
+uint8_t m_l6470_Init(void)
 {
+    uint8_t result = 0;
+
     m_l6470_spi_sem = xSemaphoreCreateBinary();
     if (m_l6470_spi_sem == NULL || xSemaphoreGive(m_l6470_spi_sem) != pdPASS) {
         Error_Handler();
@@ -324,7 +326,9 @@ void m_l6470_Init(void)
     m_l6470_Index_Switch(eM_L6470_Index_0, portMAX_DELAY);
     m_l6470_Params_Init();
     dSPIN_Get_Status(); /* 读取电机状态 清除低压告警位 */
-    dSPIN_Registers_Check(&dSPIN_RegsStructs[gML6470Index]);
+    if (dSPIN_Registers_Check(&dSPIN_RegsStructs[gML6470Index]) > 0) {
+        result |= 0x01;
+    }
     m_l6470_release();
 
     printf("\n\n============= Enter motor 2 | =============\n\n");
@@ -333,8 +337,11 @@ void m_l6470_Init(void)
     m_l6470_Index_Switch(eM_L6470_Index_1, portMAX_DELAY);
     m_l6470_Params_Init();
     dSPIN_Get_Status(); /* 读取电机状态 清除低压告警位 */
-    dSPIN_Registers_Check(&dSPIN_RegsStructs[gML6470Index]);
+    if (dSPIN_Registers_Check(&dSPIN_RegsStructs[gML6470Index]) > 0) {
+        result |= 0x10;
+    }
     m_l6470_release();
+    return result;
 }
 
 /**

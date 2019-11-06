@@ -944,6 +944,8 @@ class MainWindow(QMainWindow):
             return "扫码枪"
         elif p_type == 0x0F:
             return "风扇"
+        else:
+            return "0x{:02X}".format(p_type)
 
     def getFaultType(self, p_type, e_type):
         if p_type in (0x00, 0x01, 0x02, 0x03):
@@ -953,7 +955,7 @@ class MainWindow(QMainWindow):
         elif p_type in (0x09, 0x0A):
             error_list = ("硬件故障", "读取失败", "写入失败")
         elif p_type in (0x0B, 0x0C, 0x0D):
-            error_list = ("资源不可用", "发送失败", "回应帧号不正确", "无回应")
+            error_list = ("资源不可用", "发送失败", "回应帧号不正确", "无回应", "未知功能码", "参数不正常")
         elif p_type in (0x0E,):
             error_list = ("配置失败",)
         elif p_type in (0x0F,):
@@ -962,6 +964,8 @@ class MainWindow(QMainWindow):
         for i, e in enumerate(error_list):
             if e_type & (1 << i):
                 result.append(e)
+        if e_type > (1 << len(error_list)) - 1:
+            result.append("0x{:02X}".format(e_type))
         return " | ".join(result)
 
     def getFaultLevel(self, p_type, e_type):
@@ -985,7 +989,6 @@ class MainWindow(QMainWindow):
         # ("转速为零", "失速")
         elif p_type in (0x0F,):
             level = QMessageBox.Critical
-
         return level
 
     def showWarnInfo(self, info):

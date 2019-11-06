@@ -43,6 +43,9 @@ void error_Emit(eError_Peripheral pp, uint8_t detail)
     }
     errorInfo.peripheral = pp;
     errorInfo.type = detail;
-    comm_Main_SendTask_ErrorInfoQueueEmit(&errorInfo, 0); /* 发送给主板串口 */
-    comm_Out_SendTask_ErrorInfoQueueEmit(&errorInfo, 0);  /* 发送给外串口 */
+
+    if (errorInfo.peripheral != eError_Peripheral_COMM_Out) { /* 外串口故障不能波及主串口 */
+        comm_Main_SendTask_ErrorInfoQueueEmit(&errorInfo, 0); /* 发送给主板串口 */
+    }
+    comm_Out_SendTask_ErrorInfoQueueEmit(&errorInfo, 0); /* 发送给外串口 */
 }
