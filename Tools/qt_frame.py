@@ -19,6 +19,7 @@ from dc201_pack import DC201_PACK, write_firmware_pack_FC
 USE_PYSIDE2 = 1
 if USE_PYSIDE2:
     from PySide2.QtCore import QObject, QRunnable, Qt, QThreadPool, QTimer, Signal as pyqtSignal, Slot as pyqtSlot
+    from PySide2.QtGui import QIcon
     from PySide2.QtWidgets import (
         QApplication,
         QCheckBox,
@@ -43,6 +44,7 @@ if USE_PYSIDE2:
     from pyqtgraph import GraphicsLayoutWidget, LabelItem, SignalProxy, mkPen
 else:
     from PyQt5.QtCore import QObject, QRunnable, Qt, QThreadPool, QTimer, pyqtSignal, pyqtSlot
+    from PyQt5.QtGui import QIcon
     from PyQt5.QtWidgets import (
         QApplication,
         QCheckBox,
@@ -73,6 +75,12 @@ LINE_COLORS = ("b", "g", "r", "c", "m", "y", "k", "w")
 LINE_SYMBOLS = ("o", "s", "t", "d", "+")
 
 logger = loguru.logger
+
+
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    base_path = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_path, relative_path)
 
 
 class SeialWorkerSignals(QObject):
@@ -238,6 +246,8 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.matplot_wg, 0, 1, 18, 1)
         layout.setContentsMargins(0, 5, 0, 0)
         layout.setSpacing(0)
+        image_path = resource_path("./icos/tt.ico")
+        self.setWindowIcon(QIcon(image_path))
         self.setCentralWidget(widget)
         self.resize(850, 553)
 
@@ -779,7 +789,7 @@ class MainWindow(QMainWindow):
     def _getFileHash_SHA256(self, file_path):
         if os.path.isfile(file_path):
             s = sha256()
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 while True:
                     data = f.read(8 * 1024)
                     if not data:
