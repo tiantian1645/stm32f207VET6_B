@@ -90,6 +90,8 @@ class SerialWorker(QRunnable):
         self.logger = logger
         self.task_queue = task_queue
         self.firm_queue = firm_queue
+        self.firm_start_flag = False
+        self.firm_over_flag = False
         self.dd = DC201_PACK()
         self.signals = SeialWorkerSignals()
         self.signals.owari.connect(self.stoptask)
@@ -123,6 +125,12 @@ class SerialWorker(QRunnable):
                     logger.debug("serial write data | {}".format(bytesPuttyPrint(write_data)))
                     self.serial.write(write_data)
                     self.signals.serial_statistic.emit(("w", write_data))
+                    if write_data[5] == 0xFC:
+                        if write_data[6] == 0:
+                            self.firm_over_flag = True
+                    if write_data[5] == 0x0F:
+                        self.firm_start_flag = False
+                        self.firm_over_flag = False
                 elif write_data is not None:
                     self.logger.error("write data type error | {}".format(write_data))
 
@@ -148,8 +156,18 @@ class SerialWorker(QRunnable):
                             self.signals.serial_statistic.emit(("w", write_data))
                             self.logger.warning("send pack | {}".format(bytesPuttyPrint(write_data)))
                             self.signals.result.emit(info)
-                            if fun_code in (0xDC, 0xDD, 0xFB):
-                                self.firm_queue.put(recv_pack[6])
+                            if fun_code == 0xFA:
+                                self.firm_queue.put(3)
+                                self.firm_start_flag = True
+                            if self.firm_start_flag:
+                                if fun_code == 0xB5:
+                                    self.firm_queue.put(1)
+
+                        else:
+                            if self.firm_over_flag:
+                                self.firm_queue.put(2)
+                            else:
+                                self.firm_queue.put(0)
                 if info is not None:
                     if info.is_head and info.is_crc:
                         recv_buffer = b""
@@ -172,6 +190,7 @@ class MainWindow(QMainWindow):
         self.serial = serial.Serial(port=None, baudrate=115200, timeout=0.01)
         self.task_queue = queue.Queue()
         self.firm_queue = queue.Queue()
+        self.last_firm_path = None
         self.threadpool = QThreadPool()
         self.id_card_data = bytearray(4096)
         self.temp_btm_record = []
@@ -220,7 +239,7 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 5, 0, 0)
         layout.setSpacing(0)
         self.setCentralWidget(widget)
-        self.resize(870, 610)
+        self.resize(850, 553)
 
     def resizeEvent(self, event):
         # logger.debug("windows size | {}".format(self.size()))
@@ -299,6 +318,8 @@ class MainWindow(QMainWindow):
         self.temp_start_time = None
         self.temp_time_record.clear()
         self.temperature_plot_wg.clear()
+        self.temperature_btm_plot = self.temperature_plot_wg.plot(self.temp_time_record, self.temp_btm_record, name="\u00A0下加热体", pen=mkPen(color="r"))
+        self.temperature_top_plot = self.temperature_plot_wg.plot(self.temp_time_record, self.temp_top_record, name="\u00A0上加热体", pen=mkPen(color="b"))
 
     def onTemperaturePlotMouseMove(self, event):
         mouse_point = self.temperature_plot_wg.vb.mapSceneToView(event[0])
@@ -581,9 +602,11 @@ class MainWindow(QMainWindow):
         self.matplot_start_bt = QPushButton("测试")
         self.matplot_cancel_bt = QPushButton("取消")
         self.upgrade_bt = QPushButton("升级")
+        self.bootload_bt = QPushButton("BL")
         matplot_bt_ly.addWidget(self.matplot_start_bt)
         matplot_bt_ly.addWidget(self.matplot_cancel_bt)
         matplot_bt_ly.addWidget(self.upgrade_bt)
+        matplot_bt_ly.addWidget(self.bootload_bt)
         matplot_ly.addLayout(matplot_bt_ly)
 
         matplot_conf_wg = QWidget()
@@ -613,6 +636,7 @@ class MainWindow(QMainWindow):
         self.matplot_start_bt.clicked.connect(self.onMatplotStart)
         self.matplot_cancel_bt.clicked.connect(self.onMatplotCancel)
         self.upgrade_bt.clicked.connect(self.onUpgrade)
+        self.bootload_bt.clicked.connect(self.onBootload)
         self.updateMatplotPlot()
 
     def onPlotMouseMove(self, event):
@@ -636,6 +660,9 @@ class MainWindow(QMainWindow):
     def onMatplotCancel(self, event):
         self._serialSendPack(0x02)
 
+    def onBootload(self, event):
+        self._serialSendPack(0x0F)
+
     def onUpgrade(self, event):
         self.upgrade_dg = QDialog(self)
         self.upgrade_dg.setWindowTitle("固件升级")
@@ -644,6 +671,9 @@ class MainWindow(QMainWindow):
         upgrade_temp_ly = QHBoxLayout()
         upgrade_temp_ly.addWidget(QLabel("固件路径"))
         self.upgrade_dg_lb = QLineEdit()
+        if self.last_firm_path is not None and os.path.isfile(self.last_firm_path):
+            self.upgrade_dg_lb.setText(self.last_firm_path)
+            self.upgrade_dg.setWindowTitle("固件升级 | {}".format(self._getFileHash_SHA256(self.last_firm_path)))
         self.upgrade_dg_fb_bt = QPushButton("...")
         upgrade_temp_ly.addWidget(self.upgrade_dg_lb)
         upgrade_temp_ly.addWidget(self.upgrade_dg_fb_bt)
@@ -662,31 +692,40 @@ class MainWindow(QMainWindow):
         self.upgrade_dg_bt.setCheckable(True)
         self.upgrade_dg_bt.clicked.connect(self.onUpgradeDialog)
 
-        self.upgrade_dg.resize(350, 75)
+        self.upgrade_dg.resize(600, 75)
         self.upgrade_dg.exec_()
+
+    def _clear_firm_queue(self):
+        while True:
+            try:
+                self.firm_queue.get_nowait()
+            except queue.Empty:
+                break
+
+    def _get_from_firm_queue(self, *args, **kwargs):
+        try:
+            return self.firm_queue.get(*args, **kwargs)
+        except queue.Empty:
+            return None
 
     def onUpgradeDialog(self, event):
         if event is True:
             file_path = self.upgrade_dg_lb.text()
             if os.path.isfile(file_path):
                 self.upgrade_dg_bt.setEnabled(False)
+                self._clear_firm_queue()
                 self._serialSendPack(0x0F)
                 self.upgrade_dg_bt.setText("重启中")
-                self._delay(2)
-                while True:
-                    try:
-                        self.firm_queue.get_nowait()
-                    except queue.Empty:
-                        break
-                self._serialSendPack(0xDD)
-                self.upgrade_dg_bt.setText("擦除中")
-                result = self.firm_queue.get(timeout=5)
-                if result == 1:
-                    self.upgrade_dg_bt.setText("擦除失败")
-                    self._serialSendPack(0x0F)
-                    self.upgrade_dg.setWindowTitle("固件升级失败 且原应用区可能已破坏")
+                result = self._get_from_firm_queue(timeout=1)
+                result = self._get_from_firm_queue(timeout=2)
+                logger.debug("after reboot get result | {}".format(result))
+                if result != 3:
+                    self.upgrade_dg_bt.setText("重试")
+                    self.upgrade_dg_bt.setEnabled(True)
+                    self.upgrade_dg_bt.setChecked(False)
                     return
                 self.upgrade_dg_bt.setText("升级中")
+                self._delay(1)
                 start = time.time()
                 real_size = 0
                 file_size = os.path.getsize(file_path)
@@ -703,33 +742,58 @@ class MainWindow(QMainWindow):
                             if result == 2:
                                 logger.success("get all recv")
                                 QTimer.singleShot(7000, lambda: self._serialSendPack(0x07))
-                                self.upgrade_dg_bt.setText("完成")
+                                self.upgrade_dg_bt.setText("もう一回")
                                 self.upgrade_dg_bt.setEnabled(True)
+                                self.upgrade_dg_bt.setChecked(False)
                             else:
-                                logger.error("get error recv")
+                                logger.error("get error recv | {}".format(result))
+                                self.upgrade_dg_bt.setText("重试")
+                                self.upgrade_dg_bt.setEnabled(True)
+                                self.upgrade_dg_bt.setChecked(False)
+                                return
                             break
                     except queue.Empty:
                         logger.error("get recv timeout")
-                        break
+                        self.upgrade_dg_bt.setText("重试")
+                        self.upgrade_dg_bt.setEnabled(True)
+                        self.upgrade_dg_bt.setChecked(False)
+                        return
                     except Exception:
                         logger.error("other error\n{}".format(stackprinter.format()))
                         break
                     QApplication.processEvents()
-                logger.info(
-                    "finish loop file | complete {:.2%} | {} / {} Byte | in {:.2f}S".format(real_size / file_size, real_size, file_size, time.time() - start)
+                log_mark = "finish loop file | complete {:.2%} | {} / {} Byte | in {:.2f}S".format(
+                    real_size / file_size, real_size, file_size, time.time() - start
                 )
+                logger.info(log_mark)
+                title = "固件升级 结束 | {} Byte | {:.2f} S".format(file_size, time.time() - start)
+                self.upgrade_dg.setWindowTitle(title)
             else:
                 self.upgrade_dg_bt.setChecked(False)
                 self.upgrade_dg_lb.setText("请输入有效路径")
+                self.upgrade_dg.setWindowTitle("固件升级")
         elif event is False:
             QTimer.singleShot(3000, lambda: self._serialSendPack(0x07))
             self.upgrade_dg.close()
 
+    def _getFileHash_SHA256(self, file_path):
+        if os.path.isfile(file_path):
+            s = sha256()
+            with open(file_path, 'rb') as f:
+                while True:
+                    data = f.read(8 * 1024)
+                    if not data:
+                        break
+                    s.update(data)
+            return s.hexdigest()
+
     def onUpgradeDialogFileSelect(self, event):
         fd = QFileDialog()
-        filename, _ = fd.getOpenFileName(filter="BIN 文件 (*.bin)")
-        if filename:
-            self.upgrade_dg_lb.setText(filename)
+        file_path, _ = fd.getOpenFileName(filter="BIN 文件 (*.bin)")
+        if file_path:
+            self.upgrade_dg_lb.setText(file_path)
+            self.last_firm_path = file_path
+            self.upgrade_dg.setWindowTitle("固件升级 | {}".format(self._getFileHash_SHA256(file_path)))
 
     def updateMatplotPlot(self):
         self.plot_wg.clear()
@@ -834,7 +898,7 @@ class MainWindow(QMainWindow):
         elif p_type == 0x08:
             return "下加热体温控"
         elif p_type == 0x09:
-            return "W25Q64 Flash存储芯片"
+            return "Flash存储芯片"
         elif p_type == 0x0A:
             return "ID Code 卡"
         elif p_type == 0x0B:
@@ -857,9 +921,9 @@ class MainWindow(QMainWindow):
             error_list = ("硬件故障", "读取失败", "写入失败")
         elif p_type in (0x0B, 0x0C, 0x0D):
             error_list = ("资源不可用", "发送失败", "回应帧号不正确", "无回应")
-        elif p_type in (0x0E, ):
-            error_list = ("配置失败", )
-        elif p_type in (0x0F, ):
+        elif p_type in (0x0E,):
+            error_list = ("配置失败",)
+        elif p_type in (0x0F,):
             error_list = ("转速为零", "失速")
         result = []
         for i, e in enumerate(error_list):
@@ -867,12 +931,39 @@ class MainWindow(QMainWindow):
                 result.append(e)
         return " | ".join(result)
 
+    def getFaultLevel(self, p_type, e_type):
+        level = QMessageBox.Warning
+        # ("资源不可用", "电机运动超时", "电机驱动异常")
+        if p_type in (0x00, 0x01, 0x02, 0x03):
+            if e_type & 0x04:
+                level = QMessageBox.Critical
+        # ("温度值无效", "温度持续过低", "温度持续过高")
+        elif p_type in (0x04, 0x05, 0x06, 0x07, 0x08):
+            level = QMessageBox.Critical
+        # ("硬件故障", "读取失败", "写入失败")
+        elif p_type in (0x09, 0x0A):
+            level = QMessageBox.Critical
+        # ("资源不可用", "发送失败", "回应帧号不正确", "无回应")
+        elif p_type in (0x0B, 0x0C, 0x0D):
+            level = QMessageBox.Warning
+        # ("配置失败", )
+        elif p_type in (0x0E,):
+            level = QMessageBox.Warning
+        # ("转速为零", "失速")
+        elif p_type in (0x0F,):
+            level = QMessageBox.Critical
+
+        return level
+
     def showWarnInfo(self, info):
         p_type, e_type = info.content[6:8]
+        e = self.getFaultType(p_type, e_type)
+        p = self.getPeripheralType(p_type)
+        level = self.getFaultLevel(p_type, e_type)
         msg = QMessageBox(self)
-        msg.setIcon(QMessageBox.Warning)
+        msg.setIcon(level)
         msg.setWindowTitle("故障信息")
-        msg.setText("设备类型: {}\n故障类型: {}".format(self.getPeripheralType(p_type), self.getFaultType(p_type, e_type)))
+        msg.setText("设备类型: {}\n故障类型: {}".format(p, e))
         msg.show()
 
 
