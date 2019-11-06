@@ -576,6 +576,15 @@ class MainWindow(QMainWindow):
 
     def onSerialWorkerError(self, s):
         logger.error("emit from serial worker error signal | {}".format(s))
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Critical)
+        msg.setWindowTitle("串口通讯故障")
+        msg.setText(repr(s[1]))
+        msg.exec_()
+        self.serial_post_co.setEnabled(True)
+        self.serial_refresh_bt.setEnabled(True)
+        self.serial_switch_bt.setText("打开串口")
+        self.serial_switch_bt.setChecked(False)
 
     def onSerialWorkerResult(self, info):
         logger.info("emit from serial worker result signal | {}".format(info.text))
