@@ -1,5 +1,6 @@
 # http://doc.qt.io/qt-5/qt.html
 
+import json
 import os
 import queue
 import sys
@@ -73,14 +74,27 @@ BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
 TEMPERAUTRE_NAMES = ("下加热体:", "上加热体:")
 LINE_COLORS = ("b", "g", "r", "c", "m", "y", "k", "w")
 LINE_SYMBOLS = ("o", "s", "t", "d", "+")
-
 logger = loguru.logger
 
 
-def resource_path(relative_path):
-    """ Get absolute path to resource, works for dev and for PyInstaller """
-    base_path = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
-    return os.path.join(base_path, relative_path)
+CONFIG_PATH = "./conf/config.json"
+CONFIG = dict()
+try:
+    with open(CONFIG_PATH, "r") as f:
+        CONFIG = json.load(f)
+except Exception:
+    logger.error("load conf failed \n{}".format(stackprinter.format()))
+    CONFIG = dict()
+    CONFIG["log"] = dict(rotation="1 MB", retention=50)
+    try:
+        with open(CONFIG_PATH, "w") as f:
+            json.dump(CONFIG, f)
+    except Exception:
+        logger.error("dump conf failed \n{}".format(stackprinter.format()))
+
+rotation = CONFIG.get("log", {}).get("rotation", "1 MB")
+retention = CONFIG.get("log", {}).get("retention", 50)
+logger.add("./log/dc201.log", rotation=rotation, retention=retention, enqueue=True)
 
 
 class SeialWorkerSignals(QObject):
@@ -246,7 +260,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.matplot_wg, 0, 1, 18, 1)
         layout.setContentsMargins(0, 5, 0, 0)
         layout.setSpacing(0)
-        image_path = resource_path("./icos/tt.ico")
+        image_path = "./icos/tt.ico"
         self.setWindowIcon(QIcon(image_path))
         self.setCentralWidget(widget)
         self.resize(850, 553)

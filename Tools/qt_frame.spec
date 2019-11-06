@@ -17,6 +17,8 @@ a = Analysis(['qt_frame.py'],
              noarchive=False)
 
 a.datas += [('.\\icos\\tt.ico', 'C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Tools\\icos\\tt.ico', 'DATA')]
+a.datas += [('.\\log\\dc201.log', 'C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Tools\\Log\\dc201.log', 'DATA')]
+a.datas += [('.\\conf\\config.json', 'C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Tools\\conf\\config.json', 'DATA')]
 
 pyz = PYZ(a.pure, a.zipped_data,
              cipher=block_cipher)
@@ -28,13 +30,15 @@ exe = EXE(pyz,
           debug=False,
           bootloader_ignore_signals=False,
           strip=False,
-          upx=True,
-          console=True , icon='C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Tools\\icos\\tt.ico')
+          upx=False,
+          console=False, 
+          icon='C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Tools\\icos\\tt.ico')
+
 coll = COLLECT(exe,
                a.binaries,
                a.zipfiles,
                a.datas,
                strip=False,
-               upx=True,
+               upx=False,
                upx_exclude=[],
                name='dc201')
