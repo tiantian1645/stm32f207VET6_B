@@ -1269,17 +1269,19 @@ void temp_Upload_Deal(void)
         if (cnt_btm_low > 600 / 5) {                                     /* 过低持续次数大于120次 5 S * 120=10 Min */
             error_Emit(eError_Peripheral_Temp_Btm, eError_Temp_Too_Low); /* 报错 */
         }
-    } else if (temp_btm > 37.5) {                                          /* 温度值高于37.5 */
-        cnt_btm_high++;                                                    /* 温度过高计数+1 */
-        cnt_btm_low = 0;                                                   /* 温度过低计数清零 */
-        if (cnt_btm_low > 60 / 5) {                                        /* 过低持续次数大于12次 5 S * 12 = 1 Min */
-            error_Emit(eError_Peripheral_Temp_Btm, eError_Temp_Too_Hight); /* 报错 */
+    } else if (temp_btm > 37.5) {                                    /* 温度值高于37.5 */
+        if (temp_btm == TEMP_INVALID_DATA) {                         /* 温度值为无效值 */
+            error_Emit(eError_Peripheral_Temp_Btm, eError_Temp_Nai); /* 报错 */
+        } else {
+            cnt_btm_high++;                                                    /* 温度过高计数+1 */
+            cnt_btm_low = 0;                                                   /* 温度过低计数清零 */
+            if (cnt_btm_low > 60 / 5) {                                        /* 过低持续次数大于12次 5 S * 12 = 1 Min */
+                error_Emit(eError_Peripheral_Temp_Btm, eError_Temp_Too_Hight); /* 报错 */
+            }
         }
-    } else if (temp_btm == TEMP_INVALID_DATA) {                  /* 温度值为无效值 */
-        error_Emit(eError_Peripheral_Temp_Btm, eError_Temp_Nai); /* 报错 */
-    } else {                                                     /* 温度值为36.5～37.5 */
-        cnt_btm_low = 0;                                         /* 温度过低计数清零 */
-        cnt_btm_high = 0;                                        /* 温度过高计数清零 */
+    } else {              /* 温度值为36.5～37.5 */
+        cnt_btm_low = 0;  /* 温度过低计数清零 */
+        cnt_btm_high = 0; /* 温度过高计数清零 */
     }
 
     if (temp_top < 36.5) {                                               /* 温度值低于36.5 */
@@ -1288,17 +1290,19 @@ void temp_Upload_Deal(void)
         if (cnt_top_low > 600 / 5) {                                     /* 过低持续次数大于120次 5 S * 120=10 Min */
             error_Emit(eError_Peripheral_Temp_Top, eError_Temp_Too_Low); /* 报错 */
         }
-    } else if (temp_top > 37.5) {                                          /* 温度值高于37.5 */
-        cnt_top_high++;                                                    /* 温度过高计数+1 */
-        cnt_top_low = 0;                                                   /* 温度过低计数清零 */
-        if (cnt_top_low > 60 / 5) {                                        /* 过低持续次数大于12次 5 S * 12 = 1 Min */
-            error_Emit(eError_Peripheral_Temp_Top, eError_Temp_Too_Hight); /* 报错 */
+    } else if (temp_top > 37.5) {                                    /* 温度值高于37.5 */
+        if (temp_top == TEMP_INVALID_DATA) {                         /* 温度值为无效值 */
+            error_Emit(eError_Peripheral_Temp_Top, eError_Temp_Nai); /* 报错 */
+        } else {
+            cnt_top_high++;                                                    /* 温度过高计数+1 */
+            cnt_top_low = 0;                                                   /* 温度过低计数清零 */
+            if (cnt_top_low > 60 / 5) {                                        /* 过低持续次数大于12次 5 S * 12 = 1 Min */
+                error_Emit(eError_Peripheral_Temp_Top, eError_Temp_Too_Hight); /* 报错 */
+            }
         }
-    } else if (temp_top == TEMP_INVALID_DATA) {                  /* 温度值为无效值 */
-        error_Emit(eError_Peripheral_Temp_Top, eError_Temp_Nai); /* 报错 */
-    } else {                                                     /* 温度值为36.5～37.5 */
-        cnt_top_low = 0;                                         /* 温度过低计数清零 */
-        cnt_top_high = 0;                                        /* 温度过高计数清零 */
+    } else {              /* 温度值为36.5～37.5 */
+        cnt_top_low = 0;  /* 温度过低计数清零 */
+        cnt_top_high = 0; /* 温度过高计数清零 */
     }
 
     if (temp_Upload_Comm_Get(eComm_Main) && comm_Main_SendTask_Queue_GetWaiting() == 0) { /* 允许发送且发送队列内没有其他数据包 */
