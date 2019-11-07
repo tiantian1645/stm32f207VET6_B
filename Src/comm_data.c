@@ -603,6 +603,7 @@ static void comm_Data_Recv_Task(void * argument)
         pResult = protocol_Parse_Data(recvInfo.buff, recvInfo.length); /* 数据包协议解析 */
         if (pResult == PROTOCOL_PARSE_OK) {                            /* 数据包解析正常 */
         }
+        vTaskDelay(pdMS_TO_TICKS(5));
     }
 }
 

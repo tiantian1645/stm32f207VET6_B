@@ -448,17 +448,22 @@ void barcode_sn2707_Init(void)
     icParam.param = Decode_Aiming_Pattern;
     icParam.data = 0;
     result = se2707_check_param(&BARCODE_UART, &icParam, 2000, 2);    /* 检查参数项 */
-    if (result != 0) {                                                /* 参数项不匹配 */
+    if (result == 3 || result == 4) {                                 /* 参数项不匹配 */
         result = se2707_conf_param(&BARCODE_UART, &icParam, 2000, 2); /* 重新配置参数项 */
     }
     if (result != 0) {
         error_flag = 1;
     }
+    if (error_flag != 0) {                                                 /* 存在错误 */
+        error_Emit(eError_Peripheral_Scanner, eError_Scanner_Conf_Failed); /* 报错 */
+        beep_Start_With_Conf(eBeep_Freq_re, 100, 150, 1);                  /* RE 一声 */
+        return;
+    }
 
     icParam.param = Illumination_Brightness;
     icParam.data = 1;
     result = se2707_check_param(&BARCODE_UART, &icParam, 2000, 2);    /* 检查参数项 */
-    if (result != 0) {                                                /* 参数项不匹配 */
+    if (result == 3 || result == 4) {                                 /* 参数项不匹配 */
         result = se2707_conf_param(&BARCODE_UART, &icParam, 2000, 2); /* 重新配置参数项 */
     }
     if (result != 0) {

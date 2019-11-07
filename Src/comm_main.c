@@ -398,6 +398,7 @@ static void comm_Main_Recv_Task(void * argument)
                 error_Emit(eError_Peripheral_COMM_Main, error_type);
             }
         }
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
