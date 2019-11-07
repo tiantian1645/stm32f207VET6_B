@@ -182,9 +182,10 @@ float temp_fabs(float f)
  * @brief  上加热体温度 PID输入处理
  * @note   37度附近时取偏离最远温度值 其他情况取平均值
  * @param  pData length 数组描述
+ * @param  theshold 偏远判断阈值
  * @retval 温度值 摄氏度
  */
-float temp_Deal_Temp_Data(float * pData, uint8_t length)
+float temp_Deal_Temp_Data(float * pData, uint8_t length, float theshold)
 {
     uint8_t i;
     float max, min, sum;
@@ -207,7 +208,7 @@ float temp_Deal_Temp_Data(float * pData, uint8_t length)
         sum += pData[i];
     }
 
-    if (temp_fabs(max - 37) + temp_fabs(min - 37) < 0.6) {
+    if (temp_fabs(max - 37) + temp_fabs(min - 37) < theshold) {
         return (temp_fabs(max - 37) > temp_fabs(min - 37)) ? (max) : (min);
     }
     return sum / length;
@@ -231,7 +232,7 @@ float temp_Get_Temp_Data_TOP(void)
             ++valid;
         }
     }
-    return temp_Deal_Temp_Data(temp_list, valid);
+    return temp_Deal_Temp_Data(temp_list, valid, 0.2);
 }
 
 /**
