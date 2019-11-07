@@ -5,6 +5,7 @@ import os
 import queue
 import sys
 import time
+from datetime import datetime
 from functools import partial
 from hashlib import sha256
 
@@ -365,8 +366,18 @@ class MainWindow(QMainWindow):
         self.temp_top_record.append(temp_top)
         self.temperature_btm_plot.setData(self.temp_time_record, self.temp_btm_record)
         self.temperature_top_plot.setData(self.temp_time_record, self.temp_top_record)
-        self.temperautre_lbs[0].setText("{:03.2f}℃".format(temp_btm))
-        self.temperautre_lbs[1].setText("{:03.2f}℃".format(temp_top))
+        if temp_btm != 128:
+            self.temperautre_lbs[0].setText("{:03.2f}℃".format(temp_btm))
+            self.temperautre_lbs[0].setStyleSheet("")
+        else:
+            self.temperautre_lbs[0].setText("数据异常")
+            self.temperautre_lbs[0].setStyleSheet("background-color: red;")
+        if temp_top != 128:
+            self.temperautre_lbs[1].setText("{:03.2f}℃".format(temp_top))
+            self.temperautre_lbs[1].setStyleSheet("")
+        else:
+            self.temperautre_lbs[1].setText("数据异常")
+            self.temperautre_lbs[1].setStyleSheet("background-color: red;")
 
     def updateMotorTrayPosition(self, info):
         position = info.content[6]
@@ -681,6 +692,9 @@ class MainWindow(QMainWindow):
     def onBootload(self, event):
         self._serialSendPack(0x0F)
 
+    def onReboot(self, event):
+        self._serialSendPack(0xDC)
+
     def onUpgrade(self, event):
         self.upgrade_dg = QDialog(self)
         self.upgrade_dg.setWindowTitle("固件升级")
@@ -917,6 +931,7 @@ class MainWindow(QMainWindow):
         boot_ly.addWidget(self.selftest_bt)
         self.upgrade_bt.clicked.connect(self.onUpgrade)
         self.bootload_bt.clicked.connect(self.onBootload)
+        self.reboot_bt.clicked.connect(self.onReboot)
 
     def getPeripheralType(self, p_type):
         if p_type == 0x00:
@@ -1000,12 +1015,14 @@ class MainWindow(QMainWindow):
 
     def showWarnInfo(self, info):
         p_type, e_type = info.content[6:8]
+        if p_type in (0x04, 0x05) and e_type == 0x01:
+            return
         e = self.getFaultType(p_type, e_type)
         p = self.getPeripheralType(p_type)
         level = self.getFaultLevel(p_type, e_type)
         msg = QMessageBox(self)
         msg.setIcon(level)
-        msg.setWindowTitle("故障信息")
+        msg.setWindowTitle("故障信息 | {}".format(datetime.now()))
         msg.setText("设备类型: {}\n故障类型: {}".format(p, e))
         msg.show()
 
