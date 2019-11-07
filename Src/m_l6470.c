@@ -465,80 +465,82 @@ void dSPIN_Regs_Struct_Reset(dSPIN_RegsStruct_TypeDef * dSPIN_RegsStruct)
  */
 void dSPIN_Registers_Set(dSPIN_RegsStruct_TypeDef * dSPIN_RegsStruct)
 {
-    // dSPIN_Set_Param(dSPIN_ABS_POS, dSPIN_RegsStruct->ABS_POS);
-    // dSPIN_Set_Param(dSPIN_EL_POS, dSPIN_RegsStruct->EL_POS);
-    // dSPIN_Set_Param(dSPIN_MARK, dSPIN_RegsStruct->MARK);
-    // dSPIN_Set_Param(dSPIN_ACC, dSPIN_RegsStruct->ACC);
-    // dSPIN_Set_Param(dSPIN_DEC, dSPIN_RegsStruct->DEC);
-    // dSPIN_Set_Param(dSPIN_MAX_SPEED, dSPIN_RegsStruct->MAX_SPEED);
-    // dSPIN_Set_Param(dSPIN_MIN_SPEED, dSPIN_RegsStruct->MIN_SPEED);
-    // dSPIN_Set_Param(dSPIN_FS_SPD, dSPIN_RegsStruct->FS_SPD);
-
-    // dSPIN_Set_Param(dSPIN_KVAL_HOLD, dSPIN_RegsStruct->KVAL_HOLD);
-    // dSPIN_Set_Param(dSPIN_KVAL_RUN, dSPIN_RegsStruct->KVAL_RUN);
-    // dSPIN_Set_Param(dSPIN_KVAL_ACC, dSPIN_RegsStruct->KVAL_ACC);
-    // dSPIN_Set_Param(dSPIN_KVAL_DEC, dSPIN_RegsStruct->KVAL_DEC);
-    // dSPIN_Set_Param(dSPIN_INT_SPD, dSPIN_RegsStruct->INT_SPD);
-    // dSPIN_Set_Param(dSPIN_ST_SLP, dSPIN_RegsStruct->ST_SLP);
-    // dSPIN_Set_Param(dSPIN_FN_SLP_ACC, dSPIN_RegsStruct->FN_SLP_ACC);
-    // dSPIN_Set_Param(dSPIN_FN_SLP_DEC, dSPIN_RegsStruct->FN_SLP_DEC);
-    // dSPIN_Set_Param(dSPIN_K_THERM, dSPIN_RegsStruct->K_THERM);
-    // dSPIN_Set_Param(dSPIN_STALL_TH, dSPIN_RegsStruct->STALL_TH);
-
-    // dSPIN_Set_Param(dSPIN_OCD_TH, dSPIN_RegsStruct->OCD_TH);
-    // dSPIN_Set_Param(dSPIN_STEP_MODE, dSPIN_RegsStruct->STEP_MODE);
-    // dSPIN_Set_Param(dSPIN_ALARM_EN, dSPIN_RegsStruct->ALARM_EN);
-    // dSPIN_Set_Param(dSPIN_CONFIG, dSPIN_RegsStruct->CONFIG);
-    // ws
     dSPIN_Set_Param(dSPIN_ABS_POS, dSPIN_RegsStruct->ABS_POS);
     dSPIN_Set_Param(dSPIN_EL_POS, dSPIN_RegsStruct->EL_POS);
-    // wr
     dSPIN_Set_Param(dSPIN_MARK, dSPIN_RegsStruct->MARK);
-    // r
-    dSPIN_Set_Param(dSPIN_SPEED, dSPIN_RegsStruct->SPEED);
-    // ws
-    dSPIN_Soft_Stop();
-    //    while(dSPIN_Busy_SW(ctrl));
     dSPIN_Set_Param(dSPIN_ACC, dSPIN_RegsStruct->ACC);
     dSPIN_Set_Param(dSPIN_DEC, dSPIN_RegsStruct->DEC);
-    // wr
-    dSPIN_Set_Param(dSPIN_MAX_SPEED, dSPIN_RegsStruct->MAX_SPEED);
-    // ws
-    dSPIN_Soft_Stop();
-    //    while(dSPIN_Busy_SW(ctrl));
+
+    dSPIN_Set_Param(dSPIN_MAX_SPEED, dSPIN_RegsStruct->MAX_SPEED);	/* WTF 配置此项后需要断开电桥 但软停车不行 */
+    dSPIN_Soft_HiZ();
     dSPIN_Set_Param(dSPIN_MIN_SPEED, dSPIN_RegsStruct->MIN_SPEED);
-    // wr
     dSPIN_Set_Param(dSPIN_FS_SPD, dSPIN_RegsStruct->FS_SPD);
+
     dSPIN_Set_Param(dSPIN_KVAL_HOLD, dSPIN_RegsStruct->KVAL_HOLD);
     dSPIN_Set_Param(dSPIN_KVAL_RUN, dSPIN_RegsStruct->KVAL_RUN);
     dSPIN_Set_Param(dSPIN_KVAL_ACC, dSPIN_RegsStruct->KVAL_ACC);
     dSPIN_Set_Param(dSPIN_KVAL_DEC, dSPIN_RegsStruct->KVAL_DEC);
-    // wh
-    dSPIN_Soft_HiZ();
-    //    while(dSPIN_Busy_SW(ctrl));
     dSPIN_Set_Param(dSPIN_INT_SPD, dSPIN_RegsStruct->INT_SPD);
     dSPIN_Set_Param(dSPIN_ST_SLP, dSPIN_RegsStruct->ST_SLP);
     dSPIN_Set_Param(dSPIN_FN_SLP_ACC, dSPIN_RegsStruct->FN_SLP_ACC);
     dSPIN_Set_Param(dSPIN_FN_SLP_DEC, dSPIN_RegsStruct->FN_SLP_DEC);
-    // wr
     dSPIN_Set_Param(dSPIN_K_THERM, dSPIN_RegsStruct->K_THERM);
-    // wr
-    dSPIN_Set_Param(dSPIN_OCD_TH, dSPIN_RegsStruct->OCD_TH);
     dSPIN_Set_Param(dSPIN_STALL_TH, dSPIN_RegsStruct->STALL_TH);
-    // wh
-    dSPIN_Soft_HiZ();
-    //    while(dSPIN_Busy_SW(ctrl));
+
+    dSPIN_Set_Param(dSPIN_OCD_TH, dSPIN_RegsStruct->OCD_TH);
     dSPIN_Set_Param(dSPIN_STEP_MODE, dSPIN_RegsStruct->STEP_MODE);
-    // ws
-    dSPIN_Soft_Stop();
-    //    while(dSPIN_Busy_SW(ctrl));
     dSPIN_Set_Param(dSPIN_ALARM_EN, dSPIN_RegsStruct->ALARM_EN);
-    // wh
-    dSPIN_Soft_HiZ();
-    //    while(dSPIN_Busy_SW(ctrl));
     dSPIN_Set_Param(dSPIN_CONFIG, dSPIN_RegsStruct->CONFIG);
-    dSPIN_Soft_Stop();
-    //    while(dSPIN_Busy_SW(ctrl));
+//    // ws
+//    dSPIN_Set_Param(dSPIN_ABS_POS, dSPIN_RegsStruct->ABS_POS);
+//    dSPIN_Set_Param(dSPIN_EL_POS, dSPIN_RegsStruct->EL_POS);
+//    // wr
+//    dSPIN_Set_Param(dSPIN_MARK, dSPIN_RegsStruct->MARK);
+//    // r
+//    dSPIN_Set_Param(dSPIN_SPEED, dSPIN_RegsStruct->SPEED);
+//    // ws
+//    dSPIN_Soft_Stop();
+//    //    while(dSPIN_Busy_SW(ctrl));
+//    dSPIN_Set_Param(dSPIN_ACC, dSPIN_RegsStruct->ACC);
+//    dSPIN_Set_Param(dSPIN_DEC, dSPIN_RegsStruct->DEC);
+//    // wr
+//    dSPIN_Set_Param(dSPIN_MAX_SPEED, dSPIN_RegsStruct->MAX_SPEED); /* WTF 配置此项后电机会自启动 */
+//    // ws
+//    dSPIN_Soft_Stop();
+//    //    while(dSPIN_Busy_SW(ctrl));
+//    dSPIN_Set_Param(dSPIN_MIN_SPEED, dSPIN_RegsStruct->MIN_SPEED);
+//    // wr
+//    dSPIN_Set_Param(dSPIN_FS_SPD, dSPIN_RegsStruct->FS_SPD);
+//    dSPIN_Set_Param(dSPIN_KVAL_HOLD, dSPIN_RegsStruct->KVAL_HOLD);
+//    dSPIN_Set_Param(dSPIN_KVAL_RUN, dSPIN_RegsStruct->KVAL_RUN);
+//    dSPIN_Set_Param(dSPIN_KVAL_ACC, dSPIN_RegsStruct->KVAL_ACC);
+//    dSPIN_Set_Param(dSPIN_KVAL_DEC, dSPIN_RegsStruct->KVAL_DEC);
+//    // wh
+//    dSPIN_Soft_HiZ();
+//    //    while(dSPIN_Busy_SW(ctrl));
+//    dSPIN_Set_Param(dSPIN_INT_SPD, dSPIN_RegsStruct->INT_SPD);
+//    dSPIN_Set_Param(dSPIN_ST_SLP, dSPIN_RegsStruct->ST_SLP);
+//    dSPIN_Set_Param(dSPIN_FN_SLP_ACC, dSPIN_RegsStruct->FN_SLP_ACC);
+//    dSPIN_Set_Param(dSPIN_FN_SLP_DEC, dSPIN_RegsStruct->FN_SLP_DEC);
+//    // wr
+//    dSPIN_Set_Param(dSPIN_K_THERM, dSPIN_RegsStruct->K_THERM);
+//    // wr
+//    dSPIN_Set_Param(dSPIN_OCD_TH, dSPIN_RegsStruct->OCD_TH);
+//    dSPIN_Set_Param(dSPIN_STALL_TH, dSPIN_RegsStruct->STALL_TH);
+//    // wh
+//    dSPIN_Soft_HiZ();
+//    //    while(dSPIN_Busy_SW(ctrl));
+//    dSPIN_Set_Param(dSPIN_STEP_MODE, dSPIN_RegsStruct->STEP_MODE);
+//    // ws
+//    dSPIN_Soft_Stop();
+//    //    while(dSPIN_Busy_SW(ctrl));
+//    dSPIN_Set_Param(dSPIN_ALARM_EN, dSPIN_RegsStruct->ALARM_EN);
+//    // wh
+//    dSPIN_Soft_HiZ();
+//    //    while(dSPIN_Busy_SW(ctrl));
+//    dSPIN_Set_Param(dSPIN_CONFIG, dSPIN_RegsStruct->CONFIG);
+//    dSPIN_Soft_Stop();
+//    //    while(dSPIN_Busy_SW(ctrl));
 }
 
 /**

@@ -67,15 +67,15 @@
 
 /* Register : KVAL_RUN */
 /* Run duty cycle (torque) in %, range 0 to 99.6% */
-#define dSPIN_CONF_PARAM_KVAL_RUN (80.56)
+#define dSPIN_CONF_PARAM_KVAL_RUN (79.88)
 
 /* Register : KVAL_ACC */
 /* Acceleration duty cycle (torque) in %, range 0 to 99.6% */
-#define dSPIN_CONF_PARAM_KVAL_ACC (80.56)
+#define dSPIN_CONF_PARAM_KVAL_ACC (79.88)
 
 /* Register : KVAL_DEC */
 /* Deceleration duty cycle (torque) in %, range 0 to 99.6% */
-#define dSPIN_CONF_PARAM_KVAL_DEC (80.56)
+#define dSPIN_CONF_PARAM_KVAL_DEC (79.88)
 
 /* Register : CONFIG - field : EN_VSCOMP */
 /* Motor Supply Voltage Compensation enabling , enum dSPIN_CONFIG_EN_VSCOMP_TypeDef */

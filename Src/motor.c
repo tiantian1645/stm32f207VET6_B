@@ -229,12 +229,10 @@ void motor_Resource_Init(void)
         error_Emit(eError_Peripheral_Motor_Tray, eError_Motor_Status_Warui);
     }
 
-    barcode_Motor_Init(); /* 扫码电机初始化 */
-
     /* 警告 上加热体电机不抬起 不允许操作托盘电机 */
-    m_drv8824_Init();  /* 上加热体电机初始化 */
-    tray_Motor_Init(); /* 托盘电机初始化 */
-
+    m_drv8824_Init();                            /* 上加热体电机初始化 */
+    tray_Motor_Init();                           /* 托盘电机初始化 */
+    barcode_Motor_Init();                        /* 扫码电机初始化 */
     barcode_Motor_Reset_Pos();                   /* 重置扫码电机位置 */
     tray_Motor_Reset_Pos();                      /* 重置托盘电机位置 */
     heat_Motor_Down();                           /* 砸下上加热体电机 */
