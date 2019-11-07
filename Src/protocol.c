@@ -289,8 +289,8 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
     sMotor_Fun motor_fun;
     float temp;
 
-    if (pInBuff[4] == PROTOCOL_DEVICE_ID_CTRL) {		/* 回声现象 */
-    	return PROTOCOL_PARSE_OK;
+    if (pInBuff[4] == PROTOCOL_DEVICE_ID_CTRL) { /* 回声现象 */
+        return PROTOCOL_PARSE_OK;
     }
 
     temp_Upload_Comm_Set(eComm_Out, 1);                /* 通讯接收成功 使能本串口温度上送 */
@@ -434,7 +434,7 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             break;
         case 0xD6: /* SPI Flash 读测试 */
             result = storgeReadConfInfo((pInBuff[6] << 16) + (pInBuff[7] << 8) + pInBuff[8], (pInBuff[9] << 16) + (pInBuff[10] << 8) + pInBuff[11], 200);
-            if (result == 0 && storgeTaskNotification(eStorgeHardwareType_Flash, eStorgeRWType_Read, eComm_Out) == pdPASS) { /* 通知存储任务 */
+            if (result == 0 && storgeTaskNotification(eStorgeNotifyConf_Read_Falsh, eComm_Out) == pdPASS) { /* 通知存储任务 */
                 error = PROTOCOL_PARSE_OK;
             } else {
                 error |= PROTOCOL_PARSE_EMIT_ERROR;
@@ -443,7 +443,7 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
         case 0xD7: /* SPI Flash 写测试 */
             result = storgeWriteConfInfo((pInBuff[6] << 16) + (pInBuff[7] << 8) + pInBuff[8], &pInBuff[12],
                                          (pInBuff[9] << 16) + (pInBuff[10] << 8) + pInBuff[11], 200);
-            if (result == 0 && storgeTaskNotification(eStorgeHardwareType_Flash, eStorgeRWType_Write, eComm_Out) == pdPASS) { /* 通知存储任务 */
+            if (result == 0 && storgeTaskNotification(eStorgeNotifyConf_Write_Falsh, eComm_Out) == pdPASS) { /* 通知存储任务 */
                 error = PROTOCOL_PARSE_OK;
             } else {
                 error |= PROTOCOL_PARSE_EMIT_ERROR;
@@ -451,7 +451,7 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             return error;
         case 0xD8: /* EEPROM 读测试 */
             result = storgeReadConfInfo((pInBuff[6] << 16) + (pInBuff[7] << 8) + pInBuff[8], (pInBuff[9] << 16) + (pInBuff[10] << 8) + pInBuff[11], 200);
-            if (result == 0 && storgeTaskNotification(eStorgeHardwareType_EEPROM, eStorgeRWType_Read, eComm_Out) == pdPASS) { /* 通知存储任务 */
+            if (result == 0 && storgeTaskNotification(eStorgeNotifyConf_Read_ID_Card, eComm_Out) == pdPASS) { /* 通知存储任务 */
                 error = PROTOCOL_PARSE_OK;
             } else {
                 error |= PROTOCOL_PARSE_EMIT_ERROR;
@@ -460,7 +460,7 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
         case 0xD9: /* EEPROM 写测试 */
             result = storgeWriteConfInfo((pInBuff[6] << 16) + (pInBuff[7] << 8) + pInBuff[8], &pInBuff[12],
                                          (pInBuff[9] << 16) + (pInBuff[10] << 8) + pInBuff[11], 200);
-            if (result == 0 && storgeTaskNotification(eStorgeHardwareType_EEPROM, eStorgeRWType_Write, eComm_Out) == pdPASS) { /* 通知存储任务 */
+            if (result == 0 && storgeTaskNotification(eStorgeNotifyConf_Write_ID_Card, eComm_Out) == pdPASS) { /* 通知存储任务 */
                 error = PROTOCOL_PARSE_OK;
             } else {
                 error |= PROTOCOL_PARSE_EMIT_ERROR;
@@ -482,9 +482,9 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             motor_Emit(&motor_fun, 0);                   /* 提交到电机队列 */
             break;
         case 0xDC:
-        	vTaskDelay(50);
-        	HAL_NVIC_SystemReset(); /* 重新启动 */
-        	break;
+            vTaskDelay(50);
+            HAL_NVIC_SystemReset(); /* 重新启动 */
+            break;
         case eProtocolEmitPack_Client_CMD_START:          /* 开始测量帧 0x01 */
             comm_Data_Sample_Send_Conf();                 /* 发送测试配置 */
             temp_Upload_Pause();                          /* 暂停温度上送 */
@@ -507,9 +507,9 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             motor_fun.fun_type = eMotor_Fun_In;    /* 配置电机动作套餐类型 进仓 */
             motor_Emit(&motor_fun, 0);             /* 交给电机任务 进仓 */
             break;
-        case eProtocolEmitPack_Client_CMD_READ_ID:                                                                            /* ID卡读取命令帧 0x06 */
-            result = storgeReadConfInfo(0, 4096, 200);                                                                        /* 暂无定义 按最大读取 */
-            if (result == 0 && storgeTaskNotification(eStorgeHardwareType_EEPROM, eStorgeRWType_Read, eComm_Out) == pdPASS) { /* 通知存储任务 */
+        case eProtocolEmitPack_Client_CMD_READ_ID:                                                            /* ID卡读取命令帧 0x06 */
+            result = storgeReadConfInfo(0, 4096, 200);                                                        /* 暂无定义 按最大读取 */
+            if (result == 0 && storgeTaskNotification(eStorgeNotifyConf_Read_ID_Card, eComm_Out) == pdPASS) { /* 通知存储任务 */
                 error = PROTOCOL_PARSE_OK;
             } else {
                 error |= PROTOCOL_PARSE_EMIT_ERROR;
@@ -564,8 +564,8 @@ eProtocolParseResult protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
     sMotor_Fun motor_fun;
     float temp;
 
-    if (pInBuff[4] == PROTOCOL_DEVICE_ID_CTRL) {		/* 回声现象 */
-    	return PROTOCOL_PARSE_OK;
+    if (pInBuff[4] == PROTOCOL_DEVICE_ID_CTRL) { /* 回声现象 */
+        return PROTOCOL_PARSE_OK;
     }
 
     gComm_Main_Connected_Set_Enable();                 /* 标记通信成功 */
@@ -599,9 +599,9 @@ eProtocolParseResult protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
             motor_fun.fun_type = eMotor_Fun_In;    /* 配置电机动作套餐类型 进仓 */
             motor_Emit(&motor_fun, 0);             /* 交给电机任务 进仓 */
             break;
-        case eProtocolEmitPack_Client_CMD_READ_ID:     /* ID卡读取命令帧 0x06 */
-            result = storgeReadConfInfo(0, 4096, 200); /* 暂无定义 按最大读取 */
-            if (result == 0 && storgeTaskNotification(eStorgeHardwareType_EEPROM, eStorgeRWType_Read, eComm_Main) == pdPASS) { /* 通知存储任务 */
+        case eProtocolEmitPack_Client_CMD_READ_ID:                                                             /* ID卡读取命令帧 0x06 */
+            result = storgeReadConfInfo(0, 4096, 200);                                                         /* 暂无定义 按最大读取 */
+            if (result == 0 && storgeTaskNotification(eStorgeNotifyConf_Read_ID_Card, eComm_Main) == pdPASS) { /* 通知存储任务 */
                 error = PROTOCOL_PARSE_OK;
             } else {
                 error |= PROTOCOL_PARSE_EMIT_ERROR;
@@ -654,8 +654,8 @@ eProtocolParseResult protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
     eProtocolParseResult error = PROTOCOL_PARSE_OK;
     uint8_t i, cnt;
 
-    if (pInBuff[4] == PROTOCOL_DEVICE_ID_CTRL) {		/* 回声现象 */
-    	return PROTOCOL_PARSE_OK;
+    if (pInBuff[4] == PROTOCOL_DEVICE_ID_CTRL) { /* 回声现象 */
+        return PROTOCOL_PARSE_OK;
     }
 
     if (pInBuff[5] == eProtocoleRespPack_Client_ACK) { /* 收到对方回应帧 */

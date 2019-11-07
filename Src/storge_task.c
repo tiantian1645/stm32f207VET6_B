@@ -20,30 +20,12 @@
 #define STORGE_BUFF_LEN STORGE_EEPROM_PART_NUM
 #endif
 
-#define STORGE_TASK_HW_FLASH (1 << 0)
-#define STORGE_TASK_HW_EEPROM (0 << 0)
-
-#define STORGE_TASK_TYPE_READ (1 << 1)
-#define STORGE_TASK_TYPE_WRITE (0 << 1)
-
-#define STORGE_TASK_NOTIFY_HW (1 << 0)
-#define STORGE_TASK_NOTIFY_TYPE (1 << 1)
-#define STORGE_TASK_NOTIFY_COMM_OUT (1 << 2)
-#define STORGE_TASK_NOTIFY_COMM_MAIN (1 << 3)
-
-#define STORGE_TASK_NOTIFY_IN (STORGE_TASK_NOTIFY_HW | STORGE_TASK_NOTIFY_TYPE)
-#define STORGE_TASK_NOTIFY_OUT (STORGE_TASK_NOTIFY_COMM_OUT | STORGE_TASK_NOTIFY_COMM_MAIN)
-#define STORGE_TASK_NOTIFY_ALL (STORGE_TASK_NOTIFY_IN | STORGE_TASK_NOTIFY_OUT)
-
-#define STORGE_TASK_NOTIFY_IN_FLASH_READ (STORGE_TASK_HW_FLASH | STORGE_TASK_TYPE_READ)
-#define STORGE_TASK_NOTIFY_IN_FLASH_WRITE (STORGE_TASK_HW_FLASH | STORGE_TASK_TYPE_WRITE)
-#define STORGE_TASK_NOTIFY_IN_EEPROM_READ (STORGE_TASK_HW_EEPROM | STORGE_TASK_TYPE_READ)
-#define STORGE_TASK_NOTIFY_IN_EEPROM_WRITE (STORGE_TASK_HW_EEPROM | STORGE_TASK_TYPE_WRITE)
+#define STORGE_DEAL_MASK                                                                                                                                       \
+    (eStorgeNotifyConf_Read_Falsh + eStorgeNotifyConf_Write_Falsh + eStorgeNotifyConf_Load_Parmas + eStorgeNotifyConf_Dump_Params +                            \
+     eStorgeNotifyConf_Read_ID_Card + eStorgeNotifyConf_Write_ID_Card)
 
 /* Private typedef -----------------------------------------------------------*/
 typedef struct {
-    eStorgeHardwareType hw;          /* 存储类型 */
-    eStorgeRWType rw;                /* 操作类型 */
     uint32_t addr;                   /* 操作地址 */
     uint32_t num;                    /* 操作数量 */
     uint8_t buffer[STORGE_BUFF_LEN]; /* 准备写入的内容 */
@@ -55,6 +37,7 @@ typedef struct {
 static sStorgeTaskQueueInfo gStorgeTaskInfo;
 static TaskHandle_t storgeTaskHandle = NULL;
 static uint8_t gStorgeTaskInfoLock = 0;
+static sStorgeParamInfo gStorgeParamInfo;
 
 /* Private function prototypes -----------------------------------------------*/
 static void storgeTask(void * argument);
@@ -142,35 +125,32 @@ uint8_t storgeWriteConfInfo(uint32_t addr, uint8_t * pIn, uint32_t num, uint32_t
  * @param  rw          操作类型
  * @retval 任务通知结果
  */
-BaseType_t storgeTaskNotification(eStorgeHardwareType hw, eStorgeRWType rw, eProtocol_COMM_Index index)
+BaseType_t storgeTaskNotification(eStorgeNotifyConf type, eProtocol_COMM_Index index)
 {
     uint32_t notifyValue = 0;
 
-    switch (hw) {
-        case eStorgeHardwareType_Flash: /* Flash */
-            notifyValue |= STORGE_TASK_HW_FLASH;
+    switch (type) {
+        case eStorgeNotifyConf_Read_Falsh:
+            notifyValue = eStorgeNotifyConf_Read_Falsh;
             break;
-        case eStorgeHardwareType_EEPROM: /* EEPROM */
-            notifyValue |= STORGE_TASK_HW_EEPROM;
+        case eStorgeNotifyConf_Write_Falsh:
+            notifyValue = eStorgeNotifyConf_Write_Falsh;
             break;
-        default:
-            return pdFALSE;
-    }
-    switch (rw) {
-        case eStorgeRWType_Read: /* 读 */
-            notifyValue |= STORGE_TASK_TYPE_READ;
+        case eStorgeNotifyConf_Read_ID_Card:
+            notifyValue = eStorgeNotifyConf_Read_ID_Card;
             break;
-        case eStorgeRWType_Write: /* 写 */
-            notifyValue |= STORGE_TASK_TYPE_WRITE;
+        case eStorgeNotifyConf_Write_ID_Card:
+            notifyValue = eStorgeNotifyConf_Write_ID_Card;
             break;
         default:
             return pdFALSE;
     }
+
     if (index == eComm_Out) {
-        notifyValue |= STORGE_TASK_NOTIFY_COMM_OUT;
+        notifyValue |= eStorgeNotifyConf_COMM_Out;
     }
     if (index == eComm_Main) {
-        notifyValue |= STORGE_TASK_NOTIFY_COMM_MAIN;
+        notifyValue |= eStorgeNotifyConf_COMM_Main;
     }
     return xTaskNotify(storgeTaskHandle, notifyValue, eSetValueWithoutOverwrite);
 }
@@ -209,19 +189,19 @@ static void storgeTask(void * argument)
             continue;
         }
         temp_Upload_Pause(); /* 暂停温度上送 */
-        switch (ulNotifyValue & STORGE_TASK_NOTIFY_IN) {
-            case STORGE_TASK_NOTIFY_IN_FLASH_READ:
+        switch (ulNotifyValue & STORGE_DEAL_MASK) {
+            case eStorgeNotifyConf_Read_Falsh:
                 for (i = 0; i < ((gStorgeTaskInfo.num + STORGE_FLASH_PART_NUM - 1) / STORGE_FLASH_PART_NUM); ++i) {
                     readCnt =
                         (gStorgeTaskInfo.num >= STORGE_FLASH_PART_NUM * (i + 1)) ? (STORGE_FLASH_PART_NUM) : (gStorgeTaskInfo.num % STORGE_FLASH_PART_NUM);
                     length = spi_FlashReadBuffer(gStorgeTaskInfo.addr + STORGE_FLASH_PART_NUM * i, buff, readCnt);
-                    if (ulNotifyValue & STORGE_TASK_NOTIFY_COMM_OUT) {
+                    if (ulNotifyValue & eStorgeNotifyConf_COMM_Out) {
                         xResult = comm_Out_SendTask_QueueEmitWithBuildCover(0xD1, buff, length);
                         if (xResult != pdPASS) {
                             break;
                         }
                     }
-                    if (ulNotifyValue & STORGE_TASK_NOTIFY_COMM_MAIN) {
+                    if (ulNotifyValue & eStorgeNotifyConf_COMM_Main) {
                         xResult = comm_Main_SendTask_QueueEmitWithBuildCover(0xD1, buff, length);
                         if (xResult != pdPASS) {
                             break;
@@ -229,27 +209,27 @@ static void storgeTask(void * argument)
                     }
                 }
                 break;
-            case STORGE_TASK_NOTIFY_IN_FLASH_WRITE:
+            case eStorgeNotifyConf_Write_Falsh:
                 wroteCnt = spi_FlashWriteBuffer(gStorgeTaskInfo.addr, gStorgeTaskInfo.buffer, gStorgeTaskInfo.num);
                 if (wroteCnt != gStorgeTaskInfo.num) {
                     buff[0] = 1;
                 } else {
                     buff[0] = 0;
                 }
-                if (ulNotifyValue & STORGE_TASK_NOTIFY_COMM_OUT) {
+                if (ulNotifyValue & eStorgeNotifyConf_COMM_Out) {
                     xResult = comm_Out_SendTask_QueueEmitWithBuildCover(0xD2, buff, 1);
                     if (xResult != pdPASS) {
                         break;
                     }
                 }
-                if (ulNotifyValue & STORGE_TASK_NOTIFY_COMM_MAIN) {
+                if (ulNotifyValue & eStorgeNotifyConf_COMM_Main) {
                     xResult = comm_Main_SendTask_QueueEmitWithBuildCover(0xD2, buff, 1);
                     if (xResult != pdPASS) {
                         break;
                     }
                 }
                 break;
-            case STORGE_TASK_NOTIFY_IN_EEPROM_READ:
+            case eStorgeNotifyConf_Read_ID_Card:
                 for (i = 0; i < ((gStorgeTaskInfo.num + STORGE_EEPROM_PART_NUM - 1) / STORGE_EEPROM_PART_NUM); ++i) {
                     readCnt =
                         (gStorgeTaskInfo.num >= STORGE_EEPROM_PART_NUM * (i + 1)) ? (STORGE_EEPROM_PART_NUM) : (gStorgeTaskInfo.num % STORGE_EEPROM_PART_NUM);
@@ -264,13 +244,13 @@ static void storgeTask(void * argument)
                     buff[2] = (gStorgeTaskInfo.addr + STORGE_EEPROM_PART_NUM * i) & 0xFF; /* 地址信息 小端模式 */
                     buff[3] = (gStorgeTaskInfo.addr + STORGE_EEPROM_PART_NUM * i) >> 8;   /* 地址信息 小端模式 */
                     buff[4] = length;                                                     /* 数据长度 小端模式 */
-                    if (ulNotifyValue & STORGE_TASK_NOTIFY_COMM_OUT) {
+                    if (ulNotifyValue & eStorgeNotifyConf_COMM_Out) {
                         xResult = comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_ID_CARD, buff, length + 5);
                         if (xResult != pdPASS) {
                             break;
                         }
                     }
-                    if (ulNotifyValue & STORGE_TASK_NOTIFY_COMM_MAIN) {
+                    if (ulNotifyValue & eStorgeNotifyConf_COMM_Main) {
                         xResult = comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_ID_CARD, buff, length + 5);
                         if (xResult != pdPASS) {
                             break;
@@ -281,20 +261,20 @@ static void storgeTask(void * argument)
                     }
                 }
                 break;
-            case STORGE_TASK_NOTIFY_IN_EEPROM_WRITE:
+            case eStorgeNotifyConf_Write_ID_Card:
                 wroteCnt = I2C_EEPROM_Write(gStorgeTaskInfo.addr, gStorgeTaskInfo.buffer, gStorgeTaskInfo.num, 30);
                 if (wroteCnt != gStorgeTaskInfo.num) {
                     buff[0] = 1;
                 } else {
                     buff[0] = 0;
                 }
-                if (ulNotifyValue & STORGE_TASK_NOTIFY_COMM_OUT) {
+                if (ulNotifyValue & eStorgeNotifyConf_COMM_Out) {
                     xResult = comm_Out_SendTask_QueueEmitWithBuildCover(0xD4, buff, 1);
                     if (xResult != pdPASS) {
                         break;
                     }
                 }
-                if (ulNotifyValue & STORGE_TASK_NOTIFY_COMM_MAIN) {
+                if (ulNotifyValue & eStorgeNotifyConf_COMM_Main) {
                     xResult = comm_Main_SendTask_QueueEmitWithBuildCover(0xD4, buff, 1);
                     if (xResult != pdPASS) {
                         break;
