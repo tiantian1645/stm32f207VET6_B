@@ -216,6 +216,8 @@ class MainWindow(QMainWindow):
         self.last_firm_path = None
         self.threadpool = QThreadPool()
         self.id_card_data = bytearray(4096)
+        self.out_flash_start = 0
+        self.out_flash_data = bytearray()
         self.temp_btm_record = []
         self.temp_top_record = []
         self.temp_start_time = None
@@ -639,6 +641,8 @@ class MainWindow(QMainWindow):
             self.showWarnInfo(info)
         elif cmd_type == 0xB6:
             self.updateMatplotPlot()
+        elif cmd_type == 0xD1:
+            self.updateOutFlashData(info)
 
     def onSerialStatistic(self, info):
         if info[0] == "w" and time.time() - self.kirakira_recv_time > 0.1:
@@ -863,6 +867,9 @@ class MainWindow(QMainWindow):
         storge_ly.addWidget(self.storge_id_card_dialog_bt)
         storge_ly.addWidget(self.storge_flash_read_bt)
 
+        self.storge_id_card_dialog_bt.clicked.connect(self.onID_CardDialogShow)
+        self.storge_flash_read_bt.clicked.connect(self.onOutFlashDialogShow)
+
         self.id_card_data_dg = QDialog(self)
         self.id_card_data_dg.setWindowTitle("ID Card")
         id_card_data_ly = QVBoxLayout(self.id_card_data_dg)
@@ -872,8 +879,36 @@ class MainWindow(QMainWindow):
         id_card_data_ly.addWidget(self.id_card_data_read_bt)
         self.id_card_data_read_bt.clicked.connect(self.onID_CardRead)
 
-        self.storge_id_card_dialog_bt.clicked.connect(self.onID_CardDialogShow)
-        self.storge_flash_read_bt.clicked.connect(self.onFlashRead)
+        self.out_flash_data_dg = QDialog(self)
+        self.out_flash_data_dg.setWindowTitle("外部Flash")
+        out_flash_data_ly = QVBoxLayout(self.out_flash_data_dg)
+        self.out_flash_data_te = QTextEdit()
+        out_flash_temp_ly = QHBoxLayout()
+        self.out_flash_data_addr = QSpinBox()
+        self.out_flash_data_addr.setRange(0, 8 * 2 ** 20)
+        self.out_flash_data_addr.setMaximumWidth(90)
+        self.out_flash_data_addr.setValue(0)
+        self.out_flash_data_num = QSpinBox()
+        self.out_flash_data_num.setRange(0, 8 * 2 ** 20)
+        self.out_flash_data_num.setMaximumWidth(90)
+        self.out_flash_data_num.setValue(16)
+        self.out_flash_data_read_bt = QPushButton("读取")
+        out_flash_temp_ly.addWidget(QLabel("地址"))
+        out_flash_temp_ly.addWidget(self.out_flash_data_addr)
+        out_flash_temp_ly.addWidget(QLabel("数量"))
+        out_flash_temp_ly.addWidget(self.out_flash_data_num)
+        out_flash_temp_ly.addWidget(self.out_flash_data_read_bt)
+
+        out_flash_data_ly.addWidget(self.out_flash_data_te)
+        out_flash_data_ly.addLayout(out_flash_temp_ly)
+        self.out_flash_data_read_bt.clicked.connect(self.onOutFlashRead)
+
+    def genBinaryData(self, data, unit=32):
+        result = []
+        for i in range(0, len(data), unit):
+            b = data[i : i + unit]
+            result.append("0x{:04X} ~ 0x{:04X} | {}".format(i, i + unit - 1, bytesPuttyPrint(b)))
+        return result
 
     def onID_CardDialogShow(self, event):
         self.id_card_data_dg.show()
@@ -882,13 +917,6 @@ class MainWindow(QMainWindow):
         self.id_card_data_dg.setWindowTitle("ID Card")
         self.id_card_data_te.clear()
         self._serialSendPack(0x06)
-
-    def genBinaryData(self, data, unit=32):
-        result = []
-        for i in range(0, len(data), unit):
-            b = data[i : i + unit]
-            result.append("0x{:04X} ~ 0x{:04X} | {}".format(i, i + unit - 1, bytesPuttyPrint(b)))
-        return result
 
     def updateIDCardData(self, info):
         offset = 0
@@ -906,11 +934,34 @@ class MainWindow(QMainWindow):
         if start + length == 4096:
             self.id_card_data_dg.setWindowTitle("ID Card | sha256 {}".format(sha256(self.id_card_data).hexdigest()))
         result = self.genBinaryData(self.id_card_data[: start + length])
-        logger.debug("\n".join(result))
-        self.id_card_data_te.setPlainText("\n".join(result))
+        raw_text = "\n".join(result)
+        logger.debug("ID Card Raw Data \n{}".format())
+        self.id_card_data_te.setPlainText(raw_text)
 
-    def onFlashRead(self, event):
-        self._serialSendPack(0xD6, (0x00, 0x00, 0x00, 0x00, 0x00, 0x10))
+    def onOutFlashDialogShow(self, event):
+        self.out_flash_data_dg.show()
+
+    def onOutFlashRead(self, event):
+        addr = self.out_flash_data_addr.value()
+        addr_list = ((addr >> 16) & 0xFF, (addr >> 8) & 0xFF, addr & 0xFF)
+        num = self.out_flash_data_num.value()
+        num_list = ((num >> 16) & 0xFF, (num >> 8) & 0xFF, num & 0xFF)
+        self.out_flash_start = 0
+        self.out_flash_data.clear()
+        self.out_flash_data.extend((0xFF for _ in range(num)))
+        self.out_flash_data_te.clear()
+        self._serialSendPack(0xD6, (*addr_list, *num_list))
+
+    def updateOutFlashData(self, info):
+        raw_bytes = info.content
+        start = int.from_bytes(raw_bytes[9:12], byteorder="little")
+        length = raw_bytes[12]
+        self.out_flash_data[start : start + length] = raw_bytes[13 : 13 + length]
+        self.out_flash_data_dg.setWindowTitle("外部Flash | sha256 {}".format(sha256(self.out_flash_data).hexdigest()))
+        result = self.genBinaryData(self.out_flash_data[: start + length])
+        raw_text = "\n".join(result)
+        logger.debug("Out Falsh Raw Data \n{}".format(raw_text))
+        self.out_flash_data_te.setPlainText(raw_text)
 
     def createBoot(self):
         self.boot_gb = QGroupBox("系统")

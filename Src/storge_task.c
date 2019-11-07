@@ -194,15 +194,28 @@ static void storgeTask(void * argument)
                 for (i = 0; i < ((gStorgeTaskInfo.num + STORGE_FLASH_PART_NUM - 1) / STORGE_FLASH_PART_NUM); ++i) {
                     readCnt =
                         (gStorgeTaskInfo.num >= STORGE_FLASH_PART_NUM * (i + 1)) ? (STORGE_FLASH_PART_NUM) : (gStorgeTaskInfo.num % STORGE_FLASH_PART_NUM);
-                    length = spi_FlashReadBuffer(gStorgeTaskInfo.addr + STORGE_FLASH_PART_NUM * i, buff, readCnt);
+                    length = spi_FlashReadBuffer(gStorgeTaskInfo.addr + STORGE_FLASH_PART_NUM * i, buff + 7, readCnt);
+                    if (length == 0) {
+                        buff[0] = 0; /* 信息总长度 小端模式 */
+                        buff[1] = 0; /* 信息总长度 小端模式 */
+                        buff[2] = 0; /* 信息总长度 小端模式 */
+                    } else {
+                        buff[0] = gStorgeTaskInfo.num & 0xFF; /* 信息总长度 小端模式 */
+                        buff[1] = gStorgeTaskInfo.num >> 8;   /* 信息总长度 小端模式 */
+                        buff[2] = gStorgeTaskInfo.num >> 16;  /* 信息总长度 小端模式 */
+                    }
+                    buff[3] = (gStorgeTaskInfo.addr + STORGE_EEPROM_PART_NUM * i) & 0xFF; /* 地址信息 小端模式 */
+                    buff[4] = (gStorgeTaskInfo.addr + STORGE_EEPROM_PART_NUM * i) >> 8;   /* 地址信息 小端模式 */
+                    buff[5] = (gStorgeTaskInfo.addr + STORGE_EEPROM_PART_NUM * i) >> 16;  /* 地址信息 小端模式 */
+                    buff[6] = length;                                                     /* 数据长度 小端模式 */
                     if (ulNotifyValue & eStorgeNotifyConf_COMM_Out) {
-                        xResult = comm_Out_SendTask_QueueEmitWithBuildCover(0xD1, buff, length);
+                        xResult = comm_Out_SendTask_QueueEmitWithBuildCover(0xD1, buff, length + 7);
                         if (xResult != pdPASS) {
                             break;
                         }
                     }
                     if (ulNotifyValue & eStorgeNotifyConf_COMM_Main) {
-                        xResult = comm_Main_SendTask_QueueEmitWithBuildCover(0xD1, buff, length);
+                        xResult = comm_Main_SendTask_QueueEmitWithBuildCover(0xD1, buff, length + 7);
                         if (xResult != pdPASS) {
                             break;
                         }
