@@ -251,13 +251,15 @@ class MainWindow(QMainWindow):
         self.createMatplot()
         self.createStatusBar()
         self.createStorge()
+        self.createBoot()
         widget = QWidget()
         layout = QGridLayout(widget)
-        layout.addWidget(self.barcode_gb, 0, 0, 6, 1)
-        layout.addWidget(self.motor_bg, 6, 0, 8, 1)
-        layout.addWidget(self.storge_wg, 14, 0, 1, 1)
-        layout.addWidget(self.serial_gb, 15, 0, 3, 1)
-        layout.addWidget(self.matplot_wg, 0, 1, 18, 1)
+        layout.addWidget(self.barcode_gb, 0, 0, 6, 2)
+        layout.addWidget(self.motor_gb, 6, 0, 2, 2)
+        layout.addWidget(self.storge_gb, 8, 0, 1, 2)
+        layout.addWidget(self.boot_gb, 9, 0, 1, 2)
+        layout.addWidget(self.serial_gb, 10, 0, 1, 2)
+        layout.addWidget(self.matplot_wg, 0, 2, 11, 2)
         layout.setContentsMargins(0, 5, 0, 0)
         layout.setSpacing(0)
         image_path = "./icos/tt.ico"
@@ -266,7 +268,7 @@ class MainWindow(QMainWindow):
         self.resize(850, 553)
 
     def resizeEvent(self, event):
-        # logger.debug("windows size | {}".format(self.size()))
+        logger.debug("windows size | {}".format(self.size()))
         pass
 
     def closeEvent(self, event):
@@ -382,16 +384,43 @@ class MainWindow(QMainWindow):
             self.motor_tray_position.setText("错误报文")
 
     def createBarcode(self):
-        self.barcode_gb = QGroupBox("扫码")
+        self.barcode_gb = QGroupBox("测试通道")
         barcode_ly = QGridLayout(self.barcode_gb)
         self.barcode_lbs = [QLabel("*" * 10) for i in range(7)]
         self.motor_scan_bts = [QPushButton(BARCODE_NAMES[i]) for i in range(7)]
+        self.matplot_conf_houhou_cs = [QComboBox() for i in range(6)]
+        self.matplot_conf_wavelength_cs = [QComboBox() for i in range(6)]
+        self.matplot_conf_point_sps = [QSpinBox() for i in range(6)]
+        self.barcode_scan_bt = QPushButton("统一扫码")
+        self.barcode_scan_bt.setMaximumWidth(120)
+        self.matplot_start_bt = QPushButton("测试")
+        self.matplot_start_bt.setMaximumWidth(60)
+        self.matplot_cancel_bt = QPushButton("取消")
+        self.matplot_cancel_bt.setMaximumWidth(60)
         for i in range(7):
+            self.motor_scan_bts[i].setMaximumWidth(45)
             barcode_ly.addWidget(self.motor_scan_bts[i], i, 0)
             barcode_ly.addWidget(self.barcode_lbs[i], i, 1)
-        self.barcode_scan_bt = QPushButton("开始")
-        barcode_ly.addWidget(self.barcode_scan_bt, 7, 0, 1, 2)
+            if i < 6:
+                self.matplot_conf_houhou_cs[i].addItems(("无项目", "速率法", "终点法", "两点终点法"))
+                self.matplot_conf_houhou_cs[i].setMaximumWidth(75)
+                self.matplot_conf_houhou_cs[i].setCurrentIndex(1)
+                self.matplot_conf_wavelength_cs[i].addItems(("610", "550", "405"))
+                self.matplot_conf_wavelength_cs[i].setMaximumWidth(90)
+                self.matplot_conf_wavelength_cs[i].setCurrentIndex(0)
+                self.matplot_conf_point_sps[i].setRange(0, 120)
+                self.matplot_conf_point_sps[i].setMaximumWidth(60)
+                self.matplot_conf_point_sps[i].setValue(1)
+                barcode_ly.addWidget(self.matplot_conf_houhou_cs[i], i, 2)
+                barcode_ly.addWidget(self.matplot_conf_wavelength_cs[i], i, 3)
+                barcode_ly.addWidget(self.matplot_conf_point_sps[i], i, 4)
+            else:
+                barcode_ly.addWidget(self.barcode_scan_bt, i, 2)
+                barcode_ly.addWidget(self.matplot_start_bt, i, 3)
+                barcode_ly.addWidget(self.matplot_cancel_bt, i, 4)
         self.barcode_scan_bt.clicked.connect(self.onBarcodeScan)
+        self.matplot_start_bt.clicked.connect(self.onMatplotStart)
+        self.matplot_cancel_bt.clicked.connect(self.onMatplotCancel)
         for i in range(7):
             self.motor_scan_bts[i].clicked.connect(partial(self.onMotorScan, idx=i))
 
@@ -426,45 +455,36 @@ class MainWindow(QMainWindow):
             self.barcode_lbs[channel - 1].setText(text)
 
     def createMotor(self):
-        self.motor_bg = QWidget(self)
-        motor_ly = QGridLayout(self.motor_bg)
-        motor_ly.setContentsMargins(5, 3, 5, 3)
-        motor_ly.setSpacing(0)
-        self.motor_heater_bg = QGroupBox("上加热体")
-        motor_heater_ly = QHBoxLayout(self.motor_heater_bg)
-        motor_heater_ly.setContentsMargins(5, 3, 5, 3)
-        motor_heater_ly.setSpacing(0)
-        self.motor_white_bg = QGroupBox("白板")
-        motor_white_ly = QHBoxLayout(self.motor_white_bg)
-        motor_white_ly.setContentsMargins(5, 3, 5, 3)
-        motor_white_ly.setSpacing(0)
-        self.motor_tray_bg = QGroupBox("托盘")
-        motor_tray_ly = QGridLayout(self.motor_tray_bg)
-        motor_tray_ly.setContentsMargins(5, 3, 5, 3)
-        motor_tray_ly.setSpacing(0)
+        self.motor_gb = QGroupBox("电机控制")
+        motor_ly = QGridLayout(self.motor_gb)
 
-        self.motor_heater_up_bt = QPushButton("上")
-        self.motor_heater_down_bt = QPushButton("下")
-        motor_heater_ly.addWidget(self.motor_heater_up_bt)
-        motor_heater_ly.addWidget(self.motor_heater_down_bt)
+        self.motor_heater_up_bt = QPushButton("上加热体抬升")
+        self.motor_heater_up_bt.setMaximumWidth(120)
+        self.motor_heater_down_bt = QPushButton("上加热体下降")
+        self.motor_heater_down_bt.setMaximumWidth(120)
 
-        self.motor_white_pd_bt = QPushButton("PD")
-        self.motor_white_od_bt = QPushButton("白物质")
-        motor_white_ly.addWidget(self.motor_white_pd_bt)
-        motor_white_ly.addWidget(self.motor_white_od_bt)
+        self.motor_white_pd_bt = QPushButton("白板PD位置")
+        self.motor_white_pd_bt.setMaximumWidth(120)
+        self.motor_white_od_bt = QPushButton("白物质位置")
+        self.motor_white_od_bt.setMaximumWidth(120)
 
-        self.motor_tray_in_bt = QPushButton("进仓")
-        self.motor_tray_scan_bt = QPushButton("扫码")
-        self.motor_tray_out_bt = QPushButton("出仓")
-        self.motor_tray_debug_cb = QCheckBox("调试")
-        motor_tray_ly.addWidget(self.motor_tray_in_bt, 0, 0)
-        motor_tray_ly.addWidget(self.motor_tray_scan_bt, 1, 0)
-        motor_tray_ly.addWidget(self.motor_tray_out_bt, 0, 1)
-        motor_tray_ly.addWidget(self.motor_tray_debug_cb, 1, 1)
+        self.motor_tray_in_bt = QPushButton("托盘进仓")
+        self.motor_tray_in_bt.setMaximumWidth(120)
+        self.motor_tray_scan_bt = QPushButton("托盘扫码")
+        self.motor_tray_scan_bt.setMaximumWidth(120)
+        self.motor_tray_out_bt = QPushButton("托盘出仓")
+        self.motor_tray_out_bt.setMaximumWidth(120)
+        self.motor_tray_debug_cb = QCheckBox("托盘调试")
+        self.motor_tray_debug_cb.setMaximumWidth(120)
 
-        motor_ly.addWidget(self.motor_heater_bg, 0, 0, 1, 1)
-        motor_ly.addWidget(self.motor_white_bg, 1, 0, 1, 1)
-        motor_ly.addWidget(self.motor_tray_bg, 2, 0, 1, 1)
+        motor_ly.addWidget(self.motor_heater_up_bt, 0, 0)
+        motor_ly.addWidget(self.motor_heater_down_bt, 1, 0)
+        motor_ly.addWidget(self.motor_white_pd_bt, 0, 1)
+        motor_ly.addWidget(self.motor_white_od_bt, 1, 1)
+        motor_ly.addWidget(self.motor_tray_in_bt, 0, 2)
+        motor_ly.addWidget(self.motor_tray_out_bt, 1, 2)
+        motor_ly.addWidget(self.motor_tray_scan_bt, 0, 3)
+        motor_ly.addWidget(self.motor_tray_debug_cb, 1, 3)
 
         self.motor_heater_up_bt.clicked.connect(self.onMotorHeaterUp)
         self.motor_heater_down_bt.clicked.connect(self.onMotorHeaterDown)
@@ -519,14 +539,19 @@ class MainWindow(QMainWindow):
 
     def createSerial(self):
         self.serial_gb = QGroupBox("串口")
-        serial_ly = QGridLayout(self.serial_gb)
+        serial_ly = QHBoxLayout(self.serial_gb)
+        serial_ly.setContentsMargins(3, 3, 3, 3)
+        serial_ly.setSpacing(0)
         self.serial_switch_bt = QPushButton("打开串口")
+        self.serial_switch_bt.setMaximumWidth(75)
         self.serial_refresh_bt = QPushButton("刷新")
+        self.serial_refresh_bt.setMaximumWidth(75)
         self.serial_post_co = QComboBox()
+        self.serial_post_co.setMaximumWidth(75)
         self.serialRefreshPort()
-        serial_ly.addWidget(self.serial_post_co, 0, 0, 1, 2)
-        serial_ly.addWidget(self.serial_refresh_bt, 1, 0)
-        serial_ly.addWidget(self.serial_switch_bt, 1, 1)
+        serial_ly.addWidget(self.serial_post_co)
+        serial_ly.addWidget(self.serial_refresh_bt)
+        serial_ly.addWidget(self.serial_switch_bt)
         self.serial_refresh_bt.clicked.connect(self.onSerialRefresh)
         self.serial_switch_bt.setCheckable(True)
         self.serial_switch_bt.clicked.connect(self.onSerialSwitch)
@@ -630,46 +655,6 @@ class MainWindow(QMainWindow):
         self.plot_wg.showGrid(x=True, y=True)
         self.plot_proxy = SignalProxy(self.plot_wg.scene().sigMouseMoved, rateLimit=60, slot=self.onPlotMouseMove)
         matplot_ly.addWidget(self.plot_win)
-
-        matplot_bt_ly = QHBoxLayout()
-        self.matplot_start_bt = QPushButton("测试")
-        self.matplot_cancel_bt = QPushButton("取消")
-        self.upgrade_bt = QPushButton("升级")
-        self.bootload_bt = QPushButton("BL")
-        matplot_bt_ly.addWidget(self.matplot_start_bt)
-        matplot_bt_ly.addWidget(self.matplot_cancel_bt)
-        matplot_bt_ly.addWidget(self.upgrade_bt)
-        matplot_bt_ly.addWidget(self.bootload_bt)
-        matplot_ly.addLayout(matplot_bt_ly)
-
-        matplot_conf_wg = QWidget()
-        matplot_conf_ly = QHBoxLayout(matplot_conf_wg)
-        matplot_conf_ly.setContentsMargins(2, 2, 2, 2)
-        self.matplot_conf_houhou_cs = [QComboBox() for i in range(6)]
-        self.matplot_conf_wavelength_cs = [QComboBox() for i in range(6)]
-        self.matplot_conf_point_sps = [QSpinBox() for i in range(6)]
-        for i in range(6):
-            self.matplot_conf_houhou_cs[i].addItems(("无项目", "速率法", "终点法", "两点终点法"))
-            self.matplot_conf_houhou_cs[i].setMaximumWidth(90)
-            self.matplot_conf_houhou_cs[i].setCurrentIndex(1)
-            self.matplot_conf_wavelength_cs[i].addItems(("610", "550", "405"))
-            self.matplot_conf_wavelength_cs[i].setMaximumWidth(90)
-            self.matplot_conf_wavelength_cs[i].setCurrentIndex(0)
-            self.matplot_conf_point_sps[i].setRange(0, 120)
-            self.matplot_conf_point_sps[i].setMaximumWidth(90)
-            self.matplot_conf_point_sps[i].setValue(1)
-            matplot_conf_sub_gb = QGroupBox(BARCODE_NAMES[i])
-            matplot_conf_sub_ly = QVBoxLayout(matplot_conf_sub_gb)
-            matplot_conf_sub_ly.addWidget(self.matplot_conf_houhou_cs[i])
-            matplot_conf_sub_ly.addWidget(self.matplot_conf_wavelength_cs[i])
-            matplot_conf_sub_ly.addWidget(self.matplot_conf_point_sps[i])
-            matplot_conf_ly.addWidget(matplot_conf_sub_gb)
-        matplot_ly.addWidget(matplot_conf_wg)
-
-        self.matplot_start_bt.clicked.connect(self.onMatplotStart)
-        self.matplot_cancel_bt.clicked.connect(self.onMatplotCancel)
-        self.upgrade_bt.clicked.connect(self.onUpgrade)
-        self.bootload_bt.clicked.connect(self.onBootload)
         self.updateMatplotPlot()
 
     def onPlotMouseMove(self, event):
@@ -853,12 +838,14 @@ class MainWindow(QMainWindow):
         logger.debug("get data in channel | {} | {}".format(channel, data))
 
     def createStorge(self):
-        self.storge_wg = QWidget(self)
-        storge_ly = QHBoxLayout(self.storge_wg)
+        self.storge_gb = QGroupBox("存储信息")
+        storge_ly = QHBoxLayout(self.storge_gb)
         storge_ly.setContentsMargins(3, 3, 3, 3)
         storge_ly.setSpacing(0)
         self.storge_id_card_dialog_bt = QPushButton("ID卡信息")
-        self.storge_flash_read_bt = QPushButton("Flash读")
+        self.storge_id_card_dialog_bt.setMaximumWidth(120)
+        self.storge_flash_read_bt = QPushButton("外部Flash信息")
+        self.storge_flash_read_bt.setMaximumWidth(120)
         storge_ly.addWidget(self.storge_id_card_dialog_bt)
         storge_ly.addWidget(self.storge_flash_read_bt)
 
@@ -910,6 +897,26 @@ class MainWindow(QMainWindow):
 
     def onFlashRead(self, event):
         self._serialSendPack(0xD6, (0x00, 0x00, 0x00, 0x00, 0x00, 0x10))
+
+    def createBoot(self):
+        self.boot_gb = QGroupBox("系统")
+        boot_ly = QHBoxLayout(self.boot_gb)
+        boot_ly.setContentsMargins(3, 3, 3, 3)
+        boot_ly.setSpacing(0)
+        self.upgrade_bt = QPushButton("升级")
+        self.upgrade_bt.setMaximumWidth(75)
+        self.bootload_bt = QPushButton("Bootloader")
+        self.bootload_bt.setMaximumWidth(75)
+        self.reboot_bt = QPushButton("重启")
+        self.reboot_bt.setMaximumWidth(75)
+        self.selftest_bt = QPushButton("自检")
+        self.selftest_bt.setMaximumWidth(75)
+        boot_ly.addWidget(self.upgrade_bt)
+        boot_ly.addWidget(self.bootload_bt)
+        boot_ly.addWidget(self.reboot_bt)
+        boot_ly.addWidget(self.selftest_bt)
+        self.upgrade_bt.clicked.connect(self.onUpgrade)
+        self.bootload_bt.clicked.connect(self.onBootload)
 
     def getPeripheralType(self, p_type):
         if p_type == 0x00:
