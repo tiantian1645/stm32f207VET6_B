@@ -289,6 +289,10 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
     sMotor_Fun motor_fun;
     float temp;
 
+    if (pInBuff[4] == PROTOCOL_DEVICE_ID_CTRL) {		/* 回声现象 */
+    	return PROTOCOL_PARSE_OK;
+    }
+
     temp_Upload_Comm_Set(eComm_Out, 1);                /* 通讯接收成功 使能本串口温度上送 */
     if (pInBuff[5] == eProtocoleRespPack_Client_ACK) { /* 收到对方回应帧 */
         comm_Out_Send_ACK_Give(pInBuff[6]);            /* 通知串口发送任务 回应包收到 */
@@ -477,6 +481,10 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             motor_fun.fun_type = (eMotor_Fun)pInBuff[6]; /* 开始测试 */
             motor_Emit(&motor_fun, 0);                   /* 提交到电机队列 */
             break;
+        case 0xDC:
+        	vTaskDelay(50);
+        	HAL_NVIC_SystemReset(); /* 重新启动 */
+        	break;
         case eProtocolEmitPack_Client_CMD_START:          /* 开始测量帧 0x01 */
             comm_Data_Sample_Send_Conf();                 /* 发送测试配置 */
             temp_Upload_Pause();                          /* 暂停温度上送 */
@@ -555,6 +563,10 @@ eProtocolParseResult protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
     uint8_t result;
     sMotor_Fun motor_fun;
     float temp;
+
+    if (pInBuff[4] == PROTOCOL_DEVICE_ID_CTRL) {		/* 回声现象 */
+    	return PROTOCOL_PARSE_OK;
+    }
 
     gComm_Main_Connected_Set_Enable();                 /* 标记通信成功 */
     if (pInBuff[5] == eProtocoleRespPack_Client_ACK) { /* 收到对方回应帧 */
@@ -641,6 +653,10 @@ eProtocolParseResult protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
 {
     eProtocolParseResult error = PROTOCOL_PARSE_OK;
     uint8_t i, cnt;
+
+    if (pInBuff[4] == PROTOCOL_DEVICE_ID_CTRL) {		/* 回声现象 */
+    	return PROTOCOL_PARSE_OK;
+    }
 
     if (pInBuff[5] == eProtocoleRespPack_Client_ACK) { /* 收到对方回应帧 */
         comm_Data_Send_ACK_Notify(pInBuff[6]);         /* 通知串口发送任务 回应包收到 */
