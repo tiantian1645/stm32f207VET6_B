@@ -40,7 +40,7 @@ from PySide2.QtWidgets import (
 from pyqtgraph import GraphicsLayoutWidget, LabelItem, SignalProxy, mkPen
 from bytes_helper import bytesPuttyPrint
 from dc201_pack import DC201_PACK, write_firmware_pack_FC
-from qt_serial import SerialRecvWorker
+from qt_serial import SerialRecvWorker, SerialSendWorker
 
 BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
 TEMPERAUTRE_NAMES = ("下加热体:", "上加热体:")
@@ -75,7 +75,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("DC201 工装测试")
         self.serial = serial.Serial(port=None, baudrate=115200, timeout=0.01)
         self.task_queue = queue.Queue()
-        self.firm_queue = queue.Queue()
+        self.henji_queue = queue.Queue()
         self.last_firm_path = None
         self.threadpool = QThreadPool()
         self.id_card_data = bytearray(4096)
@@ -90,6 +90,7 @@ class MainWindow(QMainWindow):
         self.pack_index = 1
         self.device_id = 0x13
         self.serial_recv_worker = None
+        self.serial_send_worker = None
         self.initUI()
 
     def _serialSendPack(self, *args, **kwargs):
@@ -142,7 +143,9 @@ class MainWindow(QMainWindow):
         logger.debug("invoke close event")
         if self.serial_recv_worker is not None:
             self.serial_recv_worker.signals.owari.emit()
-            time.sleep(0.2)
+        if self.serial_send_worker is not None:
+            self.serial_send_worker.signals.owari.emit()
+        time.sleep(0.2)
 
     def createStatusBar(self):
         self.status_bar = QStatusBar(self)
@@ -449,20 +452,31 @@ class MainWindow(QMainWindow):
         if event is True:
             old_port = self.serial.port
             self.serial.port = self.serial_post_co.currentText()
+            self.serial.open()
             self.serial_post_co.setEnabled(False)
             self.serial_refresh_bt.setEnabled(False)
             self.serial_switch_bt.setText("关闭串口")
             self._clearTaskQueue()
-            self.serial_recv_worker = SerialRecvWorker(self.serial, self.task_queue, self.firm_queue, logger)
-            self.serial_recv_worker.signals.finished.connect(self.onSerialRecvWorkerFinish)
-            self.serial_recv_worker.signals.error.connect(self.onSerialRecvWorkerError)
-            self.serial_recv_worker.signals.result.connect(self.onSerialRecvWorkerResult)
+            self.serial_recv_worker = SerialRecvWorker(self.serial, self.henji_queue, logger)
+            self.serial_recv_worker.signals.finished.connect(self.onSerialWorkerFinish)
+            self.serial_recv_worker.signals.error.connect(self.onSerialWorkerError)
             self.serial_recv_worker.signals.serial_statistic.connect(self.onSerialStatistic)
+            self.serial_recv_worker.signals.result.connect(self.onSerialRecvWorkerResult)
             self.threadpool.start(self.serial_recv_worker)
+
+            self.serial_send_worker = SerialSendWorker(self.serial, self.task_queue, self.henji_queue, logger)
+            self.serial_send_worker.signals.finished.connect(self.onSerialWorkerFinish)
+            self.serial_send_worker.signals.error.connect(self.onSerialWorkerError)
+            self.serial_send_worker.signals.serial_statistic.connect(self.onSerialStatistic)
+            self.serial_send_worker.signals.result.connect(self.onSerialSendWorkerResult)
+            self.serial_send_worker.signals.henji.connect(self.serial_recv_worker.setNeedHenji)
+            self.threadpool.start(self.serial_send_worker)
             self._serialSendPack(0x07)
             logger.info("port update {} --> {}".format(old_port, self.serial.port))
         else:
             self.serial_recv_worker.signals.owari.emit()
+            self.serial_send_worker.signals.owari.emit()
+            self.serial.close()
             self.serial_post_co.setEnabled(True)
             self.serial_refresh_bt.setEnabled(True)
             self.serial_switch_bt.setText("打开串口")
@@ -473,16 +487,17 @@ class MainWindow(QMainWindow):
             self.pack_index = 1
         return self.pack_index
 
-    def onSerialRecvWorkerFinish(self):
+    def onSerialWorkerFinish(self):
         logger.info("emit from serial worker finish signal")
 
-    def onSerialRecvWorkerError(self, s):
+    def onSerialWorkerError(self, s):
         logger.error("emit from serial worker error signal | {}".format(s))
         msg = QMessageBox(self)
         msg.setIcon(QMessageBox.Critical)
         msg.setWindowTitle("串口通讯故障")
         msg.setText(repr(s[1]))
         msg.exec_()
+        self.serial.close()
         self.serial_post_co.setEnabled(True)
         self.serial_refresh_bt.setEnabled(True)
         self.serial_switch_bt.setText("打开串口")
@@ -507,6 +522,50 @@ class MainWindow(QMainWindow):
             self.updateMatplotPlot()
         elif cmd_type == 0xD1:
             self.updateOutFlashData(info)
+
+    def onSerialSendWorkerResult(self, write_result):
+        result, write_data, info = write_result
+        if write_data[5] == 0x0F:
+            if result:
+                file_path = self.upgrade_dg_lb.text()
+                self.upgrade_dg_bt.setText("升级中")
+                self.firm_start_time = time.time()
+                self.firm_wrote_size = 0
+                file_size = os.path.getsize(file_path)
+                self.firm_size = file_size + (256 - 256 % file_size)
+                for pack in write_firmware_pack_FC(self.dd, file_path, chunk_size=1024):
+                    self.task_queue.put(pack)
+                self.upgrade_dg_bt.setText("重启中")
+                self.upgrade_dg_bt.setEnabled(False)
+            return
+        elif write_data[5] == 0xFC:
+            if result:
+                self.firm_wrote_size += len(write_data) - 8
+                self.upgrade_pr.setValue(int(self.firm_wrote_size * 100 / self.firm_size))
+                time_usage = time.time() - self.firm_start_time
+                logger.info(
+                    "finish loop file | complete {:.2%} | {} / {} Byte | in {:.2f}S".format(
+                        self.firm_wrote_size / self.firm_size, self.firm_wrote_size, self.firm_size, time_usage
+                    )
+                )
+                if write_data[6] == 0:
+                    title = "固件升级 结束 | {} / {} Byte | {:.2f} S".format(self.firm_wrote_size, self.firm_size,  time_usage)
+                    QTimer.singleShot(7000, lambda: self._serialSendPack(0x07))
+                    self.upgrade_dg_bt.setText("もう一回")
+                    self.upgrade_dg_bt.setEnabled(True)
+                    self.upgrade_dg_bt.setChecked(False)
+                else:
+                    title = "固件升级中... | {} Byte | {:.2f} S".format(self.firm_wrote_size, time_usage)
+                    self.upgrade_dg_bt.setText("升级中")
+                self.upgrade_dg.setWindowTitle(title)
+            else:
+                self.upgrade_dg_bt.setText("重试")
+                self.upgrade_dg_bt.setEnabled(True)
+                self.upgrade_dg_bt.setChecked(False)
+            return
+        elif write_data[5] == 0xD9:
+            logger.info("ID卡信息包 | {}".format(write_result))
+        logger.info("other | {}".format(write_result))
 
     def onSerialStatistic(self, info):
         if info[0] == "w" and time.time() - self.kirakira_recv_time > 0.1:
@@ -595,79 +654,12 @@ class MainWindow(QMainWindow):
         self.upgrade_dg.resize(600, 75)
         self.upgrade_dg.exec_()
 
-    def _clear_firm_queue(self):
-        while True:
-            try:
-                self.firm_queue.get_nowait()
-            except queue.Empty:
-                break
-
-    def _get_from_firm_queue(self, *args, **kwargs):
-        try:
-            return self.firm_queue.get(*args, **kwargs)
-        except queue.Empty:
-            return None
-
     def onUpgradeDialog(self, event):
         if event is True:
             file_path = self.upgrade_dg_lb.text()
             if os.path.isfile(file_path):
                 self.upgrade_dg_bt.setEnabled(False)
-                self._clear_firm_queue()
                 self._serialSendPack(0x0F)
-                self.upgrade_dg_bt.setText("重启中")
-                result = self._get_from_firm_queue(timeout=1)
-                result = self._get_from_firm_queue(timeout=2)
-                logger.debug("after reboot get result | {}".format(result))
-                if result != 3:
-                    self.upgrade_dg_bt.setText("重试")
-                    self.upgrade_dg_bt.setEnabled(True)
-                    self.upgrade_dg_bt.setChecked(False)
-                    return
-                self.upgrade_dg_bt.setText("升级中")
-                self._delay(1)
-                start = time.time()
-                real_size = 0
-                file_size = os.path.getsize(file_path)
-                for pack in write_firmware_pack_FC(self.dd, file_path, chunk_size=1024):
-                    self.task_queue.put(pack)
-                    if len(pack) > 8:
-                        delta = len(pack) - 8
-                        logger.info("write pack addr 0x{:08X} ~ 0x{:08X}".format(real_size, real_size + delta))
-                        real_size += delta
-                        self.upgrade_pr.setValue(int(real_size * 100 / file_size))
-                    try:
-                        result = self.firm_queue.get(timeout=5)
-                        if result != 0:
-                            if result == 2:
-                                logger.success("get all recv")
-                                QTimer.singleShot(7000, lambda: self._serialSendPack(0x07))
-                                self.upgrade_dg_bt.setText("もう一回")
-                                self.upgrade_dg_bt.setEnabled(True)
-                                self.upgrade_dg_bt.setChecked(False)
-                            else:
-                                logger.error("get error recv | {}".format(result))
-                                self.upgrade_dg_bt.setText("重试")
-                                self.upgrade_dg_bt.setEnabled(True)
-                                self.upgrade_dg_bt.setChecked(False)
-                                return
-                            break
-                    except queue.Empty:
-                        logger.error("get recv timeout")
-                        self.upgrade_dg_bt.setText("重试")
-                        self.upgrade_dg_bt.setEnabled(True)
-                        self.upgrade_dg_bt.setChecked(False)
-                        return
-                    except Exception:
-                        logger.error("other error\n{}".format(stackprinter.format()))
-                        break
-                    QApplication.processEvents()
-                log_mark = "finish loop file | complete {:.2%} | {} / {} Byte | in {:.2f}S".format(
-                    real_size / file_size, real_size, file_size, time.time() - start
-                )
-                logger.info(log_mark)
-                title = "固件升级 结束 | {} Byte | {:.2f} S".format(file_size, time.time() - start)
-                self.upgrade_dg.setWindowTitle(title)
             else:
                 self.upgrade_dg_bt.setChecked(False)
                 self.upgrade_dg_lb.setText("请输入有效路径")
