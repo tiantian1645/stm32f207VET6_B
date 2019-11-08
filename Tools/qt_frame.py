@@ -18,57 +18,30 @@ import stackprinter
 from bytes_helper import bytesPuttyPrint
 from dc201_pack import DC201_PACK, write_firmware_pack_FC
 
-USE_PYSIDE2 = 1
-if USE_PYSIDE2:
-    from PySide2.QtCore import QObject, QRunnable, Qt, QThreadPool, QTimer, Signal as pyqtSignal, Slot as pyqtSlot
-    from PySide2.QtGui import QIcon
-    from PySide2.QtWidgets import (
-        QApplication,
-        QCheckBox,
-        QComboBox,
-        QDialog,
-        QFileDialog,
-        QGridLayout,
-        QGroupBox,
-        QHBoxLayout,
-        QLabel,
-        QLineEdit,
-        QMainWindow,
-        QMessageBox,
-        QProgressBar,
-        QPushButton,
-        QSpinBox,
-        QStatusBar,
-        QTextEdit,
-        QVBoxLayout,
-        QWidget,
-    )
-    from pyqtgraph import GraphicsLayoutWidget, LabelItem, SignalProxy, mkPen
-else:
-    from PyQt5.QtCore import QObject, QRunnable, Qt, QThreadPool, QTimer, pyqtSignal, pyqtSlot
-    from PyQt5.QtGui import QIcon
-    from PyQt5.QtWidgets import (
-        QApplication,
-        QCheckBox,
-        QComboBox,
-        QDialog,
-        QFileDialog,
-        QGridLayout,
-        QGroupBox,
-        QHBoxLayout,
-        QLabel,
-        QLineEdit,
-        QMessageBox,
-        QMainWindow,
-        QProgressBar,
-        QPushButton,
-        QSpinBox,
-        QStatusBar,
-        QTextEdit,
-        QVBoxLayout,
-        QWidget,
-    )
-    from pyqtgraph import GraphicsLayoutWidget, LabelItem, SignalProxy, mkPen
+from PySide2.QtCore import QObject, QRunnable, Qt, QThreadPool, QTimer, Signal as pyqtSignal, Slot as pyqtSlot
+from PySide2.QtGui import QIcon
+from PySide2.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QFileDialog,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QMessageBox,
+    QProgressBar,
+    QPushButton,
+    QSpinBox,
+    QStatusBar,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
+from pyqtgraph import GraphicsLayoutWidget, LabelItem, SignalProxy, mkPen
 
 
 BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
