@@ -131,6 +131,27 @@ class SerialWorker(QRunnable):
         else:
             return data
 
+    def _deal_recv(self, info):
+        ack = info.content[3]
+        fun_code = info.content[5]
+        if fun_code != 0xAA:
+            write_data = self.dd.buildPack(0x13, 0xFF - ack, 0xAA, (ack,))
+            self.serial.write(write_data)
+            self.signals.serial_statistic.emit(("w", write_data))
+            self.logger.warning("send pack | {}".format(bytesPuttyPrint(write_data)))
+            self.signals.result.emit(info)
+            if fun_code == 0xFA:
+                self.firm_queue.put(3)
+                self.firm_start_flag = True
+            if self.firm_start_flag:
+                if fun_code == 0xB5:
+                    self.firm_queue.put(1)
+        else:
+            if self.firm_over_flag:
+                self.firm_queue.put(2)
+            else:
+                self.firm_queue.put(0)
+
     @pyqtSlot()
     def run(self):
         try:
@@ -154,6 +175,8 @@ class SerialWorker(QRunnable):
                     if write_data[5] == 0x0F:
                         self.firm_start_flag = False
                         self.firm_over_flag = False
+                    if write_data[5] == 0xD9:
+                        time.sleep(0.5)
                 elif write_data is not None:
                     self.logger.error("write data type error | {}".format(write_data))
 
@@ -169,28 +192,8 @@ class SerialWorker(QRunnable):
                     continue
                 info = None
                 for info in self.dd.iterIntactPack(recv_buffer):
-                    recv_pack = info.content
-                    if info.is_head and info.is_crc and len(recv_pack) >= 7:
-                        ack = recv_pack[3]
-                        fun_code = recv_pack[5]
-                        if fun_code != 0xAA:
-                            write_data = self.dd.buildPack(0x13, 0xFF - ack, 0xAA, (ack,))
-                            self.serial.write(write_data)
-                            self.signals.serial_statistic.emit(("w", write_data))
-                            self.logger.warning("send pack | {}".format(bytesPuttyPrint(write_data)))
-                            self.signals.result.emit(info)
-                            if fun_code == 0xFA:
-                                self.firm_queue.put(3)
-                                self.firm_start_flag = True
-                            if self.firm_start_flag:
-                                if fun_code == 0xB5:
-                                    self.firm_queue.put(1)
-
-                        else:
-                            if self.firm_over_flag:
-                                self.firm_queue.put(2)
-                            else:
-                                self.firm_queue.put(0)
+                    if info.is_head and info.is_crc and len(info.content) >= 7:
+                        self._deal_recv(info)
                 if info is not None:
                     if info.is_head and info.is_crc:
                         recv_buffer = b""
@@ -216,6 +219,7 @@ class MainWindow(QMainWindow):
         self.last_firm_path = None
         self.threadpool = QThreadPool()
         self.id_card_data = bytearray(4096)
+        self.storge_time_start = 0
         self.out_flash_start = 0
         self.out_flash_data = bytearray()
         self.temp_btm_record = []
@@ -872,12 +876,21 @@ class MainWindow(QMainWindow):
 
         self.id_card_data_dg = QDialog(self)
         self.id_card_data_dg.setWindowTitle("ID Card")
+        self.id_card_data_dg.resize(730, 370)
+        self.id_card_data_dg.resizeEvent = lambda x: logger.debug("windows size | {}".format(self.id_card_data_dg.size()))
         id_card_data_ly = QVBoxLayout(self.id_card_data_dg)
         self.id_card_data_te = QTextEdit()
-        self.id_card_data_read_bt = QPushButton("读取")
         id_card_data_ly.addWidget(self.id_card_data_te)
-        id_card_data_ly.addWidget(self.id_card_data_read_bt)
+
+        id_card_temp_ly = QHBoxLayout()
+        self.id_card_data_read_bt = QPushButton("读取")
+        self.id_card_data_write_bt = QPushButton("写入")
+        id_card_temp_ly.addWidget(self.id_card_data_read_bt)
+        id_card_temp_ly.addWidget(self.id_card_data_write_bt)
+        id_card_data_ly.addLayout(id_card_temp_ly)
+
         self.id_card_data_read_bt.clicked.connect(self.onID_CardRead)
+        self.id_card_data_write_bt.clicked.connect(self.onID_CardWrite)
 
         self.out_flash_data_dg = QDialog(self)
         self.out_flash_data_dg.setWindowTitle("外部Flash")
@@ -913,10 +926,35 @@ class MainWindow(QMainWindow):
     def onID_CardDialogShow(self, event):
         self.id_card_data_dg.show()
 
-    def onID_CardRead(self):
+    def onID_CardRead(self, event):
         self.id_card_data_dg.setWindowTitle("ID Card")
         self.id_card_data_te.clear()
         self._serialSendPack(0x06)
+
+    def onID_CardWrite(self, event):
+        fd = QFileDialog()
+        file_path, _ = fd.getOpenFileName()
+        if not file_path:
+            return
+        file_size = os.path.getsize(file_path)
+        if file_size > 4096:
+            msg = QMessageBox(self)
+            msg.setIcon(QMessageBox.Warning)
+            msg.setWindowTitle("文件大小异常 | {}".format(file_size))
+            msg.setText("只取头部4096字节数据")
+            msg.show()
+        with open(file_path, "rb") as f:
+            data = f.read(4096)
+        for a, i in enumerate(range(len(data) // 224, -1, -1)):
+            addr = a * 224
+            if i != 0:
+                num = 224
+            else:
+                num = len(data) % 224
+            addr_list = ((addr >> 16) & 0xFF, (addr >> 8) & 0xFF, addr & 0xFF)
+            num_list = ((num >> 16) & 0xFF, (num >> 8) & 0xFF, num & 0xFF)
+            data_list = (i for i in data[addr : addr + num])
+            self._serialSendPack(0xD9, (*addr_list, *num_list, *data_list))
 
     def updateIDCardData(self, info):
         offset = 0
@@ -924,6 +962,7 @@ class MainWindow(QMainWindow):
         start = int.from_bytes(raw_bytes[8:10], byteorder="little")
         length = raw_bytes[10]
         if start == 0:
+            self.storge_time_start = time.time()
             total = int.from_bytes(raw_bytes[6:8], byteorder="little")
             offset = total - len(self.id_card_data)
         elif start + length > len(self.id_card_data):
@@ -932,10 +971,12 @@ class MainWindow(QMainWindow):
             self.id_card_data.extend((0xFF for _ in range(offset)))
         self.id_card_data[start : start + length] = raw_bytes[11 : 11 + length]
         if start + length == 4096:
-            self.id_card_data_dg.setWindowTitle("ID Card | sha256 {}".format(sha256(self.id_card_data).hexdigest()))
+            self.id_card_data_dg.setWindowTitle(
+                "ID Card | sha256 {} | {:.4f} S".format(sha256(self.id_card_data).hexdigest(), time.time() - self.storge_time_start)
+            )
         result = self.genBinaryData(self.id_card_data[: start + length])
         raw_text = "\n".join(result)
-        logger.debug("ID Card Raw Data \n{}".format())
+        # logger.debug("ID Card Raw Data \n{}".format(raw_text))
         self.id_card_data_te.setPlainText(raw_text)
 
     def onOutFlashDialogShow(self, event):
