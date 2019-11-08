@@ -40,7 +40,7 @@ uint16_t I2C_EEPROM_Read(uint16_t memAddr, uint8_t * pOutBuff, uint16_t length, 
     memAddrBuffer[0] = memAddr >> 8;
     memAddrBuffer[1] = memAddr & 0xFF;
 
-    if (HAL_I2C_Master_Transmit(&AT24CXX_I2C_HANDLE, (uint16_t)(AT24CXX_DEV_ADDR), memAddrBuffer, 2, 10) == HAL_OK) {
+    if (HAL_I2C_Master_Transmit(&AT24CXX_I2C_HANDLE, (uint16_t)(AT24CXX_DEV_ADDR), memAddrBuffer, 2, timeout) == HAL_OK) {
         if (HAL_I2C_Master_Receive(&AT24CXX_I2C_HANDLE, (uint16_t)(AT24CXX_DEV_ADDR), pOutBuff, length, timeout) == HAL_OK) {
             return length;
         }
@@ -61,7 +61,7 @@ uint16_t I2C_EEPROM_Read(uint16_t memAddr, uint8_t * pOutBuff, uint16_t length, 
  */
 uint16_t I2C_EEPROM_Write(uint16_t memAddr, uint8_t * pOutBuff, uint16_t length, uint32_t timeout)
 {
-    uint8_t dealNum;
+    uint8_t dealNum, writeBuffer[34];
     uint16_t wroteCnt = 0;
 
     if (length == 0) { /* 长度数据无效 */
@@ -74,18 +74,27 @@ uint16_t I2C_EEPROM_Write(uint16_t memAddr, uint8_t * pOutBuff, uint16_t length,
     }
 
     do {
-        if (HAL_I2C_Mem_Write(&AT24CXX_I2C_HANDLE, (uint16_t)AT24CXX_DEV_ADDR, memAddr, AT24CXX_MEM_ADDR_SIZE, pOutBuff, dealNum, timeout) != HAL_OK) {
-            return wroteCnt;
+        writeBuffer[0] = memAddr >> 8;
+        writeBuffer[1] = memAddr & 0xFF;
+        memcpy(writeBuffer + 2, pOutBuff, dealNum);
+        if (HAL_I2C_Master_Transmit(&AT24CXX_I2C_HANDLE, (uint16_t)(AT24CXX_DEV_ADDR), writeBuffer, dealNum + 2, timeout) != HAL_OK) {
+            break;
         }
         wroteCnt += dealNum; /* 已写入数量 */
         length -= dealNum;   /* 待处理长度缩减 */
         if (length == 0) {   /* 操作完成 提前返回 */
-            return wroteCnt;
+            break;
         }
         vTaskDelay(4);                                                                            /* 操作间隔延时 */
         pOutBuff += dealNum;                                                                      /* 数据指针位移 */
         memAddr += dealNum;                                                                       /* 操作地址位移 */
         dealNum = (length >= AT24CXX_PAGE_WRITE_LENGTH) ? (AT24CXX_PAGE_WRITE_LENGTH) : (length); /* 下次处理长度 */
     } while (length);
+
+    if (HAL_GPIO_ReadPin(CARD_IN_GPIO_Port, CARD_IN_Pin) == GPIO_PIN_SET) {   /* 检查ID卡是否插入 */
+        error_Emit(eError_Peripheral_Storge_ID_Card, eError_Storge_Hardware); /* 提交错误信息 */
+        wroteCnt = 0;
+    }
+
     return wroteCnt;
 }
