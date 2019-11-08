@@ -27,7 +27,7 @@ class SerialRecvWorker(QRunnable):
         self.serial = serial
         self.logger = logger
         self.henji_queue = henji_queue
-        self.need_henji = False
+        self.need_henji = ()
         self.dd = DC201_PACK()
         self.signals = SeialWorkerSignals()
         self.signals.owari.connect(self.stoptask)
