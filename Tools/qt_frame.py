@@ -39,6 +39,7 @@ from PySide2.QtWidgets import (
 )
 from pyqtgraph import GraphicsLayoutWidget, LabelItem, SignalProxy, mkPen
 from bytes_helper import bytesPuttyPrint, bytes2Float
+from dc201_pack import DC201_PACK, write_firmware_pack_FC, DC201_ParamInfo
 from qt_serial import SerialRecvWorker, SerialSendWorker
 
 BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
@@ -458,8 +459,8 @@ class MainWindow(QMainWindow):
             old_port = self.serial.port
             self.serial.port = self.serial_post_co.currentText()
             try:
-            self.serial.open()
-            except serial.SerialException:
+                self.serial.open()
+            except (serial.SerialException, Exception):
                 exctype, value = sys.exc_info()[:2]
                 trace_back_text = stackprinter.format()
                 self.onSerialWorkerError((exctype, value, trace_back_text))
@@ -763,17 +764,18 @@ class MainWindow(QMainWindow):
 
         self.out_flash_data_dg = QDialog(self)
         self.out_flash_data_dg.setWindowTitle("外部Flash")
+        self.out_flash_data_dg.resize(730, 370)
         out_flash_data_ly = QVBoxLayout(self.out_flash_data_dg)
         self.out_flash_data_te = QTextEdit()
         out_flash_temp_ly = QHBoxLayout()
         self.out_flash_data_addr = QSpinBox()
         self.out_flash_data_addr.setRange(0, 8 * 2 ** 20)
         self.out_flash_data_addr.setMaximumWidth(90)
-        self.out_flash_data_addr.setValue(0)
+        self.out_flash_data_addr.setValue(4096)
         self.out_flash_data_num = QSpinBox()
         self.out_flash_data_num.setRange(0, 8 * 2 ** 20)
         self.out_flash_data_num.setMaximumWidth(90)
-        self.out_flash_data_num.setValue(16)
+        self.out_flash_data_num.setValue(36)
         self.out_flash_data_read_bt = QPushButton("读取")
         out_flash_temp_ly.addWidget(QLabel("地址"))
         out_flash_temp_ly.addWidget(self.out_flash_data_addr)
@@ -871,7 +873,12 @@ class MainWindow(QMainWindow):
         result = self.genBinaryData(self.out_flash_data[: start + length], offset=self.out_flash_start)
         raw_text = "\n".join(result)
         logger.debug("Out Falsh Raw Data \n{}".format(raw_text))
-        self.out_flash_data_te.setPlainText(raw_text)
+        if self.out_flash_start == 0x1000 and length >= 36:
+            info = DC201_ParamInfo(self.out_flash_data[: start + length])
+            plain_text = f"{info}\n{'=' * 100}\nraw bytes:\n{raw_text}"
+            self.out_flash_data_te.setPlainText(plain_text)
+        else:
+            self.out_flash_data_te.setPlainText(raw_text)
 
     def createBoot(self):
         self.boot_gb = QGroupBox("系统")

@@ -293,7 +293,7 @@ def bytes2Int(b: bytes, index: int = 0, length: int = 0, signed=False):
         return int.from_bytes(b[index : index + length], byteorder="big", signed=signed)
 
 
-def bytess2Float(b: bytes, model="DCBA"):
+def bytes2Float(b: bytes, model="DCBA"):
     if len(b) != 4:
         logger.error("convert bytes only support 4 bytes")
         raise ValueError("Bytes length error")

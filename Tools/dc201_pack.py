@@ -1,6 +1,6 @@
 import loguru
 import stackprinter
-from bytes_helper import bytesPuttyPrint, crc8, str2Bytes
+from bytes_helper import bytesPuttyPrint, crc8, str2Bytes, bytes2Float
 import struct
 from functools import lru_cache
 from collections import namedtuple
@@ -12,6 +12,8 @@ TestPackInfo = namedtuple("TestPackInfo", "type is_head is_crc content text")
 IDCardInfo = namedtuple("IDCardInfo", "ver_len ver_inf branch sample_type channel_confs channel_standards channel_animal_standards")
 ChanelConfInfo = namedtuple("ChanelConfInfo", "name wave houhou unit precision sample_time sample_point start_point stop_point calc_point min max valid_date")
 BaseInfo = namedtuple("BaseInfo", "imi raw")
+
+ParamInfo = namedtuple("ParamInfo", "cc_temp_tops cc_temp_btms cc_temp_env")
 
 TEST_BIN_PATH = r"C:\Users\Administrator\STM32CubeIDE\workspace_1.0.2\stm32F207VET6_Bootloader_APP\Debug\stm32F207VET6_Bootloader_APP.bin"
 REAL_BIN_PATH = r"C:\Users\Administrator\STM32CubeIDE\workspace_1.0.2\stm32f207VET6_B\Debug\stm32f207VET6_B.bin"
@@ -123,6 +125,32 @@ class DC201_IDCardInfo:
         else:
             imi = houhous[raw]
         return BaseInfo(imi=imi, raw=raw)
+
+
+class DC201_ParamInfo:
+    def __init__(self, data):
+        self.data = data
+        self.cc_temp_tops = None
+        self.cc_temp_btms = None
+        self.cc_temp_env = None
+        self.info = None
+        self.decode()
+
+    def decode(self):
+        self.cc_temp_tops = [bytes2Float(self.data[i : i + 4]) for i in range(0, 24, 4)]
+        self.cc_temp_btms = [bytes2Float(self.data[i : i + 4]) for i in range(24, 32, 4)]
+        self.cc_temp_env = [bytes2Float(self.data[32 : 32 + 4])]
+        self.info = ParamInfo(cc_temp_tops=self.cc_temp_tops, cc_temp_btms=self.cc_temp_btms, cc_temp_env=self.cc_temp_env)
+
+    def cc_temps_format(self, cc_temps):
+        return [f"{t:.3f} ℃" for t in cc_temps]
+
+    def __str__(self):
+        return (
+            f"上加热体校正系数 {self.cc_temps_format(self.cc_temp_tops)}\n"
+            f"下加热体校正系数 {self.cc_temps_format(self.cc_temp_btms)}\n"
+            f"环境温度校正系数 {self.cc_temps_format(self.cc_temp_env)}"
+        )
 
 
 class DC201_PACK:
