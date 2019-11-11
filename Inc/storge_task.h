@@ -18,17 +18,36 @@ typedef enum {
     eStorgeNotifyConf_COMM_Main = 0x20000000,
 } eStorgeNotifyConf;
 
+typedef enum {
+    eStorgeParamIndex_Temp_CC_top_1,
+    eStorgeParamIndex_Temp_CC_top_2,
+    eStorgeParamIndex_Temp_CC_top_3,
+    eStorgeParamIndex_Temp_CC_top_4,
+    eStorgeParamIndex_Temp_CC_top_5,
+    eStorgeParamIndex_Temp_CC_top_6,
+    eStorgeParamIndex_Temp_CC_btm_1,
+    eStorgeParamIndex_Temp_CC_btm_2,
+    eStorgeParamIndex_Temp_CC_env,
+    eStorgeParamIndex_Num,
+} eStorgeParamIndex;
+
 typedef struct {
-    float temperature_offset_top_1;
-    float temperature_offset_top_2;
-    float temperature_offset_top_3;
-    float temperature_offset_top_4;
-    float temperature_offset_top_5;
-    float temperature_offset_top_6;
-    float temperature_offset_btm_1;
-    float temperature_offset_btm_2;
-    float temperature_offset_env;
+    float temperature_cc_top_1;
+    float temperature_cc_top_2;
+    float temperature_cc_top_3;
+    float temperature_cc_top_4;
+    float temperature_cc_top_5;
+    float temperature_cc_top_6;
+    float temperature_cc_btm_1;
+    float temperature_cc_btm_2;
+    float temperature_cc_env;
 } sStorgeParamInfo;
+
+typedef struct {
+    float default_;
+    float min;
+    float max;
+} sStorgeParamLimitUnit;
 
 /* Exported constants --------------------------------------------------------*/
 
@@ -40,6 +59,8 @@ uint8_t storgeReadConfInfo(uint32_t addr, uint32_t num, uint32_t timeout);
 uint8_t storgeWriteConfInfo(uint32_t addr, uint8_t * pIn, uint32_t num, uint32_t timeout);
 BaseType_t storgeTaskNotification(eStorgeNotifyConf type, eProtocol_COMM_Index index);
 
+uint8_t storge_ParamSet(eStorgeParamIndex idx, uint8_t * pBuff, uint8_t length);
+uint8_t storge_ParamGet(eStorgeParamIndex idx, uint8_t * pBuff);
 /* Private defines -----------------------------------------------------------*/
 
 #endif

@@ -8,6 +8,7 @@ import time
 from datetime import datetime
 from functools import partial
 from hashlib import sha256
+import struct
 
 import loguru
 import pyperclip
@@ -32,6 +33,7 @@ from PySide2.QtWidgets import (
     QProgressBar,
     QPushButton,
     QSpinBox,
+    QDoubleSpinBox,
     QStatusBar,
     QTextEdit,
     QVBoxLayout,
@@ -536,6 +538,8 @@ class MainWindow(QMainWindow):
             self.updateOutFlashData(info)
         elif cmd_type == 0xB7:
             self.updateVersionLabel(info)
+        elif cmd_type == 0xDD:
+            self.updateOutFalshParam(info)
 
     def onSerialSendWorkerResult(self, write_result):
         result, write_data, info = write_result
@@ -783,9 +787,63 @@ class MainWindow(QMainWindow):
         out_flash_temp_ly.addWidget(self.out_flash_data_num)
         out_flash_temp_ly.addWidget(self.out_flash_data_read_bt)
 
+        out_flash_param_gb = QGroupBox("系统参数")
+        out_flash_param_ly = QGridLayout(out_flash_param_gb)
+        out_flash_param_ly.setContentsMargins(5, 0, 5, 0)
+        out_flash_param_ly.setSpacing(5)
+        self.out_falsh_param_sps = [QDoubleSpinBox(self) for _ in range(9)]
+        self.out_falsh_param_read_bt = QPushButton("读取")
+        self.out_falsh_param_write_bt = QPushButton("写入")
+        for i, sp in enumerate(self.out_falsh_param_sps):
+            sp.setMaximumWidth(90)
+            sp.setRange(-5, 5)
+            sp.setDecimals(3)
+            sp.setSingleStep(0.035)
+            sp.setSuffix("℃")
+            temp_ly = QHBoxLayout()
+            temp_ly.setContentsMargins(5, 0, 5, 0)
+            temp_ly.setSpacing(5)
+            if i < 6:
+                temp_ly.addWidget(QLabel(f"上加热体温度校正#{i + 1}"))
+            elif i < 8:
+                temp_ly.addWidget(QLabel(f"下加热体温度校正#{i - 5}"))
+            else:
+                temp_ly.addWidget(QLabel(f"环境温度校正#{i - 7}"))
+            temp_ly.addWidget(sp)
+            out_flash_param_ly.addLayout(temp_ly, i // 3, i % 3)
+        i += 1
+        temp_ly = QHBoxLayout()
+        temp_ly.setContentsMargins(5, 0, 5, 0)
+        temp_ly.setSpacing(5)
+        temp_ly.addWidget(self.out_falsh_param_read_bt)
+        temp_ly.addWidget(self.out_falsh_param_write_bt)
+        out_flash_param_ly.addLayout(temp_ly, i // 3, i % 3)
+
         out_flash_data_ly.addWidget(self.out_flash_data_te)
         out_flash_data_ly.addLayout(out_flash_temp_ly)
+        out_flash_data_ly.addWidget(out_flash_param_gb)
         self.out_flash_data_read_bt.clicked.connect(self.onOutFlashRead)
+        self.out_falsh_param_read_bt.clicked.connect(self.onOutFlashParamRead)
+        self.out_falsh_param_write_bt.clicked.connect(self.onOutFlashParamWrite)
+
+    def onOutFlashParamRead(self, event):
+        for idx in range(9):
+            data = (idx % 256, idx // 256)
+            self._serialSendPack(0xDD, data)
+
+    def onOutFlashParamWrite(self, event):
+        for idx, sp in enumerate(self.out_falsh_param_sps):
+            pv = bytearray(struct.pack("f", sp.value()))
+            data = (idx % 256, idx // 256, *(i for i in pv))
+            self._serialSendPack(0xDD, data)
+        data = (0xFF, 0xFF)
+        self._serialSendPack(0xDD, data)
+
+    def updateOutFalshParam(self, info):
+        raw_pack = info.content
+        idx = struct.unpack("H", raw_pack[6:8])[0]
+        value = struct.unpack("f", raw_pack[8:12])[0]
+        self.out_falsh_param_sps[idx].setValue(value)
 
     def genBinaryData(self, data, unit=32, offset=0):
         result = []

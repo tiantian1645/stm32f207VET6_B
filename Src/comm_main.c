@@ -385,7 +385,7 @@ static void comm_Main_Recv_Task(void * argument)
 
         pResult = protocol_Parse_Main(recvInfo.buff, recvInfo.length); /* 数据包协议解析 */
         if (pResult != PROTOCOL_PARSE_OK) {                            /* 数据包解析异常 */
-            if (pResult & PROTOCOL_PARSE_LENGTH_ERROR) {
+            if (pResult & (PROTOCOL_PARSE_LENGTH_ERROR | PROTOCOL_PARSE_DATA_ERROR)) {
                 error_type |= eError_COMM_Wrong_Param;
             }
             if (pResult & PROTOCOL_PARSE_CMD_ERROR) {
