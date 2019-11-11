@@ -553,7 +553,7 @@ class MainWindow(QMainWindow):
                     )
                 )
                 if write_data[6] == 0:
-                    title = "固件升级 结束 | {} / {} Byte | {:.2f} S".format(self.firm_wrote_size, self.firm_size,  time_usage)
+                    title = "固件升级 结束 | {} / {} Byte | {:.2f} S".format(self.firm_wrote_size, self.firm_size, time_usage)
                     QTimer.singleShot(7000, lambda: self._serialSendPack(0x07))
                     self.upgrade_dg_bt.setText("もう一回")
                     self.upgrade_dg_bt.setEnabled(True)
@@ -772,11 +772,11 @@ class MainWindow(QMainWindow):
         out_flash_data_ly.addLayout(out_flash_temp_ly)
         self.out_flash_data_read_bt.clicked.connect(self.onOutFlashRead)
 
-    def genBinaryData(self, data, unit=32):
+    def genBinaryData(self, data, unit=32, offset=0):
         result = []
         for i in range(0, len(data), unit):
             b = data[i : i + unit]
-            result.append("0x{:04X} ~ 0x{:04X} | {}".format(i, i + unit - 1, bytesPuttyPrint(b)))
+            result.append("0x{:04X} ~ 0x{:04X} | {}".format(i + offset, i + offset + unit - 1, bytesPuttyPrint(b)))
         return result
 
     def onID_CardDialogShow(self, event):
@@ -843,7 +843,7 @@ class MainWindow(QMainWindow):
         addr_list = ((addr >> 16) & 0xFF, (addr >> 8) & 0xFF, addr & 0xFF)
         num = self.out_flash_data_num.value()
         num_list = ((num >> 16) & 0xFF, (num >> 8) & 0xFF, num & 0xFF)
-        self.out_flash_start = 0
+        self.out_flash_start = addr
         self.out_flash_data.clear()
         self.out_flash_data.extend((0xFF for _ in range(num)))
         self.out_flash_data_te.clear()
@@ -851,11 +851,11 @@ class MainWindow(QMainWindow):
 
     def updateOutFlashData(self, info):
         raw_bytes = info.content
-        start = int.from_bytes(raw_bytes[9:12], byteorder="little")
+        start = int.from_bytes(raw_bytes[9:12], byteorder="little") - self.out_flash_start
         length = raw_bytes[12]
         self.out_flash_data[start : start + length] = raw_bytes[13 : 13 + length]
         self.out_flash_data_dg.setWindowTitle("外部Flash | sha256 {}".format(sha256(self.out_flash_data).hexdigest()))
-        result = self.genBinaryData(self.out_flash_data[: start + length])
+        result = self.genBinaryData(self.out_flash_data[: start + length], offset=self.out_flash_start)
         raw_text = "\n".join(result)
         logger.debug("Out Falsh Raw Data \n{}".format(raw_text))
         self.out_flash_data_te.setPlainText(raw_text)
