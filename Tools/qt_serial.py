@@ -126,7 +126,7 @@ class SerialSendWorker(QRunnable):
         self.signals.henji.emit(write_data)
         logger.info("invoke set henji | {}".format(bytesPuttyPrint(write_data)))
         if write_data[5] == 0x0F:
-            time.sleep(1)
+            time.sleep(3)
         try:
             info = self.henji_queue.get(timeout=timeout)
         except queue.Empty:

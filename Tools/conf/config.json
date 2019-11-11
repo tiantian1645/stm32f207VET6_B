@@ -1,1 +1,6 @@
-{"log": {"rotation": "1 MB", "retention": 50}}
+{
+    "log": {
+        "rotation": "4 MB",
+        "retention": 25
+    }
+}

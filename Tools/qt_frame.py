@@ -64,8 +64,8 @@ except Exception:
     except Exception:
         logger.error("dump conf failed \n{}".format(stackprinter.format()))
 
-rotation = CONFIG.get("log", {}).get("rotation", "1 MB")
-retention = CONFIG.get("log", {}).get("retention", 50)
+rotation = CONFIG.get("log", {}).get("rotation", "4 MB")
+retention = CONFIG.get("log", {}).get("retention", 25)
 logger.add("./log/dc201.log", rotation=rotation, retention=retention, enqueue=True)
 
 
@@ -537,6 +537,10 @@ class MainWindow(QMainWindow):
                     self.task_queue.put(pack)
                 self.upgrade_dg_bt.setText("重启中")
                 self.upgrade_dg_bt.setEnabled(False)
+            else:
+                self.upgrade_dg_bt.setText("重试")
+                self.upgrade_dg_bt.setEnabled(True)
+                self.upgrade_dg_bt.setChecked(False)
             return
         elif write_data[5] == 0xFC:
             if result:
