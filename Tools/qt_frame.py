@@ -38,8 +38,7 @@ from PySide2.QtWidgets import (
     QWidget,
 )
 from pyqtgraph import GraphicsLayoutWidget, LabelItem, SignalProxy, mkPen
-from bytes_helper import bytesPuttyPrint
-from dc201_pack import DC201_PACK, write_firmware_pack_FC
+from bytes_helper import bytesPuttyPrint, bytes2Float
 from qt_serial import SerialRecvWorker, SerialSendWorker
 
 BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
@@ -200,9 +199,12 @@ class MainWindow(QMainWindow):
         kirakira_ly.addWidget(QLabel("接收"))
         kirakira_ly.addWidget(self.kirakira_recv_lb)
 
+        self.version_lb = QLabel("版本: *.*")
+
         self.status_bar.addWidget(temperautre_wg, 0)
         self.status_bar.addWidget(motor_tray_position_wg, 0)
         self.status_bar.addWidget(kirakira_wg, 0)
+        self.status_bar.addWidget(self.version_lb, 0)
         self.setStatusBar(self.status_bar)
 
     def onTemperautreLabelClick(self, event):
@@ -262,6 +264,9 @@ class MainWindow(QMainWindow):
         else:
             self.motor_tray_position.setStyleSheet("background-color: white;")
             self.motor_tray_position.setText("错误报文")
+
+    def updateVersionLabel(self, info):
+        self.version_lb.setText(f"版本: {bytes2Float(info.content[6:10]):.1f}")
 
     def createBarcode(self):
         self.barcode_gb = QGroupBox("测试通道")
@@ -522,6 +527,8 @@ class MainWindow(QMainWindow):
             self.updateMatplotPlot()
         elif cmd_type == 0xD1:
             self.updateOutFlashData(info)
+        elif cmd_type == 0xB7:
+            self.updateVersionLabel(info)
 
     def onSerialSendWorkerResult(self, write_result):
         result, write_data, info = write_result
