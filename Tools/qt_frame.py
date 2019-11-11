@@ -943,7 +943,7 @@ class MainWindow(QMainWindow):
         elif p_type in (0x04, 0x05, 0x06, 0x07, 0x08):
             error_list = ("温度值无效", "温度持续过低", "温度持续过高")
         elif p_type in (0x09, 0x0A):
-            error_list = ("硬件故障", "读取失败", "写入失败")
+            error_list = ("硬件故障", "读取失败", "写入失败", "参数越限")
         elif p_type in (0x0B, 0x0C, 0x0D):
             error_list = ("资源不可用", "发送失败", "回应帧号不正确", "无回应", "未知功能码", "参数不正常")
         elif p_type in (0x0E,):
