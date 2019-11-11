@@ -457,7 +457,13 @@ class MainWindow(QMainWindow):
         if event is True:
             old_port = self.serial.port
             self.serial.port = self.serial_post_co.currentText()
+            try:
             self.serial.open()
+            except serial.SerialException:
+                exctype, value = sys.exc_info()[:2]
+                trace_back_text = stackprinter.format()
+                self.onSerialWorkerError((exctype, value, trace_back_text))
+                return
             self.serial_post_co.setEnabled(False)
             self.serial_refresh_bt.setEnabled(False)
             self.serial_switch_bt.setText("关闭串口")
