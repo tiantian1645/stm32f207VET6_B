@@ -347,7 +347,7 @@ void motor_Sample_Owari(void)
     barcode_Motor_Run_By_Index(eBarcodeIndex_0); /* 复位 */
     barcode_Motor_Run_By_Index(eBarcodeIndex_6); /* 二维码位置就位 */
     gComm_Data_Sample_Max_Point_Clear();         /* 清除需要测试点数 */
-    temp_Upload_Resume();                        /* 恢复温度上送 */
+    protocol_Temp_Upload_Resume();               /* 恢复温度上送 */
     led_Mode_Set(eLED_Mode_Keep_Green);          /* LED 绿灯常亮 */
     barcode_Interrupt_Flag_Clear();              /* 清除打断标志位 */
     comm_Data_Sample_Owari();                    /* 上送采样结束报文 */
@@ -416,7 +416,7 @@ static void motor_Task(void * argument)
                 motor_Tray_Move_By_Index(eTrayIndex_0);       /* 入仓 */
                 heat_Motor_Down();                            /* 砸下上加热体电机 */
                 if (gComm_Data_Sample_Max_Point_Get() == 0) { /* 无测试项目 */
-                    temp_Upload_Resume();                     /* 恢复温度上送 */
+                    protocol_Temp_Upload_Resume();            /* 恢复温度上送 */
                     led_Mode_Set(eLED_Mode_Keep_Green);       /* LED 绿灯常亮 */
                     barcode_Interrupt_Flag_Clear();           /* 清除打断标志位 */
                     break;                                    /* 提前结束 */

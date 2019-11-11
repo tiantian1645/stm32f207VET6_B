@@ -199,7 +199,7 @@ static void storgeTask(void * argument)
         if (xResult != pdPASS) {
             continue;
         }
-        temp_Upload_Pause(); /* 暂停温度上送 */
+        protocol_Temp_Upload_Pause(); /* 暂停温度上送 */
         switch (ulNotifyValue & STORGE_DEAL_MASK) {
             case eStorgeNotifyConf_Read_Falsh:
                 for (i = 0; i < ((gStorgeTaskInfo.num + STORGE_FLASH_PART_NUM - 1) / STORGE_FLASH_PART_NUM); ++i) {
@@ -321,8 +321,8 @@ static void storgeTask(void * argument)
             default:
                 break;
         }
-        gStorgeTaskInfoLockRelease(); /* 解锁 */
-        temp_Upload_Resume();         /* 恢复温度上送 */
+        gStorgeTaskInfoLockRelease();  /* 解锁 */
+        protocol_Temp_Upload_Resume(); /* 恢复温度上送 */
     }
 }
 

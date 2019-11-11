@@ -444,7 +444,7 @@ static void comm_Main_Send_Task(void * argument)
             }
         }
         if (ucResult == 0) {                                         /* 重发失败处理 */
-            temp_Upload_Comm_Set(eComm_Main, 0);                     /* 关闭本串口温度上送 */
+            protocol_Temp_Upload_Comm_Set(eComm_Main, 0);            /* 关闭本串口温度上送 */
             while (xQueueReceive(comm_Main_SendQueue, &sendInfo, 0)) /* 清空发送队列 */
                 ;
             gComm_Main_Connected_Set_Disbale(); /* 标记通信失败 */

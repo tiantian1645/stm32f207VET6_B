@@ -463,8 +463,8 @@ static void comm_Out_Send_Task(void * argument)
                 ucResult = 0;
             }
         }
-        if (ucResult == 0) {                    /* 重发失败处理 */
-            temp_Upload_Comm_Set(eComm_Out, 0); /* 关闭本串口温度上送 */
+        if (ucResult == 0) {                             /* 重发失败处理 */
+            protocol_Temp_Upload_Comm_Set(eComm_Out, 0); /* 关闭本串口温度上送 */
         }
         vTaskDelay(pdMS_TO_TICKS(10));
     }

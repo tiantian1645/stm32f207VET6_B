@@ -19,6 +19,7 @@
 void fan_Start(void);
 void fan_Stop(void);
 void fan_Adjust(float rate);
+void fan_Ctrl_Deal(float temp_env);
 
 /* Private defines -----------------------------------------------------------*/
 

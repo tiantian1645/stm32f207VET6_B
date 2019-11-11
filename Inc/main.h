@@ -55,7 +55,7 @@ extern "C" {
 
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
-/* 任务优先�? 定时器任务优先级参�?? configTIMER_TASK_PRIORITY */
+/* 任务优先级 定时器任务优先级参考 configTIMER_TASK_PRIORITY */
 #define TASK_PRIORITY_SOFT_TIMER configTIMER_TASK_PRIORITY
 #define TASK_PRIORITY_COMM_OUT_RX 3
 #define TASK_PRIORITY_COMM_OUT_TX 4
@@ -66,21 +66,18 @@ extern "C" {
 #define TASK_PRIORITY_STORGE 10
 #define TASK_PRIORITY_MOTOR 11
 
-/* 应用程序版本�? 单精度浮点数 */
+/* 应用程序版本 单精度浮点数 */
 #define APP_VERSION ((float)1.0)
 
 /* USER CODE END EM */
 
-void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef * htim);
 
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 void FL_Error_Handler(char * file, int line);
-void temp_Upload_Resume(void);
-void temp_Upload_Pause(void);
-void temp_Upload_Comm_Set(eProtocol_COMM_Index comm_index, uint8_t sw);
 
 /* USER CODE END EFP */
 

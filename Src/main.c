@@ -90,8 +90,6 @@ DMA_HandleTypeDef hdma_usart2_tx;
 
 osThreadId_t defaultTaskHandle;
 /* USER CODE BEGIN PV */
-static uint8_t gTemp_Upload_Comm_Ctl = 0;
-static uint8_t gTemp_Upload_Comm_Suspend = 0;
 
 /* USER CODE END PV */
 
@@ -1176,166 +1174,6 @@ void FL_Error_Handler(char * file, int line)
     printf("error handle invoked in FILE: %s | LINE: %d \n", file, line);
 }
 
-/**
- * @brief  温度主动上送 从暂停中恢复
- * @param  None
- * @retval None
- */
-void temp_Upload_Resume(void)
-{
-    gTemp_Upload_Comm_Suspend = 0;
-}
-
-/**
- * @brief  温度主动上送 暂停
- * @param  None
- * @retval None
- */
-void temp_Upload_Pause(void)
-{
-    gTemp_Upload_Comm_Suspend = 1;
-}
-
-/**
- * @brief  温度主动上送 暂停标志检查
- * @param  None
- * @retval 1 暂停中 0 没暂停
- */
-uint8_t temp_Upload_Is_Suspend(void)
-{
-    if (gTemp_Upload_Comm_Suspend > 0) {
-        return 1;
-    }
-    return 0;
-}
-
-/**
- * @brief  温度主动上送 串口发送许可 设置
- * @param  comm_index 串口索引
- * @param  sw 操作  1 使能  0 失能
- * @retval None
- */
-void temp_Upload_Comm_Set(eProtocol_COMM_Index comm_index, uint8_t sw)
-{
-    if (sw > 0) {
-        gTemp_Upload_Comm_Ctl |= (1 << comm_index);
-    } else {
-        gTemp_Upload_Comm_Ctl &= 0xFF - (1 << comm_index);
-    }
-}
-
-/**
- * @brief  温度主动上送 串口发送许可 获取
- * @param  comm_index 串口索引
- * @retval 1 使能  0 失能
- */
-uint8_t temp_Upload_Comm_Get(eProtocol_COMM_Index comm_index)
-{
-    if (gTemp_Upload_Comm_Ctl & (1 << comm_index)) {
-        return 1;
-    } else {
-        return 0;
-    }
-}
-
-/**
- * @brief  温度主动上送处理
- * @param  None
- * @retval None
- */
-void temp_Upload_Deal(void)
-{
-    uint8_t buffer[10], length;
-    float temp_top, temp_btm;
-    static uint32_t cnt_btm_low = 0, cnt_btm_high = 0, cnt_top_low = 0, cnt_top_high = 0;
-
-    if (temp_Upload_Is_Suspend()) { /* 暂停标志位 */
-        return;
-    }
-
-    if (temp_Upload_Comm_Get(eComm_Out) == 0 && temp_Upload_Comm_Get(eComm_Main) == 0) { /* 无需进行串口发送 */
-        return;
-    }
-
-    temp_btm = temp_Get_Temp_Data_BTM();                                            /* 下加热体温度 */
-    buffer[0] = ((uint16_t)(temp_btm * 100)) & 0xFF;                                /* 小端模式 低8位 */
-    buffer[1] = ((uint16_t)(temp_btm * 100)) >> 8;                                  /* 小端模式 高8位 */
-    temp_top = temp_Get_Temp_Data_TOP();                                            /* 上加热体温度 */
-    buffer[2] = ((uint16_t)(temp_top * 100)) & 0xFF;                                /* 小端模式 低8位 */
-    buffer[3] = ((uint16_t)(temp_top * 100)) >> 8;                                  /* 小端模式 高8位 */
-    length = buildPackOrigin(eComm_Main, eProtocoleRespPack_Client_TMP, buffer, 4); /* 构造数据包 以主板为基准 */
-
-    if (temp_btm < 36.5) {                                               /* 温度值低于36.5 */
-        cnt_btm_low++;                                                   /* 温度过低计数+1 */
-        cnt_btm_high = 0;                                                /* 温度过高计数清零 */
-        if (cnt_btm_low > 600 / 5) {                                     /* 过低持续次数大于120次 5 S * 120=10 Min */
-            error_Emit(eError_Peripheral_Temp_Btm, eError_Temp_Too_Low); /* 报错 */
-        }
-    } else if (temp_btm > 37.5) {                                    /* 温度值高于37.5 */
-        if (temp_btm == TEMP_INVALID_DATA) {                         /* 温度值为无效值 */
-            error_Emit(eError_Peripheral_Temp_Btm, eError_Temp_Nai); /* 报错 */
-        } else {
-            cnt_btm_high++;                                                    /* 温度过高计数+1 */
-            cnt_btm_low = 0;                                                   /* 温度过低计数清零 */
-            if (cnt_btm_low > 60 / 5) {                                        /* 过低持续次数大于12次 5 S * 12 = 1 Min */
-                error_Emit(eError_Peripheral_Temp_Btm, eError_Temp_Too_Hight); /* 报错 */
-            }
-        }
-    } else {              /* 温度值为36.5～37.5 */
-        cnt_btm_low = 0;  /* 温度过低计数清零 */
-        cnt_btm_high = 0; /* 温度过高计数清零 */
-    }
-
-    if (temp_top < 36.5) {                                               /* 温度值低于36.5 */
-        cnt_top_low++;                                                   /* 温度过低计数+1 */
-        cnt_top_high = 0;                                                /* 温度过高计数清零 */
-        if (cnt_top_low > 600 / 5) {                                     /* 过低持续次数大于120次 5 S * 120=10 Min */
-            error_Emit(eError_Peripheral_Temp_Top, eError_Temp_Too_Low); /* 报错 */
-        }
-    } else if (temp_top > 37.5) {                                    /* 温度值高于37.5 */
-        if (temp_top == TEMP_INVALID_DATA) {                         /* 温度值为无效值 */
-            error_Emit(eError_Peripheral_Temp_Top, eError_Temp_Nai); /* 报错 */
-        } else {
-            cnt_top_high++;                                                    /* 温度过高计数+1 */
-            cnt_top_low = 0;                                                   /* 温度过低计数清零 */
-            if (cnt_top_low > 60 / 5) {                                        /* 过低持续次数大于12次 5 S * 12 = 1 Min */
-                error_Emit(eError_Peripheral_Temp_Top, eError_Temp_Too_Hight); /* 报错 */
-            }
-        }
-    } else {              /* 温度值为36.5～37.5 */
-        cnt_top_low = 0;  /* 温度过低计数清零 */
-        cnt_top_high = 0; /* 温度过高计数清零 */
-    }
-
-    if (temp_Upload_Comm_Get(eComm_Main) && comm_Main_SendTask_Queue_GetWaiting() == 0) { /* 允许发送且发送队列内没有其他数据包 */
-        if (temp_btm != TEMP_INVALID_DATA || temp_top != TEMP_INVALID_DATA) {             /* 温度值都不是无效值 */
-            comm_Main_SendTask_QueueEmitCover(buffer, length);                            /* 提交到发送队列 */
-        }
-    }
-    if (temp_Upload_Comm_Get(eComm_Out) && comm_Out_SendTask_Queue_GetWaiting() == 0) { /* 允许发送且发送队列内没有其他数据包 */
-        if (temp_btm != TEMP_INVALID_DATA || temp_top != TEMP_INVALID_DATA) {           /* 温度值都不是无效值 */
-            comm_Out_SendTask_QueueEmitWithModify(buffer, length, 100);                 /* 串口基准不同 修改后 提交到发送队列 */
-        }
-    }
-}
-
-/**
- * @brief  风扇风速控制处理
- * @param  temp_env 环境温度
- * @note  低于25度保持低速 高于30度全速 25～30之间线性调整转速
- * @retval None
- */
-void fan_Ctrl_Deal(float temp_env)
-{
-    if (temp_env < 25 || temp_env == TEMP_INVALID_DATA) {
-        fan_Adjust(0.1);
-    } else if (temp_env > 30) {
-        fan_Adjust(1.0);
-    } else {
-        fan_Adjust(0.18 * temp_env - 4.4);
-    }
-}
-
 void temp_Log(void)
 {
     static TickType_t xTick = 0, last_tick = 0;
@@ -1373,26 +1211,24 @@ static void Miscellaneous_Task(void * argument)
     TickType_t xTick;
     uint32_t cnt = 0;
 
-    temp_Start_ADC_DMA();                /* 启动ADC转换 */
-    fan_Start();                         /* 启动风扇PWM输出 */
-    fan_Adjust(0.1);                     /* 调整PWM占空比 */
-    temp_Upload_Comm_Set(eComm_Out, 0);  /* 关闭外串口发送 */
-    temp_Upload_Comm_Set(eComm_Main, 0); /* 关闭主板发送 */
-    beep_Init();                         /* 蜂鸣器初始化 */
-    xTick = xTaskGetTickCount();         /* 获取系统时刻 */
+    temp_Start_ADC_DMA();                         /* 启动ADC转换 */
+    fan_Start();                                  /* 启动风扇PWM输出 */
+    fan_Adjust(0.1);                              /* 调整PWM占空比 */
+    protocol_Temp_Upload_Comm_Set(eComm_Out, 0);  /* 关闭外串口发送 */
+    protocol_Temp_Upload_Comm_Set(eComm_Main, 0); /* 关闭主板发送 */
+    beep_Init();                                  /* 蜂鸣器初始化 */
+    xTick = xTaskGetTickCount();                  /* 获取系统时刻 */
 
     for (;;) {
         fan_Ctrl_Deal(temp_Get_Temp_Data_ENV()); /* 根据环境温度调整风扇输出 */
         beep_Deal(100);                          /* 蜂鸣器处处理 */
         led_Out_Deal(xTick);                     /* 外接LED板处理 */
+        protocol_Temp_Upload_Deal();             /* 温度信息上送处理 */
 
         if (cnt % 5 == 0) {           /* 500mS */
             led_Board_Green_Toggle(); /* 板上运行灯闪烁 */
         }
 
-        if (cnt % 50 == 0) {    /* 5S 上送一次温度 */
-            temp_Upload_Deal(); /* 温度主动上送 */
-        }
         vTaskDelayUntil(&xTick, 100);
         ++cnt;
     }

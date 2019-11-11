@@ -76,4 +76,9 @@ BaseType_t protocol_is_NeedWaitRACK(uint8_t * pData);
 eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length);
 eProtocolParseResult protocol_Parse_Main(uint8_t * pInBuff, uint8_t length);
 eProtocolParseResult protocol_Parse_Data(uint8_t * pInBuff, uint8_t length);
+
+void protocol_Temp_Upload_Resume(void);
+void protocol_Temp_Upload_Pause(void);
+void protocol_Temp_Upload_Comm_Set(eProtocol_COMM_Index comm_index, uint8_t sw);
+void protocol_Temp_Upload_Deal(void);
 #endif
