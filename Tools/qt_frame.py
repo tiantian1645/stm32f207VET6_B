@@ -261,7 +261,7 @@ class MainWindow(QMainWindow):
     def onTemperatureRawPlotMouseMove(self, event):
         mouse_point = self.temperature_raw_plot_wg.vb.mapSceneToView(event[0])
         self.temperature_raw_plot_lb.setText(
-            "<span style='font-size: 14pt; color: white'> x = %0.2f S, <span style='color: white'> y = %0.2f ℃</span>" % (mouse_point.x(), mouse_point.y())
+            "<span style='font-size: 14pt; color: white'> x = %0.2f S, <span style='color: white'> y = %0.3f ℃</span>" % (mouse_point.x(), mouse_point.y())
         )
 
     def updateTemperautre(self, info):
@@ -300,7 +300,7 @@ class MainWindow(QMainWindow):
             self.temp_raw_time_record.append(time.time() - self.temp_raw_start_time)
         for idx in range(9):
             temp_value = struct.unpack("f", info.content[6 + 4 * idx : 10 + 4 * idx])[0]
-            self.temperautre_raw_lbs[idx].setText(f"#{idx + 1} {temp_value:.2f}℃")
+            self.temperautre_raw_lbs[idx].setText(f"#{idx + 1} {temp_value:.3f}℃")
             self.temp_raw_records[idx].append(temp_value)
             self.temperature_raw_plots[idx].setData(self.temp_raw_time_record, self.temp_raw_records[idx])
 
@@ -831,7 +831,7 @@ class MainWindow(QMainWindow):
         temperautre_raw_wg.mousePressEvent = self.onTemperautreRawLabelClick
 
         self.temperature_raw_plot_dg = QDialog(self)
-        self.temperature_raw_plot_dg.setWindowTitle("温度记录")
+        self.temperature_raw_plot_dg.setWindowTitle("温度ADC 采样原始数据")
         temperature_raw_plot_ly = QVBoxLayout(self.temperature_raw_plot_dg)
         self.temperature_raw_plot_win = GraphicsLayoutWidget()
         self.temperature_raw_plot_clear_bt = QPushButton("清零")
