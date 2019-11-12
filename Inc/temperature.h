@@ -8,7 +8,7 @@
 
 /* Exported macro ------------------------------------------------------------*/
 #define TEMP_PSC (36 - 1)  /* 1000 000 C/S */
-#define TEMP_ARR (500 - 1) /* 500C -> 500uS 每毫秒2个采样点 */
+#define TEMP_ARR (50 - 1)  /* 50C -> 50uS 每毫秒20个采样点 */
 
 #define TEMP_INVALID_DATA ((float)128) /* 无效温度值 */
 

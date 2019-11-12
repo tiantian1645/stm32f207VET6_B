@@ -1132,9 +1132,6 @@ class MainWindow(QMainWindow):
         e = self.getFaultType(p_type, e_type)
         p = self.getPeripheralType(p_type)
         level = self.getFaultLevel(p_type, e_type)
-        if p_type in (0x04, 0x05) and e_type == 0x01:
-            logger.error(f"ignore error message | {p} | {e} | {level}")
-            return
         msg = QMessageBox(self)
         msg.setIcon(level)
         msg.setWindowTitle("故障信息 | {}".format(datetime.now()))

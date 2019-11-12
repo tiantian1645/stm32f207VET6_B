@@ -1218,6 +1218,7 @@ static void Miscellaneous_Task(void * argument)
     protocol_Temp_Upload_Comm_Set(eComm_Main, 0); /* 关闭主板发送 */
     beep_Init();                                  /* 蜂鸣器初始化 */
     xTick = xTaskGetTickCount();                  /* 获取系统时刻 */
+    vTaskDelay(30);                               /* ADC 转换完成 */
 
     for (;;) {
         fan_Ctrl_Deal(temp_Get_Temp_Data_ENV()); /* 根据环境温度调整风扇输出 */

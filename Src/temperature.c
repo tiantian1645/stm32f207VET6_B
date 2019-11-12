@@ -33,7 +33,7 @@ const eTemp_NTC_Index TEMP_NTC_BTM_IDXS[TEMP_NTC_BTM_NUM] = {eTemp_NTC_Index_6, 
 #define TEMP_NTC_ENV_1 eTemp_NTC_Index_8
 
 #define TEMP_NTC_NUM (9)                                              /* 温度探头数目 */
-#define TEMP_STA_NUM (20)                                             /* 统计滤波缓存长度 */
+#define TEMP_STA_NUM (15)                                             /* 统计滤波缓存长度 */
 #define TEMP_STA_HEAD (3)                                             /* 统计滤波去掉头部长度 */
 #define TEMP_STA_TAIL (3)                                             /* 统计滤波去掉尾部长度 */
 #define TEMP_STA_VAILD (TEMP_STA_NUM - TEMP_STA_HEAD - TEMP_STA_TAIL) /* 统计滤波中位有效长度 */
