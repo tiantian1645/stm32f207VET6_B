@@ -13,6 +13,17 @@
 #define TEMP_INVALID_DATA ((float)128) /* 无效温度值 */
 
 /* Exported types ------------------------------------------------------------*/
+typedef enum {
+    eTemp_NTC_Index_0,
+    eTemp_NTC_Index_1,
+    eTemp_NTC_Index_2,
+    eTemp_NTC_Index_3,
+    eTemp_NTC_Index_4,
+    eTemp_NTC_Index_5,
+    eTemp_NTC_Index_6,
+    eTemp_NTC_Index_7,
+    eTemp_NTC_Index_8,
+} eTemp_NTC_Index;
 
 /* Exported constants --------------------------------------------------------*/
 

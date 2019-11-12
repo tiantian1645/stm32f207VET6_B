@@ -48,6 +48,19 @@ BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
 TEMPERAUTRE_NAMES = ("下加热体:", "上加热体:")
 LINE_COLORS = ("b", "g", "r", "c", "m", "y", "k", "w")
 LINE_SYMBOLS = ("o", "s", "t", "d", "+")
+TEMP_RAW_COLORS = (
+    (100, 30, 22),
+    (118, 68, 138),
+    (41, 128, 185),
+    (118, 215, 196),
+    (247, 220, 111),
+    (211, 84, 0),
+    (253, 254, 254),
+    (30, 132, 73),
+    (236, 112, 99),
+    (210, 180, 222),
+    (156, 100, 12),
+)
 logger = loguru.logger
 
 
@@ -88,6 +101,9 @@ class MainWindow(QMainWindow):
         self.temp_top_record = []
         self.temp_start_time = None
         self.temp_time_record = []
+        self.temp_raw_records = [[] for _ in range(9)]
+        self.temp_raw_start_time = None
+        self.temp_raw_time_record = []
         self.dd = DC201_PACK()
         self.pack_index = 1
         self.device_id = 0x13
@@ -228,6 +244,26 @@ class MainWindow(QMainWindow):
             "<span style='font-size: 14pt; color: white'> x = %0.2f S, <span style='color: white'> y = %0.2f ℃</span>" % (mouse_point.x(), mouse_point.y())
         )
 
+    def onTemperautreRawLabelClick(self, event):
+        self.temperature_raw_plot_dg.show()
+
+    def onTemperautreRawDataClear(self, event):
+        for i in self.temp_raw_records:
+            i.clear()
+        self.temp_raw_start_time = None
+        self.temp_raw_time_record.clear()
+        self.temperature_raw_plot_wg.clear()
+        self.xtemperature_raw_plots = [
+            self.temperature_raw_plot_wg.plot(self.temp_raw_time_record, self.temp_raw_records[i], name=f"\u00A0#{i + 1}", pen=mkPen(color=TEMP_RAW_COLORS[i]))
+            for i in range(9)
+        ]
+
+    def onTemperatureRawPlotMouseMove(self, event):
+        mouse_point = self.temperature_raw_plot_wg.vb.mapSceneToView(event[0])
+        self.temperature_raw_plot_lb.setText(
+            "<span style='font-size: 14pt; color: white'> x = %0.2f S, <span style='color: white'> y = %0.2f ℃</span>" % (mouse_point.x(), mouse_point.y())
+        )
+
     def updateTemperautre(self, info):
         if self.temp_start_time is None:
             self.temp_start_time = time.time()
@@ -252,6 +288,18 @@ class MainWindow(QMainWindow):
         else:
             self.temperautre_lbs[1].setText("数据异常")
             self.temperautre_lbs[1].setStyleSheet("background-color: red;")
+
+    def updateTemperautreRaw(self, info):
+        if self.temp_raw_start_time is None:
+            self.temp_raw_start_time = time.time()
+            self.temp_raw_time_record = [0]
+        else:
+            self.temp_raw_time_record.append(time.time() - self.temp_raw_start_time)
+        for idx in range(9):
+            temp_value = struct.unpack("f", info.content[6 + 4 * idx : 10 + 4 * idx])[0]
+            self.temperautre_raw_lbs[idx].setText(f"#{idx + 1} {temp_value:.2f}℃")
+            self.temp_raw_records[idx].append(temp_value)
+            self.temperature_raw_plots[idx].setData(self.temp_raw_time_record, self.temp_raw_records[idx])
 
     def updateMotorTrayPosition(self, info):
         position = info.content[6]
@@ -540,6 +588,8 @@ class MainWindow(QMainWindow):
             self.updateVersionLabel(info)
         elif cmd_type == 0xDD:
             self.updateOutFalshParam(info)
+        elif cmd_type == 0xDE:
+            self.updateTemperautreRaw(info)
 
     def onSerialSendWorkerResult(self, write_result):
         result, write_data, info = write_result
@@ -766,6 +816,36 @@ class MainWindow(QMainWindow):
         self.id_card_data_read_bt.clicked.connect(self.onID_CardRead)
         self.id_card_data_write_bt.clicked.connect(self.onID_CardWrite)
 
+        temperautre_raw_wg = QWidget()
+        temperautre_raw_ly = QHBoxLayout(temperautre_raw_wg)
+        temperautre_raw_ly.setContentsMargins(5, 0, 5, 0)
+        temperautre_raw_ly.setSpacing(5)
+        self.temperautre_raw_lbs = [QLabel("-" * 4) for _ in range(9)]
+        for i in range(9):
+            temperautre_raw_ly.addSpacing(1)
+            temperautre_raw_ly.addWidget(self.temperautre_raw_lbs[i])
+            temperautre_raw_ly.addSpacing(1)
+        temperautre_raw_wg.mousePressEvent = self.onTemperautreRawLabelClick
+
+        self.temperature_raw_plot_dg = QDialog(self)
+        self.temperature_raw_plot_dg.setWindowTitle("温度记录")
+        temperature_raw_plot_ly = QVBoxLayout(self.temperature_raw_plot_dg)
+        self.temperature_raw_plot_win = GraphicsLayoutWidget()
+        self.temperature_raw_plot_clear_bt = QPushButton("清零")
+        temperature_raw_plot_ly.addWidget(self.temperature_raw_plot_win)
+        temperature_raw_plot_ly.addWidget(self.temperature_raw_plot_clear_bt)
+        self.temperature_raw_plot_lb = LabelItem(justify="right")
+        self.temperature_raw_plot_win.addItem(self.temperature_raw_plot_lb, 0, 0)
+        self.temperature_raw_plot_wg = self.temperature_raw_plot_win.addPlot(row=0, col=0)
+        self.temperature_raw_plot_wg.addLegend()
+        self.temperature_raw_plot_wg.showGrid(x=True, y=True)
+        self.temperature_raw_plot_proxy = SignalProxy(self.temperature_raw_plot_wg.scene().sigMouseMoved, rateLimit=60, slot=self.onTemperatureRawPlotMouseMove)
+        self.temperature_raw_plots = [
+            self.temperature_raw_plot_wg.plot(self.temp_raw_time_record, self.temp_raw_records[i], name=f"\u00A0#{i + 1}", pen=mkPen(color=TEMP_RAW_COLORS[i]))
+            for i in range(9)
+        ]
+        self.temperature_raw_plot_clear_bt.clicked.connect(self.onTemperautreRawDataClear)
+
         self.out_flash_data_dg = QDialog(self)
         self.out_flash_data_dg.setWindowTitle("外部Flash")
         self.out_flash_data_dg.resize(730, 370)
@@ -788,12 +868,15 @@ class MainWindow(QMainWindow):
         out_flash_temp_ly.addWidget(self.out_flash_data_read_bt)
 
         out_flash_param_gb = QGroupBox("系统参数")
-        out_flash_param_ly = QGridLayout(out_flash_param_gb)
-        out_flash_param_ly.setContentsMargins(5, 0, 5, 0)
+        out_flash_param_ly = QVBoxLayout(out_flash_param_gb)
         out_flash_param_ly.setSpacing(5)
         self.out_falsh_param_sps = [QDoubleSpinBox(self) for _ in range(9)]
         self.out_falsh_param_read_bt = QPushButton("读取")
         self.out_falsh_param_write_bt = QPushButton("写入")
+
+        out_flash_param_temp_cc_wg = QGroupBox("温度校正参数")
+        out_flash_param_temp_cc_ly = QGridLayout(out_flash_param_temp_cc_wg)
+
         for i, sp in enumerate(self.out_falsh_param_sps):
             sp.setMaximumWidth(90)
             sp.setRange(-5, 5)
@@ -804,24 +887,26 @@ class MainWindow(QMainWindow):
             temp_ly.setContentsMargins(5, 0, 5, 0)
             temp_ly.setSpacing(5)
             if i < 6:
-                temp_ly.addWidget(QLabel(f"上加热体温度校正#{i + 1}"))
+                temp_ly.addWidget(QLabel(f"#{i + 1} 上加热体-{i + 1}"))
             elif i < 8:
-                temp_ly.addWidget(QLabel(f"下加热体温度校正#{i - 5}"))
+                temp_ly.addWidget(QLabel(f"#{i + 1} 下加热体-{i - 5}"))
             else:
-                temp_ly.addWidget(QLabel(f"环境温度校正#{i - 7}"))
+                temp_ly.addWidget(QLabel(f"#{i + 1} 环境-{i - 7}"))
             temp_ly.addWidget(sp)
-            out_flash_param_ly.addLayout(temp_ly, i // 3, i % 3)
-        i += 1
+            out_flash_param_temp_cc_ly.addLayout(temp_ly, i // 3, i % 3)
+        out_flash_param_ly.addWidget(out_flash_param_temp_cc_wg)
+
+        out_flash_data_ly.addWidget(self.out_flash_data_te)
+        out_flash_data_ly.addLayout(out_flash_temp_ly)
+        out_flash_data_ly.addWidget(temperautre_raw_wg)
+        out_flash_data_ly.addWidget(out_flash_param_gb)
         temp_ly = QHBoxLayout()
         temp_ly.setContentsMargins(5, 0, 5, 0)
         temp_ly.setSpacing(5)
         temp_ly.addWidget(self.out_falsh_param_read_bt)
         temp_ly.addWidget(self.out_falsh_param_write_bt)
-        out_flash_param_ly.addLayout(temp_ly, i // 3, i % 3)
+        out_flash_data_ly.addLayout(temp_ly)
 
-        out_flash_data_ly.addWidget(self.out_flash_data_te)
-        out_flash_data_ly.addLayout(out_flash_temp_ly)
-        out_flash_data_ly.addWidget(out_flash_param_gb)
         self.out_flash_data_read_bt.clicked.connect(self.onOutFlashRead)
         self.out_falsh_param_read_bt.clicked.connect(self.onOutFlashParamRead)
         self.out_falsh_param_write_bt.clicked.connect(self.onOutFlashParamWrite)

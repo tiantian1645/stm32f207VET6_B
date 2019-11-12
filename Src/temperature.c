@@ -15,17 +15,6 @@ extern TIM_HandleTypeDef htim2;
 /* Private includes ----------------------------------------------------------*/
 
 /* Private typedef -----------------------------------------------------------*/
-typedef enum {
-    eTemp_NTC_Index_0,
-    eTemp_NTC_Index_1,
-    eTemp_NTC_Index_2,
-    eTemp_NTC_Index_3,
-    eTemp_NTC_Index_4,
-    eTemp_NTC_Index_5,
-    eTemp_NTC_Index_6,
-    eTemp_NTC_Index_7,
-    eTemp_NTC_Index_8,
-} eTemp_NTC_Index;
 
 /* Private define ------------------------------------------------------------*/
 #define TEMP_NTC_TK (273.15)           /* 绝对零度 热力学零度 */

@@ -409,7 +409,7 @@ void protocol_Temp_Upload_Main_Deal(float temp_btm, float temp_top)
     buffer[1] = ((uint16_t)(temp_btm * 100)) >> 8;                                  /* 小端模式 高8位 */
     buffer[2] = ((uint16_t)(temp_top * 100)) & 0xFF;                                /* 小端模式 低8位 */
     buffer[3] = ((uint16_t)(temp_top * 100)) >> 8;                                  /* 小端模式 高8位 */
-    length = buildPackOrigin(eComm_Main, eProtocoleRespPack_Client_TMP, buffer, 4); /* 构造数据包 以主板为基准 */
+    length = buildPackOrigin(eComm_Main, eProtocoleRespPack_Client_TMP, buffer, 4); /* 构造数据包 */
 
     if (comm_Main_SendTask_Queue_GetWaiting() == 0) {                         /* 允许发送且发送队列内没有其他数据包 */
         if (temp_btm != TEMP_INVALID_DATA || temp_top != TEMP_INVALID_DATA) { /* 温度值都不是无效值 */
@@ -426,22 +426,29 @@ void protocol_Temp_Upload_Main_Deal(float temp_btm, float temp_top)
  */
 void protocol_Temp_Upload_Out_Deal(float temp_btm, float temp_top)
 {
-    uint8_t buffer[10], length;
+    uint8_t buffer[48], length, i;
+    float temperature;
 
     if (protocol_Temp_Upload_Comm_Get(eComm_Out) == 0) { /* 无需进行串口发送 */
         return;
     }
 
-    buffer[0] = ((uint16_t)(temp_btm * 100)) & 0xFF;                                /* 小端模式 低8位 */
-    buffer[1] = ((uint16_t)(temp_btm * 100)) >> 8;                                  /* 小端模式 高8位 */
-    buffer[2] = ((uint16_t)(temp_top * 100)) & 0xFF;                                /* 小端模式 低8位 */
-    buffer[3] = ((uint16_t)(temp_top * 100)) >> 8;                                  /* 小端模式 高8位 */
-    length = buildPackOrigin(eComm_Main, eProtocoleRespPack_Client_TMP, buffer, 4); /* 构造数据包 以主板为基准 */
+    buffer[0] = ((uint16_t)(temp_btm * 100)) & 0xFF;                               /* 小端模式 低8位 */
+    buffer[1] = ((uint16_t)(temp_btm * 100)) >> 8;                                 /* 小端模式 高8位 */
+    buffer[2] = ((uint16_t)(temp_top * 100)) & 0xFF;                               /* 小端模式 低8位 */
+    buffer[3] = ((uint16_t)(temp_top * 100)) >> 8;                                 /* 小端模式 高8位 */
+    length = buildPackOrigin(eComm_Out, eProtocoleRespPack_Client_TMP, buffer, 4); /* 构造数据包  */
 
     if (comm_Out_SendTask_Queue_GetWaiting() == 0) {                          /* 允许发送且发送队列内没有其他数据包 */
         if (temp_btm != TEMP_INVALID_DATA || temp_top != TEMP_INVALID_DATA) { /* 温度值都不是无效值 */
-            comm_Out_SendTask_QueueEmitWithModify(buffer, length, 100);       /* 串口基准不同 修改后 提交到发送队列 */
+            comm_Out_SendTask_QueueEmitCover(buffer, length);                 /* 提交到发送队列 */
         }
+        for (i = eTemp_NTC_Index_0; i <= eTemp_NTC_Index_8; ++i) {
+            temperature = temp_Get_Temp_Data(i);
+            memcpy(buffer + 4 * i, &temperature, 4);
+        }
+        length = buildPackOrigin(eComm_Out, 0xDE, buffer, 36); /* 构造数据包  */
+        comm_Out_SendTask_QueueEmitCover(buffer, length);      /* 提交到发送队列 */
     }
 }
 
