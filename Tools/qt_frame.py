@@ -253,7 +253,7 @@ class MainWindow(QMainWindow):
         self.temp_raw_start_time = None
         self.temp_raw_time_record.clear()
         self.temperature_raw_plot_wg.clear()
-        self.xtemperature_raw_plots = [
+        self.temperature_raw_plots = [
             self.temperature_raw_plot_wg.plot(self.temp_raw_time_record, self.temp_raw_records[i], name=f"\u00A0#{i + 1}", pen=mkPen(color=TEMP_RAW_COLORS[i]))
             for i in range(9)
         ]
@@ -290,6 +290,9 @@ class MainWindow(QMainWindow):
             self.temperautre_lbs[1].setStyleSheet("background-color: red;")
 
     def updateTemperautreRaw(self, info):
+        if len(info.content) != 43:
+            logger.error(f"error temp raw info | {info}")
+            return
         if self.temp_raw_start_time is None:
             self.temp_raw_start_time = time.time()
             self.temp_raw_time_record = [0]
@@ -1126,11 +1129,12 @@ class MainWindow(QMainWindow):
 
     def showWarnInfo(self, info):
         p_type, e_type = info.content[6:8]
-        if p_type in (0x04, 0x05) and e_type == 0x01:
-            return
         e = self.getFaultType(p_type, e_type)
         p = self.getPeripheralType(p_type)
         level = self.getFaultLevel(p_type, e_type)
+        if p_type in (0x04, 0x05) and e_type == 0x01:
+            logger.error(f"ignore error message | {p} | {e} | {level}")
+            return
         msg = QMessageBox(self)
         msg.setIcon(level)
         msg.setWindowTitle("故障信息 | {}".format(datetime.now()))

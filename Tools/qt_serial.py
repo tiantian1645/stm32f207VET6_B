@@ -85,7 +85,7 @@ class SerialRecvWorker(QRunnable):
                             logger.info("put henji | {} | {} | {}".format(self.need_henji, fun_code, bytesPuttyPrint(self.temp_wrote)))
                             self.henji_queue.put(info)
                 if info is not None:
-                    if info.is_head and info.is_crc:
+                    if info.is_head and info.is_crc and info.is_tail:
                         recv_buffer = b""
                     else:
                         recv_buffer = info.content
