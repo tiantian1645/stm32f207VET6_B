@@ -13,7 +13,8 @@ IDCardInfo = namedtuple("IDCardInfo", "ver_len ver_inf branch sample_type channe
 ChanelConfInfo = namedtuple("ChanelConfInfo", "name wave houhou unit precision sample_time sample_point start_point stop_point calc_point min max valid_date")
 BaseInfo = namedtuple("BaseInfo", "imi raw")
 
-ParamInfo = namedtuple("ParamInfo", "cc_temp_tops cc_temp_btms cc_temp_env")
+ParamInfo = namedtuple("ParamInfo", "cc_temp_tops cc_temp_btms cc_temp_env cc_ts")
+IlluminateInfo = namedtuple("IlluminateInfo", "wave theo test")
 
 TEST_BIN_PATH = r"C:\Users\Administrator\STM32CubeIDE\workspace_1.0.2\stm32F207VET6_Bootloader_APP\Debug\stm32F207VET6_Bootloader_APP.bin"
 REAL_BIN_PATH = r"C:\Users\Administrator\STM32CubeIDE\workspace_1.0.2\stm32f207VET6_B\Debug\stm32f207VET6_B.bin"
@@ -126,13 +127,30 @@ class DC201_IDCardInfo:
             imi = houhous[raw]
         return BaseInfo(imi=imi, raw=raw)
 
+        for i in range(6):
+            if i == 0:
+                pp = 3
+                offset = 0
+            else:
+                pp = 2
+                offset = 48
+            for j in range(pp):
+                logger.info(f"{'=' * 10} {i} {pp} {j} {'=' * 10}")
+                for k in range(6):
+                    wave = ("610", "550", "405")[j]
+                    theo_start = 36 + k * 4 + j * 48 + i * 96 + offset
+                    test_start = 60 + k * 4 + j * 48 + i * 96 + offset
+                    logger.info(f"{wave} {k} | {theo_start} | {test_start}")
+                logger.info(f"{'=' * 32}")
+
 
 class DC201_ParamInfo:
     def __init__(self, data):
         self.data = data
-        self.cc_temp_tops = None
-        self.cc_temp_btms = None
-        self.cc_temp_env = None
+        self.cc_temp_tops = []
+        self.cc_temp_btms = []
+        self.cc_temp_env = []
+        self.cc_ts = []
         self.info = None
         self.decode()
 
@@ -140,7 +158,28 @@ class DC201_ParamInfo:
         self.cc_temp_tops = [bytes2Float(self.data[i : i + 4]) for i in range(0, 24, 4)]
         self.cc_temp_btms = [bytes2Float(self.data[i : i + 4]) for i in range(24, 32, 4)]
         self.cc_temp_env = [bytes2Float(self.data[32 : 32 + 4])]
-        self.info = ParamInfo(cc_temp_tops=self.cc_temp_tops, cc_temp_btms=self.cc_temp_btms, cc_temp_env=self.cc_temp_env)
+        for i in range(6):
+            ts_list = []
+            if i == 0:
+                pp = 3
+                offset = 0
+            else:
+                pp = 2
+                offset = 48
+            for j in range(pp):
+                wv_list = []
+                for k in range(6):
+                    wave = ("610", "550", "405")[j]
+                    theo_start = 36 + k * 4 + j * 48 + i * 1 + offset
+                    theo = struct.unpack("I", self.data[theo_start : theo_start + 4])[0]
+                    test_start = 60 + k * 4 + j * 48 + i * 1 + offset
+                    test = struct.unpack("I", self.data[test_start : test_start + 4])[0]
+                    illum = IlluminateInfo(wave=wave, theo=theo, test=test)
+                    wv_list.append(illum)
+                ts_list.append(wv_list)
+            self.cc_ts.append(wv_list)
+
+        self.info = ParamInfo(cc_temp_tops=self.cc_temp_tops, cc_temp_btms=self.cc_temp_btms, cc_temp_env=self.cc_temp_env, cc_ts=self.cc_ts)
 
     def cc_temps_format(self, cc_temps):
         return [f"{t:.3f} ℃" for t in cc_temps]

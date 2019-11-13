@@ -612,6 +612,7 @@ class MainWindow(QMainWindow):
                 self.upgrade_dg_bt.setText("重试")
                 self.upgrade_dg_bt.setEnabled(True)
                 self.upgrade_dg_bt.setChecked(False)
+                self._clearTaskQueue()
             return
         elif write_data[5] == 0xFC:
             if result:
@@ -637,6 +638,7 @@ class MainWindow(QMainWindow):
                 self.upgrade_dg_bt.setText("重试")
                 self.upgrade_dg_bt.setEnabled(True)
                 self.upgrade_dg_bt.setChecked(False)
+                self._clearTaskQueue()
             return
         elif write_data[5] == 0xD9:
             logger.info("ID卡信息包 | {}".format(write_result))
@@ -862,7 +864,7 @@ class MainWindow(QMainWindow):
         self.out_flash_data_num = QSpinBox()
         self.out_flash_data_num.setRange(0, 8 * 2 ** 20)
         self.out_flash_data_num.setMaximumWidth(90)
-        self.out_flash_data_num.setValue(36)
+        self.out_flash_data_num.setValue(660)
         self.out_flash_data_read_bt = QPushButton("读取")
         out_flash_temp_ly.addWidget(QLabel("地址"))
         out_flash_temp_ly.addWidget(self.out_flash_data_addr)
@@ -1019,7 +1021,7 @@ class MainWindow(QMainWindow):
         result = self.genBinaryData(self.out_flash_data[: start + length], offset=self.out_flash_start)
         raw_text = "\n".join(result)
         logger.debug("Out Falsh Raw Data \n{}".format(raw_text))
-        if self.out_flash_start == 0x1000 and length >= 36:
+        if self.out_flash_start == 0x1000 and length >= 660:
             info = DC201_ParamInfo(self.out_flash_data[: start + length])
             plain_text = f"{info}\n{'=' * 100}\nraw bytes:\n{raw_text}"
             self.out_flash_data_te.setPlainText(plain_text)

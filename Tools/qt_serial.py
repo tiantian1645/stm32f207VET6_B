@@ -44,7 +44,7 @@ class SerialRecvWorker(QRunnable):
         elif write_data[5] == 0x0F:
             self.need_henji = (0xFA,)
         elif write_data[5] == 0xFC:
-            self.need_henji = (0xAA, 0xB5)
+            self.need_henji = (0xFB,)
         else:
             self.need_henji = (0xAA,)
         self.temp_wrote = write_data
@@ -127,14 +127,19 @@ class SerialSendWorker(QRunnable):
         logger.info("invoke set henji | {}".format(bytesPuttyPrint(write_data)))
         if write_data[5] == 0x0F:
             time.sleep(3)
+        if write_data[5] == 0xFC and write_data[6] == 0x00:
+            return (True, write_data, None)
         try:
             info = self.henji_queue.get(timeout=timeout)
         except queue.Empty:
             return (False, write_data, None)
         if write_data[5] == 0xD9 and info.content[5] == 0xD4:
             return (True, write_data, info)
-        elif write_data[5] == 0xFC and info.content[5] == 0xAA:
-            return (True, write_data, info)
+        elif write_data[5] == 0xFC and info.content[5] == 0xFB:
+            if info.content[6] == 0x00:
+                return (True, write_data, info)
+            else:
+                return (False, write_data, info)
         elif write_data[5] == 0x0F and info.content[5] == 0xFA:
             return (True, write_data, info)
         return (False, write_data, info)

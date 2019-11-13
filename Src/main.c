@@ -171,10 +171,10 @@ int main(void)
     MX_TIM10_Init();
     /* USER CODE BEGIN 2 */
 
-    /* 软定时器任务 */
+    /* ?????? */
     soft_timer_Init();
 
-    /*创建任务*/
+    /*????*/
     comm_Data_Init();
     comm_Out_Init();
     comm_Main_Init();
@@ -1086,9 +1086,11 @@ static void MX_GPIO_Init(void)
     /*Configure GPIO pin Output Level */
     HAL_GPIO_WritePin(STEP_DIR1_GPIO_Port, STEP_DIR1_Pin, GPIO_PIN_RESET);
 
-    /*Configure GPIO pins : OPTSW_OUT2_Pin OPTSW_OUT4_Pin OPTSW_OUT5_Pin STEP_NFLG2_Pin
-                             OPTSW_OUT0_Pin OPTSW_OUT1_Pin */
-    GPIO_InitStruct.Pin = OPTSW_OUT2_Pin | OPTSW_OUT4_Pin | OPTSW_OUT5_Pin | STEP_NFLG2_Pin | OPTSW_OUT0_Pin | OPTSW_OUT1_Pin;
+    /*Configure GPIO pins : OPTSW_OUT2_Pin OPTSW_OUT4_Pin OPTSW_OUT5_Pin PE7
+                             PE8 PE11 STEP_NFLG2_Pin OPTSW_OUT0_Pin
+                             OPTSW_OUT1_Pin */
+    GPIO_InitStruct.Pin =
+        OPTSW_OUT2_Pin | OPTSW_OUT4_Pin | OPTSW_OUT5_Pin | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_11 | STEP_NFLG2_Pin | OPTSW_OUT0_Pin | OPTSW_OUT1_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
@@ -1106,11 +1108,19 @@ static void MX_GPIO_Init(void)
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-    /*Configure GPIO pin : STEP_NFLG1_Pin */
-    GPIO_InitStruct.Pin = STEP_NFLG1_Pin;
+    /*Configure GPIO pins : STEP_NFLG1_Pin PC15 PC4 PC9
+                             PC11 */
+    GPIO_InitStruct.Pin = STEP_NFLG1_Pin | GPIO_PIN_15 | GPIO_PIN_4 | GPIO_PIN_9 | GPIO_PIN_11;
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(STEP_NFLG1_GPIO_Port, &GPIO_InitStruct);
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+    /*Configure GPIO pins : PB0 PB1 PB2 PB3
+                             PB4 CARD_IN_Pin */
+    GPIO_InitStruct.Pin = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3 | GPIO_PIN_4 | CARD_IN_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
     /*Configure GPIO pins : STEP_NRST_Pin STEP_NCS2_Pin STEP_DIR2_Pin BC_TRIG_N_Pin */
     GPIO_InitStruct.Pin = STEP_NRST_Pin | STEP_NCS2_Pin | STEP_DIR2_Pin | BC_TRIG_N_Pin;
@@ -1133,8 +1143,11 @@ static void MX_GPIO_Init(void)
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
-    /*Configure GPIO pins : MOT_NBUSY1_Pin MOT_NFLG2_Pin MOT_NFLG1_Pin MOT_NBUSY2_Pin */
-    GPIO_InitStruct.Pin = MOT_NBUSY1_Pin | MOT_NFLG2_Pin | MOT_NFLG1_Pin | MOT_NBUSY2_Pin;
+    /*Configure GPIO pins : MOT_NBUSY1_Pin MOT_NFLG2_Pin MOT_NFLG1_Pin MOT_NBUSY2_Pin
+                             PD14 PD0 PD1 PD3
+                             PD4 PD7 */
+    GPIO_InitStruct.Pin =
+        MOT_NBUSY1_Pin | MOT_NFLG2_Pin | MOT_NFLG1_Pin | MOT_NBUSY2_Pin | GPIO_PIN_14 | GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_3 | GPIO_PIN_4 | GPIO_PIN_7;
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
@@ -1145,12 +1158,6 @@ static void MX_GPIO_Init(void)
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-    /*Configure GPIO pin : CARD_IN_Pin */
-    GPIO_InitStruct.Pin = CARD_IN_Pin;
-    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(CARD_IN_GPIO_Port, &GPIO_InitStruct);
 }
 
 /* USER CODE BEGIN 4 */
@@ -1164,9 +1171,9 @@ int _write(int file, char * ptr, int len)
 }
 
 /**
- * @brief  调试打印
- * @param  file 文件名
- * @param  line 行数
+ * @brief  ????
+ * @param  file ???
+ * @param  line ??
  * @retval None
  */
 void FL_Error_Handler(char * file, int line)
@@ -1202,7 +1209,7 @@ void temp_Log(void)
 }
 
 /**
- * @brief  LED 闪烁任务
+ * @brief  LED ????
  * @param  argument: Not used
  * @retval None
  */
@@ -1211,23 +1218,23 @@ static void Miscellaneous_Task(void * argument)
     TickType_t xTick;
     uint32_t cnt = 0;
 
-    temp_Start_ADC_DMA();                         /* 启动ADC转换 */
-    fan_Start();                                  /* 启动风扇PWM输出 */
-    fan_Adjust(0.1);                              /* 调整PWM占空比 */
-    protocol_Temp_Upload_Comm_Set(eComm_Out, 0);  /* 关闭外串口发送 */
-    protocol_Temp_Upload_Comm_Set(eComm_Main, 0); /* 关闭主板发送 */
-    beep_Init();                                  /* 蜂鸣器初始化 */
-    xTick = xTaskGetTickCount();                  /* 获取系统时刻 */
-    vTaskDelay(30);                               /* ADC 转换完成 */
+    temp_Start_ADC_DMA();                         /* ??ADC?? */
+    fan_Start();                                  /* ????PWM?? */
+    fan_Adjust(0.1);                              /* ??PWM??? */
+    protocol_Temp_Upload_Comm_Set(eComm_Out, 0);  /* ??????? */
+    protocol_Temp_Upload_Comm_Set(eComm_Main, 0); /* ?????? */
+    beep_Init();                                  /* ?????? */
+    xTick = xTaskGetTickCount();                  /* ?????? */
+    vTaskDelay(30);                               /* ADC ???? */
 
     for (;;) {
-        fan_Ctrl_Deal(temp_Get_Temp_Data_ENV()); /* 根据环境温度调整风扇输出 */
-        beep_Deal(100);                          /* 蜂鸣器处处理 */
-        led_Out_Deal(xTick);                     /* 外接LED板处理 */
-        protocol_Temp_Upload_Deal();             /* 温度信息上送处理 */
+        fan_Ctrl_Deal(temp_Get_Temp_Data_ENV()); /* ???????????? */
+        beep_Deal(100);                          /* ?????? */
+        led_Out_Deal(xTick);                     /* ??LED??? */
+        protocol_Temp_Upload_Deal();             /* ???????? */
 
         if (cnt % 5 == 0) {           /* 500mS */
-            led_Board_Green_Toggle(); /* 板上运行灯闪烁 */
+            led_Board_Green_Toggle(); /* ??????? */
         }
 
         vTaskDelayUntil(&xTick, 100);
@@ -1276,8 +1283,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef * htim)
 {
     /* USER CODE BEGIN Callback 0 */
     if (htim->Instance == TIM1) {
-        if (PWM_AW_IRQ_CallBcak() == 0) { /* 运动完成 */
-            m_drv8824_release_ISR();      /* 释放PWM资源 */
+        if (PWM_AW_IRQ_CallBcak() == 0) { /* ???? */
+            m_drv8824_release_ISR();      /* ??PWM?? */
         }
     }
     /* USER CODE END Callback 0 */

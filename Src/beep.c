@@ -222,9 +222,9 @@ void beep_Deal(uint32_t res)
 void beep_Init(void)
 {
     beep_Stop();
-    beep_Conf_Set_Period_Cnt(1);
-    beep_Conf_Set_T_on(500);
-    beep_Conf_Set_T_off(0);
+    beep_Conf_Set_Period_Cnt(3);
+    beep_Conf_Set_T_on(300);
+    beep_Conf_Set_T_off(500);
     beep_Conf_Set_Freq(eBeep_Freq_mi);
     beep_Start();
 }

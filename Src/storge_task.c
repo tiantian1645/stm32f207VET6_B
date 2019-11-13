@@ -42,11 +42,6 @@ typedef union {
 /* Private macro -------------------------------------------------------------*/
 
 /* Private constants ---------------------------------------------------------*/
-const sStorgeParamLimitUnit cStorgeParamLimits[eStorgeParamIndex_Num] = {
-    {.default_ = 0, .min = -5, .max = 5}, {.default_ = 0, .min = -5, .max = 5}, {.default_ = 0, .min = -5, .max = 5},
-    {.default_ = 0, .min = -5, .max = 5}, {.default_ = 0, .min = -5, .max = 5}, {.default_ = 0, .min = -5, .max = 5},
-    {.default_ = 0, .min = -5, .max = 5}, {.default_ = 0, .min = -5, .max = 5}, {.default_ = 0, .min = -5, .max = 5},
-};
 
 /* Private variables ---------------------------------------------------------*/
 static sStorgeTaskQueueInfo gStorgeTaskInfo;
@@ -58,7 +53,7 @@ static sStorgeParamInfo gStorgeParamInfo;
 static void storgeTask(void * argument);
 static void storge_ParamInit(void);
 static uint8_t storge_ParamDump(void);
-static uint8_t storge_ParamCheck(uint8_t * pBuff, uint16_t length);
+static uint8_t storge_ParamApply(uint8_t * pBuff, uint16_t length);
 static uint8_t storge_ParamLoad(uint8_t * pBuff);
 
 /* Private user code ---------------------------------------------------------*/
@@ -166,7 +161,7 @@ BaseType_t storgeTaskNotification(eStorgeNotifyConf type, eProtocol_COMM_Index i
  */
 void storgeTaskInit(void)
 {
-    if (xTaskCreate(storgeTask, "StorgeTask", 192, NULL, TASK_PRIORITY_STORGE, &storgeTaskHandle) != pdPASS) {
+    if (xTaskCreate(storgeTask, "StorgeTask", 320, NULL, TASK_PRIORITY_STORGE, &storgeTaskHandle) != pdPASS) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
 }
@@ -183,7 +178,7 @@ static void storgeTask(void * argument)
     uint32_t wroteCnt;
     uint32_t ulNotifyValue;
     uint16_t length;
-    uint8_t buff[256], result;
+    uint8_t buff[700], result;
 
     bsp_spi_FlashInit();
     storge_ParamInit();
@@ -333,15 +328,17 @@ static void storgeTask(void * argument)
  */
 static void storge_ParamInit(void)
 {
-    gStorgeParamInfo.temperature_cc_top_1 = cStorgeParamLimits[eStorgeParamIndex_Temp_CC_top_1].default_;
-    gStorgeParamInfo.temperature_cc_top_2 = cStorgeParamLimits[eStorgeParamIndex_Temp_CC_top_2].default_;
-    gStorgeParamInfo.temperature_cc_top_3 = cStorgeParamLimits[eStorgeParamIndex_Temp_CC_top_3].default_;
-    gStorgeParamInfo.temperature_cc_top_4 = cStorgeParamLimits[eStorgeParamIndex_Temp_CC_top_4].default_;
-    gStorgeParamInfo.temperature_cc_top_5 = cStorgeParamLimits[eStorgeParamIndex_Temp_CC_top_5].default_;
-    gStorgeParamInfo.temperature_cc_top_6 = cStorgeParamLimits[eStorgeParamIndex_Temp_CC_top_6].default_;
-    gStorgeParamInfo.temperature_cc_btm_1 = cStorgeParamLimits[eStorgeParamIndex_Temp_CC_btm_1].default_;
-    gStorgeParamInfo.temperature_cc_btm_2 = cStorgeParamLimits[eStorgeParamIndex_Temp_CC_btm_2].default_;
-    gStorgeParamInfo.temperature_cc_env = cStorgeParamLimits[eStorgeParamIndex_Temp_CC_env].default_;
+    memset(&gStorgeParamInfo, 0, sizeof(gStorgeParamInfo));
+
+    gStorgeParamInfo.temperature_cc_top_1 = 0;
+    gStorgeParamInfo.temperature_cc_top_2 = 0;
+    gStorgeParamInfo.temperature_cc_top_3 = 0;
+    gStorgeParamInfo.temperature_cc_top_4 = 0;
+    gStorgeParamInfo.temperature_cc_top_5 = 0;
+    gStorgeParamInfo.temperature_cc_top_6 = 0;
+    gStorgeParamInfo.temperature_cc_btm_1 = 0;
+    gStorgeParamInfo.temperature_cc_btm_2 = 0;
+    gStorgeParamInfo.temperature_cc_env = 0;
 }
 
 /**
@@ -363,87 +360,40 @@ static uint8_t storge_ParamDump(void)
  * @param  length 数据长度
  * @retval 0 不需要回写 1 参数越限 2 数据异常
  */
-static uint8_t storge_ParamCheck(uint8_t * pBuff, uint16_t length)
+static uint8_t storge_ParamApply(uint8_t * pBuff, uint16_t length)
 {
-    sStorgeParamInfo * pParam;
     uint8_t error = 0;
+    eStorgeParamIndex i;
+    uint32_t  *pData_u32;
+    float  *pData_f;
+    union {
+    	float f;
+    	uint32_t u32;
+    	uint8_t u8s[4];
+    } read_data;
 
     if (length != sizeof(gStorgeParamInfo) || pBuff == NULL) {
         return 2;
     }
-    pParam = (sStorgeParamInfo *)(pBuff);
 
-    if (pParam->temperature_cc_top_1 <= cStorgeParamLimits[eStorgeParamIndex_Temp_CC_top_1].max && /* 低于最大值 */
-        pParam->temperature_cc_top_1 >= cStorgeParamLimits[eStorgeParamIndex_Temp_CC_top_1].min) { /* 高于最小值 */
-        if (gStorgeParamInfo.temperature_cc_top_1 != pParam->temperature_cc_top_1) {               /* 若于原值不相等 */
-            gStorgeParamInfo.temperature_cc_top_1 = pParam->temperature_cc_top_1;                  /* 修改原值 */
+    for (i = eStorgeParamIndex_Temp_CC_top_1; i < eStorgeParamIndex_Num; ++i) {
+        if (i <= eStorgeParamIndex_Temp_CC_env) {
+            pData_f = &(gStorgeParamInfo.temperature_cc_top_1) + (i - eStorgeParamIndex_Temp_CC_top_1);
+            memcpy(read_data.u8s, &pBuff[4 * i], 4);
+            if (read_data.f <= 5 && read_data.f >= -5) { /* 温度校正范围限制在±5℃ */
+                *pData_f = read_data.f ;
+            } else {
+                error = 1;
+            }
+        } else {
+            pData_u32 = &(gStorgeParamInfo.illumine_CC_t1_610_i0) + (i - eStorgeParamIndex_Illumine_CC_t1_610_i0);
+            memcpy(read_data.u8s, &pBuff[4 * i], 4);
+            if (read_data.u32 != 0xFFFFFFFF) {
+            	*pData_u32 = read_data.u32;
+            } else {
+                error = 1;
+            }
         }
-    } else {
-        error |= 1; /* 置位修改标志 存在错误 回写现存值 */
-    }
-    if (pParam->temperature_cc_top_2 <= cStorgeParamLimits[eStorgeParamIndex_Temp_CC_top_2].max && /* 低于最大值 */
-        pParam->temperature_cc_top_2 >= cStorgeParamLimits[eStorgeParamIndex_Temp_CC_top_2].min) { /* 高于最小值 */
-        if (gStorgeParamInfo.temperature_cc_top_2 != pParam->temperature_cc_top_2) {               /* 若于原值不相等 */
-            gStorgeParamInfo.temperature_cc_top_2 = pParam->temperature_cc_top_2;                  /* 修改原值 */
-        }
-    } else {
-        error |= 1; /* 置位修改标志 存在错误 回写现存值 */
-    }
-    if (pParam->temperature_cc_top_3 <= cStorgeParamLimits[eStorgeParamIndex_Temp_CC_top_3].max && /* 低于最大值 */
-        pParam->temperature_cc_top_3 >= cStorgeParamLimits[eStorgeParamIndex_Temp_CC_top_3].min) { /* 高于最小值 */
-        if (gStorgeParamInfo.temperature_cc_top_3 != pParam->temperature_cc_top_3) {               /* 若于原值不相等 */
-            gStorgeParamInfo.temperature_cc_top_3 = pParam->temperature_cc_top_3;                  /* 修改原值 */
-        }
-    } else {
-        error |= 1; /* 置位修改标志 存在错误 回写现存值 */
-    }
-    if (pParam->temperature_cc_top_4 <= cStorgeParamLimits[eStorgeParamIndex_Temp_CC_top_4].max && /* 低于最大值 */
-        pParam->temperature_cc_top_4 >= cStorgeParamLimits[eStorgeParamIndex_Temp_CC_top_4].min) { /* 高于最小值 */
-        if (gStorgeParamInfo.temperature_cc_top_4 != pParam->temperature_cc_top_4) {               /* 若于原值不相等 */
-            gStorgeParamInfo.temperature_cc_top_4 = pParam->temperature_cc_top_4;                  /* 修改原值 */
-        }
-    } else {
-        error |= 1; /* 置位修改标志 存在错误 回写现存值 */
-    }
-    if (pParam->temperature_cc_top_5 <= cStorgeParamLimits[eStorgeParamIndex_Temp_CC_top_5].max && /* 低于最大值 */
-        pParam->temperature_cc_top_5 >= cStorgeParamLimits[eStorgeParamIndex_Temp_CC_top_5].min) { /* 高于最小值 */
-        if (gStorgeParamInfo.temperature_cc_top_5 != pParam->temperature_cc_top_5) {               /* 若于原值不相等 */
-            gStorgeParamInfo.temperature_cc_top_5 = pParam->temperature_cc_top_5;                  /* 修改原值 */
-        }
-    } else {
-        error |= 1; /* 置位修改标志 存在错误 回写现存值 */
-    }
-    if (pParam->temperature_cc_top_6 <= cStorgeParamLimits[eStorgeParamIndex_Temp_CC_top_6].max && /* 低于最大值 */
-        pParam->temperature_cc_top_6 >= cStorgeParamLimits[eStorgeParamIndex_Temp_CC_top_6].min) { /* 高于最小值 */
-        if (gStorgeParamInfo.temperature_cc_top_6 != pParam->temperature_cc_top_6) {               /* 若于原值不相等 */
-            gStorgeParamInfo.temperature_cc_top_6 = pParam->temperature_cc_top_6;                  /* 修改原值 */
-        }
-    } else {
-        error |= 1; /* 置位修改标志 存在错误 回写现存值 */
-    }
-    if (pParam->temperature_cc_btm_1 <= cStorgeParamLimits[eStorgeParamIndex_Temp_CC_btm_1].max && /* 低于最大值 */
-        pParam->temperature_cc_btm_1 >= cStorgeParamLimits[eStorgeParamIndex_Temp_CC_btm_1].min) { /* 高于最小值 */
-        if (gStorgeParamInfo.temperature_cc_btm_1 != pParam->temperature_cc_btm_1) {               /* 若于原值不相等 */
-            gStorgeParamInfo.temperature_cc_btm_1 = pParam->temperature_cc_btm_1;                  /* 修改原值 */
-        }
-    } else {
-        error |= 1; /* 置位修改标志 存在错误 回写现存值 */
-    }
-    if (pParam->temperature_cc_btm_2 <= cStorgeParamLimits[eStorgeParamIndex_Temp_CC_btm_2].max && /* 低于最大值 */
-        pParam->temperature_cc_btm_2 >= cStorgeParamLimits[eStorgeParamIndex_Temp_CC_btm_2].min) { /* 高于最小值 */
-        if (gStorgeParamInfo.temperature_cc_btm_2 != pParam->temperature_cc_btm_2) {               /* 若于原值不相等 */
-            gStorgeParamInfo.temperature_cc_btm_2 = pParam->temperature_cc_btm_2;                  /* 修改原值 */
-        }
-    } else {
-        error |= 1; /* 置位修改标志 存在错误 回写现存值 */
-    }
-    if (pParam->temperature_cc_env <= cStorgeParamLimits[eStorgeParamIndex_Temp_CC_env].max && /* 低于最大值 */
-        pParam->temperature_cc_env >= cStorgeParamLimits[eStorgeParamIndex_Temp_CC_env].min) { /* 高于最小值 */
-        if (gStorgeParamInfo.temperature_cc_env != pParam->temperature_cc_env) {               /* 若于原值不相等 */
-            gStorgeParamInfo.temperature_cc_env = pParam->temperature_cc_env;                  /* 修改原值 */
-        }
-    } else {
-        error |= 1; /* 置位修改标志 存在错误 回写现存值 */
     }
     return error;
 }
@@ -460,7 +410,7 @@ static uint8_t storge_ParamLoad(uint8_t * pBuff)
     readCnt = sizeof(gStorgeParamInfo);
     length = spi_FlashReadBuffer(STORGE_APP_PARAMS_ADDR, pBuff, readCnt);
     if (length == readCnt) {
-        if (storge_ParamCheck(pBuff, length) == 0) {
+        if (storge_ParamApply(pBuff, length) == 0) {
             return 0;
         }
         return 1;
@@ -473,82 +423,37 @@ static uint8_t storge_ParamLoad(uint8_t * pBuff)
  * @param  idx 参数类型
  * @param  pBuff 数据
  * @param  length 数据长度
- * @retval 0 成功 1 参数越限 2 索引越限 3 数据描述异常 4 兜底异常
+ * @retval 0 成功 1 参数越限 2 索引越限 3 数据描述异常
  */
 uint8_t storge_ParamSet(eStorgeParamIndex idx, uint8_t * pBuff, uint8_t length)
 {
-    const sStorgeParamLimitUnit * pLimit;
     uStorgeParamItem read_data;
     float * pData_f;
-    uint8_t data_type = 0;
+    uint32_t * pData_u32;
 
     if (pBuff == NULL) {
         return 3;
     }
 
-    switch (idx) {
-        case eStorgeParamIndex_Temp_CC_top_1:
-        case eStorgeParamIndex_Temp_CC_top_2:
-        case eStorgeParamIndex_Temp_CC_top_3:
-        case eStorgeParamIndex_Temp_CC_top_4:
-        case eStorgeParamIndex_Temp_CC_top_5:
-        case eStorgeParamIndex_Temp_CC_top_6:
-        case eStorgeParamIndex_Temp_CC_btm_1:
-        case eStorgeParamIndex_Temp_CC_btm_2:
-        case eStorgeParamIndex_Temp_CC_env:
-            if (length != 4) {
-                return 3;
-            }
-            data_type = 0;
-            break;
-        default:
-            return 2;
+    if (idx >= eStorgeParamIndex_Temp_CC_top_1 && idx <= eStorgeParamIndex_Temp_CC_env) {
+        if (length != 4) {
+            return 3;
+        }
+        memcpy(read_data.u8s, pBuff, length);
+        pData_f = &(gStorgeParamInfo.temperature_cc_top_1) + 4 * (idx - eStorgeParamIndex_Temp_CC_top_1);
+        *pData_f = read_data.f32;
+        return 0;
+
+    } else if (idx >= eStorgeParamIndex_Illumine_CC_t1_610_i0 && idx <= eStorgeParamIndex_Illumine_CC_t6_550_o5) {
+        if (length != 4) {
+            return 3;
+        }
+        memcpy(read_data.u8s, pBuff, length);
+        pData_u32 = &(gStorgeParamInfo.illumine_CC_t1_610_i0) + 4 * (idx - eStorgeParamIndex_Illumine_CC_t1_610_i0);
+        *pData_u32 = read_data.u32;
+        return 0;
     }
-    switch (idx) {
-        case eStorgeParamIndex_Temp_CC_top_1:
-            pData_f = &(gStorgeParamInfo.temperature_cc_top_1);
-            break;
-        case eStorgeParamIndex_Temp_CC_top_2:
-            pData_f = &(gStorgeParamInfo.temperature_cc_top_2);
-            break;
-        case eStorgeParamIndex_Temp_CC_top_3:
-            pData_f = &(gStorgeParamInfo.temperature_cc_top_3);
-            break;
-        case eStorgeParamIndex_Temp_CC_top_4:
-            pData_f = &(gStorgeParamInfo.temperature_cc_top_4);
-            break;
-        case eStorgeParamIndex_Temp_CC_top_5:
-            pData_f = &(gStorgeParamInfo.temperature_cc_top_5);
-            break;
-        case eStorgeParamIndex_Temp_CC_top_6:
-            pData_f = &(gStorgeParamInfo.temperature_cc_top_6);
-            break;
-        case eStorgeParamIndex_Temp_CC_btm_1:
-            pData_f = &(gStorgeParamInfo.temperature_cc_btm_1);
-            break;
-        case eStorgeParamIndex_Temp_CC_btm_2:
-            pData_f = &(gStorgeParamInfo.temperature_cc_btm_2);
-            break;
-        case eStorgeParamIndex_Temp_CC_env:
-            pData_f = &(gStorgeParamInfo.temperature_cc_env);
-            break;
-        default:
-            return 2;
-    }
-    memcpy(read_data.u8s, pBuff, length);
-    pLimit = cStorgeParamLimits + idx;
-    switch (data_type) {
-        case 0:
-            if (read_data.f32 <= pLimit->max && read_data.f32 >= pLimit->min) {
-                *pData_f = read_data.f32;
-            } else {
-                return 1;
-            }
-            break;
-        default:
-            return 4;
-    }
-    return 0;
+    return 2;
 }
 
 /**
