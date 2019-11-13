@@ -62,6 +62,8 @@ TEMP_RAW_COLORS = (
     (210, 180, 222),
     (156, 100, 12),
 )
+TEMP_RAW_SYMBOL_CONFIG = (("o", 4, "b"), ("s", 4, "g"), ("t", 4, "r"), ("d", 4, "c"), ("+", 4, "m"), ("o", 4, "y"), ("s", 4, "k"), ("t", 4, "w"), ("d", 4, "r"))
+
 logger = loguru.logger
 
 
@@ -120,6 +122,7 @@ class MainWindow(QMainWindow):
         self.temp_raw_records = [[] for _ in range(9)]
         self.temp_raw_start_time = None
         self.temp_raw_time_record = []
+        self.temperature_raw_plots = []
         self.dd = DC201_PACK()
         self.pack_index = 1
         self.device_id = 0x13
@@ -152,7 +155,10 @@ class MainWindow(QMainWindow):
             bg = nbg
         if nfg is not None:
             fg = nfg
-        wg.setStyleSheet(f"background-color: {bg};color: {fg}")
+        if nfg is None and nbg is None:
+            wg.setStyleSheet("")
+        else:
+            wg.setStyleSheet(f"background-color: {bg}; color: {fg}")
 
     def initUI(self):
         self.createBarcode()
@@ -163,15 +169,19 @@ class MainWindow(QMainWindow):
         self.createStorge()
         self.createBoot()
         widget = QWidget()
-        layout = QGridLayout(widget)
-        layout.addWidget(self.barcode_gb, 0, 0, 6, 2)
-        layout.addWidget(self.motor_gb, 6, 0, 2, 2)
-        layout.addWidget(self.storge_gb, 8, 0, 1, 2)
-        layout.addWidget(self.boot_gb, 9, 0, 1, 2)
-        layout.addWidget(self.serial_gb, 10, 0, 1, 2)
-        layout.addWidget(self.matplot_wg, 0, 2, 11, 2)
-        layout.setContentsMargins(0, 5, 0, 0)
-        layout.setSpacing(0)
+        layout = QHBoxLayout(widget)
+
+        right_ly = QVBoxLayout()
+        right_ly.setContentsMargins(0, 5, 0, 0)
+        right_ly.setSpacing(0)
+        right_ly.addWidget(self.barcode_gb)
+        right_ly.addWidget(self.motor_gb)
+        right_ly.addWidget(self.storge_gb)
+        right_ly.addWidget(self.boot_gb)
+        right_ly.addWidget(self.serial_gb)
+
+        layout.addLayout(right_ly)
+        layout.addWidget(self.matplot_wg)
         image_path = "./icos/tt.ico"
         self.setWindowIcon(QIcon(image_path))
         self.setCentralWidget(widget)
@@ -277,10 +287,19 @@ class MainWindow(QMainWindow):
         self.temp_raw_start_time = None
         self.temp_raw_time_record.clear()
         self.temperature_raw_plot_wg.clear()
-        self.temperature_raw_plots = [
-            self.temperature_raw_plot_wg.plot(self.temp_raw_time_record, self.temp_raw_records[i], name=f"\u00A0#{i + 1}", pen=mkPen(color=TEMP_RAW_COLORS[i]))
-            for i in range(9)
-        ]
+        self.temperature_raw_plots.clear()
+        for i in range(9):
+            symbol = symbol, symbolSize, color = TEMP_RAW_SYMBOL_CONFIG[i]
+            plot = self.temperature_raw_plot_wg.plot(
+                self.temp_raw_time_record,
+                self.temp_raw_records[i],
+                name=f"\u00A0#{i + 1}",
+                pen=mkPen(color=TEMP_RAW_COLORS[i]),
+                symbol=symbol,
+                symbolSize=symbolSize,
+                symbolBrush=(color),
+            )
+            self.temperature_raw_plots.append(plot)
 
     def onTemperatureRawPlotMouseMove(self, event):
         mouse_point = self.temperature_raw_plot_wg.vb.mapSceneToView(event[0])
@@ -869,10 +888,19 @@ class MainWindow(QMainWindow):
         self.temperature_raw_plot_wg.addLegend()
         self.temperature_raw_plot_wg.showGrid(x=True, y=True)
         self.temperature_raw_plot_proxy = SignalProxy(self.temperature_raw_plot_wg.scene().sigMouseMoved, rateLimit=60, slot=self.onTemperatureRawPlotMouseMove)
-        self.temperature_raw_plots = [
-            self.temperature_raw_plot_wg.plot(self.temp_raw_time_record, self.temp_raw_records[i], name=f"\u00A0#{i + 1}", pen=mkPen(color=TEMP_RAW_COLORS[i]))
-            for i in range(9)
-        ]
+        self.temperature_raw_plots.clear()
+        for i in range(9):
+            symbol = symbol, symbolSize, color = TEMP_RAW_SYMBOL_CONFIG[i]
+            plot = self.temperature_raw_plot_wg.plot(
+                self.temp_raw_time_record,
+                self.temp_raw_records[i],
+                name=f"\u00A0#{i + 1}",
+                pen=mkPen(color=TEMP_RAW_COLORS[i]),
+                symbol=symbol,
+                symbolSize=symbolSize,
+                symbolBrush=(color),
+            )
+            self.temperature_raw_plots.append(plot)
         self.temperature_raw_plot_clear_bt.clicked.connect(self.onTemperautreRawDataClear)
 
         self.out_flash_data_dg = QDialog(self)
@@ -1002,11 +1030,11 @@ class MainWindow(QMainWindow):
             if idx < len(self.out_falsh_param_temp_sps):
                 value = struct.unpack("f", raw_pack[10 + i * 4 : 14 + i * 4])[0]
                 self.out_falsh_param_temp_sps[idx].setValue(value)
-                self._setColor(self.out_falsh_param_temp_sps[idx], nfg="#000000")
+                self._setColor(self.out_falsh_param_temp_sps[idx])
             else:
                 value = struct.unpack("I", raw_pack[10 + i * 4 : 14 + i * 4])[0]
                 self.out_falsh_param_cc_sps[idx - len(self.out_falsh_param_temp_sps)].setValue(value)
-                self._setColor(self.out_falsh_param_cc_sps[idx - len(self.out_falsh_param_temp_sps)], nfg="#000000")
+                self._setColor(self.out_falsh_param_cc_sps[idx - len(self.out_falsh_param_temp_sps)])
 
     def genBinaryData(self, data, unit=32, offset=0):
         result = []

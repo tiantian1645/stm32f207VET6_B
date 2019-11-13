@@ -33,13 +33,6 @@ typedef struct {
     uint8_t buffer[STORGE_BUFF_LEN]; /* 准备写入的内容 */
 } sStorgeTaskQueueInfo;
 
-typedef union {
-    float f32;
-    uint32_t u32;
-    uint16_t u16s[2];
-    uint8_t u8s[4];
-} uStorgeParamItem;
-
 /* Private macro -------------------------------------------------------------*/
 
 /* Private constants ---------------------------------------------------------*/
@@ -490,7 +483,14 @@ uint8_t storge_ParamSet(eStorgeParamIndex idx, uint8_t * pBuff, uint8_t length)
  */
 uint8_t storge_ParamGet(eStorgeParamIndex idx, uint8_t * pBuff)
 {
-    return 0;
+    uint8_t * p;
+    if (idx >= eStorgeParamIndex_Num) {
+        return 0;
+    }
+    p = (uint8_t *)&gStorgeParamInfo;
+    p += idx * 4;
+    memcpy(pBuff, p, 4);
+    return 4;
 }
 
 /**
@@ -502,7 +502,7 @@ uint8_t storge_ParamGet(eStorgeParamIndex idx, uint8_t * pBuff)
  */
 uint16_t storge_ParamWrite(eStorgeParamIndex idx, uint16_t num, uint8_t * pBuff)
 {
-	uint8_t *p;
+    uint8_t * p;
     if (pBuff == NULL || num == 0 || num % 4 != 0) {
         return 0;
     }
@@ -524,7 +524,7 @@ uint16_t storge_ParamWrite(eStorgeParamIndex idx, uint16_t num, uint8_t * pBuff)
  */
 uint16_t storge_ParamRead(eStorgeParamIndex idx, uint16_t num, uint8_t * pBuff)
 {
-	uint8_t *p;
+    uint8_t * p;
     if (pBuff == NULL || num == 0) {
         return 0;
     }

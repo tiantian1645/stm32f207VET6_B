@@ -20,6 +20,13 @@ typedef enum {
     eStorgeNotifyConf_COMM_Main = 0x20000000,
 } eStorgeNotifyConf;
 
+typedef union {
+    float f32;
+    uint32_t u32;
+    uint16_t u16s[2];
+    uint8_t u8s[4];
+} uStorgeParamItem;
+
 typedef enum {
     eStorgeParamIndex_Temp_CC_top_1,
     eStorgeParamIndex_Temp_CC_top_2,

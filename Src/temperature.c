@@ -7,6 +7,7 @@
 #include "main.h"
 #include <math.h>
 #include "temperature.h"
+#include "storge_task.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern ADC_HandleTypeDef hadc1;
@@ -151,7 +152,19 @@ void temp_Filter_Deal(void)
  */
 float temp_Get_Temp_Data(eTemp_NTC_Index idx)
 {
-    return temp_ADC_2_Temp(gTempADC_Results[idx]);
+    float temp;
+    uStorgeParamItem up;
+
+    temp = temp_ADC_2_Temp(gTempADC_Results[idx]);
+    up.f32 = 0;
+    if (storge_ParamGet(eStorgeParamIndex_Temp_CC_top_1 + idx, up.u8s) == 4) {
+        if (up.f32 > 5 || up.f32 < -5) {
+            up.f32 = 0;
+        }
+        temp += up.f32;
+    }
+
+    return temp;
 }
 
 /**
