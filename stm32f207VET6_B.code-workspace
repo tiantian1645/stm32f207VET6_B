@@ -23,7 +23,14 @@
 			"error.h": "c",
 			"comm_main.h": "c",
 			"protocol.h": "c",
-			"fan.h": "c"
+			"fan.h": "c",
+			"limits": "c",
+			"system_error": "c",
+			"vector": "c",
+			"xiosbase": "c",
+			"xlocale": "c",
+			"xstring": "c",
+			"xutility": "c"
 		},
 		"python.autoComplete.extraPaths": [
 			"Tools/"

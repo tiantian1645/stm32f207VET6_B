@@ -21,9 +21,6 @@ typedef enum {
     eError_Peripheral_Temp_Btm, /* 下加热体温度 */
     eError_Peripheral_Temp_Env, /* 环境温度 */
 
-    eError_Peripheral_Heater_Top, /* 上加热体温控 */
-    eError_Peripheral_Heater_Btm, /* 下加热体温控 */
-
     eError_Peripheral_Storge_Flash,   /* W25Q64 Flash存储芯片 */
     eError_Peripheral_Storge_ID_Card, /* ID Code 卡 */
 

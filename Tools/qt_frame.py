@@ -96,6 +96,7 @@ class MainWindow(QMainWindow):
         self.id_card_data = bytearray(4096)
         self.storge_time_start = 0
         self.out_flash_start = 0
+        self.out_flash_length = 0
         self.out_flash_data = bytearray()
         self.temp_btm_record = []
         self.temp_top_record = []
@@ -1007,6 +1008,7 @@ class MainWindow(QMainWindow):
         num = self.out_flash_data_num.value()
         num_list = ((num >> 16) & 0xFF, (num >> 8) & 0xFF, num & 0xFF)
         self.out_flash_start = addr
+        self.out_flash_length = num
         self.out_flash_data.clear()
         self.out_flash_data.extend((0xFF for _ in range(num)))
         self.out_flash_data_te.clear()
@@ -1020,8 +1022,8 @@ class MainWindow(QMainWindow):
         self.out_flash_data_dg.setWindowTitle("外部Flash | sha256 {}".format(sha256(self.out_flash_data).hexdigest()))
         result = self.genBinaryData(self.out_flash_data[: start + length], offset=self.out_flash_start)
         raw_text = "\n".join(result)
-        logger.debug("Out Falsh Raw Data \n{}".format(raw_text))
-        if self.out_flash_start == 0x1000 and length >= 660:
+        logger.debug(f"Out Falsh Raw Data | {start} | {length}\n{raw_text}")
+        if self.out_flash_start == 0x1000 and self.out_flash_length == 660:
             info = DC201_ParamInfo(self.out_flash_data[: start + length])
             plain_text = f"{info}\n{'=' * 100}\nraw bytes:\n{raw_text}"
             self.out_flash_data_te.setPlainText(plain_text)
@@ -1065,22 +1067,18 @@ class MainWindow(QMainWindow):
         elif p_type == 0x06:
             return "环境温度"
         elif p_type == 0x07:
-            return "上加热体温控"
-        elif p_type == 0x08:
-            return "下加热体温控"
-        elif p_type == 0x09:
             return "Flash存储芯片"
-        elif p_type == 0x0A:
+        elif p_type == 0x08:
             return "ID Code 卡"
-        elif p_type == 0x0B:
+        elif p_type == 0x09:
             return "对外串口通信"
-        elif p_type == 0x0C:
+        elif p_type == 0x0A:
             return "主板通信"
-        elif p_type == 0x0D:
+        elif p_type == 0x0B:
             return "采集板通信"
-        elif p_type == 0x0E:
+        elif p_type == 0x0C:
             return "扫码枪"
-        elif p_type == 0x0F:
+        elif p_type == 0x0D:
             return "风扇"
         else:
             return "0x{:02X}".format(p_type)
@@ -1088,15 +1086,15 @@ class MainWindow(QMainWindow):
     def getFaultType(self, p_type, e_type):
         if p_type in (0x00, 0x01, 0x02, 0x03):
             error_list = ("资源不可用", "电机运动超时", "电机驱动异常")
-        elif p_type in (0x04, 0x05, 0x06, 0x07, 0x08):
+        elif p_type in (0x04, 0x05, 0x06):
             error_list = ("温度值无效", "温度持续过低", "温度持续过高")
-        elif p_type in (0x09, 0x0A):
+        elif p_type in (0x07, 0x08):
             error_list = ("硬件故障", "读取失败", "写入失败", "参数越限")
-        elif p_type in (0x0B, 0x0C, 0x0D):
+        elif p_type in (0x09, 0x0A, 0x0B):
             error_list = ("资源不可用", "发送失败", "回应帧号不正确", "无回应", "未知功能码", "参数不正常")
-        elif p_type in (0x0E,):
+        elif p_type in (0x0C,):
             error_list = ("配置失败",)
-        elif p_type in (0x0F,):
+        elif p_type in (0x0D,):
             error_list = ("转速为零", "失速")
         result = []
         for i, e in enumerate(error_list):
