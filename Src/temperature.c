@@ -217,7 +217,7 @@ float temp_Get_Temp_Data_TOP(void)
     for (i = 0; i < TEMP_NTC_TOP_NUM; ++i) {
         temp = temp_Get_Temp_Data(TEMP_NTC_TOP_IDXS[i]);
         if (temp > 0 && temp < 55) {
-            temp_list[i] = temp;
+            temp_list[valid] = temp;
             ++valid;
         }
     }
