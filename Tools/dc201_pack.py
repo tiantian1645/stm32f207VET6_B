@@ -14,7 +14,7 @@ ChanelConfInfo = namedtuple("ChanelConfInfo", "name wave houhou unit precision s
 BaseInfo = namedtuple("BaseInfo", "imi raw")
 
 ParamInfo = namedtuple("ParamInfo", "cc_temp_tops cc_temp_btms cc_temp_env cc_ts")
-IlluminateInfo = namedtuple("IlluminateInfo", "wave theo test")
+IlluminateInfo = namedtuple("IlluminateInfo", "channel wave pairs")
 
 TEST_BIN_PATH = r"C:\Users\Administrator\STM32CubeIDE\workspace_1.0.2\stm32F207VET6_Bootloader_APP\Debug\stm32F207VET6_Bootloader_APP.bin"
 REAL_BIN_PATH = r"C:\Users\Administrator\STM32CubeIDE\workspace_1.0.2\stm32f207VET6_B\Debug\stm32f207VET6_B.bin"
@@ -160,6 +160,7 @@ class DC201_ParamInfo:
         self.cc_temp_env = [bytes2Float(self.data[32 : 32 + 4])]
         for i in range(6):
             ts_list = []
+            channel = i + 1
             if i == 0:
                 pp = 3
                 offset = 0
@@ -167,28 +168,40 @@ class DC201_ParamInfo:
                 pp = 2
                 offset = 48
             for j in range(pp):
-                wv_list = []
+                pairs = []
+                wave = ("610", "550", "405")[j]
                 for k in range(6):
-                    wave = ("610", "550", "405")[j]
-                    theo_start = 36 + k * 4 + j * 48 + i * 1 + offset
+                    theo_start = 36 + k * 4 + j * 48 + i * 96 + offset
                     theo = struct.unpack("I", self.data[theo_start : theo_start + 4])[0]
-                    test_start = 60 + k * 4 + j * 48 + i * 1 + offset
+                    test_start = 60 + k * 4 + j * 48 + i * 96 + offset
                     test = struct.unpack("I", self.data[test_start : test_start + 4])[0]
-                    illum = IlluminateInfo(wave=wave, theo=theo, test=test)
-                    wv_list.append(illum)
-                ts_list.append(wv_list)
-            self.cc_ts.append(wv_list)
-
+                    pairs.append((theo, test))
+                illum = IlluminateInfo(channel=channel, wave=wave, pairs=pairs)
+                logger.debug(f"get illum | {illum}")
+                ts_list.append(illum)
+            self.cc_ts.append(ts_list)
         self.info = ParamInfo(cc_temp_tops=self.cc_temp_tops, cc_temp_btms=self.cc_temp_btms, cc_temp_env=self.cc_temp_env, cc_ts=self.cc_ts)
 
     def cc_temps_format(self, cc_temps):
         return [f"{t:.3f} ℃" for t in cc_temps]
 
+    def cc_illuminate_format(self):
+        result = []
+        for ts in self.cc_ts:
+            rr = []
+            for t in ts:
+                ps = [f"({p[0]},{p[1]})" for i, p in enumerate(t.pairs)]
+                ps = f"[{' '.join(ps)}]"
+                rr.append(f"通道 {t.channel} | 波长 {t.wave} | 数据对 {ps}")
+            result.append("\n".join(rr))
+        return f"\n{'=' * 96}\n".join(result)
+
     def __str__(self):
         return (
             f"上加热体校正系数 {self.cc_temps_format(self.cc_temp_tops)}\n"
             f"下加热体校正系数 {self.cc_temps_format(self.cc_temp_btms)}\n"
-            f"环境温度校正系数 {self.cc_temps_format(self.cc_temp_env)}"
+            f"环境温度校正系数 {self.cc_temps_format(self.cc_temp_env)}\n"
+            f"OD校正配置\n{self.cc_illuminate_format()}"
         )
 
 

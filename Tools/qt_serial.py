@@ -125,7 +125,7 @@ class SerialSendWorker(QRunnable):
     def waitHenji(self, write_data, timeout=2):
         self.signals.henji.emit(write_data)
         logger.info("invoke set henji | {}".format(bytesPuttyPrint(write_data)))
-        if write_data[5] == 0x0F:
+        if write_data[5] in (0x0F, 0xDD):
             time.sleep(3)
         if write_data[5] == 0xFC and write_data[6] == 0x00:
             return (True, write_data, None)

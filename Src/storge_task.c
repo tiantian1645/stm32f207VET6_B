@@ -21,10 +21,11 @@
 #endif
 
 #define STORGE_DEAL_MASK                                                                                                                                       \
-    (eStorgeNotifyConf_Read_Falsh + eStorgeNotifyConf_Write_Falsh + eStorgeNotifyConf_Load_Parmas + eStorgeNotifyConf_Dump_Params +                            \
-     eStorgeNotifyConf_Read_ID_Card + eStorgeNotifyConf_Write_ID_Card)
+    (eStorgeNotifyConf_Read_Falsh + eStorgeNotifyConf_Write_Falsh + eStorgeNotifyConf_Read_Parmas + eStorgeNotifyConf_Write_Parmas +                           \
+     eStorgeNotifyConf_Load_Parmas + eStorgeNotifyConf_Dump_Params + eStorgeNotifyConf_Read_ID_Card + eStorgeNotifyConf_Write_ID_Card)
 
 #define STORGE_APP_PARAMS_ADDR (0x1000) /* Sector 1 */
+#define STORGE_APP_APRAM_PART_NUM (56)  /* 单次操作最大数目 */
 /* Private typedef -----------------------------------------------------------*/
 typedef struct {
     uint32_t addr;                   /* 操作地址 */
@@ -174,8 +175,7 @@ void storgeTaskInit(void)
 static void storgeTask(void * argument)
 {
     BaseType_t xResult;
-    uint32_t i, readCnt;
-    uint32_t wroteCnt;
+    uint32_t i, readCnt, wroteCnt;
     uint32_t ulNotifyValue;
     uint16_t length;
     uint8_t buff[700], result;
@@ -300,6 +300,32 @@ static void storgeTask(void * argument)
                     }
                 }
                 break;
+            case eStorgeNotifyConf_Read_Parmas:
+                for (i = 0; i < (gStorgeTaskInfo.num + STORGE_APP_APRAM_PART_NUM - 1) / STORGE_APP_APRAM_PART_NUM; ++i) {
+                    readCnt = (gStorgeTaskInfo.num >= STORGE_APP_APRAM_PART_NUM * (i + 1)) ? (STORGE_APP_APRAM_PART_NUM)
+                                                                                           : (gStorgeTaskInfo.num % STORGE_APP_APRAM_PART_NUM);
+                    length = storge_ParamRead(gStorgeTaskInfo.addr + STORGE_APP_APRAM_PART_NUM * i, readCnt, buff + 4);
+                    buff[0] = (gStorgeTaskInfo.addr + STORGE_APP_APRAM_PART_NUM * i) >> 0;
+                    buff[1] = (gStorgeTaskInfo.addr + STORGE_APP_APRAM_PART_NUM * i) >> 8;
+                    buff[2] = readCnt >> 0;
+                    buff[3] = readCnt >> 8;
+                    if (ulNotifyValue & eStorgeNotifyConf_COMM_Out) {
+                        xResult = comm_Out_SendTask_QueueEmitWithBuildCover(0xDD, buff, length + 4);
+                        if (xResult != pdPASS) {
+                            break;
+                        }
+                    }
+                    if (ulNotifyValue & eStorgeNotifyConf_COMM_Main) {
+                        xResult = comm_Main_SendTask_QueueEmitWithBuildCover(0xDD, buff, length + 4);
+                        if (xResult != pdPASS) {
+                            break;
+                        }
+                    }
+                }
+                break;
+            case eStorgeNotifyConf_Write_Parmas:
+                wroteCnt = storge_ParamWrite(gStorgeTaskInfo.addr, gStorgeTaskInfo.num, gStorgeTaskInfo.buffer);
+                break;
             case eStorgeNotifyConf_Load_Parmas:
                 result = storge_ParamLoad(buff);
                 if (result == 1) {
@@ -364,12 +390,12 @@ static uint8_t storge_ParamApply(uint8_t * pBuff, uint16_t length)
 {
     uint8_t error = 0;
     eStorgeParamIndex i;
-    uint32_t  *pData_u32;
-    float  *pData_f;
+    uint32_t * pData_u32;
+    float * pData_f;
     union {
-    	float f;
-    	uint32_t u32;
-    	uint8_t u8s[4];
+        float f;
+        uint32_t u32;
+        uint8_t u8s[4];
     } read_data;
 
     if (length != sizeof(gStorgeParamInfo) || pBuff == NULL) {
@@ -381,7 +407,7 @@ static uint8_t storge_ParamApply(uint8_t * pBuff, uint16_t length)
             pData_f = &(gStorgeParamInfo.temperature_cc_top_1) + (i - eStorgeParamIndex_Temp_CC_top_1);
             memcpy(read_data.u8s, &pBuff[4 * i], 4);
             if (read_data.f <= 5 && read_data.f >= -5) { /* 温度校正范围限制在±5℃ */
-                *pData_f = read_data.f ;
+                *pData_f = read_data.f;
             } else {
                 error = 1;
             }
@@ -389,7 +415,7 @@ static uint8_t storge_ParamApply(uint8_t * pBuff, uint16_t length)
             pData_u32 = &(gStorgeParamInfo.illumine_CC_t1_610_i0) + (i - eStorgeParamIndex_Illumine_CC_t1_610_i0);
             memcpy(read_data.u8s, &pBuff[4 * i], 4);
             if (read_data.u32 != 0xFFFFFFFF) {
-            	*pData_u32 = read_data.u32;
+                *pData_u32 = read_data.u32;
             } else {
                 error = 1;
             }
@@ -457,47 +483,57 @@ uint8_t storge_ParamSet(eStorgeParamIndex idx, uint8_t * pBuff, uint8_t length)
 }
 
 /**
- * @brief  参数修改
+ * @brief  参数读取
  * @param  idx 参数类型
  * @param  pBuff 输出数据
  * @retval 输出数据长度
  */
 uint8_t storge_ParamGet(eStorgeParamIndex idx, uint8_t * pBuff)
 {
-    if (pBuff == NULL) {
+    return 0;
+}
+
+/**
+ * @brief  参数读取
+ * @param  idx 参数类型
+ * @param  num 读取个数
+ * @param  pBuff 输出数据
+ * @retval 输出数据长度
+ */
+uint16_t storge_ParamWrite(eStorgeParamIndex idx, uint16_t num, uint8_t * pBuff)
+{
+	uint8_t *p;
+    if (pBuff == NULL || num == 0 || num % 4 != 0) {
         return 0;
     }
-
-    switch (idx) {
-        case eStorgeParamIndex_Temp_CC_top_1:
-            memcpy(pBuff, (uint8_t *)(&(gStorgeParamInfo.temperature_cc_top_1)), 4);
-            return 4;
-        case eStorgeParamIndex_Temp_CC_top_2:
-            memcpy(pBuff, (uint8_t *)(&(gStorgeParamInfo.temperature_cc_top_2)), 4);
-            return 4;
-        case eStorgeParamIndex_Temp_CC_top_3:
-            memcpy(pBuff, (uint8_t *)(&(gStorgeParamInfo.temperature_cc_top_3)), 4);
-            return 4;
-        case eStorgeParamIndex_Temp_CC_top_4:
-            memcpy(pBuff, (uint8_t *)(&(gStorgeParamInfo.temperature_cc_top_4)), 4);
-            return 4;
-        case eStorgeParamIndex_Temp_CC_top_5:
-            memcpy(pBuff, (uint8_t *)(&(gStorgeParamInfo.temperature_cc_top_5)), 4);
-            return 4;
-        case eStorgeParamIndex_Temp_CC_top_6:
-            memcpy(pBuff, (uint8_t *)(&(gStorgeParamInfo.temperature_cc_top_6)), 4);
-            return 4;
-        case eStorgeParamIndex_Temp_CC_btm_1:
-            memcpy(pBuff, (uint8_t *)(&(gStorgeParamInfo.temperature_cc_btm_1)), 4);
-            return 4;
-        case eStorgeParamIndex_Temp_CC_btm_2:
-            memcpy(pBuff, (uint8_t *)(&(gStorgeParamInfo.temperature_cc_btm_2)), 4);
-            return 4;
-        case eStorgeParamIndex_Temp_CC_env:
-            memcpy(pBuff, (uint8_t *)(&(gStorgeParamInfo.temperature_cc_env)), 4);
-            return 4;
-        default:
-            return 0;
+    if (num / 4 > eStorgeParamIndex_Num - idx) {
+        num = (eStorgeParamIndex_Num - idx) * 4;
     }
-    return 0;
+    p = (uint8_t *)&gStorgeParamInfo;
+    p += idx * 4;
+    memcpy(p, pBuff, num);
+    return num;
+}
+
+/**
+ * @brief  参数读取
+ * @param  idx 参数类型
+ * @param  num 读取个数
+ * @param  pBuff 输出数据
+ * @retval 输出数据长度
+ */
+uint16_t storge_ParamRead(eStorgeParamIndex idx, uint16_t num, uint8_t * pBuff)
+{
+	uint8_t *p;
+    if (pBuff == NULL || num == 0) {
+        return 0;
+    }
+    if (num > eStorgeParamIndex_Num - idx) {
+        num = eStorgeParamIndex_Num - idx;
+    }
+
+    p = (uint8_t *)&gStorgeParamInfo;
+    p += idx * 4;
+    memcpy(pBuff, p, num * 4);
+    return num * 4;
 }

@@ -696,28 +696,26 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             HAL_NVIC_SystemReset(); /* 重新启动 */
             break;
         case 0xDD:
-            if (length == 9) {
-                status = (pInBuff[6] << 0) + (pInBuff[7] << 8);
-                if (status < eStorgeParamIndex_Num) {
-                    result = storge_ParamGet(status, pInBuff + 2);
-                    if (result > 0) {
-                        memcpy(pInBuff, (uint8_t *)(&status), 2);
-                        if (comm_Out_SendTask_QueueEmitWithBuildCover(0xDD, pInBuff, result + 2) != pdPASS) {
-                            error |= PROTOCOL_PARSE_EMIT_ERROR;
-                        }
-                    }
-                } else if (status == 0xFFFF) {
+            if (length == 9) {                                  /* 保存参数 */
+                status = (pInBuff[6] << 0) + (pInBuff[7] << 8); /* 起始索引 */
+                if (status == 0xFFFF) {
                     if (storgeTaskNotification(eStorgeNotifyConf_Dump_Params, eComm_Out) != pdPASS) {
                         error |= PROTOCOL_PARSE_EMIT_ERROR;
                     }
-                } else {
-                    error |= PROTOCOL_PARSE_DATA_ERROR;
                 }
-            } else if (length == 13) {
-                status = (pInBuff[6] << 0) + (pInBuff[7] << 8);
-                result = storge_ParamSet(status, &pInBuff[8], 4);
-                if (result > 0) {
-                    error_Emit(eError_Peripheral_Storge_Flash, eError_Storge_Param_Overload);
+            } else if (length == 11) {                                                                                          /* 读取参数 */
+                result = storgeReadConfInfo((pInBuff[6] << 0) + (pInBuff[7] << 8), (pInBuff[8] << 0) + (pInBuff[9] << 8), 200); /* 配置 */
+                if (result == 0 && storgeTaskNotification(eStorgeNotifyConf_Read_Parmas, eComm_Out) == pdPASS) {                /* 通知存储任务 */
+                    error = PROTOCOL_PARSE_OK;
+                } else {
+                    error |= PROTOCOL_PARSE_EMIT_ERROR;
+                }
+            } else if (length > 11 && ((length - 11) % 4 == 0)) { /* 写入参数 */
+                result = storgeWriteConfInfo((pInBuff[6] << 0) + (pInBuff[7] << 8), &pInBuff[10], 4 * ((pInBuff[8] << 0) + (pInBuff[9] << 8)), 200); /* 配置 */
+                if (result == 0 && storgeTaskNotification(eStorgeNotifyConf_Write_Parmas, eComm_Out) == pdPASS) { /* 通知存储任务 */
+                    error = PROTOCOL_PARSE_OK;
+                } else {
+                    error |= PROTOCOL_PARSE_EMIT_ERROR;
                 }
             } else {
                 error |= PROTOCOL_PARSE_LENGTH_ERROR;

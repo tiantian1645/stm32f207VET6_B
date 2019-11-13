@@ -10,10 +10,12 @@
 typedef enum {
     eStorgeNotifyConf_Read_Falsh = 0x00000001,
     eStorgeNotifyConf_Write_Falsh = 0x00000002,
-    eStorgeNotifyConf_Load_Parmas = 0x00000004,
-    eStorgeNotifyConf_Dump_Params = 0x00000008,
-    eStorgeNotifyConf_Read_ID_Card = 0x00000010,
-    eStorgeNotifyConf_Write_ID_Card = 0x00000020,
+    eStorgeNotifyConf_Read_Parmas = 0x00000004,
+    eStorgeNotifyConf_Write_Parmas = 0x00000008,
+    eStorgeNotifyConf_Load_Parmas = 0x00000010,
+    eStorgeNotifyConf_Dump_Params = 0x00000020,
+    eStorgeNotifyConf_Read_ID_Card = 0x00000040,
+    eStorgeNotifyConf_Write_ID_Card = 0x00000080,
     eStorgeNotifyConf_COMM_Out = 0x10000000,
     eStorgeNotifyConf_COMM_Main = 0x20000000,
 } eStorgeNotifyConf;
@@ -421,6 +423,9 @@ BaseType_t storgeTaskNotification(eStorgeNotifyConf type, eProtocol_COMM_Index i
 
 uint8_t storge_ParamSet(eStorgeParamIndex idx, uint8_t * pBuff, uint8_t length);
 uint8_t storge_ParamGet(eStorgeParamIndex idx, uint8_t * pBuff);
+
+uint16_t storge_ParamWrite(eStorgeParamIndex idx, uint16_t num, uint8_t * pBuff);
+uint16_t storge_ParamRead(eStorgeParamIndex idx, uint16_t num, uint8_t * pBuff);
 /* Private defines -----------------------------------------------------------*/
 
 #endif

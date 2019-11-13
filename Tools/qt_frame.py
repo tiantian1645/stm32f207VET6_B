@@ -15,13 +15,15 @@ import pyperclip
 import serial
 import serial.tools.list_ports
 import stackprinter
-from PySide2.QtCore import Qt, QThreadPool, QTimer
-from PySide2.QtGui import QIcon
+from PySide2.QtCore import Qt, QThreadPool, QTimer, QRegExp
+from PySide2.QtGui import QIcon, QRegExpValidator
 from PySide2.QtWidgets import (
     QApplication,
+    QAbstractSpinBox,
     QCheckBox,
     QComboBox,
     QDialog,
+    QFrame,
     QFileDialog,
     QGridLayout,
     QGroupBox,
@@ -82,6 +84,20 @@ except Exception:
 rotation = CONFIG.get("log", {}).get("rotation", "4 MB")
 retention = CONFIG.get("log", {}).get("retention", 25)
 logger.add("./log/dc201.log", rotation=rotation, retention=retention, enqueue=True)
+
+
+class QHLine(QFrame):
+    def __init__(self):
+        super(QHLine, self).__init__()
+        self.setFrameShape(QFrame.HLine)
+        self.setFrameShadow(QFrame.Sunken)
+
+
+class QVLine(QFrame):
+    def __init__(self):
+        super(QVLine, self).__init__()
+        self.setFrameShape(QFrame.VLine)
+        self.setFrameShadow(QFrame.Sunken)
 
 
 class MainWindow(QMainWindow):
@@ -876,14 +892,14 @@ class MainWindow(QMainWindow):
         out_flash_param_gb = QGroupBox("系统参数")
         out_flash_param_ly = QVBoxLayout(out_flash_param_gb)
         out_flash_param_ly.setSpacing(5)
-        self.out_falsh_param_sps = [QDoubleSpinBox(self) for _ in range(9)]
+        self.out_falsh_param_temp_sps = [QDoubleSpinBox(self) for _ in range(9)]
         self.out_falsh_param_read_bt = QPushButton("读取")
         self.out_falsh_param_write_bt = QPushButton("写入")
 
         out_flash_param_temp_cc_wg = QGroupBox("温度校正参数")
         out_flash_param_temp_cc_ly = QGridLayout(out_flash_param_temp_cc_wg)
 
-        for i, sp in enumerate(self.out_falsh_param_sps):
+        for i, sp in enumerate(self.out_falsh_param_temp_sps):
             sp.setMaximumWidth(90)
             sp.setRange(-5, 5)
             sp.setDecimals(3)
@@ -899,13 +915,43 @@ class MainWindow(QMainWindow):
             else:
                 temp_ly.addWidget(QLabel(f"#{i + 1} 环境-{i - 7}"))
             temp_ly.addWidget(sp)
-            out_flash_param_temp_cc_ly.addLayout(temp_ly, i // 3, i % 3)
+            out_flash_param_temp_cc_ly.addLayout(temp_ly, i // 6, i % 6)
         out_flash_param_ly.addWidget(out_flash_param_temp_cc_wg)
+
+        out_flash_param_od_cc_wg = QGroupBox("OD校正参数")
+        out_flash_param_od_cc_ly = QVBoxLayout(out_flash_param_od_cc_wg)
+        self.out_falsh_param_cc_sps = [QDoubleSpinBox(self) for _ in range(156)]
+        for idx, sp in enumerate(self.out_falsh_param_cc_sps):
+            sp.setRange(0, 99999999)
+            sp.setDecimals(0)
+            sp.setValue(idx)
+        for i in range(6):
+            if i == 0:
+                pp = 3
+            else:
+                pp = 2
+            out_flash_param_od_cc_ly.addWidget(QHLine())
+            for j in range(pp):
+                wave = ("610", "550", "405")[j]
+                temp_ly = QHBoxLayout()
+                if j == 0:
+                    channel = f"通道{i + 1}"
+                else:
+                    channel = f"     "
+                temp_ly.addWidget(QLabel(f"{channel} {wave}"))
+                for k in range(6):
+                    temp_ly.addWidget(QVLine())
+                    head = k * 1 + j * 12 + i * 24 + 36 - 12 * pp
+                    temp_ly.addWidget(self.out_falsh_param_cc_sps[head])
+                    temp_ly.addWidget(self.out_falsh_param_cc_sps[head + 6])
+                out_flash_param_od_cc_ly.addLayout(temp_ly)
+        out_flash_param_ly.addWidget(out_flash_param_od_cc_wg)
 
         out_flash_data_ly.addWidget(self.out_flash_data_te)
         out_flash_data_ly.addLayout(out_flash_temp_ly)
         out_flash_data_ly.addWidget(temperautre_raw_wg)
         out_flash_data_ly.addWidget(out_flash_param_gb)
+
         temp_ly = QHBoxLayout()
         temp_ly.setContentsMargins(5, 0, 5, 0)
         temp_ly.setSpacing(5)
@@ -918,23 +964,37 @@ class MainWindow(QMainWindow):
         self.out_falsh_param_write_bt.clicked.connect(self.onOutFlashParamWrite)
 
     def onOutFlashParamRead(self, event):
-        for idx in range(9):
-            data = (idx % 256, idx // 256)
-            self._serialSendPack(0xDD, data)
+        data = (*(struct.pack("H", 0)), *(struct.pack("H", 165)))
+        self._serialSendPack(0xDD, data)
 
     def onOutFlashParamWrite(self, event):
-        for idx, sp in enumerate(self.out_falsh_param_sps):
-            pv = bytearray(struct.pack("f", sp.value()))
-            data = (idx % 256, idx // 256, *(i for i in pv))
-            self._serialSendPack(0xDD, data)
+        data = []
+        for idx, sp in enumerate(self.out_falsh_param_temp_sps):
+            for d in struct.pack("f", sp.value()):
+                data.append(d)
+        for idx, sp in enumerate(self.out_falsh_param_cc_sps):
+            for d in struct.pack("I", int(sp.value())):
+                data.append(d)
+        for i in range(0, len(data), 224):
+            sl = data[i : i + 224]
+            start = [*struct.pack("H", i // 4)]
+            num = [*struct.pack("H", len(sl) // 4)]
+            self._serialSendPack(0xDD, start + num + sl)
         data = (0xFF, 0xFF)
         self._serialSendPack(0xDD, data)
 
     def updateOutFalshParam(self, info):
         raw_pack = info.content
-        idx = struct.unpack("H", raw_pack[6:8])[0]
-        value = struct.unpack("f", raw_pack[8:12])[0]
-        self.out_falsh_param_sps[idx].setValue(value)
+        start = struct.unpack("H", raw_pack[6:8])[0]
+        num = struct.unpack("H", raw_pack[8:10])[0]
+        for i in range(num):
+            idx = start + i
+            if idx < len(self.out_falsh_param_temp_sps):
+                value = struct.unpack("f", raw_pack[10 + i * 4 : 14 + i * 4])[0]
+                self.out_falsh_param_temp_sps[idx].setValue(value)
+            else:
+                value = struct.unpack("I", raw_pack[10 + i * 4 : 14 + i * 4])[0]
+                self.out_falsh_param_cc_sps[idx - len(self.out_falsh_param_temp_sps)].setValue(value)
 
     def genBinaryData(self, data, unit=32, offset=0):
         result = []
