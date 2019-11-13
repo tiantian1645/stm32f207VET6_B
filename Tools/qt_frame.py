@@ -15,11 +15,10 @@ import pyperclip
 import serial
 import serial.tools.list_ports
 import stackprinter
-from PySide2.QtCore import Qt, QThreadPool, QTimer, QRegExp
-from PySide2.QtGui import QIcon, QRegExpValidator
+from PySide2.QtCore import Qt, QThreadPool, QTimer
+from PySide2.QtGui import QIcon, QPalette
 from PySide2.QtWidgets import (
     QApplication,
-    QAbstractSpinBox,
     QCheckBox,
     QComboBox,
     QDialog,
@@ -141,11 +140,19 @@ class MainWindow(QMainWindow):
                 logger.error("clear task queue exception \n{}".format(stackprinter.format()))
                 break
 
-    def _delay(self, timeout):
-        start = time.time()
-        while time.time() - start < timeout:
-            time.sleep(0.2)
-            QApplication.processEvents()
+    def _setColor(sself, wg, nbg=None, nfg=None):
+        palette = wg.palette()
+        bgc = palette.color(QPalette.Background)
+        fgc = palette.color(QPalette.Foreground)
+        # Convert the QColors to a string hex for use in the Stylesheet.
+        bg = bgc.name()
+        fg = fgc.name()
+        # logger.info(f"origin clolr is back | {bg} | front | {fg}")
+        if nbg is not None:
+            bg = nbg
+        if nfg is not None:
+            fg = nfg
+        wg.setStyleSheet(f"background-color: {bg};color: {fg}")
 
     def initUI(self):
         self.createBarcode()
@@ -982,6 +989,9 @@ class MainWindow(QMainWindow):
             self._serialSendPack(0xDD, start + num + sl)
         data = (0xFF, 0xFF)
         self._serialSendPack(0xDD, data)
+        for sp in self.out_falsh_param_cc_sps + self.out_falsh_param_temp_sps:
+            self._setColor(sp, nfg="red")
+        QTimer.singleShot(500, partial(self.onOutFlashParamRead, event=False))
 
     def updateOutFalshParam(self, info):
         raw_pack = info.content
@@ -992,9 +1002,11 @@ class MainWindow(QMainWindow):
             if idx < len(self.out_falsh_param_temp_sps):
                 value = struct.unpack("f", raw_pack[10 + i * 4 : 14 + i * 4])[0]
                 self.out_falsh_param_temp_sps[idx].setValue(value)
+                self._setColor(self.out_falsh_param_temp_sps[idx], nfg="#000000")
             else:
                 value = struct.unpack("I", raw_pack[10 + i * 4 : 14 + i * 4])[0]
                 self.out_falsh_param_cc_sps[idx - len(self.out_falsh_param_temp_sps)].setValue(value)
+                self._setColor(self.out_falsh_param_cc_sps[idx - len(self.out_falsh_param_temp_sps)], nfg="#000000")
 
     def genBinaryData(self, data, unit=32, offset=0):
         result = []
