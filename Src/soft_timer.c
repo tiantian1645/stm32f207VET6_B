@@ -21,7 +21,7 @@ extern TIM_HandleTypeDef htim4;
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
-#define SOFT_TIMER_HEATER_PER 10
+#define SOFT_TIMER_HEATER_PER 20
 
 /* Private variables ---------------------------------------------------------*/
 TimerHandle_t gTimerHandleHeater = NULL;
