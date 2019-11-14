@@ -8,7 +8,7 @@
 
 /* Exported macro ------------------------------------------------------------*/
 #define BEEP_TIM_PSC (1 - 1)
-#define BEEP_TIM_FREQ (72000000)
+#define BEEP_TIM_FREQ (108000000)
 
 #define BEEP_NOTE_C ((uint32_t)((BEEP_TIM_FREQ / (BEEP_TIM_PSC + 1)) / (261.63 * 8)))
 #define BEEP_NOTE_D ((uint32_t)((BEEP_TIM_FREQ / (BEEP_TIM_PSC + 1)) / (293.66 * 8)))
