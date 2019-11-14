@@ -88,7 +88,7 @@ HAL_StatusTypeDef temp_Stop_ADC_DMA(void)
  * @param  sample_hex adc 采样值
  * @note   log 自然对数计算涉及 双精度浮点数 为非原子操作
  * @note   转换操作只在最终转换结果时使用 采用非中断版本开关中断
- * @retval DMA停止结果
+ * @retval 摄氏度温度值
  */
 float temp_ADC_2_Temp(uint32_t sample_hex)
 {

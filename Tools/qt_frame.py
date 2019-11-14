@@ -738,6 +738,7 @@ class MainWindow(QMainWindow):
 
     def onBootload(self, event):
         self._serialSendPack(0x0F)
+        self._serialSendPack(0xDC)
 
     def onReboot(self, event):
         self._serialSendPack(0xDC)
