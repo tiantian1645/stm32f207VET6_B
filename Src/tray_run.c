@@ -18,7 +18,6 @@
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
-#define TRAY_MOTOR_IS_OPT_1 (motor_OPT_Status_Get(eMotor_OPT_Index_Tray) == eMotor_OPT_Status_OFF) /* 光耦输入 */
 #define TRAY_MOTOR_IS_BUSY (dSPIN_Busy_SW())                                                       /* 托盘电机忙碌位读取 */
 #define TRAY_MOTOR_IS_FLAG (dSPIN_Flag())                                                          /* 托盘电机标志脚读取 */
 #define TRAY_MOTOR_MAX_DISP 6400                                                                   /* 出仓步数 (1/8) 物理限制步数 */

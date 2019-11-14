@@ -299,23 +299,34 @@ uint8_t motor_Emit(sMotor_Fun * pFun_type, uint32_t timeout)
  */
 static void motor_Tray_Move_By_Index(eTrayIndex index)
 {
-    uint8_t buffer[8];
+    uint8_t buffer[8], flag = 0;
 
-    if (heat_Motor_Position_Is_Up() == 0 && heat_Motor_Up() != 0) { /* 上加热体光耦位置未被阻挡 则抬起上加热体电机 */
-        buffer[0] = 0x00;                                           /* 抬起上加热体失败 */
+    if (heat_Motor_Position_Is_Up() == 0) {
+        flag = 1; /* 上加热体电机处于砸下状态 */
+    } else {
+        flag = 0; /* 上加热体电机处于抬升状态 */
+    }
+    if (flag && heat_Motor_Up() != 0) { /* 上加热体光耦位置未被阻挡 则抬起上加热体电机 */
+        buffer[0] = 0x00;               /* 抬起上加热体失败 */
         comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
         comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                   /* 转发至外串口但不允许阻塞 */
         beep_Start_With_Conf(eBeep_Freq_do, 300, 0, 1);
         return;
     }
     /* 托盘保持力矩不足 托盘容易位置会发生变化 实际位置与驱动记录位置不匹配 每次移动托盘电机必须重置 */
-    tray_Motor_Init();                                                                         /* 托盘电机初始化 */
-    if (tray_Motor_Reset_Pos() != 0) {                                                         /* 重置托盘电机位置 */
-        buffer[0] = 0x00;                                                                      /* 托盘电机运动失败 */
-        comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
-        comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                   /* 转发至外串口但不允许阻塞 */
-        beep_Start_With_Conf(eBeep_Freq_fa, 300, 0, 1);
-        return;
+    if ((index == eTrayIndex_0 && TRAY_MOTOR_IS_OPT_1 == 0)                                        /* 从光耦外回到原点 */
+        || (index != eTrayIndex_0 && TRAY_MOTOR_IS_OPT_1 && flag)) {                               /* 或者 起点时上加热体砸下 从光耦处离开 */
+    } else {                                                                                       /* 其他情况需要回到原点 */
+        tray_Motor_Init();                                                                         /* 托盘电机初始化 */
+        vTaskDelay(100);                                                                           /* 延时 */
+        if (tray_Motor_Reset_Pos() != 0) {                                                         /* 重置托盘电机位置 */
+            buffer[0] = 0x00;                                                                      /* 托盘电机运动失败 */
+            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
+            comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                   /* 转发至外串口但不允许阻塞 */
+            beep_Start_With_Conf(eBeep_Freq_fa, 300, 0, 1);
+            return;
+        }
+        vTaskDelay(100); /* 延时 */
     }
     if (tray_Move_By_Index(index, 5000) == eTrayState_OK) { /* 运动托盘电机 */
         if (index == eTrayIndex_0) {                        /* 托盘在检测位置 */
