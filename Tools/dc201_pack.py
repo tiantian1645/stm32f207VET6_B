@@ -64,6 +64,7 @@ def iter_test_bin_BL(file_path=BL_PATH, chunk_size=224):
             while True:
                 data = f.read(chunk_size)
                 if not data:
+                    # https://stackoverflow.com/questions/34760988/python-struct-error
                     yield struct.pack("=HHHI", total, start, 0, crc)
                     break
                 num = len(data)

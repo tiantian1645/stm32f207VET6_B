@@ -348,6 +348,7 @@ uint8_t protocol_Temp_Upload_Comm_Get(eProtocol_COMM_Index comm_index)
 void protocol_Temp_Upload_Error_Deal(TickType_t now, float temp_btm, float temp_top)
 {
     static TickType_t xTick_btm_Keep_low = 0, xTick_btm_Keep_Hight = 0, xTick_top_Keep_low = 0, xTick_top_Keep_Hight = 0;
+    static TickType_t xTick_btm_Nai = 0, xTick_top_Nai = 0;
 
     if (temp_btm < 36.5) {                                                           /* 温度值低于36.5 */
         xTick_btm_Keep_Hight = now;                                                  /* 温度过高计数清零 */
@@ -355,9 +356,12 @@ void protocol_Temp_Upload_Error_Deal(TickType_t now, float temp_btm, float temp_
             error_Emit(eError_Peripheral_Temp_Btm, eError_Temp_Too_Low);             /* 报错 */
             xTick_btm_Keep_low = xTick_btm_Keep_Hight;                               /* 重复报错间隔 */
         }
-    } else if (temp_btm > 37.5) {                                    /* 温度值高于37.5 */
-        if (temp_btm == TEMP_INVALID_DATA) {                         /* 温度值为无效值 */
-            error_Emit(eError_Peripheral_Temp_Btm, eError_Temp_Nai); /* 报错 */
+    } else if (temp_btm > 37.5) {            /* 温度值高于37.5 */
+        if (temp_btm == TEMP_INVALID_DATA) { /* 温度值为无效值 */
+            if (now - xTick_btm_Nai > 60 * pdMS_TO_TICKS(1000) || now < 100) {
+                error_Emit(eError_Peripheral_Temp_Btm, eError_Temp_Nai); /* 报错 */
+                xTick_btm_Nai = now;
+            }
         } else {
             xTick_btm_Keep_low = now;                                                   /* 温度过低计数清零 */
             if (xTick_btm_Keep_low - xTick_btm_Keep_Hight > 60 * pdMS_TO_TICKS(1000)) { /* 过高持续次数大于 1 Min */
@@ -368,6 +372,7 @@ void protocol_Temp_Upload_Error_Deal(TickType_t now, float temp_btm, float temp_
     } else {                                       /* 温度值为36.5～37.5 */
         xTick_btm_Keep_low = now;                  /* 温度过低计数清零 */
         xTick_btm_Keep_Hight = xTick_btm_Keep_low; /* 温度过高计数清零 */
+        xTick_btm_Nai = now;					   /* 温度无效计数清零 */
     }
 
     if (temp_top < 36.5) {                                                           /* 温度值低于36.5 */
@@ -376,9 +381,12 @@ void protocol_Temp_Upload_Error_Deal(TickType_t now, float temp_btm, float temp_
             error_Emit(eError_Peripheral_Temp_Top, eError_Temp_Too_Low);             /* 报错 */
             xTick_top_Keep_low = xTick_top_Keep_Hight;                               /* 重复报错间隔 */
         }
-    } else if (temp_top > 37.5) {                                    /* 温度值高于37.5 */
-        if (temp_top == TEMP_INVALID_DATA) {                         /* 温度值为无效值 */
-            error_Emit(eError_Peripheral_Temp_Top, eError_Temp_Nai); /* 报错 */
+    } else if (temp_top > 37.5) {            /* 温度值高于37.5 */
+        if (temp_top == TEMP_INVALID_DATA) { /* 温度值为无效值 */
+            if (now - xTick_top_Nai > 60 * pdMS_TO_TICKS(1000) || now < 100) {
+                error_Emit(eError_Peripheral_Temp_Top, eError_Temp_Nai); /* 报错 */
+                xTick_top_Nai = now;
+            }
         } else {
             xTick_top_Keep_low = now;                                                   /* 温度过低计数清零 */
             if (xTick_top_Keep_low - xTick_top_Keep_Hight > 60 * pdMS_TO_TICKS(1000)) { /* 过高持续次数大于 1 Min */
@@ -389,6 +397,7 @@ void protocol_Temp_Upload_Error_Deal(TickType_t now, float temp_btm, float temp_
     } else {                        /* 温度值为36.5～37.5 */
         xTick_top_Keep_low = now;   /* 温度过低计数清零 */
         xTick_top_Keep_Hight = now; /* 温度过高计数清零 */
+        xTick_top_Nai = now;		/* 温度无效计数清零 */
     }
 }
 
@@ -723,18 +732,16 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             }
             break;
         case 0xDE:                                              /* 升级Bootloader */
-            protocol_Temp_Upload_Comm_Set(eComm_Out, 0);        /* 关闭本串口温度上送 */
             if ((pInBuff[10] << 0) + (pInBuff[11] << 8) == 0) { /* 数据长度为空 尾包 */
                 result = Innate_Flash_Dump((pInBuff[6] << 0) + (pInBuff[7] << 8),
                                            (pInBuff[12] << 0) + (pInBuff[13] << 8) + (pInBuff[14] << 16) + (pInBuff[15] << 24));
                 pInBuff[0] = result;
                 error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xDE, pInBuff, 1);
-                protocol_Temp_Upload_Comm_Set(eComm_Out, 1);      /* 使能本串口温度上送 */
-            } else {                                              /*  */
+            } else {                                              /* 数据长度不为空 非尾包 */
                 if ((pInBuff[8] << 0) + (pInBuff[9] << 8) == 0) { /* 起始包 */
-                    result = Innate_Flash_Erase_Temp();           /* 擦除失败 */
-                    if (result > 0) {
-                        HAL_FLASH_Lock();
+                    result = Innate_Flash_Erase_Temp();           /* 擦除Flash */
+                    if (result > 0) {                             /* 擦除失败 */
+                        HAL_FLASH_Lock();                         /* 回锁 */
                         pInBuff[0] = result;
                         error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xDE, pInBuff, 1);
                         break;

@@ -168,8 +168,8 @@ class MainWindow(QMainWindow):
         self.createSerial()
         self.createMatplot()
         self.createStatusBar()
-        self.createStorge()
-        self.createBoot()
+        self.createSysConf()
+        self.createStorgeDialog()
         widget = QWidget()
         layout = QHBoxLayout(widget)
 
@@ -178,8 +178,7 @@ class MainWindow(QMainWindow):
         right_ly.setSpacing(0)
         right_ly.addWidget(self.barcode_gb)
         right_ly.addWidget(self.motor_gb)
-        right_ly.addWidget(self.storge_gb)
-        right_ly.addWidget(self.boot_gb)
+        right_ly.addWidget(self.sys_conf_gb)
         right_ly.addWidget(self.serial_gb)
 
         layout.addLayout(right_ly)
@@ -187,7 +186,7 @@ class MainWindow(QMainWindow):
         image_path = "./icos/tt.ico"
         self.setWindowIcon(QIcon(image_path))
         self.setCentralWidget(widget)
-        self.resize(850, 553)
+        self.resize(850, 480)
 
     def resizeEvent(self, event):
         logger.debug("windows size | {}".format(self.size()))
@@ -255,11 +254,13 @@ class MainWindow(QMainWindow):
         kirakira_ly.addWidget(self.kirakira_recv_lb)
 
         self.version_lb = QLabel("版本: *.*")
+        self.version_bl_lb = QLabel("BL: *.*")
 
         self.status_bar.addWidget(temperautre_wg, 0)
         self.status_bar.addWidget(motor_tray_position_wg, 0)
         self.status_bar.addWidget(kirakira_wg, 0)
         self.status_bar.addWidget(self.version_lb, 0)
+        self.status_bar.addWidget(self.version_bl_lb, 0)
         self.setStatusBar(self.status_bar)
 
     def onTemperautreLabelClick(self, event):
@@ -365,7 +366,12 @@ class MainWindow(QMainWindow):
             self.motor_tray_position.setText("错误报文")
 
     def updateVersionLabel(self, info):
-        self.version_lb.setText(f"版本: {bytes2Float(info.content[6:10]):.1f}")
+        self.version_lb.setText(f"版本: {bytes2Float(info.content[6:10]):.2f}")
+
+    def updateVersionLabelBootloader(self, info):
+        raw_bytes = info.content
+        year, moth, day, ver = raw_bytes[6:10]
+        self.version_bl_lb.setText(f"BL: {2000 + year}-{moth:02d}-{day:02d} V{ver:03d}")
 
     def createBarcode(self):
         self.barcode_gb = QGroupBox("测试通道")
@@ -616,7 +622,9 @@ class MainWindow(QMainWindow):
     def onSerialRecvWorkerResult(self, info):
         logger.info("emit from serial worker result signal | {}".format(info.text))
         cmd_type = info.content[5]
-        if cmd_type == 0xA0:
+        if cmd_type == 0x00:
+            self.updateVersionLabelBootloader(info)
+        elif cmd_type == 0xA0:
             self.updateTemperautre(info)
         elif cmd_type == 0xB0:
             self.updateMotorTrayPosition(info)
@@ -687,7 +695,7 @@ class MainWindow(QMainWindow):
             return
         elif write_data[5] == 0xDE:
             if result:
-                size = struct.unpack("H", write_data[10: 12])[0]
+                size = struct.unpack("H", write_data[10:12])[0]
                 self.bl_wrote_size += size
                 self.upgbl_pr.setValue(int(self.bl_wrote_size * 100 / self.bl_size))
                 time_usage = time.time() - self.bl_start_time
@@ -813,13 +821,20 @@ class MainWindow(QMainWindow):
         fd = QFileDialog()
         file_path, _ = fd.getOpenFileName(filter="BIN 文件 (*.bin)")
         if file_path:
-            self.upgbl_dg_lb.setText(file_path)
-            self.last_bl_path = file_path
-            self.upgbl_dg.setWindowTitle("Bootloader升级 | {}".format(self._getFileHash_SHA256(file_path)))
-            self.bl_size = os.path.getsize(file_path)
+            file_size = os.path.getsize(file_path)
+            if file_size > 2 ** 16:
+                self.upgbl_dg_bt.setChecked(False)
+                self.upgbl_dg_lb.setText("文件大小超过64K")
+                self.upgbl_dg.setWindowTitle("Bootloader升级")
+            else:
+                self.upgbl_dg_lb.setText(file_path)
+                self.last_bl_path = file_path
+                self.upgbl_dg.setWindowTitle("Bootloader升级 | {}".format(self._getFileHash_SHA256(file_path)))
+                self.bl_size = file_size
 
     def onReboot(self, event):
         self._serialSendPack(0xDC)
+        QTimer.singleShot(3000, lambda : self._serialSendPack(0x07))
 
     def onUpgrade(self, event):
         self.upgrade_dg = QDialog(self)
@@ -910,21 +925,7 @@ class MainWindow(QMainWindow):
         self.matplot_data[channel] = data
         logger.debug("get data in channel | {} | {}".format(channel, data))
 
-    def createStorge(self):
-        self.storge_gb = QGroupBox("存储信息")
-        storge_ly = QHBoxLayout(self.storge_gb)
-        storge_ly.setContentsMargins(3, 3, 3, 3)
-        storge_ly.setSpacing(0)
-        self.storge_id_card_dialog_bt = QPushButton("ID卡信息")
-        self.storge_id_card_dialog_bt.setMaximumWidth(120)
-        self.storge_flash_read_bt = QPushButton("外部Flash信息")
-        self.storge_flash_read_bt.setMaximumWidth(120)
-        storge_ly.addWidget(self.storge_id_card_dialog_bt)
-        storge_ly.addWidget(self.storge_flash_read_bt)
-
-        self.storge_id_card_dialog_bt.clicked.connect(self.onID_CardDialogShow)
-        self.storge_flash_read_bt.clicked.connect(self.onOutFlashDialogShow)
-
+    def createStorgeDialog(self):
         self.id_card_data_dg = QDialog(self)
         self.id_card_data_dg.setWindowTitle("ID Card")
         self.id_card_data_dg.resize(730, 370)
@@ -1209,12 +1210,30 @@ class MainWindow(QMainWindow):
         else:
             self.out_flash_data_te.setPlainText(raw_text)
 
-    def createBoot(self):
-        self.boot_gb = QGroupBox("系统")
-        boot_ly = QHBoxLayout(self.boot_gb)
+    def createSysConf(self):
+        self.sys_conf_gb = QGroupBox("系统")
+        sys_conf_ly = QVBoxLayout(self.sys_conf_gb)
+        sys_conf_ly.setContentsMargins(3, 3, 3, 3)
+        sys_conf_ly.setSpacing(0)
+
+        storge_ly = QHBoxLayout()
+        storge_ly.setContentsMargins(3, 3, 3, 3)
+        storge_ly.setSpacing(0)
+        self.storge_id_card_dialog_bt = QPushButton("ID卡信息")
+        self.storge_id_card_dialog_bt.setMaximumWidth(120)
+        self.storge_flash_read_bt = QPushButton("外部Flash信息")
+        self.storge_flash_read_bt.setMaximumWidth(120)
+        storge_ly.addWidget(self.storge_id_card_dialog_bt)
+        storge_ly.addWidget(self.storge_flash_read_bt)
+
+        self.storge_id_card_dialog_bt.clicked.connect(self.onID_CardDialogShow)
+        self.storge_flash_read_bt.clicked.connect(self.onOutFlashDialogShow)
+        sys_conf_ly.addLayout(storge_ly)
+
+        boot_ly = QHBoxLayout()
         boot_ly.setContentsMargins(3, 3, 3, 3)
         boot_ly.setSpacing(0)
-        self.upgrade_bt = QPushButton("升级")
+        self.upgrade_bt = QPushButton("固件")
         self.upgrade_bt.setMaximumWidth(75)
         self.bootload_bt = QPushButton("Bootloader")
         self.bootload_bt.setMaximumWidth(75)
@@ -1226,6 +1245,8 @@ class MainWindow(QMainWindow):
         boot_ly.addWidget(self.bootload_bt)
         boot_ly.addWidget(self.reboot_bt)
         boot_ly.addWidget(self.selftest_bt)
+        sys_conf_ly.addLayout(boot_ly)
+
         self.upgrade_bt.clicked.connect(self.onUpgrade)
         self.bootload_bt.clicked.connect(self.onBootload)
         self.reboot_bt.clicked.connect(self.onReboot)
