@@ -1,4 +1,6 @@
 import loguru
+import os
+import zlib
 import stackprinter
 from bytes_helper import bytesPuttyPrint, crc8, str2Bytes, bytes2Float
 import struct
@@ -18,6 +20,7 @@ IlluminateInfo = namedtuple("IlluminateInfo", "channel wave pairs")
 
 TEST_BIN_PATH = r"C:\Users\Administrator\STM32CubeIDE\workspace_1.0.2\stm32F207VET6_Bootloader_APP\Debug\stm32F207VET6_Bootloader_APP.bin"
 REAL_BIN_PATH = r"C:\Users\Administrator\STM32CubeIDE\workspace_1.0.2\stm32f207VET6_B\Debug\stm32f207VET6_B.bin"
+BL_PATH = r"C:\Users\Administrator\STM32CubeIDE\workspace_1.0.2\stm23F207VET6_Bootloader\Debug\stm23F207VET6_Bootloader.bin"
 
 
 def iter_test_bin_FC(file_path=REAL_BIN_PATH, chunk_size=1024):
@@ -50,6 +53,35 @@ def write_firmware_pack_FC(dd, file_path=REAL_BIN_PATH, chunk_size=1024):
         pack_index += 1
         yield pack
     yield dd.buildPack(0x13, pack_index, 0xFC, (0,))
+
+
+def iter_test_bin_BL(file_path=BL_PATH, chunk_size=224):
+    try:
+        total = os.path.getsize(file_path)
+        crc = 0
+        with open(file_path, "rb") as f:
+            start = 0
+            while True:
+                data = f.read(chunk_size)
+                if not data:
+                    yield struct.pack("=HHHI", total, start, 0, crc)
+                    break
+                num = len(data)
+                yield struct.pack(f"HHH{'B' * num}", total, start, num, *data)
+                start += num
+                crc = zlib.crc32(data, crc) & 0xFFFFFFFF
+    except Exception:
+        logger.error("read file error \n{}".format(stackprinter.format()))
+
+
+def write_firmware_pack_BL(dd, file_path=BL_PATH, chunk_size=224):
+    addr = 0
+    pack_index = 1
+    for data in iter_test_bin_BL(file_path, chunk_size):
+        pack = dd.buildPack(0x13, pack_index, 0xDE, data)
+        addr += chunk_size
+        pack_index += 1
+        yield pack
 
 
 class DC201_IDCardInfo:
@@ -226,7 +258,7 @@ class DC201_PACK:
     def dealJunkPack(self, pack, start):
         if start > 0:
             junk_pack = pack[0:start]
-            logger.debug("discard junk pack | {}".format(bytesPuttyPrint(junk_pack)))
+            logger.debug(f"discard junk pack | {bytesPuttyPrint(junk_pack)} | {junk_pack}")
 
     def buildPack(self, device_id, pack_index, cmd_type, payload=None):
         pack_index = pack_index & 0xFF

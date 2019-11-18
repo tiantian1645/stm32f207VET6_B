@@ -45,6 +45,8 @@ class SerialRecvWorker(QRunnable):
             self.need_henji = (0xFA,)
         elif write_data[5] == 0xFC:
             self.need_henji = (0xFB,)
+        elif write_data[5] == 0xDE:
+            self.need_henji = (0xDE,)
         else:
             self.need_henji = (0xAA,)
         self.temp_wrote = write_data
@@ -142,6 +144,11 @@ class SerialSendWorker(QRunnable):
                 return (False, write_data, info)
         elif write_data[5] == 0x0F and info.content[5] == 0xFA:
             return (True, write_data, info)
+        elif write_data[5] == 0xDE and info.content[5] == 0xDE:
+            if info.content[6] == 0x00:
+                return (True, write_data, info)
+            else:
+                return (False, write_data, info)
         return (False, write_data, info)
 
     @pyqtSlot()

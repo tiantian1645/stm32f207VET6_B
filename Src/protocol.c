@@ -16,6 +16,7 @@
 #include "storge_task.h"
 #include "temperature.h"
 #include "spi_flash.h"
+#include "innate_flash.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim9;
@@ -447,7 +448,7 @@ void protocol_Temp_Upload_Out_Deal(float temp_btm, float temp_top)
             temperature = temp_Get_Temp_Data(i);
             memcpy(buffer + 4 * i, &temperature, 4);
         }
-        length = buildPackOrigin(eComm_Out, 0xDE, buffer, 36); /* 构造数据包  */
+        length = buildPackOrigin(eComm_Out, 0xEE, buffer, 36); /* 构造数据包  */
         comm_Out_SendTask_QueueEmitCover(buffer, length);      /* 提交到发送队列 */
     }
 }
@@ -719,6 +720,30 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 }
             } else {
                 error |= PROTOCOL_PARSE_LENGTH_ERROR;
+            }
+            break;
+        case 0xDE:                                              /* 升级Bootloader */
+            protocol_Temp_Upload_Comm_Set(eComm_Out, 0);        /* 关闭本串口温度上送 */
+            if ((pInBuff[10] << 0) + (pInBuff[11] << 8) == 0) { /* 数据长度为空 尾包 */
+                result = Innate_Flash_Dump((pInBuff[6] << 0) + (pInBuff[7] << 8),
+                                           (pInBuff[12] << 0) + (pInBuff[13] << 8) + (pInBuff[14] << 16) + (pInBuff[15] << 24));
+                pInBuff[0] = result;
+                error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xDE, pInBuff, 1);
+                protocol_Temp_Upload_Comm_Set(eComm_Out, 1);      /* 使能本串口温度上送 */
+            } else {                                              /*  */
+                if ((pInBuff[8] << 0) + (pInBuff[9] << 8) == 0) { /* 起始包 */
+                    result = Innate_Flash_Erase_Temp();           /* 擦除失败 */
+                    if (result > 0) {
+                        HAL_FLASH_Lock();
+                        pInBuff[0] = result;
+                        error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xDE, pInBuff, 1);
+                        break;
+                    }
+                }
+                result =
+                    Innate_Flash_Write(INNATE_FLASH_ADDR_TEMP + (pInBuff[8] << 0) + (pInBuff[9] << 8), pInBuff + 12, (pInBuff[10] << 0) + (pInBuff[11] << 8));
+                pInBuff[0] = result;
+                error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xDE, pInBuff, 1);
             }
             break;
         case eProtocolEmitPack_Client_CMD_START:          /* 开始测量帧 0x01 */

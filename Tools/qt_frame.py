@@ -3,12 +3,12 @@
 import json
 import os
 import queue
+import struct
 import sys
 import time
 from datetime import datetime
 from functools import partial
 from hashlib import sha256
-import struct
 
 import loguru
 import pyperclip
@@ -22,8 +22,9 @@ from PySide2.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
-    QFrame,
+    QDoubleSpinBox,
     QFileDialog,
+    QFrame,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
@@ -34,15 +35,15 @@ from PySide2.QtWidgets import (
     QProgressBar,
     QPushButton,
     QSpinBox,
-    QDoubleSpinBox,
     QStatusBar,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
 from pyqtgraph import GraphicsLayoutWidget, LabelItem, SignalProxy, mkPen
-from bytes_helper import bytesPuttyPrint, bytes2Float
-from dc201_pack import DC201_PACK, write_firmware_pack_FC, DC201_ParamInfo
+
+from bytes_helper import bytes2Float, bytesPuttyPrint
+from dc201_pack import DC201_PACK, DC201_ParamInfo, write_firmware_pack_BL, write_firmware_pack_FC
 from qt_serial import SerialRecvWorker, SerialSendWorker
 
 BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
@@ -109,6 +110,7 @@ class MainWindow(QMainWindow):
         self.task_queue = queue.Queue()
         self.henji_queue = queue.Queue()
         self.last_firm_path = None
+        self.last_bl_path = None
         self.threadpool = QThreadPool()
         self.id_card_data = bytearray(4096)
         self.storge_time_start = 0
@@ -634,7 +636,7 @@ class MainWindow(QMainWindow):
             self.updateVersionLabel(info)
         elif cmd_type == 0xDD:
             self.updateOutFalshParam(info)
-        elif cmd_type == 0xDE:
+        elif cmd_type == 0xEE:
             self.updateTemperautreRaw(info)
 
     def onSerialSendWorkerResult(self, write_result):
@@ -681,6 +683,27 @@ class MainWindow(QMainWindow):
                 self.upgrade_dg_bt.setText("重试")
                 self.upgrade_dg_bt.setEnabled(True)
                 self.upgrade_dg_bt.setChecked(False)
+                self._clearTaskQueue()
+            return
+        elif write_data[5] == 0xDE:
+            if result:
+                size = struct.unpack("H", write_data[10: 12])[0]
+                self.bl_wrote_size += size
+                self.upgbl_pr.setValue(int(self.bl_wrote_size * 100 / self.bl_size))
+                time_usage = time.time() - self.bl_start_time
+                if size == 0:
+                    title = "Bootloader升级 结束 | {} / {} Byte | {:.2f} S".format(self.bl_wrote_size, self.bl_size, time_usage)
+                    self.upgbl_dg_bt.setText("もう一回")
+                    self.upgbl_dg_bt.setEnabled(True)
+                    self.upgbl_dg_bt.setChecked(False)
+                    QTimer.singleShot(7000, lambda: self._serialSendPack(0x07))
+                else:
+                    title = "Bootloader升级 中... | {} / {} Byte | {:.2f} S".format(self.bl_wrote_size, self.bl_size, time_usage)
+                self.upgbl_dg.setWindowTitle(title)
+            else:
+                self.upgbl_dg_bt.setText("重试")
+                self.upgbl_dg_bt.setEnabled(True)
+                self.upgbl_dg_bt.setChecked(False)
                 self._clearTaskQueue()
             return
         elif write_data[5] == 0xD9:
@@ -737,8 +760,63 @@ class MainWindow(QMainWindow):
         self._serialSendPack(0x02)
 
     def onBootload(self, event):
-        self._serialSendPack(0x0F)
-        self._serialSendPack(0xDC)
+        # self._serialSendPack(0x0F)
+        # self._serialSendPack(0xDC)
+        self.upgbl_dg = QDialog(self)
+        self.upgbl_dg.setWindowTitle("Bootloader升级")
+        self.upgbl_dg_ly = QVBoxLayout(self.upgbl_dg)
+
+        upgbl_temp_ly = QHBoxLayout()
+        upgbl_temp_ly.addWidget(QLabel("Bootloader路径"))
+        self.upgbl_dg_lb = QLineEdit()
+        if self.last_bl_path is not None and os.path.isfile(self.last_bl_path):
+            self.upgbl_dg_lb.setText(self.last_bl_path)
+            self.upgbl_dg.setWindowTitle("Bootloader升级 | {}".format(self._getFileHash_SHA256(self.last_bl_path)))
+        self.upgbl_dg_fb_bt = QPushButton("...")
+        upgbl_temp_ly.addWidget(self.upgbl_dg_lb)
+        upgbl_temp_ly.addWidget(self.upgbl_dg_fb_bt)
+        self.upgbl_dg_ly.addLayout(upgbl_temp_ly)
+        self.upgbl_dg_fb_bt.clicked.connect(self.onUpgBLDialogFileSelect)
+
+        upgbl_temp_ly = QHBoxLayout()
+        self.upgbl_pr = QProgressBar(self)
+        upgbl_temp_ly.addWidget(QLabel("进度"))
+        upgbl_temp_ly.addWidget(self.upgbl_pr)
+        self.upgbl_dg_bt = QPushButton("开始")
+        upgbl_temp_ly.addWidget(self.upgbl_dg_bt)
+        self.upgbl_dg_ly.addLayout(upgbl_temp_ly)
+
+        self.upgbl_pr.setMaximum(100)
+        self.upgbl_dg_bt.setCheckable(True)
+        self.upgbl_dg_bt.clicked.connect(self.onUpgBLDialog)
+
+        self.upgbl_dg.resize(600, 75)
+        self.upgbl_dg.exec_()
+
+    def onUpgBLDialog(self, event):
+        if event is True:
+            file_path = self.upgbl_dg_lb.text()
+            if os.path.isfile(file_path):
+                self.upgbl_dg_bt.setEnabled(False)
+                self.bl_wrote_size = 0
+                self.bl_start_time = time.time()
+                for pack in write_firmware_pack_BL(self.dd, file_path, chunk_size=224):
+                    self.task_queue.put(pack)
+            else:
+                self.upgbl_dg_bt.setChecked(False)
+                self.upgbl_dg_lb.setText("请输入有效路径")
+                self.upgbl_dg.setWindowTitle("Bootloader升级")
+        elif event is False:
+            self.upgbl_dg.close()
+
+    def onUpgBLDialogFileSelect(self, event):
+        fd = QFileDialog()
+        file_path, _ = fd.getOpenFileName(filter="BIN 文件 (*.bin)")
+        if file_path:
+            self.upgbl_dg_lb.setText(file_path)
+            self.last_bl_path = file_path
+            self.upgbl_dg.setWindowTitle("Bootloader升级 | {}".format(self._getFileHash_SHA256(file_path)))
+            self.bl_size = os.path.getsize(file_path)
 
     def onReboot(self, event):
         self._serialSendPack(0xDC)
