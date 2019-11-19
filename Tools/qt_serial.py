@@ -115,6 +115,7 @@ class SerialSendWorker(QRunnable):
 
     def stopTask(self):
         self.stop = True
+        self.henji_queue.put(None)
 
     def getWriteData(self, timeout=0.01):
         try:
@@ -135,6 +136,9 @@ class SerialSendWorker(QRunnable):
             info = self.henji_queue.get(timeout=timeout)
         except queue.Empty:
             return (False, write_data, None)
+        else:
+            if info is None:
+                return (False, write_data, None)
         if write_data[5] == 0xD9 and info.content[5] == 0xD4:
             return (True, write_data, info)
         elif write_data[5] == 0xFC and info.content[5] == 0xFB:
