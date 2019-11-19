@@ -67,6 +67,9 @@ uint8_t barcode_Interrupt_Flag_Get(void);
 void barcode_Interrupt_Flag_Mark(void);
 void barcode_Interrupt_Flag_Clear(void);
 
+void barcode_Scan_Bantch(uint8_t pos_mark, uint8_t scan_mark);
+int32_t barcode_Motor_Read_Position(void);
+
 /* Private defines -----------------------------------------------------------*/
 
 #endif

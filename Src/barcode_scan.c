@@ -96,6 +96,9 @@ const eBarcodeIndex cBarCodeIndex[] = {
     eBarcodeIndex_5, eBarcodeIndex_4, eBarcodeIndex_3, eBarcodeIndex_2, eBarcodeIndex_1, eBarcodeIndex_0,
 };
 
+const eBarcodeIndex cBarCodeIndexAll[] = {
+    eBarcodeIndex_0, eBarcodeIndex_1, eBarcodeIndex_2, eBarcodeIndex_3, eBarcodeIndex_4, eBarcodeIndex_5, eBarcodeIndex_6,
+};
 /* Private function prototypes -----------------------------------------------*/
 
 /* Private user code ---------------------------------------------------------*/
@@ -806,30 +809,21 @@ uint8_t barcode_Task_Notify(uint32_t mark)
 
 /**
  * @brief  批次执行扫码
- * @param  mark 扫码掩码
+ * @param  pos_mark 扫码电机位置掩码
+ * @param  scan_mark 扫码使能掩码
  * @retval None
  */
-void barcode_Scan_Bantch(uint32_t mark)
+void barcode_Scan_Bantch(uint8_t pos_mark, uint8_t scan_mark)
 {
-    if (mark & (1 << 0)) {
-        barcode_Scan_By_Index(eBarcodeIndex_6);
-    }
-    if (mark & (1 << 1)) {
-        barcode_Scan_By_Index(eBarcodeIndex_5);
-    }
-    if (mark & (1 << 2)) {
-        barcode_Scan_By_Index(eBarcodeIndex_4);
-    }
-    if (mark & (1 << 3)) {
-        barcode_Scan_By_Index(eBarcodeIndex_3);
-    }
-    if (mark & (1 << 4)) {
-        barcode_Scan_By_Index(eBarcodeIndex_2);
-    }
-    if (mark & (1 << 5)) {
-        barcode_Scan_By_Index(eBarcodeIndex_1);
-    }
-    if (mark & (1 << 6)) {
-        barcode_Scan_By_Index(eBarcodeIndex_0);
+    uint8_t i;
+
+    for (i = 0; i < ARRAY_LEN(cBarCodeIndexAll); ++i) {
+        if (pos_mark & (1 << i)) {
+            if (scan_mark & (1 << i)) {
+                barcode_Scan_By_Index(cBarCodeIndexAll[i]);
+            } else {
+                barcode_Motor_Run_By_Index(cBarCodeIndexAll[i]);
+            }
+        }
     }
 }

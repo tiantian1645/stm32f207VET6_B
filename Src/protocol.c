@@ -372,7 +372,7 @@ void protocol_Temp_Upload_Error_Deal(TickType_t now, float temp_btm, float temp_
     } else {                                       /* 温度值为36.5～37.5 */
         xTick_btm_Keep_low = now;                  /* 温度过低计数清零 */
         xTick_btm_Keep_Hight = xTick_btm_Keep_low; /* 温度过高计数清零 */
-        xTick_btm_Nai = now;					   /* 温度无效计数清零 */
+        xTick_btm_Nai = now;                       /* 温度无效计数清零 */
     }
 
     if (temp_top < 36.5) {                                                           /* 温度值低于36.5 */
@@ -397,7 +397,7 @@ void protocol_Temp_Upload_Error_Deal(TickType_t now, float temp_btm, float temp_
     } else {                        /* 温度值为36.5～37.5 */
         xTick_top_Keep_low = now;   /* 温度过低计数清零 */
         xTick_top_Keep_Hight = now; /* 温度过高计数清零 */
-        xTick_top_Nai = now;		/* 温度无效计数清零 */
+        xTick_top_Nai = now;        /* 温度无效计数清零 */
     }
 }
 
@@ -528,96 +528,76 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
 
     error = protocol_Parse_AnswerACK(eComm_Out, pInBuff[3]); /* 发送回应包 */
     switch (pInBuff[5]) {                                    /* 进一步处理 功能码 */
-        case 0xD0:
-            if (length == 12) {
-                m_l6470_Index_Switch(eM_L6470_Index_0, portMAX_DELAY);
-                step = (uint32_t)(pInBuff[7] << 24) + (uint32_t)(pInBuff[8] << 16) + (uint32_t)(pInBuff[9] << 8) + (uint32_t)(pInBuff[10] << 0);
-
-                switch (pInBuff[6]) {
-                    case 0x00:
-                        dSPIN_Move(REV, step); /* 向驱动发送指令 */
+        case 0xD0:                                           /* 电机调试 */
+            switch (pInBuff[6]) {                            /* 电机索引 */
+                case 0:                                      /* 扫码电机 */
+                    if (length == 13) {                      /* 驱动层调试 */
+                        m_l6470_Index_Switch(eM_L6470_Index_0, portMAX_DELAY);
+                        step = *((uint32_t *)(&pInBuff[8]));
+                        if (pInBuff[7] == 0) {
+                            dSPIN_Move(REV, step); /* 向驱动发送指令 */
+                        } else {
+                            dSPIN_Move(FWD, step); /* 向驱动发送指令 */
+                        }
+                        step = 0;
+                        do {
+                            vTaskDelay(100);
+                        } while (dSPIN_Busy_HW() && ++step <= 50);
                         status = dSPIN_Get_Status();
-                        pInBuff[0] = status >> 8;
-                        pInBuff[1] = status & 0xFF;
-                        error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, pInBuff, 2);
-                        break;
-                    case 0x01:
-                    default:
-                        dSPIN_Move(FWD, step); /* 向驱动发送指令 */
+                        pInBuff[0] = 0;
+                        memcpy(pInBuff + 1, (uint8_t *)(&status), 2);
+                        status = barcode_Motor_Read_Position();
+                        memcpy(pInBuff + 3, (uint8_t *)(&status), 4);
+                        if (comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, pInBuff, 7) == 0) {
+                            error |= PROTOCOL_PARSE_EMIT_ERROR;
+                        }
+                        m_l6470_release();
+                    } else if (length == 10) {                       /* 应用层调试 */
+                        barcode_Scan_Bantch(pInBuff[7], pInBuff[8]); /* 位置掩码 扫码使能掩码 */
+                    }
+                    break;
+                case 1:                 /* 托盘电机 */
+                    if (length == 13) { /* 驱动层调试 */
+                        m_l6470_Index_Switch(eM_L6470_Index_1, portMAX_DELAY);
+                        step = *((uint32_t *)(&pInBuff[8]));
+                        if (pInBuff[7] == 0) {
+                            dSPIN_Move(REV, step); /* 向驱动发送指令 */
+                        } else {
+                            dSPIN_Move(FWD, step); /* 向驱动发送指令 */
+                        }
+                        step = 0;
+                        do {
+                            vTaskDelay(100);
+                        } while (dSPIN_Busy_HW() && ++step <= 50);
                         status = dSPIN_Get_Status();
-                        pInBuff[0] = status >> 8;
-                        pInBuff[1] = status & 0xFF;
-                        error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, pInBuff, 2);
-                        break;
-                }
-                vTaskDelay(1000);
-                m_l6470_release();
-            } else if (length == 8) {
-                switch ((pInBuff[6] % 7)) {
-                    case 0:
-                        barcode_Scan_By_Index(eBarcodeIndex_0);
-                        break;
-                    case 1:
-                        barcode_Scan_By_Index(eBarcodeIndex_1);
-                        break;
-                    case 2:
-                        barcode_Scan_By_Index(eBarcodeIndex_2);
-                        break;
-                    case 3:
-                        barcode_Scan_By_Index(eBarcodeIndex_3);
-                        break;
-                    case 4:
-                        barcode_Scan_By_Index(eBarcodeIndex_4);
-                        break;
-                    case 5:
-                        barcode_Scan_By_Index(eBarcodeIndex_5);
-                        break;
-                    case 6:
-                        barcode_Scan_By_Index(eBarcodeIndex_6);
-                        break;
-                    default:
-                        break;
-                }
+                        pInBuff[0] = 1;
+                        memcpy(pInBuff + 1, (uint8_t *)(&status), 2);
+                        status = tray_Motor_Read_Position();
+                        memcpy(pInBuff + 3, (uint8_t *)(&status), 4);
+                        if (comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, pInBuff, 7) == 0) {
+                            error |= PROTOCOL_PARSE_EMIT_ERROR;
+                        }
+                        m_l6470_release();
+                    } else if (length == 9) { /* 应用层调试 */
+                        switch ((pInBuff[7] % 3)) {
+                            case 0:
+                                tray_Move_By_Index(eTrayIndex_0, 2000);
+                                break;
+                            case 1:
+                                tray_Move_By_Index(eTrayIndex_1, 2000);
+                                break;
+                            case 2:
+                                tray_Move_By_Index(eTrayIndex_2, 2000);
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                    break;
+                default:
+                    break;
             }
-            return error;
-        case 0xD1:
-            if (length == 12) {
-                m_l6470_Index_Switch(eM_L6470_Index_1, portMAX_DELAY);
-                step = (uint32_t)(pInBuff[7] << 24) + (uint32_t)(pInBuff[8] << 16) + (uint32_t)(pInBuff[9] << 8) + (uint32_t)(pInBuff[10] << 0);
-                switch (pInBuff[6]) {
-                    case 0x00:
-                        dSPIN_Move(REV, step); /* 向驱动发送指令 */
-                        status = dSPIN_Get_Status();
-                        pInBuff[0] = status >> 8;
-                        pInBuff[1] = status & 0xFF;
-                        error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, pInBuff, 2);
-                        break;
-                    case 0x01:
-                    default:
-                        dSPIN_Move(FWD, step); /* 向驱动发送指令 */
-                        status = dSPIN_Get_Status();
-                        pInBuff[0] = status >> 8;
-                        pInBuff[1] = status & 0xFF;
-                        error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, pInBuff, 2);
-                        break;
-                }
-                m_l6470_release();
-            } else if (length == 8) {
-                switch ((pInBuff[6] % 3)) {
-                    case 0:
-                        tray_Move_By_Index(eTrayIndex_0, 2000);
-                        break;
-                    case 1:
-                        tray_Move_By_Index(eTrayIndex_1, 2000);
-                        break;
-                    case 2:
-                        tray_Move_By_Index(eTrayIndex_2, 2000);
-                        break;
-                    default:
-                        break;
-                }
-            }
-            return error;
+            break;
         case 0xD2:
             if (length == 9) {
                 barcode_serial_Test();
@@ -628,7 +608,9 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
 
             barcode_Read_From_Serial(&result, pInBuff, 100, 2000);
             if (result > 0) {
-                error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xD2, pInBuff, result);
+                if (comm_Out_SendTask_QueueEmitWithBuildCover(0xD2, pInBuff, result) == 0) {
+                    error |= PROTOCOL_PARSE_EMIT_ERROR;
+                }
             }
             break;
         case 0xD3:
@@ -736,21 +718,27 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 result = Innate_Flash_Dump((pInBuff[6] << 0) + (pInBuff[7] << 8),
                                            (pInBuff[12] << 0) + (pInBuff[13] << 8) + (pInBuff[14] << 16) + (pInBuff[15] << 24));
                 pInBuff[0] = result;
-                error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xDE, pInBuff, 1);
+                if (comm_Out_SendTask_QueueEmitWithBuildCover(0xDE, pInBuff, 1) == 0) {
+                    error |= PROTOCOL_PARSE_EMIT_ERROR;
+                }
             } else {                                              /* 数据长度不为空 非尾包 */
                 if ((pInBuff[8] << 0) + (pInBuff[9] << 8) == 0) { /* 起始包 */
                     result = Innate_Flash_Erase_Temp();           /* 擦除Flash */
                     if (result > 0) {                             /* 擦除失败 */
                         HAL_FLASH_Lock();                         /* 回锁 */
                         pInBuff[0] = result;
-                        error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xDE, pInBuff, 1);
+                        if (comm_Out_SendTask_QueueEmitWithBuildCover(0xDE, pInBuff, 1) == 0) {
+                            error |= PROTOCOL_PARSE_EMIT_ERROR;
+                        }
                         break;
                     }
                 }
                 result =
                     Innate_Flash_Write(INNATE_FLASH_ADDR_TEMP + (pInBuff[8] << 0) + (pInBuff[9] << 8), pInBuff + 12, (pInBuff[10] << 0) + (pInBuff[11] << 8));
                 pInBuff[0] = result;
-                error |= comm_Out_SendTask_QueueEmitWithBuildCover(0xDE, pInBuff, 1);
+                if (comm_Out_SendTask_QueueEmitWithBuildCover(0xDE, pInBuff, 1) == 0) {
+                    error |= PROTOCOL_PARSE_EMIT_ERROR;
+                }
             }
             break;
         case eProtocolEmitPack_Client_CMD_START:          /* 开始测量帧 0x01 */
@@ -783,26 +771,32 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 error |= PROTOCOL_PARSE_EMIT_ERROR;
             }
             break;
-        case eProtocolEmitPack_Client_CMD_STATUS:                                                          /* 状态信息查询帧 (首帧) */
-            temp = temp_Get_Temp_Data_BTM();                                                               /* 下加热体温度 */
-            pInBuff[0] = ((uint16_t)(temp * 100)) & 0xFF;                                                  /* 小端模式 低8位 */
-            pInBuff[1] = ((uint16_t)(temp * 100)) >> 8;                                                    /* 小端模式 高8位 */
-            temp = temp_Get_Temp_Data_TOP();                                                               /* 上加热体温度 */
-            pInBuff[2] = ((uint16_t)(temp * 100)) & 0xFF;                                                  /* 小端模式 低8位 */
-            pInBuff[3] = ((uint16_t)(temp * 100)) >> 8;                                                    /* 小端模式 高8位 */
-            error |= comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_TMP, pInBuff, 4); /* 温度信息 */
+        case eProtocolEmitPack_Client_CMD_STATUS:                                                            /* 状态信息查询帧 (首帧) */
+            temp = temp_Get_Temp_Data_BTM();                                                                 /* 下加热体温度 */
+            pInBuff[0] = ((uint16_t)(temp * 100)) & 0xFF;                                                    /* 小端模式 低8位 */
+            pInBuff[1] = ((uint16_t)(temp * 100)) >> 8;                                                      /* 小端模式 高8位 */
+            temp = temp_Get_Temp_Data_TOP();                                                                 /* 上加热体温度 */
+            pInBuff[2] = ((uint16_t)(temp * 100)) & 0xFF;                                                    /* 小端模式 低8位 */
+            pInBuff[3] = ((uint16_t)(temp * 100)) >> 8;                                                      /* 小端模式 高8位 */
+            if (comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_TMP, pInBuff, 4) == 0) { /* 温度信息 */
+                error |= PROTOCOL_PARSE_EMIT_ERROR;
+            }
 
-            protocol_Get_Version(pInBuff);
-            error |= comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_VER, pInBuff, 4); /* 软件版本信息 */
+            protocol_Get_Version(pInBuff); /* 软件版本信息 */
+            if (comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_VER, pInBuff, 4) == 0) {
+                error |= PROTOCOL_PARSE_EMIT_ERROR;
+            }
 
-            if (tray_Motor_Get_Status_Position() == 0) {
-                pInBuff[0] = 1; /* 托盘处于测试位置 原点 */
+            if (tray_Motor_Get_Status_Position() == 0) { /* 托盘状态信息 */
+                pInBuff[0] = 1;                          /* 托盘处于测试位置 原点 */
             } else if (tray_Motor_Get_Status_Position() >= (eTrayIndex_2 / 4 - 50) && tray_Motor_Get_Status_Position() <= (eTrayIndex_2 / 4 + 50)) {
                 pInBuff[0] = 2; /* 托盘处于出仓位置 误差范围 +-50步 */
             } else {
                 pInBuff[0] = 0;
             }
-            error |= comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, pInBuff, 1); /* 托盘状态信息 */
+            if (comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, pInBuff, 1) == 0) {
+                error |= PROTOCOL_PARSE_EMIT_ERROR;
+            }
             break;
         case eProtocolEmitPack_Client_CMD_UPGRADE: /* 下位机升级命令帧 0x0F */
             if (spi_FlashWriteAndCheck_Word(0x0000, 0x87654321) == 0) {
@@ -875,26 +869,32 @@ eProtocolParseResult protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
                 error |= PROTOCOL_PARSE_EMIT_ERROR;
             }
             break;
-        case eProtocolEmitPack_Client_CMD_STATUS:                                                           /* 状态信息查询帧 (首帧) */
-            temp = temp_Get_Temp_Data_BTM();                                                                /* 下加热体温度 */
-            pInBuff[0] = ((uint16_t)(temp * 100)) & 0xFF;                                                   /* 小端模式 低8位 */
-            pInBuff[1] = ((uint16_t)(temp * 100)) >> 8;                                                     /* 小端模式 高8位 */
-            temp = temp_Get_Temp_Data_TOP();                                                                /* 上加热体温度 */
-            pInBuff[2] = ((uint16_t)(temp * 100)) & 0xFF;                                                   /* 小端模式 低8位 */
-            pInBuff[3] = ((uint16_t)(temp * 100)) >> 8;                                                     /* 小端模式 高8位 */
-            error |= comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_TMP, pInBuff, 4); /* 温度信息 */
+        case eProtocolEmitPack_Client_CMD_STATUS:                                                             /* 状态信息查询帧 (首帧) */
+            temp = temp_Get_Temp_Data_BTM();                                                                  /* 下加热体温度 */
+            pInBuff[0] = ((uint16_t)(temp * 100)) & 0xFF;                                                     /* 小端模式 低8位 */
+            pInBuff[1] = ((uint16_t)(temp * 100)) >> 8;                                                       /* 小端模式 高8位 */
+            temp = temp_Get_Temp_Data_TOP();                                                                  /* 上加热体温度 */
+            pInBuff[2] = ((uint16_t)(temp * 100)) & 0xFF;                                                     /* 小端模式 低8位 */
+            pInBuff[3] = ((uint16_t)(temp * 100)) >> 8;                                                       /* 小端模式 高8位 */
+            if (comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_TMP, pInBuff, 4) == 0) { /* 温度信息 */
+                error |= PROTOCOL_PARSE_EMIT_ERROR;
+            }
 
-            protocol_Get_Version(pInBuff);
-            error |= comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_VER, pInBuff, 4); /* 软件版本信息 */
+            protocol_Get_Version(pInBuff); /* 软件版本信息 */
+            if (comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_VER, pInBuff, 4) == 0) {
+                error |= PROTOCOL_PARSE_EMIT_ERROR;
+            }
 
-            if (tray_Motor_Get_Status_Position() == 0) {
-                pInBuff[0] = 1; /* 托盘处于测试位置 原点 */
+            if (tray_Motor_Get_Status_Position() == 0) { /* 托盘状态信息 */
+                pInBuff[0] = 1;                          /* 托盘处于测试位置 原点 */
             } else if (tray_Motor_Get_Status_Position() >= (eTrayIndex_2 / 4 - 50) && tray_Motor_Get_Status_Position() <= (eTrayIndex_2 / 4 + 50)) {
                 pInBuff[0] = 2; /* 托盘处于出仓位置 误差范围 +-50步 */
             } else {
                 pInBuff[0] = 0;
             }
-            error |= comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, pInBuff, 1); /* 托盘状态信息 */
+            if (comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, pInBuff, 1) == 0) {
+                error |= PROTOCOL_PARSE_EMIT_ERROR;
+            }
             break;
         case eProtocolEmitPack_Client_CMD_UPGRADE: /* 下位机升级命令帧 0x0F */
             if (spi_FlashWriteAndCheck_Word(0x0000, 0x87654321) == 0) {

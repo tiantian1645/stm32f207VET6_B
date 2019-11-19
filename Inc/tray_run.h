@@ -33,6 +33,7 @@ uint8_t tray_Motor_Reset_Pos();
 eTrayState tray_Motor_Init(void);
 eTrayState tray_Move_By_Index(eTrayIndex index, uint32_t timeout);
 
+int32_t tray_Motor_Read_Position(void);
 /* Private defines -----------------------------------------------------------*/
 
 #endif

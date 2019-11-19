@@ -19,7 +19,7 @@ from PySide2.QtCore import Qt, QThreadPool, QTimer
 from PySide2.QtGui import QIcon, QPalette
 from PySide2.QtWidgets import (
     QApplication,
-    QCheckBox,
+    QButtonGroup,
     QComboBox,
     QDialog,
     QDoubleSpinBox,
@@ -34,6 +34,8 @@ from PySide2.QtWidgets import (
     QMessageBox,
     QProgressBar,
     QPushButton,
+    QRadioButton,
+    QSlider,
     QSpinBox,
     QStatusBar,
     QTextEdit,
@@ -464,7 +466,7 @@ class MainWindow(QMainWindow):
         self.motor_tray_scan_bt.setMaximumWidth(120)
         self.motor_tray_out_bt = QPushButton("托盘出仓")
         self.motor_tray_out_bt.setMaximumWidth(120)
-        self.motor_tray_debug_cb = QCheckBox("托盘调试")
+        self.motor_tray_debug_cb = QPushButton("电机调试")
         self.motor_tray_debug_cb.setMaximumWidth(120)
 
         motor_ly.addWidget(self.motor_heater_up_bt, 0, 0)
@@ -482,10 +484,95 @@ class MainWindow(QMainWindow):
         self.motor_white_od_bt.clicked.connect(self.onMotorWhiteOD)
         self.motor_tray_in_bt.clicked.connect(self.onMotorTrayIn)
         self.motor_tray_scan_bt.clicked.connect(self.onMotorTrayScan)
-        self.motor_tray_scan_bt.setEnabled(False)
         self.motor_tray_out_bt.clicked.connect(self.onMotorTrayOut)
-        self.motor_tray_debug_cb.setChecked(False)
-        self.motor_tray_debug_cb.stateChanged.connect(self.onMotorTrayDebug)
+        self.motor_tray_debug_cb.clicked.connect(self.onMotorDebug)
+
+        self.motor_debug_dg = QDialog(self)
+        self.motor_debug_dg.setWindowTitle("电机调试")
+        self.motor_debug_ly = QVBoxLayout(self.motor_debug_dg)
+
+        scan_ly = QHBoxLayout()
+        scan_ly.setContentsMargins(3, 3, 3, 3)
+        self.motor_debug_scan_status_lb = QLabel("0x0000")
+        self.motor_debug_scan_pos_lb = QLabel("000000")
+        self.motor_debug_scan_bg = QButtonGroup(self.motor_debug_dg)
+        self.motor_debug_scan_fwd = QRadioButton("左")
+        self.motor_debug_scan_fwd.setChecked(True)
+        self.motor_debug_scan_rev = QRadioButton("右")
+        self.motor_debug_scan_bg.addButton(self.motor_debug_scan_fwd)
+        self.motor_debug_scan_bg.addButton(self.motor_debug_scan_rev)
+        self.motor_debug_scan_dis_sl = QSlider(Qt.Horizontal)
+        self.motor_debug_scan_dis_sl.setMinimumWidth(180)
+        self.motor_debug_scan_dis_sl.setRange(-10000, 10000)
+        self.motor_debug_scan_dis_sl.setValue(0)
+        self.motor_debug_scan_dis = QSpinBox()
+        self.motor_debug_scan_dis.setRange(0, 10000)
+        self.motor_debug_scan_dis.setMaximumWidth(60)
+        self.motor_debug_scan_bt = QPushButton("下发")
+        self.motor_debug_scan_bt.setAutoDefault(False)
+        self.motor_debug_scan_bt.setDefault(False)
+        self.motor_debug_scan_bt.setMaximumWidth(60)
+
+        scan_ly.addWidget(QLabel("扫码电机"))
+        scan_ly.addWidget(QVLine())
+        scan_ly.addWidget(self.motor_debug_scan_status_lb)
+        scan_ly.addWidget(QVLine())
+        scan_ly.addWidget(self.motor_debug_scan_pos_lb)
+        scan_ly.addWidget(QVLine())
+        scan_ly.addWidget(self.motor_debug_scan_dis_sl)
+        scan_ly.addWidget(QVLine())
+        scan_ly.addWidget(self.motor_debug_scan_fwd)
+        scan_ly.addWidget(self.motor_debug_scan_rev)
+        scan_ly.addWidget(QLabel("距离"))
+        scan_ly.addWidget(self.motor_debug_scan_dis)
+        scan_ly.addWidget(self.motor_debug_scan_bt)
+        self.motor_debug_ly.addLayout(scan_ly)
+
+        tray_ly = QHBoxLayout()
+        tray_ly.setContentsMargins(3, 3, 3, 3)
+        self.motor_debug_tray_status_lb = QLabel("0x0000")
+        self.motor_debug_tray_pos_lb = QLabel("000000")
+        self.motor_debug_tray_bg = QButtonGroup(self.motor_debug_dg)
+        self.motor_debug_tray_fwd = QRadioButton("进")
+        self.motor_debug_tray_fwd.setChecked(True)
+        self.motor_debug_tray_rev = QRadioButton("出")
+        self.motor_debug_tray_bg.addButton(self.motor_debug_tray_fwd)
+        self.motor_debug_tray_bg.addButton(self.motor_debug_tray_rev)
+        self.motor_debug_tray_dis_sl = QSlider(Qt.Horizontal)
+        self.motor_debug_tray_dis_sl.setMinimumWidth(180)
+        self.motor_debug_tray_dis_sl.setRange(-10000, 10000)
+        self.motor_debug_tray_dis_sl.setValue(0)
+        self.motor_debug_tray_dis = QSpinBox()
+        self.motor_debug_tray_dis.setRange(0, 10000)
+        self.motor_debug_tray_dis.setMaximumWidth(60)
+        self.motor_debug_tray_bt = QPushButton("下发")
+        self.motor_debug_tray_bt.setAutoDefault(False)
+        self.motor_debug_tray_bt.setDefault(False)
+        self.motor_debug_tray_bt.setMaximumWidth(60)
+
+        tray_ly.addWidget(QLabel("托盘电机"))
+        tray_ly.addWidget(QVLine())
+        tray_ly.addWidget(self.motor_debug_tray_status_lb)
+        tray_ly.addWidget(QVLine())
+        tray_ly.addWidget(self.motor_debug_tray_pos_lb)
+        tray_ly.addWidget(QVLine())
+        tray_ly.addWidget(self.motor_debug_tray_dis_sl)
+        tray_ly.addWidget(QVLine())
+        tray_ly.addWidget(self.motor_debug_tray_fwd)
+        tray_ly.addWidget(self.motor_debug_tray_rev)
+        tray_ly.addWidget(QLabel("距离"))
+        tray_ly.addWidget(self.motor_debug_tray_dis)
+        tray_ly.addWidget(self.motor_debug_tray_bt)
+        self.motor_debug_ly.addLayout(tray_ly)
+
+        self.motor_debug_scan_bg.buttonToggled.connect(self.onMotorDebugScanBGChanged)
+        self.motor_debug_tray_bg.buttonToggled.connect(self.onMotorDebugTrayBGChanged)
+        self.motor_debug_scan_dis.valueChanged.connect(self.onMotorDebugScanSpinBoxChanged)
+        self.motor_debug_tray_dis.valueChanged.connect(self.onMotorDebugTraySpinBoxChanged)
+        self.motor_debug_scan_dis_sl.valueChanged.connect(self.onMotorDebugScanSliderChanged)
+        self.motor_debug_tray_dis_sl.valueChanged.connect(self.onMotorDebugTraySliderChanged)
+        self.motor_debug_scan_bt.clicked.connect(self.onMotorDebugScan)
+        self.motor_debug_tray_bt.clicked.connect(self.onMotorDebugTray)
 
     def onMotorHeaterUp(self, event):
         self._serialSendPack(0xD3, (0,))
@@ -500,32 +587,110 @@ class MainWindow(QMainWindow):
         self._serialSendPack(0xD4, (1,))
 
     def onMotorTrayIn(self, event):
-        if self.motor_tray_debug_cb.isChecked():
-            self._serialSendPack(0xD1, (0,))
-        else:
-            self._serialSendPack(0x05)
+        self._serialSendPack(0x05)
 
     def onMotorTrayScan(self, event):
-        self._serialSendPack(0xD1, (1,))
+        self._serialSendPack(0xD3, (0,))
+        self._serialSendPack(0xD0, (1, 1))
 
     def onMotorTrayOut(self, event):
-        if self.motor_tray_debug_cb.isChecked():
-            self._serialSendPack(0xD1, (2,))
-        else:
-            self._serialSendPack(0x04)
+        self._serialSendPack(0x04)
 
-    def onMotorTrayDebug(self, event):
-        logger.debug("motor tray debug checkbox event | {}".format(event))
-        if event == 0:
-            self.motor_tray_scan_bt.setEnabled(False)
-        elif event == 2:
-            self._serialSendPack(0xD3, (0,))
-            self.motor_tray_scan_bt.setEnabled(True)
+    def onMotorDebug(self, event):
+        self.motor_debug_dg.show()
+
+    def onMotorDebugScanBGChanged(self, event):
+        value = self.motor_debug_scan_dis.value()
+        if self.motor_debug_scan_fwd.isChecked():
+            value = value * -1
+        elif self.motor_debug_scan_rev.isChecked():
+            value = value
+        else:
+            return
+        self.motor_debug_scan_dis_sl.setValue(value)
+
+    def onMotorDebugTrayBGChanged(self, event):
+        value = self.motor_debug_tray_dis.value()
+        if self.motor_debug_tray_fwd.isChecked():
+            value = value * -1
+        elif self.motor_debug_tray_rev.isChecked():
+            value = value
+        else:
+            return
+        self.motor_debug_tray_dis_sl.setValue(value)
+
+    def onMotorDebugScanSpinBoxChanged(self, event):
+        if self.motor_debug_scan_fwd.isChecked():
+            value = event * -1
+        elif self.motor_debug_scan_rev.isChecked():
+            value = event
+        else:
+            return
+        self.motor_debug_scan_dis_sl.setValue(value)
+
+    def onMotorDebugTraySpinBoxChanged(self, event):
+        if self.motor_debug_tray_fwd.isChecked():
+            value = event * -1
+        elif self.motor_debug_tray_rev.isChecked():
+            value = event
+        else:
+            return
+        self.motor_debug_tray_dis_sl.setValue(value)
+
+    def onMotorDebugScanSliderChanged(self, event):
+        if event < 0:
+            self.motor_debug_scan_fwd.setChecked(True)
+        else:
+            self.motor_debug_scan_rev.setChecked(True)
+        self.motor_debug_scan_dis.setValue(abs(event))
+
+    def onMotorDebugTraySliderChanged(self, event):
+        if event < 0:
+            self.motor_debug_tray_fwd.setChecked(True)
+        else:
+            self.motor_debug_tray_rev.setChecked(True)
+        self.motor_debug_tray_dis.setValue(abs(event))
+
+    def onMotorDebugScan(self, event):
+        if self.motor_debug_scan_fwd.isChecked():
+            ori = 1
+        elif self.motor_debug_scan_rev.isChecked():
+            ori = 0
+        else:
+            logger.error("error motor_debug_scan radio button status")
+            return
+        dis = self.motor_debug_scan_dis.value()
+        data = struct.pack("=BBI", 0, ori, dis)
+        self._serialSendPack(0xD0, data)
+
+    def onMotorDebugTray(self, event):
+        if self.motor_debug_tray_fwd.isChecked():
+            ori = 1
+        elif self.motor_debug_tray_rev.isChecked():
+            ori = 0
+        else:
+            logger.error("error motor_debug_scan radio button status")
+            return
+        dis = self.motor_debug_tray_dis.value()
+        data = struct.pack("=BBI", 1, ori, dis)
+        self._serialSendPack(0xD0, data)
+
+    def updateMotorDebug(self, info):
+        raw_bytes = info.content
+        idx = raw_bytes[6]
+        status = struct.unpack("H", raw_bytes[7:9])[0]
+        pos = struct.unpack("I", raw_bytes[9:13])[0]
+        if idx == 0:
+            self.motor_debug_scan_status_lb.setText(f"0x{status:04X}")
+            self.motor_debug_scan_pos_lb.setText(f"{pos}")
+        elif idx == 1:
+            self.motor_debug_tray_status_lb.setText(f"0x{status:04X}")
+            self.motor_debug_tray_pos_lb.setText(f"{pos}")
 
     def onMotorScan(self, event=None, idx=0):
         logger.debug("click motor scan idx | {}".format(idx))
         self.barcode_lbs[idx].setText("*" * 10)
-        self._serialSendPack(0xD0, (idx,))
+        self._serialSendPack(0xD0, (0, (1 << idx), (1 << idx)))
 
     def createSerial(self):
         self.serial_gb = QGroupBox("串口")
@@ -642,6 +807,8 @@ class MainWindow(QMainWindow):
             self.updateOutFlashData(info)
         elif cmd_type == 0xB7:
             self.updateVersionLabel(info)
+        elif cmd_type == 0xD0:
+            self.updateMotorDebug(info)
         elif cmd_type == 0xDD:
             self.updateOutFalshParam(info)
         elif cmd_type == 0xEE:
@@ -834,7 +1001,7 @@ class MainWindow(QMainWindow):
 
     def onReboot(self, event):
         self._serialSendPack(0xDC)
-        QTimer.singleShot(3000, lambda : self._serialSendPack(0x07))
+        QTimer.singleShot(3000, lambda: self._serialSendPack(0x07))
 
     def onUpgrade(self, event):
         self.upgrade_dg = QDialog(self)
