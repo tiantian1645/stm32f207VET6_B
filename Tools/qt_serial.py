@@ -128,8 +128,6 @@ class SerialSendWorker(QRunnable):
     def waitHenji(self, write_data, timeout=2):
         self.signals.henji.emit(write_data)
         logger.info("invoke set henji | {}".format(bytesPuttyPrint(write_data)))
-        if write_data[5] in (0x0F, 0xDD):
-            time.sleep(3)
         if write_data[5] == 0xFC and write_data[6] == 0x00:
             return (True, write_data, None)
         try:
@@ -170,7 +168,11 @@ class SerialSendWorker(QRunnable):
                 logger.debug("serial write data | {}".format(bytesPuttyPrint(write_data)[:80]))
                 self.serial.write(write_data)
                 self.signals.serial_statistic.emit(("w", write_data))
-                wait_result = self.waitHenji(write_data)
+                if write_data[5] in (0x0F, 0xDD):
+                    timeout = 8
+                else:
+                    timeout = 2
+                wait_result = self.waitHenji(write_data, timeout)
                 self.signals.result.emit(wait_result)
         except Exception:
             exctype, value = sys.exc_info()[:2]
