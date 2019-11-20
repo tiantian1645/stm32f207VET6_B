@@ -927,7 +927,7 @@ eProtocolParseResult protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
     }
 
     if (pInBuff[5] == eProtocoleRespPack_Client_ACK) { /* 收到对方回应帧 */
-        comm_Data_Send_ACK_Notify(pInBuff[6]);         /* 通知串口发送任务 回应包收到 */
+        comm_Data_Send_ACK_Give(pInBuff[6]);           /* 通知串口发送任务 回应包收到 */
         return PROTOCOL_PARSE_OK;                      /* 直接返回 */
     }
 
