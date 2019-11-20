@@ -946,8 +946,8 @@ eProtocolParseResult protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
             comm_Main_SendTask_QueueEmitWithBuild(eProtocoleRespPack_Client_SAMP_DATA, &pInBuff[6], cnt, 20);
             comm_Out_SendTask_QueueEmitWithModify(pInBuff + 6, length, 0);
             break;
-        case eComm_Data_Inbound_CMD_OVER:     /* 采集数据完成帧 */
-            comm_Data_Sample_Complete_Deal(); /* 释放采样完成信号量 */
+        case eComm_Data_Inbound_CMD_OVER:            /* 采集数据完成帧 */
+            motor_Sample_Info(eMotorNotifyValue_TG); /* 通知电机任务采样完成 */
             break;
         default:
             error |= PROTOCOL_PARSE_CMD_ERROR;

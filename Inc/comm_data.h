@@ -99,8 +99,6 @@ void gComm_Data_TIM_StartFlag_Clear(void);
 
 uint8_t comm_Data_Build_Sample_Conf_Pack(uint8_t * pData);
 
-BaseType_t comm_Data_Sample_Complete_Deal(void);
-
 BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData);
 BaseType_t comm_Data_Sample_Send_Conf(void);
 
@@ -108,6 +106,7 @@ BaseType_t comm_Data_Sample_Owari(void);
 
 void comm_Data_PD_Next_Flag_Mark(void);
 
+uint8_t gComm_Data_Sample_PD_WH_Idx_Get(void);
 /* Private defines -----------------------------------------------------------*/
 
 #endif

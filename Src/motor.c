@@ -264,7 +264,7 @@ BaseType_t motor_Sample_Info_ISR(eMotorNotifyValue info)
 {
     BaseType_t xWoken = pdFALSE;
 
-    return xTaskNotifyFromISR(motor_Task_Handle, info, eSetBits, &xWoken);
+    return xTaskNotifyFromISR(motor_Task_Handle, info, eSetValueWithoutOverwrite, &xWoken);
 }
 
 /**
@@ -274,7 +274,10 @@ BaseType_t motor_Sample_Info_ISR(eMotorNotifyValue info)
  */
 BaseType_t motor_Sample_Info(eMotorNotifyValue info)
 {
-    return xTaskNotify(motor_Task_Handle, info, eSetBits);
+    if (xTaskNotify(motor_Task_Handle, info, eSetValueWithoutOverwrite) != pdPASS) {
+        return pdFALSE;
+    }
+    return pdPASS;
 }
 
 /**
@@ -416,14 +419,15 @@ static void motor_Task(void * argument)
                 heat_Motor_Down();                      /* 砸下上加热体电机 */
                 white_Motor_WH();                       /* 运动白板电机 */
                 break;
-            case eMotor_Fun_Sample_Start:                        /* 准备测试 */
-                led_Mode_Set(eLED_Mode_Kirakira_Green);          /* LED 绿灯闪烁 */
-                motor_Tray_Move_By_Index(eTrayIndex_1);          /* 扫码位置 */
-                barcode_result = barcode_Scan_Whole();           /* 执行扫码 */
-                if (barcode_result == eBarcodeState_Interrupt) { /* 中途打断 */
-                    motor_Sample_Owari();                        /* 清理 */
-                    break;                                       /* 提前结束 */
-                }
+            case eMotor_Fun_Sample_Start:                         /* 准备测试 */
+                xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0); /* 清空通知 */
+                led_Mode_Set(eLED_Mode_Kirakira_Green);           /* LED 绿灯闪烁 */
+                motor_Tray_Move_By_Index(eTrayIndex_1);           /* 扫码位置 */
+                 barcode_result = barcode_Scan_Whole();            /* 执行扫码 */
+                 if (barcode_result == eBarcodeState_Interrupt) {  /* 中途打断 */
+                     motor_Sample_Owari();                         /* 清理 */
+                     break;                                        /* 提前结束 */
+                 }
                 motor_Tray_Move_By_Index(eTrayIndex_0);       /* 入仓 */
                 heat_Motor_Down();                            /* 砸下上加热体电机 */
                 if (gComm_Data_Sample_Max_Point_Get() == 0) { /* 无测试项目 */
@@ -439,25 +443,26 @@ static void motor_Task(void * argument)
                 }
                 comm_Data_Sample_Start(); /* 启动定时器同步发包 开始采样 */
                 for (;;) {
-                    xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(8500)); /* 等待任务通知 */
+                    xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(9850)); /* 等待任务通知 */
                     if (xResult != pdTRUE || xNotifyValue == eMotorNotifyValue_BR) {              /* 超时 或 收到中终止命令 直接退出循环 */
                         beep_Start_With_Conf(eBeep_Freq_mi, 500, 500, 3);                         /* 蜂鸣器输出调试 */
                         break;
                     }
-                    if (xNotifyValue == eMotorNotifyValue_PD) {           /* 准备移动到PD位置 */
-                        beep_Conf_Set_Period_Cnt(1);                      /* 蜂鸣器配置 */
-                        beep_Start_With_Loop();                           /* 蜂鸣器输出调试 */
-                        white_Motor_PD();                                 /* 运动白板电机 PD位置 清零位置 */
-                        comm_Data_PD_Next_Flag_Mark();                    /* 标记发送下一包 */
-                    } else if (xNotifyValue == eMotorNotifyValue_WH) {    /* 准备移动到白板位置 */
-                        beep_Conf_Set_Period_Cnt(1);                      /* 蜂鸣器配置 */
-                        beep_Start_With_Loop();                           /* 蜂鸣器输出调试 */
-                        white_Motor_WH();                                 /* 运动白板电机 白物质位置 */
-                    } else if (xNotifyValue == eMotorNotifyValue_LO) {    /* 等待最后一次测量完成 */
-                        beep_Start_With_Conf(eBeep_Freq_re, 100, 100, 5); /* 蜂鸣器输出调试 */
-                        break;
-                    } else {
-                        break;
+                    if (xNotifyValue == eMotorNotifyValue_TG) {               /* 本次采集完成 */
+                        if (gComm_Data_Sample_PD_WH_Idx_Get() != 0xFF) {      /* 不是最后一次采样 */
+                            beep_Conf_Set_Period_Cnt(1);                      /* 蜂鸣器配置 */
+                            beep_Start_With_Loop();                           /* 蜂鸣器输出调试 */
+                        } else {                                              /* 最后一次采样 */
+                            beep_Start_With_Conf(eBeep_Freq_re, 100, 100, 5); /* 蜂鸣器输出调试 */
+                        }
+                        if (gComm_Data_Sample_PD_WH_Idx_Get() == 1) {           /* 当前检测白物质 */
+                            white_Motor_PD();                                   /* 运动白板电机 PD位置 清零位置 */
+                            comm_Data_PD_Next_Flag_Mark();                      /* 标记发送下一包 */
+                        } else if (gComm_Data_Sample_PD_WH_Idx_Get() == 2) {    /* 当前检测PD */
+                            white_Motor_WH();                                   /* 运动白板电机 白物质位置 */
+                        } else if (gComm_Data_Sample_PD_WH_Idx_Get() == 0xFF) { /* 最后一次采样 */
+                        	break;
+                        }
                     }
                 }
                 motor_Sample_Owari(); /* 清理 */

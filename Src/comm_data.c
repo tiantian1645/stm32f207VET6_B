@@ -386,7 +386,7 @@ uint8_t comm_Data_Sample_Force_Stop(void)
  */
 BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData)
 {
-    uint8_t i, sendLength;
+    uint8_t i;
 
     gComm_Data_Sample_Max_Point_Clear(); /* 清除最大点数 */
     for (i = 0; i < ARRAY_LEN(gComm_Data_Sample_Confs); ++i) {
@@ -402,9 +402,7 @@ BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData)
             gComm_Data_Sample_Max_Point_Update(gComm_Data_Sample_Confs[i].points_num);                   /* 更新最大点数 */
         }
     }
-
-    sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 18); /* 构造测试配置包 */
-    return comm_Data_SendTask_QueueEmit(pData, sendLength, 50);
+    return pdPASS;
 }
 
 BaseType_t comm_Data_Sample_Send_Conf(void)
@@ -634,7 +632,7 @@ static void comm_Data_Send_Task(void * argument)
             }
             if (comm_Data_Send_ACK_Wait(sendInfo.buff[3], COMM_DATA_SER_TX_RETRY_INT) == pdPASS) { /* 等待任务通知 */
                 ucResult = 1;                                                                      /* 置位发送成功 */
-                    break;
+                break;
             } else {
                 ucResult = 0;
             }
