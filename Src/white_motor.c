@@ -19,8 +19,8 @@ extern TIM_HandleTypeDef htim1;
 
 /* Private macro -------------------------------------------------------------*/
 #define WHITE_MOTOR_PCS_MAX 32000
-#define WHITE_MOTOR_PCS_MIN 24000
-#define WHITE_MOTOR_PCS_GAP 200
+#define WHITE_MOTOR_PCS_MIN 28000
+#define WHITE_MOTOR_PCS_GAP 50
 #define WHITE_MOTOR_PCS_UNT 5
 #define WHITE_MOTOR_PCS_SUM 476
 
@@ -89,17 +89,6 @@ void white_Motor_Deactive(void)
 }
 
 /**
- * @brief  白板电机位置 检查是否已经处于伸展状态
- * @note   已运动步数超过极限位置80%
- * @param  None
- * @retval 白板电机位置
- */
-uint8_t white_Motor_Position_Is_Out(void)
-{
-    return (gWhite_Motor_Position_Get() != 0xFFFFFFFF) && (gWhite_Motor_Position_Get() > WHITE_MOTOR_PCS_SUM * WHITE_MOTOR_PCS_UNT * 95 / 100);
-}
-
-/**
  * @brief  白板电机位置 检查是否已经处于收缩状态
  * @note   已运动步数为0
  * @param  None
@@ -111,6 +100,18 @@ uint8_t white_Motor_Position_Is_In(void)
         return 1;
     }
     return 0;
+}
+
+/**
+ * @brief  白板电机位置 检查是否已经处于伸展状态
+ * @note   已运动步数超过极限位置98%
+ * @param  None
+ * @retval 白板电机位置
+ */
+uint8_t white_Motor_Position_Is_Out(void)
+{
+    return (gWhite_Motor_Position_Get() != 0xFFFFFFFF) && (gWhite_Motor_Position_Get() > WHITE_MOTOR_PCS_SUM * WHITE_MOTOR_PCS_UNT * 98 / 100) &&
+           (white_Motor_Position_Is_In() == 0);
 }
 
 /**
@@ -156,7 +157,7 @@ static void gWhite_Motor_Position_Rst(void)
 /**
  * @brief 白板电机 停车确认
  * @param  None
- * @retval None
+ * @retval 0 正常停车 1 停车超时 2 异常
  */
 uint8_t white_Motor_Wait_Stop(uint32_t timeout)
 {
@@ -181,9 +182,6 @@ uint8_t white_Motor_Wait_Stop(uint32_t timeout)
                 if (white_Motor_Position_Is_Out()) {
                     white_Motor_Deactive();
                     PWM_AW_Stop();
-                    if (white_Motor_Position_Is_In()) {
-                        return 2;
-                    }
                     return 0;
                 }
                 vTaskDelay(1);
@@ -194,9 +192,9 @@ uint8_t white_Motor_Wait_Stop(uint32_t timeout)
 }
 
 /**
- * @brief  启动DMA PWM输出
+ * @brief  白板电机运动PWM输出
  * @param  None
- * @retval 启动结果
+ * @retval 运动结果 0 正常 1 PWM启动失败 2 运动超时 3 白板位置异常 4 PD位置异常
  */
 uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout)
 {
@@ -207,7 +205,7 @@ uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout)
         if (dir == eMotorDir_REV) {  /* 仍然收到向上运动指令 */
             return 0;
         }
-    } else if (dir == eMotorDir_FWD && white_Motor_Position_Is_Out()) { /* 向下运动指令 但已运动步数超过极限位置80% */
+    } else if (dir == eMotorDir_FWD && white_Motor_Position_Is_Out()) { /* 向下运动指令 但已运动步数超过极限位置98% */
         return 0;
     }
 
@@ -222,7 +220,7 @@ uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout)
     __HAL_TIM_SET_COUNTER(&htim1, 0);                         /* 清零定时器计数寄存器 */
     if (HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1) != HAL_OK) { /* 启动PWM输出 */
         m_drv8824_release();
-        return 2;
+        return 1;
     }
 
     PWM_AW_IRQ_CallBcak();
@@ -233,7 +231,12 @@ uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout)
     }
     m_drv8824_release();
     error_Emit(eError_Peripheral_Motor_White, eError_Motor_Timeout);
-    return 3;
+    if (dir == eMotorDir_FWD && white_Motor_Position_Is_In()) {
+        return 3;
+    } else if (dir == eMotorDir_REV && white_Motor_Position_Is_In() == 0) {
+        return 4;
+    }
+    return 2;
 }
 
 uint8_t white_Motor_Toggle(uint32_t timeout)
