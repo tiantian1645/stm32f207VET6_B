@@ -45,6 +45,9 @@ static uint8_t gComm_Data_RX_serial_buffer[COMM_DATA_SER_RX_SIZE];
 /* 串口接收队列 */
 static xQueueHandle comm_Data_RecvQueue = NULL;
 
+/* 串口接收ACK记录 */
+static sProcol_COMM_ACK_Record gComm_Data_ACK_Records[6];
+
 /* 串口发送队列 */
 static xQueueHandle comm_Data_SendQueue = NULL;
 
@@ -56,8 +59,7 @@ static xTaskHandle comm_Data_Recv_Task_Handle = NULL;
 static xTaskHandle comm_Data_Send_Task_Handle = NULL;
 
 static sComm_Data_SendInfo gComm_Data_SendInfo;
-static uint8_t gComm_Data_SendInfoFlag = 1;   /* 加入发送队列缓存修改重入标志 */
-static uint8_t gComm_Data_RecvConfirm = 0x5A; /* 启动定时发送后 接收到确认采样完成标志 */
+static uint8_t gComm_Data_SendInfoFlag = 1; /* 加入发送队列缓存修改重入标志 */
 static uint8_t gComm_Data_TIM_StartFlag = 0;
 static uint8_t gComm_Data_Sample_Max_Point = 0;
 static sComm_Data_Sample_Conf_Unit gComm_Data_Sample_Confs[6];
@@ -75,41 +77,9 @@ static void comm_Data_Recv_Task(void * argument);
 static void comm_Data_Send_Task(void * argument);
 
 static BaseType_t comm_Data_RecvTask_QueueEmit_ISR(uint8_t * pData, uint16_t length);
+static BaseType_t comm_Data_Send_ACK_Check(uint8_t packIndex);
 
 /* Private user code ---------------------------------------------------------*/
-
-/**
- * @brief  采样完成接收标志 获取
- * @param  None
- * @retval 采样完成接收标志
- */
-uint8_t gComm_Data_RecvConfirm_Get(void)
-{
-    return gComm_Data_RecvConfirm;
-}
-
-/**
- * @brief  采样完成接收标志 设置
- * @param  data    数据
- * @retval None
- */
-void gComm_Data_RecvConfirm_Set(uint8_t data)
-{
-    gComm_Data_RecvConfirm = data;
-}
-
-/**
- * @brief  采样完成接收标志 检查
- * @param  idx 目标帧号
- * @retval 采样完成接收标志
- */
-uint8_t gComm_Data_RecvConfirm_Check(uint8_t idx)
-{
-    if (gComm_Data_RecvConfirm == idx) {
-        return 1;
-    }
-    return 0;
-}
 
 /**
  * @brief  当前采样项目 获取
@@ -351,7 +321,7 @@ void comm_Data_PD_Time_Deal_FromISR(void)
             comm_Data_PD_Next_Flag_Clear();
         }
     } else if (gComm_Data_Sample_ISR_Cnt % 10 == 0 && gComm_Data_TIM_StartFlag_Check() && /* 其余时刻 每10次 200mS 处理是否需要重发 */
-               gComm_Data_RecvConfirm_Check(last_idx) == 0) {                             /* 收到的回应帧号不匹配 */
+               comm_Data_Send_ACK_Check(last_idx) != pdPASS) {                            /* 收到的回应帧号不匹配 */
 
         if (HAL_UART_Transmit_DMA(&COMM_DATA_UART_HANDLE, gCoMM_Data_Sample_ISR_Buffer, length) != HAL_OK) { /* 执行重发 */
             FL_Error_Handler(__FILE__, __LINE__);
@@ -543,29 +513,57 @@ BaseType_t comm_Data_SendTask_QueueEmit(uint8_t * pData, uint8_t length, uint32_
 }
 
 /**
- * @brief  串口接收回应包收到处理
+ * @brief  串口接收回应包 帧号接收
  * @param  packIndex   回应包中帧号
- * @retval 通知发送任务
+ * @retval 加入发送队列结果
  */
-BaseType_t comm_Data_Send_ACK_Notify(uint8_t packIndex)
+BaseType_t comm_Data_Send_ACK_Give(uint8_t packIndex)
 {
-    gComm_Data_RecvConfirm_Set(packIndex);                                             /* 用于定时器中断内重发判断 */
-    return xTaskNotify(comm_Data_Send_Task_Handle, packIndex, eSetValueWithOverwrite); /* 允许覆盖 */
+    static uint8_t idx = 0;
+    gComm_Data_ACK_Records[idx].tick = xTaskGetTickCount();
+    gComm_Data_ACK_Records[idx].ack_idx = packIndex;
+    ++idx;
+    if (idx >= ARRAY_LEN(gComm_Data_ACK_Records)) {
+        idx = 0;
+    }
+    return pdPASS;
 }
 
 /**
- * @brief  采样完成信号量 释放 任务版本
- * @param  None
- * @retval 释放结果
+ * @brief  串口接收回应包收到处理
+ * @param  packIndex   回应包中帧号
+ * @retval 加入发送队列结果
  */
-BaseType_t comm_Data_Sample_Complete_Deal(void)
+BaseType_t comm_Data_Send_ACK_Wait(uint8_t packIndex, uint32_t timeout)
 {
-    if (gComm_Data_Sample_PD_WH_Idx_Get() == 1) {           /* 当前检测白物质 */
-        return motor_Sample_Info(eMotorNotifyValue_PD);     /* 白板电机准备移动到PD位置 */
-    } else if (gComm_Data_Sample_PD_WH_Idx_Get() == 2) {    /* 当前检测PD */
-        return motor_Sample_Info(eMotorNotifyValue_WH);     /* 白板电机准备移动到白物质位置 */
-    } else if (gComm_Data_Sample_PD_WH_Idx_Get() == 0xFF) { /* 最后一次采样 */
-        return motor_Sample_Info(eMotorNotifyValue_LO);     /* 白板电机准备复位 */
+    uint8_t i;
+    TickType_t tick;
+
+    tick = xTaskGetTickCount();
+    do {
+        for (i = 0; i < ARRAY_LEN(gComm_Data_ACK_Records); ++i) {
+            if (gComm_Data_ACK_Records[i].ack_idx == packIndex) {
+                return pdPASS;
+            }
+        }
+        vTaskDelay(5);
+    } while (xTaskGetTickCount() - tick < timeout);
+    return pdFALSE;
+}
+
+/**
+ * @brief  串口接收回应包收到处理
+ * @param  packIndex   回应包中帧号
+ * @retval 加入发送队列结果
+ */
+static BaseType_t comm_Data_Send_ACK_Check(uint8_t packIndex)
+{
+    uint8_t i;
+
+    for (i = 0; i < ARRAY_LEN(gComm_Data_ACK_Records); ++i) {
+        if (gComm_Data_ACK_Records[i].ack_idx == packIndex) {
+            return pdPASS;
+        }
     }
     return pdFALSE;
 }
@@ -603,7 +601,6 @@ static void comm_Data_Recv_Task(void * argument)
         pResult = protocol_Parse_Data(recvInfo.buff, recvInfo.length); /* 数据包协议解析 */
         if (pResult == PROTOCOL_PARSE_OK) {                            /* 数据包解析正常 */
         }
-        vTaskDelay(pdMS_TO_TICKS(5));
     }
 }
 
@@ -616,7 +613,6 @@ static void comm_Data_Send_Task(void * argument)
 {
     sComm_Data_SendInfo sendInfo;
     uint8_t i, ucResult;
-    uint32_t ulNotifyValue;
 
     for (;;) {
         if (uxSemaphoreGetCount(comm_Data_Send_Sem) == 0) { /* DMA发送未完成 此时从接收队列提取数据覆盖发送指针会干扰DMA发送 保护 sendInfo */
@@ -636,11 +632,11 @@ static void comm_Data_Send_Task(void * argument)
                 ucResult = 2;                                        /* 无需等待回应包默认成功 */
                 break;
             }
-            if (xTaskNotifyWait(0, 0xFFFFFFFF, &ulNotifyValue, COMM_DATA_SER_TX_RETRY_INT) == pdPASS) { /* 等待任务通知 */
-                if (ulNotifyValue == sendInfo.buff[3]) {
-                    ucResult = 1; /* 置位发送成功 */
+            if (comm_Data_Send_ACK_Wait(sendInfo.buff[3], COMM_DATA_SER_TX_RETRY_INT) == pdPASS) { /* 等待任务通知 */
+                ucResult = 1;                                                                      /* 置位发送成功 */
                     break;
-                }
+            } else {
+                ucResult = 0;
             }
         }
         if (ucResult == 0) { /* 重发失败处理 */
