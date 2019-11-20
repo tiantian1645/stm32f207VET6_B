@@ -1086,20 +1086,12 @@ static void MX_GPIO_Init(void)
     /*Configure GPIO pin Output Level */
     HAL_GPIO_WritePin(STEP_DIR1_GPIO_Port, STEP_DIR1_Pin, GPIO_PIN_RESET);
 
-    /*Configure GPIO pins : OPTSW_OUT2_Pin OPTSW_OUT4_Pin OPTSW_OUT5_Pin PE7
-                             PE8 PE11 STEP_NFLG2_Pin OPTSW_OUT0_Pin
-                             OPTSW_OUT1_Pin */
-    GPIO_InitStruct.Pin =
-        OPTSW_OUT2_Pin | OPTSW_OUT4_Pin | OPTSW_OUT5_Pin | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_11 | STEP_NFLG2_Pin | OPTSW_OUT0_Pin | OPTSW_OUT1_Pin;
-    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
-
-    /*Configure GPIO pin : OPTSW_OUT3_Pin */
-    GPIO_InitStruct.Pin = OPTSW_OUT3_Pin;
+    /*Configure GPIO pins : OPTSW_OUT2_Pin OPTSW_OUT3_Pin OPTSW_OUT4_Pin OPTSW_OUT5_Pin
+                             OPTSW_OUT0_Pin OPTSW_OUT1_Pin */
+    GPIO_InitStruct.Pin = OPTSW_OUT2_Pin | OPTSW_OUT3_Pin | OPTSW_OUT4_Pin | OPTSW_OUT5_Pin | OPTSW_OUT0_Pin | OPTSW_OUT1_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
     GPIO_InitStruct.Pull = GPIO_PULLUP;
-    HAL_GPIO_Init(OPTSW_OUT3_GPIO_Port, &GPIO_InitStruct);
+    HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
     /*Configure GPIO pins : STEP_NCS1_Pin BC_AIM_WK_N_Pin FAN_EN_Pin LED_RUN_Pin */
     GPIO_InitStruct.Pin = STEP_NCS1_Pin | BC_AIM_WK_N_Pin | FAN_EN_Pin | LED_RUN_Pin;
@@ -1121,6 +1113,12 @@ static void MX_GPIO_Init(void)
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+    /*Configure GPIO pins : PE7 PE8 PE11 STEP_NFLG2_Pin */
+    GPIO_InitStruct.Pin = GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_11 | STEP_NFLG2_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
     /*Configure GPIO pins : STEP_NRST_Pin STEP_NCS2_Pin STEP_DIR2_Pin BC_TRIG_N_Pin */
     GPIO_InitStruct.Pin = STEP_NRST_Pin | STEP_NCS2_Pin | STEP_DIR2_Pin | BC_TRIG_N_Pin;
