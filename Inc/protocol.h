@@ -63,6 +63,10 @@ typedef struct {
 /* Exported defines ----------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/
+uint8_t protocol_Is_Debug(void);
+void protocol_Debug_Mark(void);
+void protocol_Debug_Clear(void);
+
 uint8_t gProtocol_ACK_IndexGet(eProtocol_COMM_Index index);
 void gProtocol_ACK_IndexAutoIncrease(eProtocol_COMM_Index index);
 

@@ -17,6 +17,7 @@
 #include "temperature.h"
 #include "spi_flash.h"
 #include "innate_flash.h"
+#include "heater.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim9;
@@ -57,9 +58,26 @@ static eComm_Data_Sample gComm_Data_Sample_Buffer[6];
 
 static uint8_t gProtocol_Temp_Upload_Comm_Ctl = 0;
 static uint8_t gProtocol_Temp_Upload_Comm_Suspend = 0;
+
+static uint8_t gProtocol_Debug_Flag = 1;
 /* Private function prototypes -----------------------------------------------*/
 
 /* Private user code ---------------------------------------------------------*/
+
+uint8_t protocol_Is_Debug(void)
+{
+    return (gProtocol_Debug_Flag == 1);
+}
+
+void protocol_Debug_Mark(void)
+{
+    gProtocol_Debug_Flag = 1;
+}
+
+void protocol_Debug_Clear(void)
+{
+    gProtocol_Debug_Flag = 0;
+}
 
 /**
  * @brief  向对方发送回应确认帧号 读取
@@ -457,8 +475,10 @@ void protocol_Temp_Upload_Out_Deal(float temp_btm, float temp_top)
             temperature = temp_Get_Temp_Data(i);
             memcpy(buffer + 4 * i, &temperature, 4);
         }
-        length = buildPackOrigin(eComm_Out, 0xEE, buffer, 36); /* 构造数据包  */
-        comm_Out_SendTask_QueueEmitCover(buffer, length);      /* 提交到发送队列 */
+        if (protocol_Is_Debug()) {
+            length = buildPackOrigin(eComm_Out, 0xEE, buffer, 36); /* 构造数据包  */
+            comm_Out_SendTask_QueueEmitCover(buffer, length);      /* 提交到发送队列 */
+        }
     }
 }
 
@@ -487,9 +507,16 @@ void protocol_Temp_Upload_Deal(void)
         xTick_Main = now;
         protocol_Temp_Upload_Main_Deal(temp_btm, temp_top);
     }
-    if (now - xTick_Out > 1 * pdMS_TO_TICKS(1000)) {
-        xTick_Out = now;
-        protocol_Temp_Upload_Out_Deal(temp_btm, temp_top);
+    if (protocol_Is_Debug()) {
+        if (now - xTick_Out > 1 * pdMS_TO_TICKS(1000)) {
+            xTick_Out = now;
+            protocol_Temp_Upload_Out_Deal(temp_btm, temp_top);
+        }
+    } else {
+        if (now - xTick_Out > 5 * pdMS_TO_TICKS(1000)) {
+            xTick_Out = now;
+            protocol_Temp_Upload_Out_Deal(temp_btm, temp_top);
+        }
     }
 }
 
@@ -692,6 +719,29 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             if (result > 0) {
                 if (comm_Out_SendTask_QueueEmitWithBuildCover(0xD2, pInBuff, result) == 0) {
                     error |= PROTOCOL_PARSE_EMIT_ERROR;
+                }
+            }
+            break;
+        case 0xD3:
+            if (length == 8) {
+                if (pInBuff[6] & (1 << 0)) {
+                    beater_BTM_Output_Start();
+                } else {
+                    beater_BTM_Output_Stop();
+                }
+                if (pInBuff[6] & (1 << 1)) {
+                    beater_TOP_Output_Start();
+                } else {
+                    beater_TOP_Output_Stop();
+                }
+            }
+            break;
+        case 0xD4:
+            if (length == 8) {
+                if (pInBuff[7] == 0) {
+                    protocol_Debug_Clear();
+                } else {
+                    protocol_Debug_Mark();
                 }
             }
             break;

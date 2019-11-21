@@ -501,16 +501,20 @@ static void motor_Task(void * argument)
                 heat_Motor_Down();                      /* 砸下上加热体电机 */
                 white_Motor_WH();                       /* 运动白板电机 */
                 break;
-            case eMotor_Fun_Sample_Start:                         /* 准备测试 */
-                xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0); /* 清空通知 */
-                led_Mode_Set(eLED_Mode_Kirakira_Green);           /* LED 绿灯闪烁 */
-                motor_Tray_Move_By_Index(eTrayIndex_1);           /* 扫码位置 */
-                barcode_result = barcode_Scan_Whole();            /* 执行扫码 */
-                if (barcode_result == eBarcodeState_Interrupt) {  /* 中途打断 */
-                    motor_Sample_Owari();                         /* 清理 */
-                    break;                                        /* 提前结束 */
+            case eMotor_Fun_Sample_Start:                            /* 准备测试 */
+                xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0);    /* 清空通知 */
+                led_Mode_Set(eLED_Mode_Kirakira_Green);              /* LED 绿灯闪烁 */
+                motor_Tray_Move_By_Index(eTrayIndex_1);              /* 扫码位置 */
+                if (protocol_Is_Debug() == 0) {                      /* 非调试模式 */
+                    barcode_result = barcode_Scan_Whole();           /* 执行扫码 */
+                    if (barcode_result == eBarcodeState_Interrupt) { /* 中途打断 */
+                        motor_Sample_Owari();                        /* 清理 */
+                        break;                                       /* 提前结束 */
+                    }                                                /* 非调试模式 */
+                    motor_Tray_Move_By_Index(eTrayIndex_0);          /* 入仓 */
+                } else {                                             /* 调试模式 */
+                    motor_Tray_Move_By_Index(eTrayIndex_2);          /*  出仓 */
                 }
-                motor_Tray_Move_By_Index(eTrayIndex_0);       /* 入仓 */
                 heat_Motor_Down();                            /* 砸下上加热体电机 */
                 if (gComm_Data_Sample_Max_Point_Get() == 0) { /* 无测试项目 */
                     protocol_Temp_Upload_Resume();            /* 恢复温度上送 */
@@ -564,7 +568,7 @@ static void motor_Task(void * argument)
             case eMotor_Fun_PRE_TRAY: /* 压力测试 托盘 */
                 do {
                     buffer[0] = 0;
-                    buffer[2] = 0;
+                    buffer[5] = 0;
                     switch (cnt % 3) {
                         case 0:
                             motor_Tray_Move_By_Index(eTrayIndex_0);
@@ -586,25 +590,25 @@ static void motor_Task(void * argument)
                     buffer[0] = 1;
                     switch (cnt % 7) {
                         case 0:
-                            buffer[2] = barcode_Scan_By_Index(eBarcodeIndex_0);
+                            buffer[5] = barcode_Scan_By_Index(eBarcodeIndex_0);
                             break;
                         case 1:
-                            buffer[2] = barcode_Scan_By_Index(eBarcodeIndex_1);
+                            buffer[5] = barcode_Scan_By_Index(eBarcodeIndex_1);
                             break;
                         case 2:
-                            buffer[2] = barcode_Scan_By_Index(eBarcodeIndex_2);
+                            buffer[5] = barcode_Scan_By_Index(eBarcodeIndex_2);
                             break;
                         case 3:
-                            buffer[2] = barcode_Scan_By_Index(eBarcodeIndex_3);
+                            buffer[5] = barcode_Scan_By_Index(eBarcodeIndex_3);
                             break;
                         case 4:
-                            buffer[2] = barcode_Scan_By_Index(eBarcodeIndex_4);
+                            buffer[5] = barcode_Scan_By_Index(eBarcodeIndex_4);
                             break;
                         case 5:
-                            buffer[2] = barcode_Scan_By_Index(eBarcodeIndex_5);
+                            buffer[5] = barcode_Scan_By_Index(eBarcodeIndex_5);
                             break;
                         case 6:
-                            buffer[2] = barcode_Scan_By_Index(eBarcodeIndex_6);
+                            buffer[5] = barcode_Scan_By_Index(eBarcodeIndex_6);
                             break;
                     }
                     ++cnt;
@@ -616,9 +620,9 @@ static void motor_Task(void * argument)
                 do {
                     buffer[0] = 2;
                     if (cnt % 2 == 0) {
-                        buffer[2] = heat_Motor_Down(); /* 砸下上加热体电机 */
+                        buffer[5] = heat_Motor_Down(); /* 砸下上加热体电机 */
                     } else {
-                        buffer[2] = heat_Motor_Up(); /* 抬起加热体电机 */
+                        buffer[5] = heat_Motor_Up(); /* 抬起加热体电机 */
                     }
                     ++cnt;
                     memcpy(buffer + 1, (uint8_t *)(&cnt), 4);
@@ -629,7 +633,7 @@ static void motor_Task(void * argument)
                 do {
                     ++cnt;
                     buffer[0] = 3;
-                    buffer[2] = white_Motor_Toggle(1000); /* 切换白板电机位置 */
+                    buffer[5] = white_Motor_Toggle(1000); /* 切换白板电机位置 */
                     memcpy(buffer + 1, (uint8_t *)(&cnt), 4);
                     comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, buffer, 6);
                 } while (gMotorPRessureStopBits_Get(mf.fun_type) == 0);
@@ -637,7 +641,7 @@ static void motor_Task(void * argument)
             case eMotor_Fun_PRE_ALL: /* 压力测试 */
                 do {
                     buffer[0] = 4;
-                    buffer[2] = 0;
+                    buffer[5] = 0;
                     switch (cnt % 3) {
                         case 0:
                             motor_Tray_Move_By_Index(eTrayIndex_0);
