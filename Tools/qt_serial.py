@@ -3,12 +3,13 @@ import sys
 import time
 import loguru
 import stackprinter
-
+from collections import namedtuple
 from bytes_helper import bytesPuttyPrint
 from dc201_pack import DC201_PACK
 
 from PySide2.QtCore import QObject, QRunnable, Signal as pyqtSignal, Slot as pyqtSlot
 
+HenjiConf = namedtuple("HenjiConf", "shitsumon henji")
 logger = loguru.logger.bind(name="serial_worker")
 
 
@@ -19,6 +20,14 @@ class SeialWorkerSignals(QObject):
     error = pyqtSignal(tuple)
     result = pyqtSignal(object)
     serial_statistic = pyqtSignal(object)
+
+
+HENJI_TABLE = (
+    HenjiConf(shitsumon=0xD9, henji=(0xD4)),
+    HenjiConf(shitsumon=0x0F, henji=(0xFA)),
+    HenjiConf(shitsumon=0xFC, henji=(0xFB)),
+    HenjiConf(shitsumon=0xDE, henji=(0xDE)),
+)
 
 
 class SerialRecvWorker(QRunnable):
@@ -37,20 +46,21 @@ class SerialRecvWorker(QRunnable):
     def stoptask(self):
         self.stop = True
 
+    def _str_Henji(self):
+        return ", ".join(f"0x{i:02X}" for i in self.need_henji)
+
+    def _find_Henji(self, write_data):
+        for ht in HENJI_TABLE:
+            if ht.shitsumon == write_data[5]:
+                self.need_henji = ht.henji
+                return
+        self.need_henji = (0xAA,)
+
     @pyqtSlot()
     def setNeedHenji(self, write_data):
-        if write_data[5] == 0xD9:
-            self.need_henji = (0xD4,)
-        elif write_data[5] == 0x0F:
-            self.need_henji = (0xFA,)
-        elif write_data[5] == 0xFC:
-            self.need_henji = (0xFB,)
-        elif write_data[5] == 0xDE:
-            self.need_henji = (0xDE,)
-        else:
-            self.need_henji = (0xAA,)
+        self._find_Henji(write_data)
         self.temp_wrote = write_data
-        logger.info(f"response setNeedHenji | write cmd 0x{write_data[5]:02X} | {self.need_henji}")
+        logger.info(f"response setNeedHenji | write cmd 0x{write_data[5]:02X} | {self._str_Henji()}")
 
     @pyqtSlot()
     def run(self):
@@ -81,13 +91,13 @@ class SerialRecvWorker(QRunnable):
                             write_data = self.dd.buildPack(0x13, 0xFF - ack, 0xAA, (ack,))
                             self.serial.write(write_data)
                             self.signals.serial_statistic.emit(("w", write_data))
-                            self.logger.warning(f"reply ack pack | {bytesPuttyPrint(write_data)} --> {info.text}")
+                            self.logger.info(f"reply ack pack | {bytesPuttyPrint(write_data)} --> {info.text}")
                             self.signals.result.emit(info)
                         if fun_code in self.need_henji:
-                            logger.info(f"put henji | self.need_henji {self.need_henji} | fun_code 0x{fun_code:02X} | write cmd 0x{self.temp_wrote[5]:02X}")
+                            logger.info(f"put henji | self.need_henji {self._str_Henji()} | fun_code 0x{fun_code:02X} | write cmd 0x{self.temp_wrote[5]:02X}")
                             self.henji_queue.put(info)
-                        # else:
-                        #     logger.error(f"no put to henji | self.need_henji {self.need_henji} | info {info.text}")
+                        elif fun_code not in (0xAA, 0xA0, 0xEE):
+                            logger.error(f"no put to henji | self.need_henji {self._str_Henji()} | info {info.text}")
                 if info is not None:
                     if info.is_head and info.is_crc and info.is_tail:
                         recv_buffer = b""
@@ -128,10 +138,17 @@ class SerialSendWorker(QRunnable):
             return data
 
     def waitHenji(self, write_data, timeout=2):
+        while True:
+            try:
+                self.henji_queue.get_nowait()
+            except (queue.Empty, Exception):
+                break
         self.signals.henji.emit(write_data)
         logger.info(f"invoke set henji | write_data cmd 0x{write_data[5]:02X}")
+
         if write_data[5] == 0xFC and write_data[6] == 0x00:
             return (True, write_data, None)
+
         try:
             info = self.henji_queue.get(timeout=timeout)
         except queue.Empty:
@@ -139,6 +156,7 @@ class SerialSendWorker(QRunnable):
         else:
             if info is None:
                 return (False, write_data, None)
+
         if write_data[5] == 0xD9 and info.content[5] == 0xD4:
             return (True, write_data, info)
         elif write_data[5] == 0xFC and info.content[5] == 0xFB:
