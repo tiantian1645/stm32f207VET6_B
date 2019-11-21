@@ -371,7 +371,7 @@ class MainWindow(QMainWindow):
             self.motor_tray_position.setText("错误报文")
 
     def updateVersionLabel(self, info):
-        self.version_lb.setText(f"版本: {bytes2Float(info.content[6:10]):.2f}")
+        self.version_lb.setText(f"版本: {bytes2Float(info.content[6:10]):.3f}")
 
     def updateVersionLabelBootloader(self, info):
         raw_bytes = info.content
