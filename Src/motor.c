@@ -31,23 +31,6 @@ extern TIM_HandleTypeDef htim7;
 /* Private includes ----------------------------------------------------------*/
 
 /* Private typedef -----------------------------------------------------------*/
-
-/* Private define ------------------------------------------------------------*/
-
-/* Private macro -------------------------------------------------------------*/
-
-/* Private variables ---------------------------------------------------------*/
-xQueueHandle motor_Fun_Queue_Handle = NULL; /* 电机功能队列 */
-xTaskHandle motor_Task_Handle = NULL;       /* 电机任务句柄 */
-
-/* Private constants ---------------------------------------------------------*/
-
-/* Private function prototypes -----------------------------------------------*/
-static void motor_Task(void * argument);
-static void motor_Tray_Move_By_Index(eTrayIndex index);
-
-/* Private user code ---------------------------------------------------------*/
-
 typedef struct {
     uint8_t cnt_on;
     uint8_t threshold_on;
@@ -57,15 +40,31 @@ typedef struct {
     eMotor_OPT_Status (*opt_status_get)(void);
 } sMotor_OPT_Record;
 
-static sMotor_OPT_Record gMotor_OPT_Records[4];
+/* Private define ------------------------------------------------------------*/
+
+/* Private macro -------------------------------------------------------------*/
+
+/* Private variables ---------------------------------------------------------*/
+xQueueHandle motor_Fun_Queue_Handle = NULL; /* 电机功能队列 */
+xTaskHandle motor_Task_Handle = NULL;       /* 电机任务句柄 */
+
+static sMotor_OPT_Record gMotor_OPT_Records[4]; /* 光耦记录 */
+static uint8_t gMotorPRessureStopBits = 0xFF;   /* 压力测试停止标志位 */
+
+/* Private function prototypes -----------------------------------------------*/
+static void motor_Task(void * argument);
+static void motor_Tray_Move_By_Index(eTrayIndex index);
+
 static eMotor_OPT_Status motor_OPT_Status_Get_Scan(void);
 static eMotor_OPT_Status motor_OPT_Status_Get_Tray(void);
 static eMotor_OPT_Status motor_OPT_Status_Get_Heater(void);
 static eMotor_OPT_Status motor_OPT_Status_Get_White(void);
 
+/* Private constants ---------------------------------------------------------*/
 const eMotor_OPT_Status (*gOPT_Status_Get_Funs[])(void) = {motor_OPT_Status_Get_Scan, motor_OPT_Status_Get_Tray, motor_OPT_Status_Get_Heater,
                                                            motor_OPT_Status_Get_White};
 
+/* Private user code ---------------------------------------------------------*/
 /**
  * @brief  软定时器光耦状态硬件读取 扫码电机
  * @param  None
@@ -116,6 +115,89 @@ static eMotor_OPT_Status motor_OPT_Status_Get_White(void)
         return eMotor_OPT_Status_OFF;
     }
     return eMotor_OPT_Status_ON;
+}
+
+/**
+ * @brief  压力测试停止标志位
+ * @param  fun 压力测试项目
+ * @retval 1 停止 0 继续
+ */
+uint8_t gMotorPRessureStopBits_Get(eMotor_Fun fun)
+{
+    switch (fun) {
+        case eMotor_Fun_PRE_TRAY:
+            return gMotorPRessureStopBits & (1 << 0);
+        case eMotor_Fun_PRE_BARCODE:
+            return gMotorPRessureStopBits & (1 << 1);
+        case eMotor_Fun_PRE_HEATER:
+            return gMotorPRessureStopBits & (1 << 2);
+        case eMotor_Fun_PRE_WHITE:
+            return gMotorPRessureStopBits & (1 << 3);
+        case eMotor_Fun_PRE_ALL:
+            return gMotorPRessureStopBits & (1 << 4);
+        default:
+            return 0;
+    }
+    return 0;
+}
+
+/**
+ * @brief  压力测试停止标志位
+ * @param  fun 压力测试项目
+ * @param  b 1 停止 0 继续
+ * @retval None
+ */
+void gMotorPRessureStopBits_Set(eMotor_Fun fun, uint8_t b)
+{
+    switch (fun) {
+        case eMotor_Fun_PRE_TRAY:
+            if (b > 0) {
+                gMotorPRessureStopBits |= (1 << 0);
+            } else {
+                gMotorPRessureStopBits &= (0xFF - (1 << 0));
+            }
+            break;
+        case eMotor_Fun_PRE_BARCODE:
+            if (b > 0) {
+                gMotorPRessureStopBits |= (1 << 1);
+            } else {
+                gMotorPRessureStopBits &= (0xFF - (1 << 1));
+            }
+            break;
+        case eMotor_Fun_PRE_HEATER:
+            if (b > 0) {
+                gMotorPRessureStopBits |= (1 << 2);
+            } else {
+                gMotorPRessureStopBits &= (0xFF - (1 << 2));
+            }
+            break;
+        case eMotor_Fun_PRE_WHITE:
+            if (b > 0) {
+                gMotorPRessureStopBits |= (1 << 3);
+            } else {
+                gMotorPRessureStopBits &= (0xFF - (1 << 3));
+            }
+            break;
+        case eMotor_Fun_PRE_ALL:
+            if (b > 0) {
+                gMotorPRessureStopBits |= (1 << 4);
+            } else {
+                gMotorPRessureStopBits &= (0xFF - (1 << 4));
+            }
+            break;
+        default:
+            break;
+    }
+}
+
+/**
+ * @brief  压力测试停止标志位 复归
+ * @param  None
+ * @retval None
+ */
+void gMotorPRessureStopBits_Clear(void)
+{
+    gMotorPRessureStopBits = 0xFF;
 }
 
 /**
@@ -375,10 +457,10 @@ void motor_Sample_Owari(void)
 static void motor_Task(void * argument)
 {
     BaseType_t xResult = pdFALSE;
-    uint32_t xNotifyValue, xTick, xTick2;
+    uint32_t xNotifyValue, cnt;
     sMotor_Fun mf;
-    uint32_t cnt;
-    uint8_t buffer[9];
+    uint8_t buffer[15];
+
     eBarcodeState barcode_result;
 
     motor_OPT_Status_Init_Wait_Complete(); /* 等待光耦结果完成 */
@@ -423,11 +505,11 @@ static void motor_Task(void * argument)
                 xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0); /* 清空通知 */
                 led_Mode_Set(eLED_Mode_Kirakira_Green);           /* LED 绿灯闪烁 */
                 motor_Tray_Move_By_Index(eTrayIndex_1);           /* 扫码位置 */
-                 barcode_result = barcode_Scan_Whole();            /* 执行扫码 */
-                 if (barcode_result == eBarcodeState_Interrupt) {  /* 中途打断 */
-                     motor_Sample_Owari();                         /* 清理 */
-                     break;                                        /* 提前结束 */
-                 }
+                barcode_result = barcode_Scan_Whole();            /* 执行扫码 */
+                if (barcode_result == eBarcodeState_Interrupt) {  /* 中途打断 */
+                    motor_Sample_Owari();                         /* 清理 */
+                    break;                                        /* 提前结束 */
+                }
                 motor_Tray_Move_By_Index(eTrayIndex_0);       /* 入仓 */
                 heat_Motor_Down();                            /* 砸下上加热体电机 */
                 if (gComm_Data_Sample_Max_Point_Get() == 0) { /* 无测试项目 */
@@ -461,7 +543,7 @@ static void motor_Task(void * argument)
                         } else if (gComm_Data_Sample_PD_WH_Idx_Get() == 2) {    /* 当前检测PD */
                             white_Motor_WH();                                   /* 运动白板电机 白物质位置 */
                         } else if (gComm_Data_Sample_PD_WH_Idx_Get() == 0xFF) { /* 最后一次采样 */
-                        	break;
+                            break;
                         }
                     }
                 }
@@ -481,6 +563,8 @@ static void motor_Task(void * argument)
                 break;
             case eMotor_Fun_PRE_TRAY: /* 压力测试 托盘 */
                 do {
+                    buffer[0] = 0;
+                    buffer[2] = 0;
                     switch (cnt % 3) {
                         case 0:
                             motor_Tray_Move_By_Index(eTrayIndex_0);
@@ -493,68 +577,67 @@ static void motor_Task(void * argument)
                             break;
                     }
                     ++cnt;
-                } while (1);
+                    memcpy(buffer + 1, (uint8_t *)(&cnt), 4);
+                    comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, buffer, 6);
+                } while (gMotorPRessureStopBits_Get(mf.fun_type) == 0);
                 break;
             case eMotor_Fun_PRE_BARCODE: /* 压力测试 扫码 */
                 do {
+                    buffer[0] = 1;
                     switch (cnt % 7) {
                         case 0:
-                            barcode_Scan_By_Index(eBarcodeIndex_0);
+                            buffer[2] = barcode_Scan_By_Index(eBarcodeIndex_0);
                             break;
                         case 1:
-                            barcode_Scan_By_Index(eBarcodeIndex_1);
+                            buffer[2] = barcode_Scan_By_Index(eBarcodeIndex_1);
                             break;
                         case 2:
-                            barcode_Scan_By_Index(eBarcodeIndex_2);
+                            buffer[2] = barcode_Scan_By_Index(eBarcodeIndex_2);
                             break;
                         case 3:
-                            barcode_Scan_By_Index(eBarcodeIndex_3);
+                            buffer[2] = barcode_Scan_By_Index(eBarcodeIndex_3);
                             break;
                         case 4:
-                            barcode_Scan_By_Index(eBarcodeIndex_4);
+                            buffer[2] = barcode_Scan_By_Index(eBarcodeIndex_4);
                             break;
                         case 5:
-                            barcode_Scan_By_Index(eBarcodeIndex_5);
+                            buffer[2] = barcode_Scan_By_Index(eBarcodeIndex_5);
                             break;
                         case 6:
-                            barcode_Scan_By_Index(eBarcodeIndex_6);
+                            buffer[2] = barcode_Scan_By_Index(eBarcodeIndex_6);
                             break;
                     }
                     ++cnt;
-                } while (1);
+                    memcpy(buffer + 1, (uint8_t *)(&cnt), 4);
+                    comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, buffer, 6);
+                } while (gMotorPRessureStopBits_Get(mf.fun_type) == 0);
                 break;
             case eMotor_Fun_PRE_HEATER: /* 压力测试 上加热体 */
                 do {
+                    buffer[0] = 2;
                     if (cnt % 2 == 0) {
-                        heat_Motor_Down(); /* 砸下上加热体电机 */
+                        buffer[2] = heat_Motor_Down(); /* 砸下上加热体电机 */
                     } else {
-                        heat_Motor_Up(); /* 抬起加热体电机 */
+                        buffer[2] = heat_Motor_Up(); /* 抬起加热体电机 */
                     }
                     ++cnt;
-                } while (1);
+                    memcpy(buffer + 1, (uint8_t *)(&cnt), 4);
+                    comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, buffer, 6);
+                } while (gMotorPRessureStopBits_Get(mf.fun_type) == 0);
                 break;
             case eMotor_Fun_PRE_WHITE: /* 压力测试 白板 */
-                xTick = xTaskGetTickCount();
                 do {
-                    white_Motor_Toggle(3000); /* 切换白板电机位置 */
                     ++cnt;
-                    xTick2 = xTaskGetTickCount();
-                    buffer[5] = (xTick2 >> 24) & 0xFF;
-                    buffer[6] = (xTick2 >> 16) & 0xFF;
-                    buffer[7] = (xTick2 >> 8) & 0xFF;
-                    buffer[8] = (xTick2 >> 0) & 0xFF;
-                    xTick = xTick2 - xTick;
-                    buffer[0] = cnt;
-                    buffer[1] = (xTick >> 24) & 0xFF;
-                    buffer[2] = (xTick >> 16) & 0xFF;
-                    buffer[3] = (xTick >> 8) & 0xFF;
-                    buffer[4] = (xTick >> 0) & 0xFF;
-                    comm_Out_SendTask_QueueEmit(buffer, ARRAY_LEN(buffer), 0);
-                    xTick = xTaskGetTickCount();
-                } while (1);
+                    buffer[0] = 3;
+                    buffer[2] = white_Motor_Toggle(1000); /* 切换白板电机位置 */
+                    memcpy(buffer + 1, (uint8_t *)(&cnt), 4);
+                    comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, buffer, 6);
+                } while (gMotorPRessureStopBits_Get(mf.fun_type) == 0);
                 break;
             case eMotor_Fun_PRE_ALL: /* 压力测试 */
                 do {
+                    buffer[0] = 4;
+                    buffer[2] = 0;
                     switch (cnt % 3) {
                         case 0:
                             motor_Tray_Move_By_Index(eTrayIndex_0);
@@ -572,9 +655,10 @@ static void motor_Task(void * argument)
                     }
                     white_Motor_Toggle(3000); /* 切换白板电机位置 */
                     ++cnt;
-                } while (1);
+                    memcpy(buffer + 1, (uint8_t *)(&cnt), 4);
+                    comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, buffer, 6);
+                } while (gMotorPRessureStopBits_Get(mf.fun_type) == 0);
                 break;
-
             default:
                 break;
         }

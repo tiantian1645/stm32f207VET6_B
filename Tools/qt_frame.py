@@ -135,7 +135,10 @@ class MainWindow(QMainWindow):
         self.initUI()
 
     def _serialSendPack(self, *args, **kwargs):
-        self.task_queue.put(self.dd.buildPack(self.device_id, self.getPackIndex(), *args, **kwargs))
+        pack = self.dd.buildPack(self.device_id, self.getPackIndex(), *args, **kwargs)
+        self.task_queue.put(pack)
+        if not self.serial.isOpen():
+            logger.debug(f"try send | {bytesPuttyPrint(pack)}")
 
     def _clearTaskQueue(self):
         while True:
@@ -383,8 +386,8 @@ class MainWindow(QMainWindow):
         self.matplot_conf_houhou_cs = [QComboBox() for i in range(6)]
         self.matplot_conf_wavelength_cs = [QComboBox() for i in range(6)]
         self.matplot_conf_point_sps = [QSpinBox() for i in range(6)]
-        self.barcode_scan_bt = QPushButton("统一扫码")
-        self.barcode_scan_bt.setMaximumWidth(120)
+        self.barcode_scan_bt = QPushButton("扫码")
+        self.barcode_scan_bt.setMaximumWidth(60)
         self.matplot_start_bt = QPushButton("测试")
         self.matplot_start_bt.setMaximumWidth(60)
         self.matplot_cancel_bt = QPushButton("取消")
@@ -398,7 +401,7 @@ class MainWindow(QMainWindow):
                 self.matplot_conf_houhou_cs[i].setMaximumWidth(75)
                 self.matplot_conf_houhou_cs[i].setCurrentIndex(1)
                 self.matplot_conf_wavelength_cs[i].addItems(("610", "550", "405"))
-                self.matplot_conf_wavelength_cs[i].setMaximumWidth(90)
+                self.matplot_conf_wavelength_cs[i].setMaximumWidth(60)
                 self.matplot_conf_wavelength_cs[i].setCurrentIndex(0)
                 self.matplot_conf_point_sps[i].setRange(0, 120)
                 self.matplot_conf_point_sps[i].setMaximumWidth(60)
@@ -513,6 +516,36 @@ class MainWindow(QMainWindow):
         self.motor_debug_scan_bt.setDefault(False)
         self.motor_debug_scan_bt.setMaximumWidth(60)
 
+        self.motor_debug_aging_gb = QGroupBox("电机老化")
+        self.motor_debug_aging_gb.setCheckable(True)
+        self.motor_debug_aging_gb.setChecked(False)
+        self.motor_debug_aging_gb.clicked.connect(self.onMotorDebugAgingGB)
+        self.motor_debug_aging_bg = QButtonGroup()
+        motor_debug_aging_ly = QHBoxLayout(self.motor_debug_aging_gb)
+        self.motor_debug_scan_aging_bt = QRadioButton("扫码电机")
+        self.motor_debug_tray_aging_bt = QRadioButton("托盘电机")
+        self.motor_debug_heater_aging_bt = QRadioButton("加热体电机")
+        self.motor_debug_white_aging_bt = QRadioButton("白板电机")
+        self.motor_debug_all_aging_bt = QRadioButton("全部电机")
+        self.motor_debug_aging_bg.addButton(self.motor_debug_tray_aging_bt)
+        self.motor_debug_aging_bg.addButton(self.motor_debug_scan_aging_bt)
+        self.motor_debug_aging_bg.addButton(self.motor_debug_heater_aging_bt)
+        self.motor_debug_aging_bg.addButton(self.motor_debug_white_aging_bt)
+        self.motor_debug_aging_bg.addButton(self.motor_debug_all_aging_bt)
+        motor_debug_aging_ly.addWidget(self.motor_debug_scan_aging_bt)
+        motor_debug_aging_ly.addWidget(self.motor_debug_tray_aging_bt)
+        motor_debug_aging_ly.addWidget(self.motor_debug_heater_aging_bt)
+        motor_debug_aging_ly.addWidget(self.motor_debug_white_aging_bt)
+        motor_debug_aging_ly.addWidget(self.motor_debug_all_aging_bt)
+        self.motor_debug_aging_bg.buttonToggled.connect(self.onMotorDebugAging)
+        self.motor_debug_aging_bts = (
+            self.motor_debug_scan_aging_bt,
+            self.motor_debug_tray_aging_bt,
+            self.motor_debug_heater_aging_bt,
+            self.motor_debug_white_aging_bt,
+            self.motor_debug_all_aging_bt,
+        )
+
         scan_ly.addWidget(QLabel("扫码电机"))
         scan_ly.addWidget(QVLine())
         scan_ly.addWidget(self.motor_debug_scan_status_lb)
@@ -565,6 +598,8 @@ class MainWindow(QMainWindow):
         tray_ly.addWidget(self.motor_debug_tray_bt)
         self.motor_debug_ly.addLayout(tray_ly)
 
+        self.motor_debug_ly.addWidget(self.motor_debug_aging_gb)
+
         self.motor_debug_scan_bg.buttonToggled.connect(self.onMotorDebugScanBGChanged)
         self.motor_debug_tray_bg.buttonToggled.connect(self.onMotorDebugTrayBGChanged)
         self.motor_debug_scan_dis.valueChanged.connect(self.onMotorDebugScanSpinBoxChanged)
@@ -575,22 +610,22 @@ class MainWindow(QMainWindow):
         self.motor_debug_tray_bt.clicked.connect(self.onMotorDebugTray)
 
     def onMotorHeaterUp(self, event):
-        self._serialSendPack(0xD3, (0,))
+        self._serialSendPack(0xD0, (2, 0))
 
     def onMotorHeaterDown(self, event):
-        self._serialSendPack(0xD3, (1,))
+        self._serialSendPack(0xD0, (2, 1))
 
     def onMotorWhitePD(self, event):
-        self._serialSendPack(0xD4, (0,))
+        self._serialSendPack(0xD0, (3, 0))
 
     def onMotorWhiteOD(self, event):
-        self._serialSendPack(0xD4, (1,))
+        self._serialSendPack(0xD0, (3, 1))
 
     def onMotorTrayIn(self, event):
         self._serialSendPack(0x05)
 
     def onMotorTrayScan(self, event):
-        self._serialSendPack(0xD3, (0,))
+        self._serialSendPack(0xD0, (2, 0))
         self._serialSendPack(0xD0, (1, 1))
 
     def onMotorTrayOut(self, event):
@@ -686,6 +721,21 @@ class MainWindow(QMainWindow):
         elif idx == 1:
             self.motor_debug_tray_status_lb.setText(f"0x{status:04X}")
             self.motor_debug_tray_pos_lb.setText(f"{pos}")
+
+    def onMotorDebugAging(self, event):
+        if event in self.motor_debug_aging_bts:
+            idx = self.motor_debug_aging_bts.index(event)
+            if not event.isChecked():
+                self._serialSendPack(0xD0, (idx, 0xFF))
+            else:
+                self._serialSendPack(0xD0, (idx, 0xFE))
+
+    def onMotorDebugAgingGB(self, event):
+        self._serialSendPack(0xD0, (0xFF,))
+        self.motor_debug_aging_bg.setExclusive(False)
+        for bt in self.motor_debug_aging_bts:
+            bt.setChecked(False)
+        self.motor_debug_aging_bg.setExclusive(True)
 
     def onMotorScan(self, event=None, idx=0):
         logger.debug("click motor scan idx | {}".format(idx))
@@ -817,6 +867,7 @@ class MainWindow(QMainWindow):
     def onSerialSendWorkerResult(self, write_result):
         result, write_data, info = write_result
         if write_data[5] == 0x0F:
+            logger.success(f" result | {result} | write {bytesPuttyPrint(write_data)} | info | {info}")
             if result:
                 file_path = self.upgrade_dg_lb.text()
                 self.upgrade_dg_bt.setText("升级中")

@@ -112,6 +112,8 @@ uint8_t motor_OPT_Status_Init_Wait_Complete(void);
 void motor_OPT_Status_Update(void);
 eMotor_OPT_Status motor_OPT_Status_Get(eMotor_OPT_Index idx);
 
+void gMotorPRessureStopBits_Set(eMotor_Fun fun, uint8_t b);
+void gMotorPRessureStopBits_Clear(void);
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/

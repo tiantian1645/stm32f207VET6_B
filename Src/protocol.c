@@ -554,6 +554,17 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                         m_l6470_release();
                     } else if (length == 10) {                       /* 应用层调试 */
                         barcode_Scan_Bantch(pInBuff[7], pInBuff[8]); /* 位置掩码 扫码使能掩码 */
+                    } else if (length == 9) {
+                        switch (pInBuff[7]) {
+                            case 0xFE:
+                                gMotorPRessureStopBits_Set(eMotor_Fun_PRE_BARCODE, 0);
+                                motor_fun.fun_type = eMotor_Fun_PRE_BARCODE;
+                                motor_Emit(&motor_fun, 3000);
+                                break;
+                            case 0xFF:
+                                gMotorPRessureStopBits_Set(eMotor_Fun_PRE_BARCODE, 1);
+                                break;
+                        }
                     }
                     break;
                 case 1:                 /* 托盘电机 */
@@ -579,7 +590,7 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                         }
                         m_l6470_release();
                     } else if (length == 9) { /* 应用层调试 */
-                        switch ((pInBuff[7] % 3)) {
+                        switch ((pInBuff[7])) {
                             case 0:
                                 tray_Move_By_Index(eTrayIndex_0, 2000);
                                 break;
@@ -589,10 +600,81 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                             case 2:
                                 tray_Move_By_Index(eTrayIndex_2, 2000);
                                 break;
+                            case 0xFE:
+                                gMotorPRessureStopBits_Set(eMotor_Fun_PRE_TRAY, 0);
+                                motor_fun.fun_type = eMotor_Fun_PRE_TRAY;
+                                motor_Emit(&motor_fun, 3000);
+                                break;
+                            case 0xFF:
+                                gMotorPRessureStopBits_Set(eMotor_Fun_PRE_TRAY, 1);
+                                break;
                             default:
                                 break;
                         }
                     }
+                    break;
+                case 2: /* 上加热体电机 */
+                    if (length == 9) {
+                        switch (pInBuff[7]) {
+                            case 0:
+                                heat_Motor_Up();
+                                break;
+                            case 1:
+                                heat_Motor_Down();
+                                break;
+                            case 0xFE:
+                                gMotorPRessureStopBits_Set(eMotor_Fun_PRE_HEATER, 0);
+                                motor_fun.fun_type = eMotor_Fun_PRE_HEATER;
+                                motor_Emit(&motor_fun, 3000);
+                                break;
+                            case 0xFF:
+                                gMotorPRessureStopBits_Set(eMotor_Fun_PRE_HEATER, 1);
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                    break;
+                case 3: /* 白板电机 */
+                    if (length == 9) {
+                        switch (pInBuff[7]) {
+                            case 0:
+                                white_Motor_PD();
+                                break;
+                            case 1:
+                                white_Motor_WH();
+                                break;
+                            case 0xFE:
+                                gMotorPRessureStopBits_Set(eMotor_Fun_PRE_WHITE, 0);
+                                motor_fun.fun_type = eMotor_Fun_PRE_WHITE;
+                                motor_Emit(&motor_fun, 3000);
+                                break;
+                            case 0xFF:
+                                gMotorPRessureStopBits_Set(eMotor_Fun_PRE_WHITE, 1);
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                    break;
+                case 4:
+                    if (length == 9) {
+                        switch (pInBuff[7]) {
+                            case 0xFE:
+                                gMotorPRessureStopBits_Set(eMotor_Fun_PRE_ALL, 0);
+                                motor_fun.fun_type = eMotor_Fun_PRE_ALL;
+                                motor_Emit(&motor_fun, 3000);
+                                break;
+                            case 0xFF:
+                                gMotorPRessureStopBits_Set(eMotor_Fun_PRE_ALL, 1);
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                    break;
+                case 0xFF:
+                    gMotorPRessureStopBits_Clear();
                     break;
                 default:
                     break;
@@ -611,20 +693,6 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 if (comm_Out_SendTask_QueueEmitWithBuildCover(0xD2, pInBuff, result) == 0) {
                     error |= PROTOCOL_PARSE_EMIT_ERROR;
                 }
-            }
-            break;
-        case 0xD3:
-            if (pInBuff[6] == 0) {
-                heat_Motor_Up();
-            } else {
-                heat_Motor_Down();
-            }
-            break;
-        case 0xD4:
-            if (pInBuff[6] == 0) {
-                white_Motor_PD();
-            } else {
-                white_Motor_WH();
             }
             break;
         case 0xD5:

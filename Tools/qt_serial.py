@@ -50,7 +50,7 @@ class SerialRecvWorker(QRunnable):
         else:
             self.need_henji = (0xAA,)
         self.temp_wrote = write_data
-        logger.info("response setNeedHenji | {} | {}".format(bytesPuttyPrint(write_data), self.need_henji))
+        logger.info(f"response setNeedHenji | write cmd 0x{write_data[5]:02X} | {self.need_henji}")
 
     @pyqtSlot()
     def run(self):
@@ -66,7 +66,7 @@ class SerialRecvWorker(QRunnable):
                 if len(recv_data) <= 0:
                     continue
 
-                self.logger.debug("get raw bytes | {}".format(bytesPuttyPrint(recv_data)))
+                self.logger.debug(f"get raw bytes | {bytesPuttyPrint(recv_data)}")
                 self.signals.serial_statistic.emit(("r", recv_data))
 
                 recv_buffer += recv_data
@@ -81,11 +81,13 @@ class SerialRecvWorker(QRunnable):
                             write_data = self.dd.buildPack(0x13, 0xFF - ack, 0xAA, (ack,))
                             self.serial.write(write_data)
                             self.signals.serial_statistic.emit(("w", write_data))
-                            self.logger.warning("reply ack pack | {} --> {}".format(bytesPuttyPrint(write_data), info.text))
+                            self.logger.warning(f"reply ack pack | {bytesPuttyPrint(write_data)} --> {info.text}")
                             self.signals.result.emit(info)
                         if fun_code in self.need_henji:
-                            logger.info("put henji | {} | {} | {}".format(self.need_henji, fun_code, bytesPuttyPrint(self.temp_wrote)))
+                            logger.info(f"put henji | self.need_henji {self.need_henji} | fun_code 0x{fun_code:02X} | write cmd 0x{self.temp_wrote[5]:02X}")
                             self.henji_queue.put(info)
+                        # else:
+                        #     logger.error(f"no put to henji | self.need_henji {self.need_henji} | info {info.text}")
                 if info is not None:
                     if info.is_head and info.is_crc and info.is_tail:
                         recv_buffer = b""
@@ -94,10 +96,10 @@ class SerialRecvWorker(QRunnable):
         except Exception:
             exctype, value = sys.exc_info()[:2]
             trace_back_text = stackprinter.format()
-            logger.error("serial recv worker run excpetion \n{}".format(trace_back_text))
+            logger.error(f"serial recv worker run excpetion \n{trace_back_text}")
             self.signals.error.emit((exctype, value, trace_back_text))
         finally:
-            logger.info("serial recv worker total run | {:.2f} S".format(time.time() - start_time))
+            logger.info(f"serial recv worker total run | {time.time() - start_time:.2f} S")
             self.signals.finished.emit()
 
 
@@ -127,7 +129,7 @@ class SerialSendWorker(QRunnable):
 
     def waitHenji(self, write_data, timeout=2):
         self.signals.henji.emit(write_data)
-        logger.info("invoke set henji | {}".format(bytesPuttyPrint(write_data)))
+        logger.info(f"invoke set henji | write_data cmd 0x{write_data[5]:02X}")
         if write_data[5] == 0xFC and write_data[6] == 0x00:
             return (True, write_data, None)
         try:
@@ -165,10 +167,10 @@ class SerialSendWorker(QRunnable):
                 write_data = self.getWriteData(0.01)
                 if write_data is None:
                     continue
-                logger.debug("serial write data | {}".format(bytesPuttyPrint(write_data)[:80]))
+                logger.debug(f"serial write data | {bytesPuttyPrint(write_data)}")
                 self.serial.write(write_data)
                 self.signals.serial_statistic.emit(("w", write_data))
-                if write_data[5] in (0x0F, 0xDD):
+                if write_data[5] in (0x0F, 0xDD, 0xFC):
                     timeout = 8
                 else:
                     timeout = 2
@@ -177,8 +179,8 @@ class SerialSendWorker(QRunnable):
         except Exception:
             exctype, value = sys.exc_info()[:2]
             trace_back_text = stackprinter.format()
-            logger.error("serial send worker run excpetion \n{}".format(trace_back_text))
+            logger.error(f"serial send worker run excpetion \n{trace_back_text}")
             self.signals.error.emit((exctype, value, trace_back_text))
         finally:
-            logger.info("serial send worker total run | {:.2f} S".format(time.time() - start_time))
+            logger.info(f"serial send worker total run | {time.time() - start_time:.2f} S")
             self.signals.finished.emit()
