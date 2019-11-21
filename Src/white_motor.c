@@ -18,11 +18,11 @@ extern TIM_HandleTypeDef htim1;
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
-#define WHITE_MOTOR_PCS_MAX 32000
-#define WHITE_MOTOR_PCS_MIN 28000
-#define WHITE_MOTOR_PCS_GAP 50
+#define WHITE_MOTOR_PCS_MAX 45000
+#define WHITE_MOTOR_PCS_MIN 32000
+#define WHITE_MOTOR_PCS_GAP 100
 #define WHITE_MOTOR_PCS_UNT 5
-#define WHITE_MOTOR_PCS_SUM 476
+#define WHITE_MOTOR_PCS_SUM 520
 
 /* Private variables ---------------------------------------------------------*/
 static eMotorDir gWhite_Motor_Dir = eMotorDir_FWD;
@@ -173,7 +173,7 @@ uint8_t white_Motor_Wait_Stop(uint32_t timeout)
                     gWhite_Motor_Position_Clr();
                     return 0;
                 }
-                vTaskDelay(1);
+                vTaskDelay(5);
             } while (xTaskGetTickCount() - xTick < timeout);
             return 1;
         case eMotorDir_FWD:
@@ -184,7 +184,7 @@ uint8_t white_Motor_Wait_Stop(uint32_t timeout)
                     PWM_AW_Stop();
                     return 0;
                 }
-                vTaskDelay(1);
+                vTaskDelay(5);
             } while (xTaskGetTickCount() - xTick < timeout);
             return 1;
     }

@@ -20,6 +20,7 @@ from PySide2.QtGui import QIcon, QPalette
 from PySide2.QtWidgets import (
     QApplication,
     QButtonGroup,
+    QCheckBox,
     QComboBox,
     QDialog,
     QDoubleSpinBox,
@@ -150,6 +151,17 @@ class MainWindow(QMainWindow):
                 logger.error("clear task queue exception \n{}".format(stackprinter.format()))
                 break
 
+    def _getHeater(self):
+        self._serialSendPack(0xD3)
+  
+    def _getDebuFlag(self):
+        self._serialSendPack(0xD4)
+
+    def _getStatus(self):
+        self._serialSendPack(0x07)
+        self._getHeater()
+        self._getDebuFlag()
+
     def _setColor(sself, wg, nbg=None, nfg=None):
         palette = wg.palette()
         bgc = palette.color(QPalette.Background)
@@ -225,16 +237,29 @@ class MainWindow(QMainWindow):
         temperature_plot_ly = QVBoxLayout(self.temperature_plot_dg)
         self.temperature_plot_win = GraphicsLayoutWidget()
         self.temperature_plot_clear_bt = QPushButton("清零")
+        self.temperature_heater_btm_cb = QCheckBox("下加热体使能")
+        self.temperature_heater_top_cb = QCheckBox("上加热体使能")
         temperature_plot_ly.addWidget(self.temperature_plot_win)
-        temperature_plot_ly.addWidget(self.temperature_plot_clear_bt)
+
+        temp_ly = QHBoxLayout()
+        temp_ly.setSpacing(3)
+        temp_ly.setContentsMargins(3, 3, 3, 3)
+        temp_ly.addWidget(self.temperature_plot_clear_bt)
+        temp_ly.addStretch(1)
+        temp_ly.addWidget(self.temperature_heater_btm_cb)
+        temp_ly.addWidget(self.temperature_heater_top_cb)
+        temperature_plot_ly.addLayout(temp_ly)
+        self.temperature_heater_btm_cb.clicked.connect(self.onTemperatureHeaterChanged)
+        self.temperature_heater_top_cb.clicked.connect(self.onTemperatureHeaterChanged)
+
         self.temperature_plot_lb = LabelItem(justify="right")
         self.temperature_plot_win.addItem(self.temperature_plot_lb, 0, 0)
         self.temperature_plot_wg = self.temperature_plot_win.addPlot(row=0, col=0)
         self.temperature_plot_wg.addLegend()
         self.temperature_plot_wg.showGrid(x=True, y=True)
         self.temperature_plot_proxy = SignalProxy(self.temperature_plot_wg.scene().sigMouseMoved, rateLimit=60, slot=self.onTemperaturePlotMouseMove)
-        self.temperature_btm_plot = self.temperature_plot_wg.plot(self.temp_time_record, self.temp_btm_record, name="\u00A0下加热体", pen=mkPen(color="r"))
-        self.temperature_top_plot = self.temperature_plot_wg.plot(self.temp_time_record, self.temp_top_record, name="\u00A0上加热体", pen=mkPen(color="b"))
+        self.temperature_btm_plot = self.temperature_plot_wg.plot(self.temp_time_record, self.temp_btm_record, name="下加热体", pen=mkPen(color="r"))
+        self.temperature_top_plot = self.temperature_plot_wg.plot(self.temp_time_record, self.temp_top_record, name="上加热体", pen=mkPen(color="b"))
         self.temperature_plot_clear_bt.clicked.connect(self.onTemperautreDataClear)
 
         motor_tray_position_wg = QWidget()
@@ -269,7 +294,31 @@ class MainWindow(QMainWindow):
         self.setStatusBar(self.status_bar)
 
     def onTemperautreLabelClick(self, event):
+        self._getHeater()
         self.temperature_plot_dg.show()
+
+    def onTemperatureHeaterChanged(self, event):
+        data = 0
+        if self.temperature_heater_btm_cb.isChecked():
+            data |= 1 << 0
+        else:
+            data &= ~(1 << 0)
+        if self.temperature_heater_top_cb.isChecked():
+            data |= 1 << 1
+        else:
+            data &= ~(1 << 1)
+        self._serialSendPack(0xD3, (data,))
+
+    def updateTemperatureHeater(self, info):
+        data = info.content[6]
+        if data & (1 << 0):
+            self.temperature_heater_btm_cb.setChecked(True)
+        else:
+            self.temperature_heater_btm_cb.setChecked(False)
+        if data & (1 << 1):
+            self.temperature_heater_top_cb.setChecked(True)
+        else:
+            self.temperature_heater_top_cb.setChecked(False)
 
     def onTemperautreDataClear(self, event):
         self.temp_btm_record.clear()
@@ -277,8 +326,8 @@ class MainWindow(QMainWindow):
         self.temp_start_time = None
         self.temp_time_record.clear()
         self.temperature_plot_wg.clear()
-        self.temperature_btm_plot = self.temperature_plot_wg.plot(self.temp_time_record, self.temp_btm_record, name="\u00A0下加热体", pen=mkPen(color="r"))
-        self.temperature_top_plot = self.temperature_plot_wg.plot(self.temp_time_record, self.temp_top_record, name="\u00A0上加热体", pen=mkPen(color="b"))
+        self.temperature_btm_plot = self.temperature_plot_wg.plot(self.temp_time_record, self.temp_btm_record, name="下加热体", pen=mkPen(color="r"))
+        self.temperature_top_plot = self.temperature_plot_wg.plot(self.temp_time_record, self.temp_top_record, name="上加热体", pen=mkPen(color="b"))
 
     def onTemperaturePlotMouseMove(self, event):
         mouse_point = self.temperature_plot_wg.vb.mapSceneToView(event[0])
@@ -301,7 +350,7 @@ class MainWindow(QMainWindow):
             plot = self.temperature_raw_plot_wg.plot(
                 self.temp_raw_time_record,
                 self.temp_raw_records[i],
-                name=f"\u00A0#{i + 1}",
+                name=f"#{i + 1}",
                 pen=mkPen(color=TEMP_RAW_COLORS[i]),
                 symbol=symbol,
                 symbolSize=symbolSize,
@@ -721,6 +770,15 @@ class MainWindow(QMainWindow):
         elif idx == 1:
             self.motor_debug_tray_status_lb.setText(f"0x{status:04X}")
             self.motor_debug_tray_pos_lb.setText(f"{pos}")
+        elif idx == 2:
+            pass
+        elif idx == 3:
+            cnt = struct.unpack("I", raw_bytes[7:11])[0]
+            status = raw_bytes[11]
+            if status != 0:
+                logger.error(f"white motor run cnt | {cnt} | status {status}")
+            else:
+                logger.success(f"white motor run cnt | {cnt} | status {status}")
 
     def onMotorDebugAging(self, event):
         if event in self.motor_debug_aging_bts:
@@ -802,7 +860,7 @@ class MainWindow(QMainWindow):
             self.serial_send_worker.signals.result.connect(self.onSerialSendWorkerResult)
             self.serial_send_worker.signals.henji.connect(self.serial_recv_worker.setNeedHenji)
             self.threadpool.start(self.serial_send_worker)
-            self._serialSendPack(0x07)
+            self._getStatus()
             logger.info("port update {} --> {}".format(old_port, self.serial.port))
         else:
             self.serial_recv_worker.signals.owari.emit()
@@ -859,6 +917,10 @@ class MainWindow(QMainWindow):
             self.updateVersionLabel(info)
         elif cmd_type == 0xD0:
             self.updateMotorDebug(info)
+        elif cmd_type == 0xD3:
+            self.updateTemperatureHeater(info)
+        elif cmd_type == 0xD4:
+            self.updateDebugFlag(info)
         elif cmd_type == 0xDD:
             self.updateOutFalshParam(info)
         elif cmd_type == 0xEE:
@@ -897,7 +959,7 @@ class MainWindow(QMainWindow):
                 )
                 if write_data[6] == 0:
                     title = "固件升级 结束 | {} / {} Byte | {:.2f} S".format(self.firm_wrote_size, self.firm_size, time_usage)
-                    QTimer.singleShot(7000, lambda: self._serialSendPack(0x07))
+                    QTimer.singleShot(7000, self._getStatus)
                     self.upgrade_dg_bt.setText("もう一回")
                     self.upgrade_dg_bt.setEnabled(True)
                     self.upgrade_dg_bt.setChecked(False)
@@ -922,7 +984,7 @@ class MainWindow(QMainWindow):
                     self.upgbl_dg_bt.setText("もう一回")
                     self.upgbl_dg_bt.setEnabled(True)
                     self.upgbl_dg_bt.setChecked(False)
-                    QTimer.singleShot(7000, lambda: self._serialSendPack(0x07))
+                    QTimer.singleShot(7000, self._getStatus)
                 else:
                     title = "Bootloader升级 中... | {} / {} Byte | {:.2f} S".format(self.bl_wrote_size, self.bl_size, time_usage)
                 self.upgbl_dg.setWindowTitle(title)
@@ -1052,7 +1114,7 @@ class MainWindow(QMainWindow):
 
     def onReboot(self, event):
         self._serialSendPack(0xDC)
-        QTimer.singleShot(3000, lambda: self._serialSendPack(0x07))
+        QTimer.singleShot(3000, self._getStatus)
 
     def onUpgrade(self, event):
         self.upgrade_dg = QDialog(self)
@@ -1097,7 +1159,7 @@ class MainWindow(QMainWindow):
                 self.upgrade_dg_lb.setText("请输入有效路径")
                 self.upgrade_dg.setWindowTitle("固件升级")
         elif event is False:
-            QTimer.singleShot(3000, lambda: self._serialSendPack(0x07))
+            QTimer.singleShot(3000, self._getStatus)
             self.upgrade_dg.close()
 
     def _getFileHash_SHA256(self, file_path):
@@ -1128,7 +1190,7 @@ class MainWindow(QMainWindow):
             v = self.matplot_data.get(k, [0])
             color = LINE_COLORS[abs(k - 1) % len(LINE_COLORS)]
             symbol = LINE_SYMBOLS[abs(k - 1) % len(LINE_SYMBOLS)]
-            self.plot_wg.plot(v, name="{}B{}".format("\u00A0", k), pen=mkPen(color=color), symbol=symbol, symbolSize=10, symbolBrush=(color))
+            self.plot_wg.plot(v, name="{}B{}".format("", k), pen=mkPen(color=color), symbol=symbol, symbolSize=10, symbolBrush=(color))
             records.append("{} | {}".format(k, v))
         pyperclip.copy("\n".join(records))
 
@@ -1192,7 +1254,7 @@ class MainWindow(QMainWindow):
             plot = self.temperature_raw_plot_wg.plot(
                 self.temp_raw_time_record,
                 self.temp_raw_records[i],
-                name=f"\u00A0#{i + 1}",
+                name=f"#{i + 1}",
                 pen=mkPen(color=TEMP_RAW_COLORS[i]),
                 symbol=symbol,
                 symbolSize=symbolSize,
@@ -1428,6 +1490,19 @@ class MainWindow(QMainWindow):
         else:
             self.out_flash_data_te.setPlainText(raw_text)
 
+    def onDebugFlasgChanged(self, event):
+        if event:
+            self._serialSendPack(0xD4, (1,))
+        else:
+            self._serialSendPack(0xD4, (0,))
+
+    def updateDebugFlag(self, info):
+        data = info.content[6]
+        if data:
+            self.debug_flag_cb.setChecked(True)
+        else:
+            self.debug_flag_cb.setChecked(False)
+
     def createSysConf(self):
         self.sys_conf_gb = QGroupBox("系统")
         sys_conf_ly = QVBoxLayout(self.sys_conf_gb)
@@ -1436,16 +1511,23 @@ class MainWindow(QMainWindow):
 
         storge_ly = QHBoxLayout()
         storge_ly.setContentsMargins(3, 3, 3, 3)
-        storge_ly.setSpacing(0)
+        storge_ly.setSpacing(3)
         self.storge_id_card_dialog_bt = QPushButton("ID卡信息")
-        self.storge_id_card_dialog_bt.setMaximumWidth(120)
+        self.storge_id_card_dialog_bt.setMaximumWidth(80)
         self.storge_flash_read_bt = QPushButton("外部Flash信息")
-        self.storge_flash_read_bt.setMaximumWidth(120)
+        self.storge_flash_read_bt.setMaximumWidth(100)
+        self.debug_flag_cb = QCheckBox("调试")
+        storge_ly.addStretch(1)
         storge_ly.addWidget(self.storge_id_card_dialog_bt)
+        storge_ly.addStretch(1)
         storge_ly.addWidget(self.storge_flash_read_bt)
+        storge_ly.addStretch(1)
+        storge_ly.addWidget(self.debug_flag_cb)
+        storge_ly.addStretch(1)
 
         self.storge_id_card_dialog_bt.clicked.connect(self.onID_CardDialogShow)
         self.storge_flash_read_bt.clicked.connect(self.onOutFlashDialogShow)
+        self.debug_flag_cb.clicked.connect(self.onDebugFlasgChanged)
         sys_conf_ly.addLayout(storge_ly)
 
         boot_ly = QHBoxLayout()

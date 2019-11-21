@@ -54,7 +54,7 @@ void beater_BTM_Output_Ctl(float pr)
 
 /**
  * @brief  下加热体 PWM 输出 启动
- * @param  pluse 翻转点距离
+ * @param  None
  * @retval None
  */
 
@@ -65,12 +65,22 @@ void beater_BTM_Output_Start(void)
 
 /**
  * @brief  下加热体 PWM 输出 停止
- * @param  pluse 翻转点距离
+ * @param  None
  * @retval None
  */
 void beater_BTM_Output_Stop(void)
 {
     HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_4);
+}
+
+/**
+ * @brief  下加热体 PWM 输出 状态获取
+ * @param  None
+ * @retval PWM 输出 状态
+ */
+uint8_t beater_BTM_Output_Is_Live(void)
+{
+    return htim4.Instance->CR1 == TIM_CR1_CEN;
 }
 
 /**
@@ -127,7 +137,7 @@ void beater_TOP_Output_Ctl(float pr)
 
 /**
  * @brief  上加热体 PWM 输出 启动
- * @param  pluse 翻转点距离
+ * @param  None
  * @retval None
  */
 
@@ -138,12 +148,22 @@ void beater_TOP_Output_Start(void)
 
 /**
  * @brief  上加热体 PWM 输出 停止
- * @param  pluse 翻转点距离
+ * @param  None
  * @retval None
  */
 void beater_TOP_Output_Stop(void)
 {
     HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_3);
+}
+
+/**
+ * @brief  上加热体 PWM 输出 状态获取
+ * @param  None
+ * @retval PWM 输出 状态
+ */
+HAL_TIM_StateTypeDef beater_TOP_Output_Is_Live(void)
+{
+    return htim3.Instance->CR1 == TIM_CR1_CEN;
 }
 
 /**

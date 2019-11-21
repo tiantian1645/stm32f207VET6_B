@@ -59,21 +59,37 @@ static eComm_Data_Sample gComm_Data_Sample_Buffer[6];
 static uint8_t gProtocol_Temp_Upload_Comm_Ctl = 0;
 static uint8_t gProtocol_Temp_Upload_Comm_Suspend = 0;
 
-static uint8_t gProtocol_Debug_Flag = 1;
+static uint8_t gProtocol_Debug_Flag = 0;
 /* Private function prototypes -----------------------------------------------*/
 
 /* Private user code ---------------------------------------------------------*/
 
+/**
+ * @brief  调试模式标志 获取
+ * @param  None
+ * @retval 0 非调试 1 调试
+ * @note   温度上送 电机测试模式
+ */
 uint8_t protocol_Is_Debug(void)
 {
     return (gProtocol_Debug_Flag == 1);
 }
 
+/**
+ * @brief  调试模式标志 置位
+ * @param  None
+ * @retval None
+ */
 void protocol_Debug_Mark(void)
 {
     gProtocol_Debug_Flag = 1;
 }
 
+/**
+ * @brief  调试模式标志 清零
+ * @param  None
+ * @retval None
+ */
 void protocol_Debug_Clear(void)
 {
     gProtocol_Debug_Flag = 0;
@@ -734,14 +750,30 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 } else {
                     beater_TOP_Output_Stop();
                 }
+            } else {
+                pInBuff[0] = 0;
+                if (beater_BTM_Output_Is_Live()) {
+                    pInBuff[0] |= (1 << 0);
+                }
+                if (beater_TOP_Output_Is_Live()) {
+                    pInBuff[0] |= (1 << 1);
+                }
+                if (comm_Out_SendTask_QueueEmitWithBuildCover(0xD3, pInBuff, 1) == 0) {
+                    error |= PROTOCOL_PARSE_EMIT_ERROR;
+                }
             }
             break;
         case 0xD4:
             if (length == 8) {
-                if (pInBuff[7] == 0) {
+                if (pInBuff[6] == 0) {
                     protocol_Debug_Clear();
                 } else {
                     protocol_Debug_Mark();
+                }
+            } else {
+                pInBuff[0] = protocol_Is_Debug();
+                if (comm_Out_SendTask_QueueEmitWithBuildCover(0xD4, pInBuff, 1) == 0) {
+                    error |= PROTOCOL_PARSE_EMIT_ERROR;
                 }
             }
             break;

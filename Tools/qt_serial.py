@@ -23,10 +23,10 @@ class SeialWorkerSignals(QObject):
 
 
 HENJI_TABLE = (
-    HenjiConf(shitsumon=0xD9, henji=(0xD4)),
-    HenjiConf(shitsumon=0x0F, henji=(0xFA)),
-    HenjiConf(shitsumon=0xFC, henji=(0xFB)),
-    HenjiConf(shitsumon=0xDE, henji=(0xDE)),
+    HenjiConf(shitsumon=0xD9, henji=(0xD4,)),
+    HenjiConf(shitsumon=0x0F, henji=(0xFA,)),
+    HenjiConf(shitsumon=0xFC, henji=(0xFB,)),
+    HenjiConf(shitsumon=0xDE, henji=(0xDE,)),
 )
 
 
@@ -96,7 +96,7 @@ class SerialRecvWorker(QRunnable):
                         if fun_code in self.need_henji:
                             logger.info(f"put henji | self.need_henji {self._str_Henji()} | fun_code 0x{fun_code:02X} | write cmd 0x{self.temp_wrote[5]:02X}")
                             self.henji_queue.put(info)
-                        elif fun_code not in (0xAA, 0xA0, 0xEE):
+                        elif fun_code not in (0xAA, 0xA0, 0xEE, 0xD0):
                             logger.error(f"no put to henji | self.need_henji {self._str_Henji()} | info {info.text}")
                 if info is not None:
                     if info.is_head and info.is_crc and info.is_tail:

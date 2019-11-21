@@ -22,6 +22,7 @@
 void beater_BTM_Output_Ctl(float pr);
 void beater_BTM_Output_Start(void);
 void beater_BTM_Output_Stop(void);
+uint8_t beater_BTM_Output_Is_Live(void);
 
 void heater_BTM_Output_Init(void);
 void heater_BTM_Output_Keep_Deal(void);
@@ -31,6 +32,7 @@ void heater_BTM_Log_PID(void);
 void beater_TOP_Output_Ctl(float pr);
 void beater_TOP_Output_Start(void);
 void beater_TOP_Output_Stop(void);
+uint8_t beater_TOP_Output_Is_Live(void);
 
 void heater_TOP_Output_Init(void);
 void heater_TOP_Output_Keep_Deal(void);
