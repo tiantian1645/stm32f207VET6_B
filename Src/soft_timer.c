@@ -10,6 +10,7 @@
 #include "pid_ctrl.h"
 #include "motor.h"
 #include "soft_timer.h"
+#include "beep.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim4;
@@ -21,7 +22,7 @@ extern TIM_HandleTypeDef htim4;
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
-#define SOFT_TIMER_HEATER_PER 20
+#define SOFT_TIMER_HEATER_PER 10
 
 /* Private variables ---------------------------------------------------------*/
 TimerHandle_t gTimerHandleHeater = NULL;
@@ -42,6 +43,7 @@ void soft_timer_Heater_Call_Back(TimerHandle_t xTimer)
     heater_BTM_Output_Keep_Deal();
     heater_TOP_Output_Keep_Deal();
     motor_OPT_Status_Update();
+    beep_Deal(SOFT_TIMER_HEATER_PER); /* 蜂鸣器处处理 */
 }
 
 /**
@@ -57,7 +59,7 @@ void soft_timer_Heater_Init(void)
     }
 
     motor_OPT_Status_Init();
-
+    beep_Init(); /* 蜂鸣器初始化 */
     heater_BTM_Output_Init();
     beater_BTM_Output_Start();
 

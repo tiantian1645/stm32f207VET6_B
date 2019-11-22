@@ -56,14 +56,13 @@ extern "C" {
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
 /* 任务优先级 定时器任务优先级参考 configTIMER_TASK_PRIORITY */
-#define TASK_PRIORITY_SOFT_TIMER configTIMER_TASK_PRIORITY
-#define TASK_PRIORITY_COMM_OUT_RX 3
-#define TASK_PRIORITY_COMM_OUT_TX 4
-#define TASK_PRIORITY_COMM_MAIN_RX 5
-#define TASK_PRIORITY_COMM_MAIN_TX 6
-#define TASK_PRIORITY_COMM_DATA_RX 7
-#define TASK_PRIORITY_COMM_DATA_TX 8
-#define TASK_PRIORITY_STORGE 10
+#define TASK_PRIORITY_COMM_OUT_TX 3
+#define TASK_PRIORITY_COMM_OUT_RX 4
+#define TASK_PRIORITY_COMM_MAIN_TX 5
+#define TASK_PRIORITY_COMM_MAIN_RX 6
+#define TASK_PRIORITY_COMM_DATA_TX 7
+#define TASK_PRIORITY_COMM_DATA_RX 8
+#define TASK_PRIORITY_STORGE 9
 #define TASK_PRIORITY_MOTOR 11
 
 /* 应用程序版本 单精度浮点数 */
