@@ -67,7 +67,7 @@ extern "C" {
 #define TASK_PRIORITY_MOTOR 11
 
 /* 应用程序版本 单精度浮点数 */
-#define APP_VERSION ((float)0.235)
+#define APP_VERSION ((float)0.236)
 
 /* USER CODE END EM */
 
@@ -78,7 +78,7 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 void FL_Error_Handler(char * file, int line);
-
+void reset_Tim1(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/

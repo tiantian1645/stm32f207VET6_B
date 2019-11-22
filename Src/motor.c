@@ -58,7 +58,6 @@ static void motor_Tray_Move_By_Index(eTrayIndex index);
 static eMotor_OPT_Status motor_OPT_Status_Get_Scan(void);
 static eMotor_OPT_Status motor_OPT_Status_Get_Tray(void);
 static eMotor_OPT_Status motor_OPT_Status_Get_Heater(void);
-static eMotor_OPT_Status motor_OPT_Status_Get_White(void);
 
 /* Private constants ---------------------------------------------------------*/
 const eMotor_OPT_Status (*gOPT_Status_Get_Funs[])(void) = {motor_OPT_Status_Get_Scan, motor_OPT_Status_Get_Tray, motor_OPT_Status_Get_Heater,
@@ -109,7 +108,7 @@ static eMotor_OPT_Status motor_OPT_Status_Get_Heater(void)
  * @param  None
  * @retval 光耦状态
  */
-static eMotor_OPT_Status motor_OPT_Status_Get_White(void)
+eMotor_OPT_Status motor_OPT_Status_Get_White(void)
 {
     if (HAL_GPIO_ReadPin(OPTSW_OUT4_GPIO_Port, OPTSW_OUT4_Pin) == GPIO_PIN_RESET) {
         return eMotor_OPT_Status_OFF;
@@ -211,11 +210,13 @@ void motor_OPT_Status_Init(void)
     for (i = 0; i < ARRAY_LEN(gMotor_OPT_Records); ++i) {
         gMotor_OPT_Records[i].cnt_on = 0;                               /* 断开计数 */
         gMotor_OPT_Records[i].cnt_off = 0;                              /* 遮挡计数 */
-        gMotor_OPT_Records[i].threshold_on = 3;                         /* 断开次数阈值 */
-        gMotor_OPT_Records[i].threshold_off = 3;                        /* 遮挡次数阈值 */
+        gMotor_OPT_Records[i].threshold_on = 2;                         /* 断开次数阈值 */
+        gMotor_OPT_Records[i].threshold_off = 2;                        /* 遮挡次数阈值 */
         gMotor_OPT_Records[i].status_result = eMotor_OPT_Status_None;   /* 初始状态 */
         gMotor_OPT_Records[i].opt_status_get = gOPT_Status_Get_Funs[i]; /* 硬件层光耦状态读取 */
     }
+    gMotor_OPT_Records[3].threshold_on = 6;  /* 断开次数阈值 */
+    gMotor_OPT_Records[3].threshold_off = 6; /* 遮挡次数阈值 */
 }
 
 /**
@@ -636,6 +637,7 @@ static void motor_Task(void * argument)
                     buffer[5] = white_Motor_Toggle(1000); /* 切换白板电机位置 */
                     memcpy(buffer + 1, (uint8_t *)(&cnt), 4);
                     comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, buffer, 6);
+                    vTaskDelay(1000);
                 } while (gMotorPRessureStopBits_Get(mf.fun_type) == 0);
                 break;
             case eMotor_Fun_PRE_ALL: /* 压力测试 */

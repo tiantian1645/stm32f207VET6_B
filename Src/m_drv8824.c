@@ -304,9 +304,8 @@ void gPWM_TEST_AW_CNT_Clear(void)
  */
 void PWM_AW_Stop(void)
 {
-    HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);   /* 停止PWM输出 */
-    __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE); /* 清除更新事件标志位 */
-    __HAL_TIM_SET_COUNTER(&htim1, 0);          /* 清零定时器计数寄存器 */
+    HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1); /* 停止PWM输出 */
+    reset_Tim1();
 }
 
 /**

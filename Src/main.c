@@ -121,7 +121,10 @@ static void Miscellaneous_Task(void * argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+void reset_Tim1(void)
+{
+    MX_TIM1_Init();
+}
 /* USER CODE END 0 */
 
 /**
@@ -1281,8 +1284,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef * htim)
 {
     /* USER CODE BEGIN Callback 0 */
     if (htim->Instance == TIM1) {
-        if (PWM_AW_IRQ_CallBcak() == 0) { /* ???? */
-            m_drv8824_release_ISR();      /* ??PWM?? */
+        if (PWM_AW_IRQ_CallBcak() == 0) { /* 运动完成 */
+            m_drv8824_release_ISR();      /* 释放PWM资源 */
         }
     }
     /* USER CODE END Callback 0 */
