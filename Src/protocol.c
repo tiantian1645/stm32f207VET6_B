@@ -59,7 +59,7 @@ static eComm_Data_Sample gComm_Data_Sample_Buffer[6];
 static uint8_t gProtocol_Temp_Upload_Comm_Ctl = 0;
 static uint8_t gProtocol_Temp_Upload_Comm_Suspend = 0;
 
-static uint8_t gProtocol_Debug_Flag = 0;
+static uint8_t gProtocol_Debug_Flag = 1;
 /* Private function prototypes -----------------------------------------------*/
 
 /* Private user code ---------------------------------------------------------*/
@@ -523,6 +523,7 @@ void protocol_Temp_Upload_Deal(void)
         xTick_Main = now;
         protocol_Temp_Upload_Main_Deal(temp_btm, temp_top);
     }
+#if PROTOCOL_DEBUG_TEMPERATURE
     if (protocol_Is_Debug()) {
         if (now - xTick_Out > 1 * pdMS_TO_TICKS(1000)) {
             xTick_Out = now;
@@ -534,6 +535,12 @@ void protocol_Temp_Upload_Deal(void)
             protocol_Temp_Upload_Out_Deal(temp_btm, temp_top);
         }
     }
+#else
+    if (now - xTick_Out > 5 * pdMS_TO_TICKS(1000)) {
+        xTick_Out = now;
+        protocol_Temp_Upload_Out_Deal(temp_btm, temp_top);
+    }
+#endif
 }
 
 /**

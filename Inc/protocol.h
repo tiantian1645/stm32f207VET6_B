@@ -61,6 +61,8 @@ typedef struct {
 } sProcol_COMM_ACK_Record;
 
 /* Exported defines ----------------------------------------------------------*/
+#define PROTOCOL_DEBUG_ERROR_REPORT		0
+#define PROTOCOL_DEBUG_TEMPERATURE		0
 
 /* Exported functions prototypes ---------------------------------------------*/
 uint8_t protocol_Is_Debug(void);
