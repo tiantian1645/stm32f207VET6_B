@@ -15,9 +15,9 @@ import pyperclip
 import serial
 import serial.tools.list_ports
 import stackprinter
-from PySide2.QtCore import Qt, QThreadPool, QTimer
-from PySide2.QtGui import QIcon, QPalette
-from PySide2.QtWidgets import (
+from PyQt5.QtCore import Qt, QThreadPool, QTimer
+from PyQt5.QtGui import QIcon, QPalette
+from PyQt5.QtWidgets import (
     QApplication,
     QButtonGroup,
     QCheckBox,
@@ -216,6 +216,7 @@ class MainWindow(QMainWindow):
         if self.serial_send_worker is not None:
             self.serial_send_worker.signals.owari.emit()
         time.sleep(0.2)
+        sys.exit()
 
     def createStatusBar(self):
         self.status_bar = QStatusBar(self)
@@ -853,12 +854,11 @@ class MainWindow(QMainWindow):
             self.serial_recv_worker.signals.result.connect(self.onSerialRecvWorkerResult)
             self.threadpool.start(self.serial_recv_worker)
 
-            self.serial_send_worker = SerialSendWorker(self.serial, self.task_queue, self.henji_queue, logger)
+            self.serial_send_worker = SerialSendWorker(self.serial, self.task_queue, self.henji_queue, self.serial_recv_worker, logger)
             self.serial_send_worker.signals.finished.connect(self.onSerialWorkerFinish)
             self.serial_send_worker.signals.error.connect(self.onSerialWorkerError)
             self.serial_send_worker.signals.serial_statistic.connect(self.onSerialStatistic)
             self.serial_send_worker.signals.result.connect(self.onSerialSendWorkerResult)
-            self.serial_send_worker.signals.henji.connect(self.serial_recv_worker.setNeedHenji)
             self.threadpool.start(self.serial_send_worker)
             self._getStatus()
             logger.info("port update {} --> {}".format(old_port, self.serial.port))

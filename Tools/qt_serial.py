@@ -7,7 +7,8 @@ from collections import namedtuple
 from bytes_helper import bytesPuttyPrint
 from dc201_pack import DC201_PACK
 
-from PySide2.QtCore import QObject, QRunnable, Signal as pyqtSignal, Slot as pyqtSlot
+# from PySide2.QtCore import QObject, QRunnable, Signal as pyqtSignal, Slot as pyqtSlot
+from PyQt5.QtCore import QObject, QRunnable, pyqtSignal, pyqtSlot
 
 HenjiConf = namedtuple("HenjiConf", "shitsumon henji")
 logger = loguru.logger.bind(name="serial_worker")
@@ -15,7 +16,6 @@ logger = loguru.logger.bind(name="serial_worker")
 
 class SeialWorkerSignals(QObject):
     owari = pyqtSignal()
-    henji = pyqtSignal(object)
     finished = pyqtSignal()
     error = pyqtSignal(tuple)
     result = pyqtSignal(object)
@@ -40,7 +40,7 @@ class SerialRecvWorker(QRunnable):
         self.dd = DC201_PACK()
         self.signals = SeialWorkerSignals()
         self.signals.owari.connect(self.stoptask)
-        self.signals.henji.connect(self.setNeedHenji)
+        # self.signals.henji.connect(self.setNeedHenji)
         self.stop = False
 
     def stoptask(self):
@@ -56,7 +56,6 @@ class SerialRecvWorker(QRunnable):
                 return
         self.need_henji = (0xAA,)
 
-    @pyqtSlot()
     def setNeedHenji(self, write_data):
         self._find_Henji(write_data)
         self.temp_wrote = write_data
@@ -114,7 +113,7 @@ class SerialRecvWorker(QRunnable):
 
 
 class SerialSendWorker(QRunnable):
-    def __init__(self, serial, task_queue, henji_queue, logger=loguru.logger):
+    def __init__(self, serial, task_queue, henji_queue, recv_worker, logger=loguru.logger):
         super(SerialSendWorker, self).__init__()
         self.serial = serial
         self.logger = logger
@@ -124,6 +123,7 @@ class SerialSendWorker(QRunnable):
         self.signals = SeialWorkerSignals()
         self.signals.owari.connect(self.stopTask)
         self.stop = False
+        self.recv_worker = recv_worker
 
     def stopTask(self):
         self.stop = True
@@ -143,7 +143,7 @@ class SerialSendWorker(QRunnable):
                 self.henji_queue.get_nowait()
             except (queue.Empty, Exception):
                 break
-        self.signals.henji.emit(write_data)
+        self.recv_worker.setNeedHenji(write_data)
         logger.info(f"invoke set henji | write_data cmd 0x{write_data[5]:02X}")
 
         if write_data[5] == 0xFC and write_data[6] == 0x00:
