@@ -18,12 +18,13 @@ extern TIM_HandleTypeDef htim1;
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
-#define WHITE_MOTOR_PCS_MAX 28000
+#define WHITE_MOTOR_PCS_MAX 42000
 #define WHITE_MOTOR_PCS_MIN 24000
 #define WHITE_MOTOR_PCS_UNT 8
 #define WHITE_MOTOR_PCS_SUM 292
-#define WHITE_MOTOR_PCS_PATCH 20
-#define WHITE_MOTOR_PCS_GAP ((WHITE_MOTOR_PCS_MAX - WHITE_MOTOR_PCS_MIN) / WHITE_MOTOR_PCS_SUM)
+#define WHITE_MOTOR_PCS_PATCH 25
+#define WHITE_MOTOR_PCS_OVER 8
+#define WHITE_MOTOR_PCS_GAP 0 //((WHITE_MOTOR_PCS_MAX - WHITE_MOTOR_PCS_MIN) / WHITE_MOTOR_PCS_SUM)
 
 /* Private variables ---------------------------------------------------------*/
 static eMotorDir gWhite_Motor_Dir = eMotorDir_FWD;
@@ -101,7 +102,7 @@ uint8_t white_Motor_Position_Is_In(void)
     uint32_t pos;
 
     pos = 0xFFFFFFFF - gWhite_Motor_Position_Get();
-    if (motor_OPT_Status_Get_White() == eMotor_OPT_Status_OFF && pos > 0) {
+    if (motor_OPT_Status_Get_White() == eMotor_OPT_Status_OFF && pos > WHITE_MOTOR_PCS_UNT * (WHITE_MOTOR_PCS_SUM + WHITE_MOTOR_PCS_OVER)) {
         return 1;
     }
     return 0;
@@ -313,13 +314,13 @@ uint8_t white_Motor_PWM_Gen_Out(void)
         /* burst模式修改时基单元 */
         HAL_TIM_DMABurst_WriteStart(&htim1, TIM_DMABASE_ARR, TIM_DMA_UPDATE, (uint32_t *)gWhite_Motor_SRC_Buffer, TIM_DMABURSTLENGTH_3TRANSFERS);
         if (status == eMotor_OPT_Status_ON) {
-        	gWhite_Motor_Position_Inc(gWhite_Motor_SRC_Buffer[1]); /* 自增位置记录 */
+            gWhite_Motor_Position_Inc(gWhite_Motor_SRC_Buffer[1]); /* 自增位置记录 */
         } else {
-        	gWhite_Motor_Position_Clr();
+            gWhite_Motor_Position_Clr();
         }
     }
     if (status == eMotor_OPT_Status_OFF) {
-    	gPWM_TEST_AW_CNT_Inc(); /* 自增脉冲计数 */
+        gPWM_TEST_AW_CNT_Inc(); /* 自增脉冲计数 */
     }
     return 1;
 }

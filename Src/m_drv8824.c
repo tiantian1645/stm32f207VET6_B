@@ -110,6 +110,9 @@ void m_drv8824_Init(void)
         Error_Handler();
     }
     heat_Motor_Run(eMotorDir_FWD, 3000);
+    if (motor_OPT_Status_Get_White() == eMotor_OPT_Status_OFF) {
+    	white_Motor_WH();
+    }
     white_Motor_PD();
 }
 
