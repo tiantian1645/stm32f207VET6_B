@@ -455,12 +455,12 @@ void comm_Data_Init(void)
     }
 
     /* 创建串口接收任务 */
-    xResult = xTaskCreate(comm_Data_Recv_Task, "CommDataRX", 216, NULL, TASK_PRIORITY_COMM_DATA_RX, &comm_Data_Recv_Task_Handle);
+    xResult = xTaskCreate(comm_Data_Recv_Task, "CommDataRX", 232, NULL, TASK_PRIORITY_COMM_DATA_RX, &comm_Data_Recv_Task_Handle);
     if (xResult != pdPASS) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
     /* 创建串口发送任务 */
-    xResult = xTaskCreate(comm_Data_Send_Task, "CommDataTX", 192, NULL, TASK_PRIORITY_COMM_DATA_TX, &comm_Data_Send_Task_Handle);
+    xResult = xTaskCreate(comm_Data_Send_Task, "CommDataTX", 216, NULL, TASK_PRIORITY_COMM_DATA_TX, &comm_Data_Send_Task_Handle);
     if (xResult != pdPASS) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
@@ -524,6 +524,7 @@ BaseType_t comm_Data_Send_ACK_Give(uint8_t packIndex)
     if (idx >= ARRAY_LEN(gComm_Data_ACK_Records)) {
         idx = 0;
     }
+    xTaskNotify(comm_Data_Send_Task_Handle, packIndex, eSetValueWithOverwrite); /* 允许覆盖 */
     return pdPASS;
 }
 
@@ -536,9 +537,13 @@ BaseType_t comm_Data_Send_ACK_Wait(uint8_t packIndex, uint32_t timeout)
 {
     uint8_t i;
     TickType_t tick;
+    uint32_t ulNotifyValue = 0;
 
     tick = xTaskGetTickCount();
     do {
+        if (xTaskNotifyWait(0, 0xFFFFFFFF, &ulNotifyValue, 100) == pdPASS && ulNotifyValue == packIndex) {
+            return pdPASS;
+        }
         for (i = 0; i < ARRAY_LEN(gComm_Data_ACK_Records); ++i) {
             if (gComm_Data_ACK_Records[i].ack_idx == packIndex) {
                 return pdPASS;
