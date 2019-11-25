@@ -79,6 +79,7 @@ static void comm_Data_Send_Task(void * argument);
 static BaseType_t comm_Data_RecvTask_QueueEmit_ISR(uint8_t * pData, uint16_t length);
 static BaseType_t comm_Data_Send_ACK_Check(uint8_t packIndex);
 
+static BaseType_t comm_Data_Sample_Send_Clear_Conf(void);
 /* Private user code ---------------------------------------------------------*/
 
 /**
@@ -376,6 +377,8 @@ uint8_t comm_Data_Sample_Force_Stop(void)
     HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_PD); /* 停止定时器 终止测试 */
     gComm_Data_TIM_StartFlag_Clear();
     gComm_Data_Sample_ISR_Cnt = 0;
+    gComm_Data_Sample_Max_Point_Clear(); /* 清除最大点数 */
+    comm_Data_Sample_Send_Clear_Conf();  /* 通知采样板 */
     return 0;
 }
 
@@ -405,14 +408,39 @@ BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData)
     return pdPASS;
 }
 
+/**
+ * @brief  发送采样配置
+ * @param  None
+ * @retval pdPASS 提交成功 pdFALSE 提交失败
+ */
 BaseType_t comm_Data_Sample_Send_Conf(void)
 {
-    uint8_t i, sendLength, pData[32];
+    uint8_t i, sendLength, pData[30];
 
     for (i = 0; i < ARRAY_LEN(gComm_Data_Sample_Confs); ++i) {
         pData[3 * i + 0] = gComm_Data_Sample_Confs[i].assay;      /* 测试方法 */
         pData[3 * i + 1] = gComm_Data_Sample_Confs[i].radiant;    /* 测试波长 */
         pData[3 * i + 2] = gComm_Data_Sample_Confs[i].points_num; /* 测试点数 */
+    }
+
+    sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 18); /* 构造测试配置包 */
+    return comm_Data_SendTask_QueueEmit(pData, sendLength, 50);
+}
+
+/**
+ * @brief  发送无效采样配置
+ * @note   用于停止采样
+ * @param  None
+ * @retval pdPASS 提交成功 pdFALSE 提交失败
+ */
+static BaseType_t comm_Data_Sample_Send_Clear_Conf(void)
+{
+    uint8_t i, sendLength, pData[30];
+
+    for (i = 0; i < ARRAY_LEN(gComm_Data_Sample_Confs); ++i) {
+        pData[3 * i + 0] = eComm_Data_Sample_Assay_None;       /* 测试方法 */
+        pData[3 * i + 1] = gComm_Data_Sample_Confs[i].radiant; /* 测试波长 */
+        pData[3 * i + 2] = 0;                                  /* 测试点数 */
     }
 
     sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 18); /* 构造测试配置包 */
