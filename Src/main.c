@@ -49,7 +49,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-// #define PRINT_LOG
+#define PRINT_LOG 0
 
 /* USER CODE END PD */
 
@@ -1165,7 +1165,7 @@ static void MX_GPIO_Init(void)
 int _write(int file, char * ptr, int len)
 {
 /* Implement your write code here, this is used by puts and printf for example */
-#ifdef PRINT_LOG
+#if PRINT_LOG
     HAL_UART_Transmit(&huart5, (uint8_t *)ptr, len, 0xFFFF);
 #endif
     return len;

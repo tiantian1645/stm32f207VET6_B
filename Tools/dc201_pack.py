@@ -259,7 +259,8 @@ class DC201_PACK:
     def dealJunkPack(self, pack, start):
         if start > 0:
             junk_pack = pack[0:start]
-            logger.debug(f"discard junk pack | {bytesPuttyPrint(junk_pack)} | {junk_pack}")
+            junk_text = junk_pack.decode("ascii", errors="ignore")
+            logger.debug(f"discard junk pack | {bytesPuttyPrint(junk_pack)} | {junk_text}")
 
     def buildPack(self, device_id, pack_index, cmd_type, payload=None):
         pack_index = pack_index & 0xFF
