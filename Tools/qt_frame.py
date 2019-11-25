@@ -77,14 +77,14 @@ try:
     with open(CONFIG_PATH, "r") as f:
         CONFIG = json.load(f)
 except Exception:
-    logger.error("load conf failed \n{}".format(stackprinter.format()))
+    logger.error(f"load conf failed \n{stackprinter.format()}")
     CONFIG = dict()
     CONFIG["log"] = dict(rotation="1 MB", retention=50)
     try:
         with open(CONFIG_PATH, "w") as f:
             json.dump(CONFIG, f)
     except Exception:
-        logger.error("dump conf failed \n{}".format(stackprinter.format()))
+        logger.error(f"dump conf failed \n{stackprinter.format()}")
 
 rotation = CONFIG.get("log", {}).get("rotation", "4 MB")
 retention = CONFIG.get("log", {}).get("retention", 25)
@@ -148,12 +148,12 @@ class MainWindow(QMainWindow):
             except queue.Empty:
                 break
             except Exception:
-                logger.error("clear task queue exception \n{}".format(stackprinter.format()))
+                logger.error(f"clear task queue exception \n{stackprinter.format()}")
                 break
 
     def _getHeater(self):
         self._serialSendPack(0xD3)
-  
+
     def _getDebuFlag(self):
         self._serialSendPack(0xD4)
 
@@ -203,10 +203,10 @@ class MainWindow(QMainWindow):
         image_path = "./icos/tt.ico"
         self.setWindowIcon(QIcon(image_path))
         self.setCentralWidget(widget)
-        self.resize(850, 480)
+        self.resize(850, 492)
 
     def resizeEvent(self, event):
-        logger.debug("windows size | {}".format(self.size()))
+        logger.debug(f"windows size | {self.size()}")
         pass
 
     def closeEvent(self, event):
@@ -378,13 +378,13 @@ class MainWindow(QMainWindow):
         self.temperature_btm_plot.setData(self.temp_time_record, self.temp_btm_record)
         self.temperature_top_plot.setData(self.temp_time_record, self.temp_top_record)
         if temp_btm != 128:
-            self.temperautre_lbs[0].setText("{:03.2f}℃".format(temp_btm))
+            self.temperautre_lbs[0].setText(f"{temp_btm:03.2f}℃")
             self.temperautre_lbs[0].setStyleSheet("")
         else:
             self.temperautre_lbs[0].setText("数据异常")
             self.temperautre_lbs[0].setStyleSheet("background-color: red;")
         if temp_top != 128:
-            self.temperautre_lbs[1].setText("{:03.2f}℃".format(temp_top))
+            self.temperautre_lbs[1].setText(f"{temp_top:03.2f}℃")
             self.temperautre_lbs[1].setStyleSheet("")
         else:
             self.temperautre_lbs[1].setText("数据异常")
@@ -495,7 +495,7 @@ class MainWindow(QMainWindow):
         tip = "\n".join(text[i : i + chunk_size] for i in range(0, chunks, chunk_size))
         self.barcode_lbs[channel - 1].setToolTip(tip)
         if len(text) > 13:
-            self.barcode_lbs[channel - 1].setText("{}...".format(text[:10]))
+            self.barcode_lbs[channel - 1].setText(f"{text[:10]}...")
         else:
             self.barcode_lbs[channel - 1].setText(text)
 
@@ -797,7 +797,7 @@ class MainWindow(QMainWindow):
         self.motor_debug_aging_bg.setExclusive(True)
 
     def onMotorScan(self, event=None, idx=0):
-        logger.debug("click motor scan idx | {}".format(idx))
+        logger.debug(f"click motor scan | event {event} | idx {idx}")
         self.barcode_lbs[idx].setText("*" * 10)
         self._serialSendPack(0xD0, (0, (1 << idx), (1 << idx)))
 
@@ -823,16 +823,16 @@ class MainWindow(QMainWindow):
     def serialRefreshPort(self):
         self.serial_post_co.clear()
         for i, serial_port in enumerate(serial.tools.list_ports.comports()):
-            self.serial_post_co.addItem("{}".format(serial_port.device))
+            self.serial_post_co.addItem(f"{serial_port.device}")
             self.serial_post_co.setItemData(i, serial_port.description, Qt.ToolTipRole)
         if self.serial_post_co.count() == 0:
-            self.serial_post_co.addItem("{:^20s}".format("None"))
+            self.serial_post_co.addItem(f"{'None':^20s}")
 
     def onSerialRefresh(self, event):
         self.serialRefreshPort()
 
     def onSerialSwitch(self, event):
-        logger.debug("serial switch button event | {}".format(event))
+        logger.debug(f"serial switch button event | {event}")
         if event is True:
             old_port = self.serial.port
             self.serial.port = self.serial_post_co.currentText()
@@ -861,7 +861,7 @@ class MainWindow(QMainWindow):
             self.serial_send_worker.signals.result.connect(self.onSerialSendWorkerResult)
             self.threadpool.start(self.serial_send_worker)
             self._getStatus()
-            logger.info("port update {} --> {}".format(old_port, self.serial.port))
+            logger.info(f"port update {old_port} --> {self.serial.port}")
         else:
             self.serial_recv_worker.signals.owari.emit()
             self.serial_send_worker.signals.owari.emit()
@@ -880,7 +880,7 @@ class MainWindow(QMainWindow):
         logger.info("emit from serial worker finish signal")
 
     def onSerialWorkerError(self, s):
-        logger.error("emit from serial worker error signal | {}".format(s))
+        logger.error(f"emit from serial worker error signal | {s}")
         msg = QMessageBox(self)
         msg.setIcon(QMessageBox.Critical)
         msg.setWindowTitle("串口通讯故障")
@@ -893,7 +893,7 @@ class MainWindow(QMainWindow):
         self.serial_switch_bt.setChecked(False)
 
     def onSerialRecvWorkerResult(self, info):
-        logger.info("emit from serial worker result signal | {}".format(info.text))
+        logger.info(f"emit from serial worker result signal | {info.text}")
         cmd_type = info.content[5]
         if cmd_type == 0x00:
             self.updateVersionLabelBootloader(info)
@@ -953,18 +953,16 @@ class MainWindow(QMainWindow):
                 self.upgrade_pr.setValue(int(self.firm_wrote_size * 100 / self.firm_size))
                 time_usage = time.time() - self.firm_start_time
                 logger.info(
-                    "finish loop file | complete {:.2%} | {} / {} Byte | in {:.2f}S".format(
-                        self.firm_wrote_size / self.firm_size, self.firm_wrote_size, self.firm_size, time_usage
-                    )
+                    f"firm write | complete {self.firm_wrote_size / self.firm_size:.2%} | {self.firm_wrote_size} / {self.firm_size} Byte | in {time_usage:.2f}S"
                 )
                 if write_data[6] == 0:
-                    title = "固件升级 结束 | {} / {} Byte | {:.2f} S".format(self.firm_wrote_size, self.firm_size, time_usage)
+                    title = f"固件升级 结束 | {self.firm_wrote_size} / {self.firm_size} Byte | {time_usage:.2f} S"
                     QTimer.singleShot(7000, self._getStatus)
                     self.upgrade_dg_bt.setText("もう一回")
                     self.upgrade_dg_bt.setEnabled(True)
                     self.upgrade_dg_bt.setChecked(False)
                 else:
-                    title = "固件升级中... | {} Byte | {:.2f} S".format(self.firm_wrote_size, time_usage)
+                    title = f"固件升级中... | {self.firm_wrote_size} Byte | {time_usage:.2f} S"
                     self.upgrade_dg_bt.setText("升级中")
                 self.upgrade_dg.setWindowTitle(title)
             else:
@@ -980,13 +978,13 @@ class MainWindow(QMainWindow):
                 self.upgbl_pr.setValue(int(self.bl_wrote_size * 100 / self.bl_size))
                 time_usage = time.time() - self.bl_start_time
                 if size == 0:
-                    title = "Bootloader升级 结束 | {} / {} Byte | {:.2f} S".format(self.bl_wrote_size, self.bl_size, time_usage)
+                    title = f"Bootloader升级 结束 | {self.bl_wrote_size} / {self.bl_size} Byte | {time_usage:.2f} S"
                     self.upgbl_dg_bt.setText("もう一回")
                     self.upgbl_dg_bt.setEnabled(True)
                     self.upgbl_dg_bt.setChecked(False)
                     QTimer.singleShot(7000, self._getStatus)
                 else:
-                    title = "Bootloader升级 中... | {} / {} Byte | {:.2f} S".format(self.bl_wrote_size, self.bl_size, time_usage)
+                    title = f"Bootloader升级 中... | {self.bl_wrote_size} / {self.bl_size} Byte | {time_usage:.2f} S"
                 self.upgbl_dg.setWindowTitle(title)
             else:
                 self.upgbl_dg_bt.setText("重试")
@@ -995,8 +993,8 @@ class MainWindow(QMainWindow):
                 self._clearTaskQueue()
             return
         elif write_data[5] == 0xD9:
-            logger.info("ID卡信息包 | {}".format(write_result))
-        logger.info("other | {}".format(write_result))
+            logger.info(f"ID卡信息包 | {write_result}")
+        logger.info(f"other | {write_result}")
 
     def onSerialStatistic(self, info):
         if info[0] == "w" and time.time() - self.kirakira_recv_time > 0.1:
@@ -1039,7 +1037,7 @@ class MainWindow(QMainWindow):
             conf.append(self.matplot_conf_houhou_cs[i].currentIndex())
             conf.append(self.matplot_conf_wavelength_cs[i].currentIndex() + 1)
             conf.append(self.matplot_conf_point_sps[i].value())
-        logger.debug("get matplot cnf | {}".format(conf))
+        logger.debug(f"get matplot cnf | {conf}")
         self._serialSendPack(0x03, conf)
         self._serialSendPack(0x01)
         self.plot_wg.clear()
@@ -1059,7 +1057,7 @@ class MainWindow(QMainWindow):
         self.upgbl_dg_lb = QLineEdit()
         if self.last_bl_path is not None and os.path.isfile(self.last_bl_path):
             self.upgbl_dg_lb.setText(self.last_bl_path)
-            self.upgbl_dg.setWindowTitle("Bootloader升级 | {}".format(self._getFileHash_SHA256(self.last_bl_path)))
+            self.upgbl_dg.setWindowTitle(f"Bootloader升级 | {self._getFileHash_SHA256(self.last_bl_path)}")
         self.upgbl_dg_fb_bt = QPushButton("...")
         upgbl_temp_ly.addWidget(self.upgbl_dg_lb)
         upgbl_temp_ly.addWidget(self.upgbl_dg_fb_bt)
@@ -1109,7 +1107,7 @@ class MainWindow(QMainWindow):
             else:
                 self.upgbl_dg_lb.setText(file_path)
                 self.last_bl_path = file_path
-                self.upgbl_dg.setWindowTitle("Bootloader升级 | {}".format(self._getFileHash_SHA256(file_path)))
+                self.upgbl_dg.setWindowTitle(f"Bootloader升级 | {self._getFileHash_SHA256(file_path)}")
                 self.bl_size = file_size
 
     def onReboot(self, event):
@@ -1126,7 +1124,7 @@ class MainWindow(QMainWindow):
         self.upgrade_dg_lb = QLineEdit()
         if self.last_firm_path is not None and os.path.isfile(self.last_firm_path):
             self.upgrade_dg_lb.setText(self.last_firm_path)
-            self.upgrade_dg.setWindowTitle("固件升级 | {}".format(self._getFileHash_SHA256(self.last_firm_path)))
+            self.upgrade_dg.setWindowTitle(f"固件升级 | {self._getFileHash_SHA256(self.last_firm_path)}")
         self.upgrade_dg_fb_bt = QPushButton("...")
         upgrade_temp_ly.addWidget(self.upgrade_dg_lb)
         upgrade_temp_ly.addWidget(self.upgrade_dg_fb_bt)
@@ -1179,7 +1177,7 @@ class MainWindow(QMainWindow):
         if file_path:
             self.upgrade_dg_lb.setText(file_path)
             self.last_firm_path = file_path
-            self.upgrade_dg.setWindowTitle("固件升级 | {}".format(self._getFileHash_SHA256(file_path)))
+            self.upgrade_dg.setWindowTitle(f"固件升级 | {self._getFileHash_SHA256(file_path)}")
 
     def updateMatplotPlot(self):
         self.plot_wg.clear()
@@ -1190,26 +1188,26 @@ class MainWindow(QMainWindow):
             v = self.matplot_data.get(k, [0])
             color = LINE_COLORS[abs(k - 1) % len(LINE_COLORS)]
             symbol = LINE_SYMBOLS[abs(k - 1) % len(LINE_SYMBOLS)]
-            self.plot_wg.plot(v, name="{}B{}".format("", k), pen=mkPen(color=color), symbol=symbol, symbolSize=10, symbolBrush=(color))
-            records.append("{} | {}".format(k, v))
+            self.plot_wg.plot(v, name=f"B{k}", pen=mkPen(color=color), symbol=symbol, symbolSize=10, symbolBrush=(color))
+            records.append(f"{k} | {v}")
         pyperclip.copy("\n".join(records))
 
     def updateMatplotData(self, info):
         length = info.content[6]
         channel = info.content[7]
         if len(info.content) != 2 * length + 9:
-            logger.error("error data length | {} --> {} | {}".format(len(info.content), length, info.text))
+            logger.error(f"error data length | {len(info.content)} --> {length} | {info.text}")
             self.matplot_data[channel] = None
             return
         data = tuple((int.from_bytes(info.content[8 + i * 2 : 9 + i * 2], byteorder="little") for i in range(length)))
         self.matplot_data[channel] = data
-        logger.debug("get data in channel | {} | {}".format(channel, data))
+        logger.debug(f"get data in channel | {channel} | {data}")
 
     def createStorgeDialog(self):
         self.id_card_data_dg = QDialog(self)
         self.id_card_data_dg.setWindowTitle("ID Card")
         self.id_card_data_dg.resize(730, 370)
-        self.id_card_data_dg.resizeEvent = lambda x: logger.debug("windows size | {}".format(self.id_card_data_dg.size()))
+        self.id_card_data_dg.resizeEvent = lambda x: logger.debug(f"windows size | {self.id_card_data_dg.size()}")
         id_card_data_ly = QVBoxLayout(self.id_card_data_dg)
         self.id_card_data_te = QTextEdit()
         id_card_data_ly.addWidget(self.id_card_data_te)
@@ -1400,7 +1398,7 @@ class MainWindow(QMainWindow):
         result = []
         for i in range(0, len(data), unit):
             b = data[i : i + unit]
-            result.append("0x{:04X} ~ 0x{:04X} | {}".format(i + offset, i + offset + unit - 1, bytesPuttyPrint(b)))
+            result.append(f"0x{i + offset:04X} ~ 0x{i + offset + unit - 1:04X} | {bytesPuttyPrint(b)}")
         return result
 
     def onID_CardDialogShow(self, event):
@@ -1420,7 +1418,7 @@ class MainWindow(QMainWindow):
         if file_size > 4096:
             msg = QMessageBox(self)
             msg.setIcon(QMessageBox.Warning)
-            msg.setWindowTitle("文件大小异常 | {}".format(file_size))
+            msg.setWindowTitle(f"文件大小异常 | {file_size}")
             msg.setText("只取头部4096字节数据")
             msg.show()
         with open(file_path, "rb") as f:
@@ -1451,12 +1449,10 @@ class MainWindow(QMainWindow):
             self.id_card_data.extend((0xFF for _ in range(offset)))
         self.id_card_data[start : start + length] = raw_bytes[11 : 11 + length]
         if start + length == 4096:
-            self.id_card_data_dg.setWindowTitle(
-                "ID Card | sha256 {} | {:.4f} S".format(sha256(self.id_card_data).hexdigest(), time.time() - self.storge_time_start)
-            )
+            self.id_card_data_dg.setWindowTitle(f"ID Card | sha256 {sha256(self.id_card_data).hexdigest()} | {time.time() - self.storge_time_start:.4f} S")
         result = self.genBinaryData(self.id_card_data[: start + length])
         raw_text = "\n".join(result)
-        # logger.debug("ID Card Raw Data \n{}".format(raw_text))
+        # logger.debug(f"ID Card Raw Data \n{raw_text}")
         self.id_card_data_te.setPlainText(raw_text)
 
     def onOutFlashDialogShow(self, event):
@@ -1479,7 +1475,7 @@ class MainWindow(QMainWindow):
         start = int.from_bytes(raw_bytes[9:12], byteorder="little") - self.out_flash_start
         length = raw_bytes[12]
         self.out_flash_data[start : start + length] = raw_bytes[13 : 13 + length]
-        self.out_flash_data_dg.setWindowTitle("外部Flash | sha256 {}".format(sha256(self.out_flash_data).hexdigest()))
+        self.out_flash_data_dg.setWindowTitle(f"外部Flash | sha256 {sha256(self.out_flash_data).hexdigest()}")
         result = self.genBinaryData(self.out_flash_data[: start + length], offset=self.out_flash_start)
         raw_text = "\n".join(result)
         logger.debug(f"Out Falsh Raw Data | {start} | {length}\n{raw_text}")
@@ -1490,18 +1486,20 @@ class MainWindow(QMainWindow):
         else:
             self.out_flash_data_te.setPlainText(raw_text)
 
-    def onDebugFlasgChanged(self, event):
+    def onDebugFlagChanged(self, event=None, idx=0):
+        logger.debug(f"invoke onDebugFlagChanged | event {event} | idx {idx}")
         if event:
-            self._serialSendPack(0xD4, (1,))
+            self._serialSendPack(0xD4, ((1 << idx), 1))
         else:
-            self._serialSendPack(0xD4, (0,))
+            self._serialSendPack(0xD4, ((1 << idx), 0))
 
     def updateDebugFlag(self, info):
         data = info.content[6]
-        if data:
-            self.debug_flag_cb.setChecked(True)
-        else:
-            self.debug_flag_cb.setChecked(False)
+        for i, cb in enumerate(self.debug_flag_cbs):
+            if data & (1 << i):
+                cb.setChecked(True)
+            else:
+                cb.setChecked(False)
 
     def createSysConf(self):
         self.sys_conf_gb = QGroupBox("系统")
@@ -1516,18 +1514,25 @@ class MainWindow(QMainWindow):
         self.storge_id_card_dialog_bt.setMaximumWidth(80)
         self.storge_flash_read_bt = QPushButton("外部Flash信息")
         self.storge_flash_read_bt.setMaximumWidth(100)
-        self.debug_flag_cb = QCheckBox("调试")
+        self.debug_flag_gb = QGroupBox("调试")
+        debug_flag_ly = QHBoxLayout(self.debug_flag_gb)
+        debug_flag_ly.setSpacing(3)
+        debug_flag_ly.setContentsMargins(3, 3, 3, 3)
+        self.debug_flag_cbs = (QCheckBox("温度"), QCheckBox("告警"), QCheckBox("扫码"), QCheckBox("托盘"))
+        for cb in self.debug_flag_cbs:
+            debug_flag_ly.addWidget(cb)
         storge_ly.addStretch(1)
         storge_ly.addWidget(self.storge_id_card_dialog_bt)
         storge_ly.addStretch(1)
         storge_ly.addWidget(self.storge_flash_read_bt)
         storge_ly.addStretch(1)
-        storge_ly.addWidget(self.debug_flag_cb)
+        storge_ly.addWidget(self.debug_flag_gb)
         storge_ly.addStretch(1)
 
         self.storge_id_card_dialog_bt.clicked.connect(self.onID_CardDialogShow)
         self.storge_flash_read_bt.clicked.connect(self.onOutFlashDialogShow)
-        self.debug_flag_cb.clicked.connect(self.onDebugFlasgChanged)
+        for i, cb in enumerate(self.debug_flag_cbs):
+            cb.clicked.connect(partial(self.onDebugFlagChanged, idx=i))
         sys_conf_ly.addLayout(storge_ly)
 
         boot_ly = QHBoxLayout()
@@ -1581,7 +1586,7 @@ class MainWindow(QMainWindow):
         elif p_type == 0x0D:
             return "风扇"
         else:
-            return "0x{:02X}".format(p_type)
+            return f"0x{p_type:02X}"
 
     def getFaultType(self, p_type, e_type):
         if p_type in (0x00, 0x01, 0x02, 0x03):
@@ -1601,7 +1606,7 @@ class MainWindow(QMainWindow):
             if e_type & (1 << i):
                 result.append(e)
         if e_type > (1 << len(error_list)) - 1:
-            result.append("0x{:02X}".format(e_type))
+            result.append(f"0x{e_type:02X}")
         return " | ".join(result)
 
     def getFaultLevel(self, p_type, e_type):
@@ -1634,8 +1639,8 @@ class MainWindow(QMainWindow):
         level = self.getFaultLevel(p_type, e_type)
         msg = QMessageBox(self)
         msg.setIcon(level)
-        msg.setWindowTitle("故障信息 | {}".format(datetime.now()))
-        msg.setText("设备类型: {}\n故障类型: {}".format(p, e))
+        msg.setWindowTitle(f"故障信息 | {datetime.now()}")
+        msg.setText(f"设备类型: {p}\n故障类型: {e}")
         msg.show()
 
 

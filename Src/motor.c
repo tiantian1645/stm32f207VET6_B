@@ -505,17 +505,21 @@ static void motor_Task(void * argument)
             case eMotor_Fun_Sample_Start:                            /* 准备测试 */
                 xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0);    /* 清空通知 */
                 led_Mode_Set(eLED_Mode_Kirakira_Green);              /* LED 绿灯闪烁 */
-                motor_Tray_Move_By_Index(eTrayIndex_1);              /* 扫码位置 */
-                if (protocol_Is_Debug() == 0) {                      /* 非调试模式 */
+                if (protocol_Debug_SampleBarcode() == 0) {           /* 非调试模式 */
+                    motor_Tray_Move_By_Index(eTrayIndex_1);          /* 扫码位置 */
                     barcode_result = barcode_Scan_Whole();           /* 执行扫码 */
                     if (barcode_result == eBarcodeState_Interrupt) { /* 中途打断 */
                         motor_Sample_Owari();                        /* 清理 */
                         break;                                       /* 提前结束 */
-                    }                                                /* 非调试模式 */
-                    motor_Tray_Move_By_Index(eTrayIndex_0);          /* 入仓 */
-                } else {                                             /* 调试模式 */
-                    motor_Tray_Move_By_Index(eTrayIndex_2);          /*  出仓 */
+                    }
                 }
+
+                if (protocol_Debug_SampleMotorTray() == 0) { /* 非调试模式 */
+                    motor_Tray_Move_By_Index(eTrayIndex_0);  /* 入仓 */
+                } else {                                     /* 调试模式 */
+                    motor_Tray_Move_By_Index(eTrayIndex_2);  /*  出仓 */
+                }
+
                 heat_Motor_Down();                            /* 砸下上加热体电机 */
                 if (gComm_Data_Sample_Max_Point_Get() == 0) { /* 无测试项目 */
                     protocol_Temp_Upload_Resume();            /* 恢复温度上送 */

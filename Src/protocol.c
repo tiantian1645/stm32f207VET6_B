@@ -59,40 +59,89 @@ static eComm_Data_Sample gComm_Data_Sample_Buffer[6];
 static uint8_t gProtocol_Temp_Upload_Comm_Ctl = 0;
 static uint8_t gProtocol_Temp_Upload_Comm_Suspend = 0;
 
-static uint8_t gProtocol_Debug_Flag = 1;
+static uint8_t gProtocol_Debug_Flag = 0;
 /* Private function prototypes -----------------------------------------------*/
+static uint8_t protocol_Is_Debug(eProtocol_Debug_Item item);
 
 /* Private user code ---------------------------------------------------------*/
 
 /**
  * @brief  调试模式标志 获取
- * @param  None
+ * @param  item 项目组别
  * @retval 0 非调试 1 调试
- * @note   温度上送 电机测试模式
+ * @note   参考 eProtocol_Debug_Item
  */
-uint8_t protocol_Is_Debug(void)
+static uint8_t protocol_Is_Debug(eProtocol_Debug_Item item)
 {
-    return (gProtocol_Debug_Flag == 1);
+    return (gProtocol_Debug_Flag & item);
+}
+
+/**
+ * @brief  调试模式标志 获取
+ * @retval 0 非调试 1 调试
+ */
+uint8_t protocol_Debug_Get(void)
+{
+    return gProtocol_Debug_Flag;
+}
+
+/**
+ * @brief  调试标志 温度
+ * @param  None
+ * @retval 1 使能 0 失能
+ */
+uint8_t protocol_Debug_Temperature(void)
+{
+    return protocol_Is_Debug(eProtocol_Debug_Temperature);
+}
+/**
+ * @brief  调试标志 错误上送
+ * @param  None
+ * @retval 1 使能 0 失能
+ */
+uint8_t protocol_Debug_ErrorReport(void)
+{
+    return protocol_Is_Debug(eProtocol_Debug_ErrorReport);
+}
+/**
+ * @brief  调试标志 采样时扫码
+ * @param  None
+ * @retval 1 使能 0 失能
+ */
+uint8_t protocol_Debug_SampleBarcode(void)
+{
+    return protocol_Is_Debug(eProtocol_Debug_SampleBarcode);
+}
+/**
+ * @brief  调试标志 采样时托盘动作
+ * @param  None
+ * @retval 1 使能 0 失能
+ */
+uint8_t protocol_Debug_SampleMotorTray(void)
+{
+    return protocol_Is_Debug(eProtocol_Debug_SampleMotorTray);
 }
 
 /**
  * @brief  调试模式标志 置位
- * @param  None
+ * @param  item 项目组别
  * @retval None
+ * @note   参考 eProtocol_Debug_Item
  */
-void protocol_Debug_Mark(void)
+void protocol_Debug_Mark(eProtocol_Debug_Item item)
 {
-    gProtocol_Debug_Flag = 1;
+    gProtocol_Debug_Flag |= item;
 }
 
 /**
  * @brief  调试模式标志 清零
- * @param  None
+ * @param  item 项目组别
  * @retval None
+ * @note   参考 eProtocol_Debug_Item
  */
-void protocol_Debug_Clear(void)
+void protocol_Debug_Clear(eProtocol_Debug_Item item)
 {
-    gProtocol_Debug_Flag = 0;
+    gProtocol_Debug_Flag &= (eProtocol_Debug_Item_Num - 1 - item);
 }
 
 /**
@@ -491,7 +540,7 @@ void protocol_Temp_Upload_Out_Deal(float temp_btm, float temp_top)
             temperature = temp_Get_Temp_Data(i);
             memcpy(buffer + 4 * i, &temperature, 4);
         }
-        if (protocol_Is_Debug()) {
+        if (protocol_Debug_Temperature()) {
             length = buildPackOrigin(eComm_Out, 0xEE, buffer, 36); /* 构造数据包  */
             comm_Out_SendTask_QueueEmitCover(buffer, length);      /* 提交到发送队列 */
         }
@@ -523,8 +572,8 @@ void protocol_Temp_Upload_Deal(void)
         xTick_Main = now;
         protocol_Temp_Upload_Main_Deal(temp_btm, temp_top);
     }
-#if PROTOCOL_DEBUG_TEMPERATURE
-    if (protocol_Is_Debug()) {
+
+    if (protocol_Debug_Temperature()) {
         if (now - xTick_Out > 1 * pdMS_TO_TICKS(1000)) {
             xTick_Out = now;
             protocol_Temp_Upload_Out_Deal(temp_btm, temp_top);
@@ -535,12 +584,6 @@ void protocol_Temp_Upload_Deal(void)
             protocol_Temp_Upload_Out_Deal(temp_btm, temp_top);
         }
     }
-#else
-    if (now - xTick_Out > 5 * pdMS_TO_TICKS(1000)) {
-        xTick_Out = now;
-        protocol_Temp_Upload_Out_Deal(temp_btm, temp_top);
-    }
-#endif
 }
 
 /**
@@ -771,14 +814,14 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             }
             break;
         case 0xD4:
-            if (length == 8) {
-                if (pInBuff[6] == 0) {
-                    protocol_Debug_Clear();
+            if (length == 9) {
+                if (pInBuff[7] == 0) {
+                    protocol_Debug_Clear(pInBuff[6]);
                 } else {
-                    protocol_Debug_Mark();
+                    protocol_Debug_Mark(pInBuff[6]);
                 }
             } else {
-                pInBuff[0] = protocol_Is_Debug();
+                pInBuff[0] = protocol_Debug_Get();
                 if (comm_Out_SendTask_QueueEmitWithBuildCover(0xD4, pInBuff, 1) == 0) {
                     error |= PROTOCOL_PARSE_EMIT_ERROR;
                 }

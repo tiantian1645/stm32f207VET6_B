@@ -47,7 +47,7 @@ void error_Emit(eError_Peripheral pp, uint8_t detail)
     if (errorInfo.peripheral != eError_Peripheral_COMM_Out) { /* 外串口故障不能波及主串口 */
         comm_Main_SendTask_ErrorInfoQueueEmit(&errorInfo, 0); /* 发送给主板串口 */
     }
-#if PROTOCOL_DEBUG_ERROR_REPORT
-    comm_Out_SendTask_ErrorInfoQueueEmit(&errorInfo, 0); /* 发送给外串口 */
-#endif
+    if (protocol_Debug_ErrorReport()) {
+        comm_Out_SendTask_ErrorInfoQueueEmit(&errorInfo, 0); /* 发送给外串口 */
+    }
 }

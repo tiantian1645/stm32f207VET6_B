@@ -60,14 +60,24 @@ typedef struct {
     uint8_t ack_idx;
 } sProcol_COMM_ACK_Record;
 
+typedef enum {
+    eProtocol_Debug_Temperature = (1 << 0),
+    eProtocol_Debug_ErrorReport = (1 << 1),
+    eProtocol_Debug_SampleBarcode = (1 << 2),
+    eProtocol_Debug_SampleMotorTray = (1 << 3),
+    eProtocol_Debug_Item_Num = (1 << 4),
+} eProtocol_Debug_Item;
+
 /* Exported defines ----------------------------------------------------------*/
-#define PROTOCOL_DEBUG_ERROR_REPORT		0
-#define PROTOCOL_DEBUG_TEMPERATURE		0
 
 /* Exported functions prototypes ---------------------------------------------*/
-uint8_t protocol_Is_Debug(void);
-void protocol_Debug_Mark(void);
-void protocol_Debug_Clear(void);
+uint8_t protocol_Debug_Get(void);
+uint8_t protocol_Debug_Temperature(void);
+uint8_t protocol_Debug_ErrorReport(void);
+uint8_t protocol_Debug_SampleBarcode(void);
+uint8_t protocol_Debug_SampleMotorTray(void);
+void protocol_Debug_Mark(eProtocol_Debug_Item item);
+void protocol_Debug_Clear(eProtocol_Debug_Item item);
 
 uint8_t gProtocol_ACK_IndexGet(eProtocol_COMM_Index index);
 void gProtocol_ACK_IndexAutoIncrease(eProtocol_COMM_Index index);
