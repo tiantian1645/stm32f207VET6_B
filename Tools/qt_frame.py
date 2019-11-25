@@ -455,7 +455,7 @@ class MainWindow(QMainWindow):
                 self.matplot_conf_wavelength_cs[i].setCurrentIndex(0)
                 self.matplot_conf_point_sps[i].setRange(0, 120)
                 self.matplot_conf_point_sps[i].setMaximumWidth(60)
-                self.matplot_conf_point_sps[i].setValue(1)
+                self.matplot_conf_point_sps[i].setValue(6)
                 barcode_ly.addWidget(self.matplot_conf_houhou_cs[i], i, 2)
                 barcode_ly.addWidget(self.matplot_conf_wavelength_cs[i], i, 3)
                 barcode_ly.addWidget(self.matplot_conf_point_sps[i], i, 4)
@@ -910,7 +910,7 @@ class MainWindow(QMainWindow):
         elif cmd_type == 0xB5:
             self.showWarnInfo(info)
         elif cmd_type == 0xB6:
-            self.updateMatplotPlot()
+            self.onSampleOver()
         elif cmd_type == 0xD1:
             self.updateOutFlashData(info)
         elif cmd_type == 0xB7:
@@ -1022,7 +1022,11 @@ class MainWindow(QMainWindow):
         self.plot_wg.showGrid(x=True, y=True)
         self.plot_proxy = SignalProxy(self.plot_wg.scene().sigMouseMoved, rateLimit=60, slot=self.onPlotMouseMove)
         matplot_ly.addWidget(self.plot_win)
-        self.updateMatplotPlot()
+        self.matplot_plots = []
+        for k in range(6):
+            color = LINE_COLORS[k % len(LINE_COLORS)]
+            symbol = LINE_SYMBOLS[k % len(LINE_SYMBOLS)]
+            self.matplot_plots.append(self.plot_wg.plot([], name=f"B{k+1}", pen=mkPen(color=color), symbol=symbol, symbolSize=10, symbolBrush=(color)))
 
     def onPlotMouseMove(self, event):
         mouse_point = self.plot_wg.vb.mapSceneToView(event[0])
@@ -1040,7 +1044,8 @@ class MainWindow(QMainWindow):
         logger.debug(f"get matplot cnf | {conf}")
         self._serialSendPack(0x03, conf)
         self._serialSendPack(0x01)
-        self.plot_wg.clear()
+        for plot in self.matplot_plots:
+            plot.clear()
 
     def onMatplotCancel(self, event):
         self._serialSendPack(0x02)
@@ -1179,16 +1184,10 @@ class MainWindow(QMainWindow):
             self.last_firm_path = file_path
             self.upgrade_dg.setWindowTitle(f"固件升级 | {self._getFileHash_SHA256(file_path)}")
 
-    def updateMatplotPlot(self):
-        self.plot_wg.clear()
-        if len(self.matplot_data.items()) == 0:
-            return
+    def onSampleOver(self):
         records = []
         for k in sorted(self.matplot_data.keys()):
             v = self.matplot_data.get(k, [0])
-            color = LINE_COLORS[abs(k - 1) % len(LINE_COLORS)]
-            symbol = LINE_SYMBOLS[abs(k - 1) % len(LINE_SYMBOLS)]
-            self.plot_wg.plot(v, name=f"B{k}", pen=mkPen(color=color), symbol=symbol, symbolSize=10, symbolBrush=(color))
             records.append(f"{k} | {v}")
         pyperclip.copy("\n".join(records))
 
@@ -1197,9 +1196,9 @@ class MainWindow(QMainWindow):
         channel = info.content[7]
         if len(info.content) != 2 * length + 9:
             logger.error(f"error data length | {len(info.content)} --> {length} | {info.text}")
-            self.matplot_data[channel] = None
             return
         data = tuple((int.from_bytes(info.content[8 + i * 2 : 9 + i * 2], byteorder="little") for i in range(length)))
+        self.matplot_plots[channel - 1].setData(data)
         self.matplot_data[channel] = data
         logger.debug(f"get data in channel | {channel} | {data}")
 
