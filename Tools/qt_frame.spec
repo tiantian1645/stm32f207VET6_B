@@ -17,8 +17,9 @@ a = Analysis(['qt_frame.py'],
              noarchive=False)
 
 a.datas += [('.\\icos\\tt.ico', 'C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Tools\\icos\\tt.ico', 'DATA')]
-a.datas += [('.\\log\\dc201.log', 'C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Tools\\Log\\dc201.log', 'DATA')]
+a.datas += [('.\\log\\dc201.log', 'C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Tools\\log\\dc201.log', 'DATA')]
 a.datas += [('.\\conf\\config.json', 'C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Tools\\conf\\config.json', 'DATA')]
+a.datas += [('.\\data\\db.sqlite3', 'C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Tools\\data\\db.sqlite3', 'DATA')]
 
 pyz = PYZ(a.pure, a.zipped_data,
              cipher=block_cipher)

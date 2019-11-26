@@ -6,6 +6,7 @@ import queue
 import struct
 import sys
 import time
+from collections import namedtuple
 from datetime import datetime
 from functools import partial
 from hashlib import sha256
@@ -48,6 +49,7 @@ from pyqtgraph import GraphicsLayoutWidget, LabelItem, SignalProxy, mkPen
 from bytes_helper import bytes2Float, bytesPuttyPrint
 from dc201_pack import DC201_PACK, DC201_ParamInfo, write_firmware_pack_BL, write_firmware_pack_FC
 from qt_serial import SerialRecvWorker, SerialSendWorker
+from sample_data import MethodEnum, SampleDB, WaveEnum
 
 BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
 TEMPERAUTRE_NAMES = ("下加热体:", "上加热体:")
@@ -67,6 +69,7 @@ TEMP_RAW_COLORS = (
     (156, 100, 12),
 )
 TEMP_RAW_SYMBOL_CONFIG = (("o", 4, "b"), ("s", 4, "g"), ("t", 4, "r"), ("d", 4, "c"), ("+", 4, "m"), ("o", 4, "y"), ("s", 4, "k"), ("t", 4, "w"), ("d", 4, "r"))
+SampleConf = namedtuple("SampleConf", "method wave point_num")
 
 logger = loguru.logger
 
@@ -130,10 +133,12 @@ class MainWindow(QMainWindow):
         self.temperature_raw_plots = []
         self.dd = DC201_PACK()
         self.pack_index = 1
-        self.device_id = b""
+        self.device_id = "no name"
+        self.version = "no version"
         self.serial_recv_worker = None
         self.serial_send_worker = None
         self.initUI()
+        self.sample_db = SampleDB("sqlite:///data/db.sqlite3")
 
     def _serialSendPack(self, *args, **kwargs):
         pack = self.dd.buildPack(0x13, self.getPackIndex(), *args, **kwargs)
@@ -202,8 +207,8 @@ class MainWindow(QMainWindow):
         right_ly.addWidget(self.sys_conf_gb)
         right_ly.addWidget(self.serial_gb)
 
-        layout.addLayout(right_ly)
-        layout.addWidget(self.matplot_wg)
+        layout.addLayout(right_ly, stretch=0)
+        layout.addWidget(self.matplot_wg, stretch=1)
         image_path = "./icos/tt.ico"
         self.setWindowIcon(QIcon(image_path))
         self.setCentralWidget(widget)
@@ -272,7 +277,7 @@ class MainWindow(QMainWindow):
         motor_tray_position_ly.setContentsMargins(5, 0, 5, 0)
         motor_tray_position_ly.setSpacing(5)
         self.motor_tray_position = QLabel("******")
-        motor_tray_position_ly.addWidget(QLabel("托盘电机位置"))
+        motor_tray_position_ly.addWidget(QLabel("托盘："))
         motor_tray_position_ly.addWidget(self.motor_tray_position)
 
         kirakira_wg = QWidget()
@@ -427,7 +432,8 @@ class MainWindow(QMainWindow):
             self.motor_tray_position.setText("错误报文")
 
     def updateVersionLabel(self, info):
-        self.version_lb.setText(f"版本: {bytes2Float(info.content[6:10]):.3f}")
+        self.version = f"{bytes2Float(info.content[6:10]):.3f}"
+        self.version_lb.setText(f"版本: {self.version}")
 
     def updateVersionLabelBootloader(self, info):
         raw_bytes = info.content
@@ -454,6 +460,8 @@ class MainWindow(QMainWindow):
         self.matplot_start_bt.setMaximumWidth(60)
         self.matplot_cancel_bt = QPushButton("取消")
         self.matplot_cancel_bt.setMaximumWidth(60)
+        self.matplot_save_cb = QCheckBox("保存")
+        self.matplot_save_cb.setChecked(True)
         for i in range(7):
             self.motor_scan_bts[i].setMaximumWidth(45)
             barcode_ly.addWidget(self.motor_scan_bts[i], i, 0)
@@ -472,9 +480,14 @@ class MainWindow(QMainWindow):
                 barcode_ly.addWidget(self.matplot_conf_wavelength_cs[i], i, 3)
                 barcode_ly.addWidget(self.matplot_conf_point_sps[i], i, 4)
             else:
-                barcode_ly.addWidget(self.barcode_scan_bt, i, 2)
-                barcode_ly.addWidget(self.matplot_start_bt, i, 3)
-                barcode_ly.addWidget(self.matplot_cancel_bt, i, 4)
+                temp_ly = QHBoxLayout()
+                temp_ly.setSpacing(0)
+                temp_ly.setContentsMargins(3, 3, 3, 3)
+                temp_ly.addWidget(self.barcode_scan_bt)
+                temp_ly.addWidget(self.matplot_start_bt)
+                temp_ly.addWidget(self.matplot_cancel_bt)
+                temp_ly.addWidget(self.matplot_save_cb)
+                barcode_ly.addLayout(temp_ly, i, 2, 1, 3)
         self.barcode_scan_bt.clicked.connect(self.onBarcodeScan)
         self.matplot_start_bt.clicked.connect(self.onMatplotStart)
         self.matplot_cancel_bt.clicked.connect(self.onMatplotCancel)
@@ -1051,11 +1064,15 @@ class MainWindow(QMainWindow):
     def onMatplotStart(self, event):
         self.initBarcodeScan()
         conf = []
+        self.sample_confs = []
+        self.sample_datas = []
         for i in range(6):
             conf.append(self.matplot_conf_houhou_cs[i].currentIndex())
             conf.append(self.matplot_conf_wavelength_cs[i].currentIndex() + 1)
             conf.append(self.matplot_conf_point_sps[i].value())
+            self.sample_confs.append(SampleConf(conf[-3], conf[-2], conf[-1]))
         logger.debug(f"get matplot cnf | {conf}")
+        self.sample_label = self.sample_db.build_label(name=self.device_id, version=self.version)
         self._serialSendPack(0x03, conf)
         self._serialSendPack(0x01)
         for plot in self.matplot_plots:
@@ -1214,6 +1231,13 @@ class MainWindow(QMainWindow):
         data = tuple((int.from_bytes(info.content[8 + i * 2 : 9 + i * 2], byteorder="little") for i in range(length)))
         self.matplot_plots[channel - 1].setData(data)
         self.matplot_data[channel] = data
+        method = self.sample_confs[channel - 1].method
+        wave = self.sample_confs[channel - 1].wave
+        raw_data = info.content[8:-1]
+        self.sample_datas.append(
+            self.sample_db.build_sample_data(datetime.now(), channel=channel, method=MethodEnum(method), wave=WaveEnum(wave), total=length, raw_data=raw_data)
+        )
+        self.sample_db.bind_label_sample_datas(self.sample_label, self.sample_datas)
         logger.debug(f"get data in channel | {channel} | {data}")
 
     def createStorgeDialog(self):
