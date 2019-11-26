@@ -67,6 +67,7 @@ typedef struct {
 typedef enum {
     eMotorNotifyValue_TG = (1 << 0), /* 本次采样完成 */
     eMotorNotifyValue_BR = (1 << 1), /* 终止采样 */
+    eMotorNotifyValue_SP = (1 << 2), /* 杂散光采样完成 */
 } eMotorNotifyValue;
 
 typedef enum {

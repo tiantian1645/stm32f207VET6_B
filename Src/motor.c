@@ -468,6 +468,20 @@ static void motor_Task(void * argument)
     motor_Resource_Init();                 /* 电机驱动、位置初始化 */
     barcode_Init();                        /* 扫码枪初始化 */
 
+    if (comm_Data_Start_Stary_Test() != pdPASS) { /* 开始杂散光测试 */
+        cnt = 1;
+    } else {
+        xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(10000)); /* 等待杂散光完成通知 */
+        if (xResult != pdPASS) {                                                       /* 杂散光测试超时 */
+            cnt = 2;
+        } else if (xNotifyValue != eMotorNotifyValue_SP) { /* 异常通知量 */
+            cnt = 3;
+        } else {
+            cnt = 0;
+        }
+        comm_Data_Stary_Test_Clear(); /* finally 清除杂散光测试标记 */
+    }
+
     for (;;) {
         xResult = xQueuePeek(motor_Fun_Queue_Handle, &mf, portMAX_DELAY);
         if (xResult != pdPASS) {

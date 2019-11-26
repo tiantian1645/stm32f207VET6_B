@@ -290,8 +290,10 @@ uint8_t buildPackOrigin(eProtocol_COMM_Index index, uint8_t cmdType, uint8_t * p
 {
     uint8_t i;
 
-    for (i = dataLength; i > 0; --i) {
-        pData[i - 1 + 6] = pData[i - 1];
+    if (dataLength > 0) {
+        for (i = dataLength; i > 0; --i) {
+            pData[i - 1 + 6] = pData[i - 1];
+        }
     }
 
     gProtocol_ACK_IndexAutoIncrease(index);
@@ -1153,8 +1155,15 @@ eProtocolParseResult protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
             comm_Main_SendTask_QueueEmitWithBuild(eProtocoleRespPack_Client_SAMP_DATA, &pInBuff[6], cnt, 20);
             comm_Out_SendTask_QueueEmitWithModify(pInBuff + 6, length, 0);
             break;
-        case eComm_Data_Inbound_CMD_OVER:            /* 采集数据完成帧 */
-            motor_Sample_Info(eMotorNotifyValue_TG); /* 通知电机任务采样完成 */
+        case eComm_Data_Inbound_CMD_OVER: /* 采集数据完成帧 */
+            if (comm_Data_Stary_Test_Is_Running()) {
+                motor_Sample_Info(eMotorNotifyValue_SP); /* 通知电机任务杂散光测试完成 */
+            } else {
+                motor_Sample_Info(eMotorNotifyValue_TG); /* 通知电机任务采样完成 */
+            }
+            break;
+        case eComm_Data_Inbound_CMD_ERROR: /* 采集板错误信息帧 */
+            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_ERR, &pInBuff[6], 2);
             break;
         default:
             error |= PROTOCOL_PARSE_CMD_ERROR;

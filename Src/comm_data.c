@@ -69,7 +69,7 @@ static uint8_t gComm_Data_Sample_PD_WH_Idx = 0xFF;
 static uint8_t gCoMM_Data_Sample_ISR_Buffer[16];
 
 static uint8_t gComm_Data_PD_Next_Flag = 0;
-
+static uint8_t gComm_Data_Stary_test_Falg = 0;
 /* Private constants ---------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -292,6 +292,36 @@ void comm_Data_PD_Next_Flag_Mark(void)
 }
 
 /**
+ * @brief  杂散光测试标志 标记
+ * @param  None
+ * @retval None
+ */
+void comm_Data_Stary_Test_Mark(void)
+{
+    gComm_Data_Stary_test_Falg = 1;
+}
+
+/**
+ * @brief  杂散光测试标志 清除
+ * @param  None
+ * @retval None
+ */
+void comm_Data_Stary_Test_Clear(void)
+{
+    gComm_Data_Stary_test_Falg = 0;
+}
+
+/**
+ * @brief  杂散光测试标志 读取
+ * @param  None
+ * @retval 1 正在测试 0 已经结束
+ */
+uint8_t comm_Data_Stary_Test_Is_Running(void)
+{
+    return (gComm_Data_Stary_test_Falg == 1) ? (1) : (0);
+}
+
+/**
  * @brief  串口定时器中断处理 用于同步发送开始采集信号
  * @note   200 mS 回调一次
  * @param  None
@@ -444,6 +474,19 @@ static BaseType_t comm_Data_Sample_Send_Clear_Conf(void)
     }
 
     sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 18); /* 构造测试配置包 */
+    return comm_Data_SendTask_QueueEmit(pData, sendLength, 50);
+}
+
+/**
+ * @brief  发送杂散光测试包
+ * @note   开始杂散光测试 耗时5～6秒
+ * @retval pdPASS 提交成功 pdFALSE 提交失败
+ */
+BaseType_t comm_Data_Start_Stary_Test(void)
+{
+    uint8_t sendLength, pData[8];
+    sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_STRAY, pData, 0); /* 构造杂散光测试包 */
+    comm_Data_Stary_Test_Mark();                                                       /* 标记杂散光测试开始 */
     return comm_Data_SendTask_QueueEmit(pData, sendLength, 50);
 }
 

@@ -57,11 +57,13 @@ typedef struct {
 typedef enum {
     eComm_Data_Outbound_CMD_CONF = 0x26,  /* 测试项信息帧 */
     eComm_Data_Outbound_CMD_START = 0x27, /* 采样开始控制帧 */
+    eComm_Data_Outbound_CMD_STRAY = 0x28, /* 杂散光采集帧 */
 } eComm_Data_Outbound_CMD;
 
 typedef enum {
-    eComm_Data_Inbound_CMD_DATA = 0xB3, /* 采集数据帧 */
-    eComm_Data_Inbound_CMD_OVER = 0x34, /* 采集数据完成帧 */
+    eComm_Data_Inbound_CMD_DATA = 0xB3,  /* 采集数据帧 */
+    eComm_Data_Inbound_CMD_OVER = 0x34,  /* 采集数据完成帧 */
+    eComm_Data_Inbound_CMD_ERROR = 0xB5, /* 错误信息帧 */
 } eComm_Data_Inbound_CMD;
 
 typedef struct {
@@ -107,6 +109,11 @@ BaseType_t comm_Data_Sample_Owari(void);
 void comm_Data_PD_Next_Flag_Mark(void);
 
 uint8_t gComm_Data_Sample_PD_WH_Idx_Get(void);
+
+BaseType_t comm_Data_Start_Stary_Test(void);
+void comm_Data_Stary_Test_Mark(void);
+void comm_Data_Stary_Test_Clear(void);
+uint8_t comm_Data_Stary_Test_Is_Running(void);
 /* Private defines -----------------------------------------------------------*/
 
 #endif
