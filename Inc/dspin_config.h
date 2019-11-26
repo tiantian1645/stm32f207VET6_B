@@ -32,8 +32,8 @@
 /* Exported macro ------------------------------------------------------------*/
 
 /* Exported functions ------------------------------------------------------- */
-#define Index_0_dSPIN_CONF_PARAM_ACC (138)
-#define Index_0_dSPIN_CONF_PARAM_DEC (138)
+#define Index_0_dSPIN_CONF_PARAM_ACC (75)
+#define Index_0_dSPIN_CONF_PARAM_DEC (75)
 #define Index_0_dSPIN_CONF_PARAM_MAX_SPEED (65)
 #define Index_0_dSPIN_CONF_PARAM_MIN_SPEED (0)
 #define Index_0_dSPIN_CONF_PARAM_KVAL_HOLD (30)

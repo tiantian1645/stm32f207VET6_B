@@ -59,7 +59,7 @@ typedef struct {
 #define BARCODE_MOTOR_IS_FLAG (dSPIN_Flag())                                                        /* 扫码电机标志脚读取 */
 #define BARCODE_MOTOR_MAX_DISP 16000                                                                /* 扫码电机运动最大步数 物理限制步数 */
 #define BARCODE_UART huart3                                                                         /* 扫码串口 */
-#define BARCODE_MOTOR_MAX_GO_UNTIL_SPEED 120000                                                     /* 扫码电机归零最大速度 */
+#define BARCODE_MOTOR_MAX_GO_UNTIL_SPEED 60000                                                      /* 扫码电机归零最大速度 */
 
 /* Private variables ---------------------------------------------------------*/
 static sMotorRunStatus gBarcodeMotorRunStatus;
