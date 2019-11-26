@@ -941,6 +941,12 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 }
             }
             break;
+        case 0xDF:
+            memcpy(pInBuff, UID_BASE, 12);
+            if (comm_Out_SendTask_QueueEmitWithBuildCover(0xDF, pInBuff, 12) == 0) {
+                error |= PROTOCOL_PARSE_EMIT_ERROR;
+            }
+            break;
         case eProtocolEmitPack_Client_CMD_START:          /* 开始测量帧 0x01 */
             comm_Data_Sample_Send_Conf();                 /* 发送测试配置 */
             protocol_Temp_Upload_Pause();                 /* 暂停温度上送 */

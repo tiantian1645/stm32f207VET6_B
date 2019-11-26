@@ -130,13 +130,13 @@ class MainWindow(QMainWindow):
         self.temperature_raw_plots = []
         self.dd = DC201_PACK()
         self.pack_index = 1
-        self.device_id = 0x13
+        self.device_id = b""
         self.serial_recv_worker = None
         self.serial_send_worker = None
         self.initUI()
 
     def _serialSendPack(self, *args, **kwargs):
-        pack = self.dd.buildPack(self.device_id, self.getPackIndex(), *args, **kwargs)
+        pack = self.dd.buildPack(0x13, self.getPackIndex(), *args, **kwargs)
         self.task_queue.put(pack)
         if not self.serial.isOpen():
             logger.debug(f"try send | {bytesPuttyPrint(pack)}")
@@ -157,10 +157,14 @@ class MainWindow(QMainWindow):
     def _getDebuFlag(self):
         self._serialSendPack(0xD4)
 
+    def _getDeviceID(self):
+        self._serialSendPack(0xDF)
+
     def _getStatus(self):
         self._serialSendPack(0x07)
         self._getHeater()
         self._getDebuFlag()
+        self._getDeviceID()
 
     def _setColor(sself, wg, nbg=None, nfg=None):
         palette = wg.palette()
@@ -286,12 +290,14 @@ class MainWindow(QMainWindow):
 
         self.version_lb = QLabel("版本: *.*")
         self.version_bl_lb = QLabel("BL: *.*")
+        self.device_id_lb = QLabel("ID: *.*")
 
         self.status_bar.addWidget(temperautre_wg, 0)
         self.status_bar.addWidget(motor_tray_position_wg, 0)
         self.status_bar.addWidget(kirakira_wg, 0)
         self.status_bar.addWidget(self.version_lb, 0)
         self.status_bar.addWidget(self.version_bl_lb, 0)
+        self.status_bar.addWidget(self.device_id_lb, 0)
         self.setStatusBar(self.status_bar)
 
     def onTemperautreLabelClick(self, event):
@@ -427,6 +433,12 @@ class MainWindow(QMainWindow):
         raw_bytes = info.content
         year, moth, day, ver = raw_bytes[6:10]
         self.version_bl_lb.setText(f"BL: {2000 + year}-{moth:02d}-{day:02d} V{ver:03d}")
+
+    def udpateDeviceIDLabel(self, info):
+        logger.debug(f"udpateDeviceIDLabel | {info.text}")
+        raw_bytes = info.content
+        self.device_id = "-".join([f"{struct.unpack('>I', raw_bytes[6 + 4 * i : 10 + 4 * i])[0]:08X}" for i in range(3)])
+        self.device_id_lb.setText(f"ID: {self.device_id}")
 
     def createBarcode(self):
         self.barcode_gb = QGroupBox("测试通道")
@@ -925,6 +937,8 @@ class MainWindow(QMainWindow):
             self.updateOutFalshParam(info)
         elif cmd_type == 0xEE:
             self.updateTemperautreRaw(info)
+        elif cmd_type == 0xDF:
+            self.udpateDeviceIDLabel(info)
 
     def onSerialSendWorkerResult(self, write_result):
         result, write_data, info = write_result
