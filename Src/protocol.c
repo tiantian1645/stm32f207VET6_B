@@ -942,7 +942,7 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             }
             break;
         case 0xDF:
-            memcpy(pInBuff, UID_BASE, 12);
+            memcpy(pInBuff, (uint8_t *)(UID_BASE), 12);
             if (comm_Out_SendTask_QueueEmitWithBuildCover(0xDF, pInBuff, 12) == 0) {
                 error |= PROTOCOL_PARSE_EMIT_ERROR;
             }
@@ -1137,16 +1137,15 @@ eProtocolParseResult protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
         return PROTOCOL_PARSE_OK;                      /* 直接返回 */
     }
 
-    error = protocol_Parse_AnswerACK(eComm_Data, pInBuff[3]); /* 发送回应包 */
-    switch (pInBuff[5]) {                                     /* 进一步处理 功能码 */
-        case eComm_Data_Inbound_CMD_DATA:                     /* 采集数据帧 */
-            if (pInBuff[7] < 1 || pInBuff[7] > 6) {           /* 检查通道编码 */
-                break;
-            }
-            gComm_Data_Sample_Buffer[pInBuff[7] - 1].num = pInBuff[6];           /* 数据个数 u16 */
-            gComm_Data_Sample_Buffer[pInBuff[7] - 1].channel = pInBuff[7];       /* 通道编码 */
-            for (i = 0; i < gComm_Data_Sample_Buffer[pInBuff[7] - 1].num; ++i) { /* 具体数据 */
-                gComm_Data_Sample_Buffer[pInBuff[7] - 1].data[i] = pInBuff[8 + (i * 2)] + (pInBuff[9 + (i * 2)] << 8);
+    error = protocol_Parse_AnswerACK(eComm_Data, pInBuff[3]);                        /* 发送回应包 */
+    switch (pInBuff[5]) {                                                            /* 进一步处理 功能码 */
+        case eComm_Data_Inbound_CMD_DATA:                                            /* 采集数据帧 */
+            if (pInBuff[7] >= 1 && pInBuff[7] <= 6) {                                /* 检查通道编码 */
+                gComm_Data_Sample_Buffer[pInBuff[7] - 1].num = pInBuff[6];           /* 数据个数 u16 */
+                gComm_Data_Sample_Buffer[pInBuff[7] - 1].channel = pInBuff[7];       /* 通道编码 */
+                for (i = 0; i < gComm_Data_Sample_Buffer[pInBuff[7] - 1].num; ++i) { /* 具体数据 */
+                    gComm_Data_Sample_Buffer[pInBuff[7] - 1].data[i] = pInBuff[8 + (i * 2)] + (pInBuff[9 + (i * 2)] << 8);
+                }
             }
             cnt = pInBuff[6] * 2 + 2;
             comm_Main_SendTask_QueueEmitWithBuild(eProtocoleRespPack_Client_SAMP_DATA, &pInBuff[6], cnt, 20);
