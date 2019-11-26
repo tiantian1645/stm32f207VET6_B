@@ -256,94 +256,45 @@ void m_l6470_Params_Init(void)
     dSPIN_Regs_Struct_Reset(&dSPIN_RegsStructs[gML6470Index]);
     switch (gML6470Index) {
         case 0:
-            /* Acceleration rate settings to dSPIN_CONF_PARAM_ACC in steps/s2, range 14.55 to 59590 steps/s2 */
-            dSPIN_RegsStructs[gML6470Index].ACC = AccDec_Steps_to_Par(Index_0_dSPIN_CONF_PARAM_ACC);
-            /* Deceleration rate settings to dSPIN_CONF_PARAM_DEC in steps/s2, range 14.55 to 59590 steps/s2 */
-            dSPIN_RegsStructs[gML6470Index].DEC = AccDec_Steps_to_Par(Index_0_dSPIN_CONF_PARAM_DEC);
-            /* Maximum speed settings to dSPIN_CONF_PARAM_MAX_SPEED in steps/s, range 15.25 to 15610 steps/s */
-            dSPIN_RegsStructs[gML6470Index].MAX_SPEED = MaxSpd_Steps_to_Par(Index_0_dSPIN_CONF_PARAM_MAX_SPEED);
-            /* Full step speed settings dSPIN_CONF_PARAM_FS_SPD in steps/s, range 7.63 to 15625 steps/s */
-            dSPIN_RegsStructs[gML6470Index].FS_SPD = FSSpd_Steps_to_Par(Index_0_dSPIN_CONF_PARAM_FS_SPD);
-            /* Minimum speed settings to dSPIN_CONF_PARAM_MIN_SPEED in steps/s, range 0 to 976.3 steps/s */
-            dSPIN_RegsStructs[gML6470Index].MIN_SPEED = Index_0_dSPIN_CONF_PARAM_LSPD_BIT | MinSpd_Steps_to_Par(Index_0_dSPIN_CONF_PARAM_MIN_SPEED);
-            /* Acceleration duty cycle (torque) settings to dSPIN_CONF_PARAM_KVAL_ACC in %, range 0 to 99.6% */
-            dSPIN_RegsStructs[gML6470Index].KVAL_ACC = Kval_Perc_to_Par(Index_0_dSPIN_CONF_PARAM_KVAL_ACC);
-            /* Deceleration duty cycle (torque) settings to dSPIN_CONF_PARAM_KVAL_DEC in %, range 0 to 99.6% */
-            dSPIN_RegsStructs[gML6470Index].KVAL_DEC = Kval_Perc_to_Par(Index_0_dSPIN_CONF_PARAM_KVAL_DEC);
-            /* Run duty cycle (torque) settings to dSPIN_CONF_PARAM_KVAL_RUN in %, range 0 to 99.6% */
-            dSPIN_RegsStructs[gML6470Index].KVAL_RUN = Kval_Perc_to_Par(Index_0_dSPIN_CONF_PARAM_KVAL_RUN);
-            /* Hold duty cycle (torque) settings to dSPIN_CONF_PARAM_KVAL_HOLD in %, range 0 to 99.6% */
-            dSPIN_RegsStructs[gML6470Index].KVAL_HOLD = Kval_Perc_to_Par(Index_0_dSPIN_CONF_PARAM_KVAL_HOLD);
-            /* Thermal compensation param settings to dSPIN_CONF_PARAM_K_THERM, range 1 to 1.46875 */
-            dSPIN_RegsStructs[gML6470Index].K_THERM = KTherm_to_Par(Index_0_dSPIN_CONF_PARAM_K_THERM);
-            /* Intersect speed settings for BEMF compensation to dSPIN_CONF_PARAM_INT_SPD in steps/s, range 0 to 3906 steps/s */
-            dSPIN_RegsStructs[gML6470Index].INT_SPD = IntSpd_Steps_to_Par(Index_0_dSPIN_CONF_PARAM_INT_SPD);
-            /* BEMF start slope settings for BEMF compensation to dSPIN_CONF_PARAM_ST_SLP in % step/s, range 0 to 0.4% s/step */
-            dSPIN_RegsStructs[gML6470Index].ST_SLP = BEMF_Slope_Perc_to_Par(Index_0_dSPIN_CONF_PARAM_ST_SLP);
-            /* BEMF final acc slope settings for BEMF compensation to dSPIN_CONF_PARAM_FN_SLP_ACC in% step/s, range 0 to 0.4% s/step */
-            dSPIN_RegsStructs[gML6470Index].FN_SLP_ACC = BEMF_Slope_Perc_to_Par(Index_0_dSPIN_CONF_PARAM_FN_SLP_ACC);
-            /* BEMF final dec slope settings for BEMF compensation to dSPIN_CONF_PARAM_FN_SLP_DEC in% step/s, range 0 to 0.4% s/step */
-            dSPIN_RegsStructs[gML6470Index].FN_SLP_DEC = BEMF_Slope_Perc_to_Par(Index_0_dSPIN_CONF_PARAM_FN_SLP_DEC);
-            /* Stall threshold settings to dSPIN_CONF_PARAM_STALL_TH in mA, range 31.25 to 4000mA */
-            dSPIN_RegsStructs[gML6470Index].STALL_TH = StallTh_to_Par(Index_0_dSPIN_CONF_PARAM_STALL_TH);
-            /* Set Config register according to config parameters */
-            /* clock setting, switch hard stop interrupt mode, */
-            /*  supply voltage compensation, overcurrent shutdown */
-            /* slew-rate , PWM frequency */
-            dSPIN_RegsStructs[gML6470Index].CONFIG = (uint16_t)Index_0_dSPIN_CONF_PARAM_CLOCK_SETTING | (uint16_t)Index_0_dSPIN_CONF_PARAM_SW_MODE |
-                                                     (uint16_t)Index_0_dSPIN_CONF_PARAM_VS_COMP | (uint16_t)Index_0_dSPIN_CONF_PARAM_OC_SD |
-                                                     (uint16_t)Index_0_dSPIN_CONF_PARAM_SR | (uint16_t)Index_0_dSPIN_CONF_PARAM_PWM_DIV |
-                                                     (uint16_t)Index_0_dSPIN_CONF_PARAM_PWM_MUL;
-
-            /* 细分步 */
+            dSPIN_RegsStructs[gML6470Index].ACC = Index_0_dSPIN_CONF_PARAM_ACC;
+            dSPIN_RegsStructs[gML6470Index].DEC = Index_0_dSPIN_CONF_PARAM_DEC;
+            dSPIN_RegsStructs[gML6470Index].MAX_SPEED = Index_0_dSPIN_CONF_PARAM_MAX_SPEED;
+            dSPIN_RegsStructs[gML6470Index].FS_SPD = Index_0_dSPIN_CONF_PARAM_FS_SPD;
+            dSPIN_RegsStructs[gML6470Index].MIN_SPEED = Index_0_dSPIN_CONF_PARAM_MIN_SPEED;
+            dSPIN_RegsStructs[gML6470Index].KVAL_ACC = Index_0_dSPIN_CONF_PARAM_KVAL_ACC;
+            dSPIN_RegsStructs[gML6470Index].KVAL_DEC = Index_0_dSPIN_CONF_PARAM_KVAL_DEC;
+            dSPIN_RegsStructs[gML6470Index].KVAL_RUN = Index_0_dSPIN_CONF_PARAM_KVAL_RUN;
+            dSPIN_RegsStructs[gML6470Index].KVAL_HOLD = Index_0_dSPIN_CONF_PARAM_KVAL_HOLD;
+            dSPIN_RegsStructs[gML6470Index].K_THERM = Index_0_dSPIN_CONF_PARAM_K_THERM;
+            dSPIN_RegsStructs[gML6470Index].INT_SPD = Index_0_dSPIN_CONF_PARAM_INT_SPD;
+            dSPIN_RegsStructs[gML6470Index].ST_SLP = Index_0_dSPIN_CONF_PARAM_ST_SLP;
+            dSPIN_RegsStructs[gML6470Index].FN_SLP_ACC = Index_0_dSPIN_CONF_PARAM_FN_SLP_ACC;
+            dSPIN_RegsStructs[gML6470Index].FN_SLP_DEC = Index_0_dSPIN_CONF_PARAM_FN_SLP_DEC;
+            dSPIN_RegsStructs[gML6470Index].STALL_TH = Index_0_dSPIN_CONF_PARAM_STALL_TH;
+            dSPIN_RegsStructs[gML6470Index].CONFIG = Index_0_dSPIN_CONF_PARAM_CONFIG;
             dSPIN_RegsStructs[gML6470Index].STEP_MODE = Index_0_dSPIN_CONF_PARAM_STEP_MODE;
-            /* 告警配置 */
             dSPIN_RegsStructs[gML6470Index].ALARM_EN = Index_0_dSPIN_CONF_PARAM_ALARM_EN;
             dSPIN_RegsStructs[gML6470Index].OCD_TH = Index_0_dSPIN_CONF_PARAM_OCD_TH;
             break;
         default:
-            /* Acceleration rate settings to dSPIN_CONF_PARAM_ACC in steps/s2, range 14.55 to 59590 steps/s2 */
-            dSPIN_RegsStructs[gML6470Index].ACC = AccDec_Steps_to_Par(Index_1_dSPIN_CONF_PARAM_ACC);
-            /* Deceleration rate settings to dSPIN_CONF_PARAM_DEC in steps/s2, range 14.55 to 59590 steps/s2 */
-            dSPIN_RegsStructs[gML6470Index].DEC = AccDec_Steps_to_Par(Index_1_dSPIN_CONF_PARAM_DEC);
-            /* Maximum speed settings to dSPIN_CONF_PARAM_MAX_SPEED in steps/s, range 15.25 to 15610 steps/s */
-            dSPIN_RegsStructs[gML6470Index].MAX_SPEED = MaxSpd_Steps_to_Par(Index_1_dSPIN_CONF_PARAM_MAX_SPEED);
-            /* Full step speed settings dSPIN_CONF_PARAM_FS_SPD in steps/s, range 7.63 to 15625 steps/s */
-            dSPIN_RegsStructs[gML6470Index].FS_SPD = FSSpd_Steps_to_Par(Index_1_dSPIN_CONF_PARAM_FS_SPD);
-            /* Minimum speed settings to dSPIN_CONF_PARAM_MIN_SPEED in steps/s, range 0 to 976.3 steps/s */
-            dSPIN_RegsStructs[gML6470Index].MIN_SPEED = Index_1_dSPIN_CONF_PARAM_LSPD_BIT | MinSpd_Steps_to_Par(Index_1_dSPIN_CONF_PARAM_MIN_SPEED);
-            /* Acceleration duty cycle (torque) settings to dSPIN_CONF_PARAM_KVAL_ACC in %, range 0 to 99.6% */
-            dSPIN_RegsStructs[gML6470Index].KVAL_ACC = Kval_Perc_to_Par(Index_1_dSPIN_CONF_PARAM_KVAL_ACC);
-            /* Deceleration duty cycle (torque) settings to dSPIN_CONF_PARAM_KVAL_DEC in %, range 0 to 99.6% */
-            dSPIN_RegsStructs[gML6470Index].KVAL_DEC = Kval_Perc_to_Par(Index_1_dSPIN_CONF_PARAM_KVAL_DEC);
-            /* Run duty cycle (torque) settings to dSPIN_CONF_PARAM_KVAL_RUN in %, range 0 to 99.6% */
-            dSPIN_RegsStructs[gML6470Index].KVAL_RUN = Kval_Perc_to_Par(Index_1_dSPIN_CONF_PARAM_KVAL_RUN);
-            /* Hold duty cycle (torque) settings to dSPIN_CONF_PARAM_KVAL_HOLD in %, range 0 to 99.6% */
-            dSPIN_RegsStructs[gML6470Index].KVAL_HOLD = Kval_Perc_to_Par(Index_1_dSPIN_CONF_PARAM_KVAL_HOLD);
-            /* Thermal compensation param settings to dSPIN_CONF_PARAM_K_THERM, range 1 to 1.46875 */
-            dSPIN_RegsStructs[gML6470Index].K_THERM = KTherm_to_Par(Index_1_dSPIN_CONF_PARAM_K_THERM);
-            /* Intersect speed settings for BEMF compensation to dSPIN_CONF_PARAM_INT_SPD in steps/s, range 0 to 3906 steps/s */
-            dSPIN_RegsStructs[gML6470Index].INT_SPD = IntSpd_Steps_to_Par(Index_1_dSPIN_CONF_PARAM_INT_SPD);
-            /* BEMF start slope settings for BEMF compensation to dSPIN_CONF_PARAM_ST_SLP in % step/s, range 0 to 0.4% s/step */
-            dSPIN_RegsStructs[gML6470Index].ST_SLP = BEMF_Slope_Perc_to_Par(Index_1_dSPIN_CONF_PARAM_ST_SLP);
-            /* BEMF final acc slope settings for BEMF compensation to dSPIN_CONF_PARAM_FN_SLP_ACC in% step/s, range 0 to 0.4% s/step */
-            dSPIN_RegsStructs[gML6470Index].FN_SLP_ACC = BEMF_Slope_Perc_to_Par(Index_1_dSPIN_CONF_PARAM_FN_SLP_ACC);
-            /* BEMF final dec slope settings for BEMF compensation to dSPIN_CONF_PARAM_FN_SLP_DEC in% step/s, range 0 to 0.4% s/step */
-            dSPIN_RegsStructs[gML6470Index].FN_SLP_DEC = BEMF_Slope_Perc_to_Par(Index_1_dSPIN_CONF_PARAM_FN_SLP_DEC);
-            /* Stall threshold settings to dSPIN_CONF_PARAM_STALL_TH in mA, range 31.25 to 4000mA */
-            dSPIN_RegsStructs[gML6470Index].STALL_TH = StallTh_to_Par(Index_1_dSPIN_CONF_PARAM_STALL_TH);
-            /* Set Config register according to config parameters */
-            /* clock setting, switch hard stop interrupt mode, */
-            /*  supply voltage compensation, overcurrent shutdown */
-            /* slew-rate , PWM frequency */
-            dSPIN_RegsStructs[gML6470Index].CONFIG = (uint16_t)Index_1_dSPIN_CONF_PARAM_CLOCK_SETTING | (uint16_t)Index_1_dSPIN_CONF_PARAM_SW_MODE |
-                                                     (uint16_t)Index_1_dSPIN_CONF_PARAM_VS_COMP | (uint16_t)Index_1_dSPIN_CONF_PARAM_OC_SD |
-                                                     (uint16_t)Index_1_dSPIN_CONF_PARAM_SR | (uint16_t)Index_1_dSPIN_CONF_PARAM_PWM_DIV |
-                                                     (uint16_t)Index_1_dSPIN_CONF_PARAM_PWM_MUL;
+            dSPIN_RegsStructs[gML6470Index].ACC = Index_1_dSPIN_CONF_PARAM_ACC;
+            dSPIN_RegsStructs[gML6470Index].DEC = Index_1_dSPIN_CONF_PARAM_DEC;
+            dSPIN_RegsStructs[gML6470Index].MAX_SPEED = Index_1_dSPIN_CONF_PARAM_MAX_SPEED;
+            dSPIN_RegsStructs[gML6470Index].FS_SPD = Index_1_dSPIN_CONF_PARAM_FS_SPD;
+            dSPIN_RegsStructs[gML6470Index].MIN_SPEED = Index_1_dSPIN_CONF_PARAM_MIN_SPEED;
+            dSPIN_RegsStructs[gML6470Index].KVAL_ACC = Index_1_dSPIN_CONF_PARAM_KVAL_ACC;
+            dSPIN_RegsStructs[gML6470Index].KVAL_DEC = Index_1_dSPIN_CONF_PARAM_KVAL_DEC;
+            dSPIN_RegsStructs[gML6470Index].KVAL_RUN = Index_1_dSPIN_CONF_PARAM_KVAL_RUN;
+            dSPIN_RegsStructs[gML6470Index].KVAL_HOLD = Index_1_dSPIN_CONF_PARAM_KVAL_HOLD;
+            dSPIN_RegsStructs[gML6470Index].K_THERM = Index_1_dSPIN_CONF_PARAM_K_THERM;
+            dSPIN_RegsStructs[gML6470Index].INT_SPD = Index_1_dSPIN_CONF_PARAM_INT_SPD;
+            dSPIN_RegsStructs[gML6470Index].ST_SLP = Index_1_dSPIN_CONF_PARAM_ST_SLP;
+            dSPIN_RegsStructs[gML6470Index].FN_SLP_ACC = Index_1_dSPIN_CONF_PARAM_FN_SLP_ACC;
+            dSPIN_RegsStructs[gML6470Index].FN_SLP_DEC = Index_1_dSPIN_CONF_PARAM_FN_SLP_DEC;
+            dSPIN_RegsStructs[gML6470Index].STALL_TH = Index_1_dSPIN_CONF_PARAM_STALL_TH;
+            dSPIN_RegsStructs[gML6470Index].CONFIG = Index_1_dSPIN_CONF_PARAM_CONFIG;
 
-            /* 细分步 */
             dSPIN_RegsStructs[gML6470Index].STEP_MODE = Index_1_dSPIN_CONF_PARAM_STEP_MODE;
-            /* 告警配置 */
             dSPIN_RegsStructs[gML6470Index].ALARM_EN = Index_1_dSPIN_CONF_PARAM_ALARM_EN;
             dSPIN_RegsStructs[gML6470Index].OCD_TH = Index_1_dSPIN_CONF_PARAM_OCD_TH;
             break;
