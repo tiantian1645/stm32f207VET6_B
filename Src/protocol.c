@@ -943,7 +943,9 @@ eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             break;
         case 0xDF:
             memcpy(pInBuff, (uint8_t *)(UID_BASE), 12);
-            if (comm_Out_SendTask_QueueEmitWithBuildCover(0xDF, pInBuff, 12) == 0) {
+            memcpy(pInBuff + 12, (uint8_t *)__TIME__, strlen(__TIME__));
+            memcpy(pInBuff + 12 + strlen(__TIME__), (uint8_t *)__DATE__, strlen(__DATE__));
+            if (comm_Out_SendTask_QueueEmitWithBuildCover(0xDF, pInBuff, 12 + strlen(__TIME__) + strlen(__DATE__)) == 0) {
                 error |= PROTOCOL_PARSE_EMIT_ERROR;
             }
             break;
