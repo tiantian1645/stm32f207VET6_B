@@ -59,7 +59,7 @@ typedef struct {
 #define BARCODE_MOTOR_IS_FLAG (dSPIN_Flag())                                                        /* 扫码电机标志脚读取 */
 #define BARCODE_MOTOR_MAX_DISP 16000                                                                /* 扫码电机运动最大步数 物理限制步数 */
 #define BARCODE_UART huart3                                                                         /* 扫码串口 */
-#define BARCODE_MOTOR_MAX_GO_UNTIL_SPEED 60000                                                      /* 扫码电机归零最大速度 */
+#define BARCODE_MOTOR_MAX_GO_UNTIL_SPEED 40000                                                      /* 扫码电机归零最大速度 */
 
 /* Private variables ---------------------------------------------------------*/
 static sMotorRunStatus gBarcodeMotorRunStatus;
@@ -380,7 +380,7 @@ uint8_t barcode_Motor_Reset_Pos(void)
 eBarcodeState barcode_Motor_Init(void)
 {
     eBarcodeState result;
-    uint32_t cnt = 0;
+    uint32_t xTick = 0;
 
     error_Emit(eError_Motor_Scan_Debug);
     result = barcode_Motor_Enter();
@@ -398,9 +398,10 @@ eBarcodeState barcode_Motor_Init(void)
 
     if (BARCODE_MOTOR_IS_OPT) {
         dSPIN_Move(REV, 300);
-        while (BARCODE_MOTOR_IS_OPT && ++cnt < 6000000)
-            ;
-        cnt = 0;
+        xTick = xTaskGetTickCount();
+        do {
+            vTaskDelay(100);
+        } while (BARCODE_MOTOR_IS_OPT && xTaskGetTickCount() - xTick < 500);
         barcode_Motor_Brake(); /* 刹车 */
     }
     if (BARCODE_MOTOR_IS_FLAG) {
