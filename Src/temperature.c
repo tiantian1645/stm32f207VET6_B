@@ -59,7 +59,7 @@ static uint32_t gTempADC_Conv_Cnt = 0;
 uint32_t temp_Random_Generate(void)
 {
     uint8_t i;
-    uint32_t ran = 0;
+    uint32_t ran;
 
     for (i = 0; i < ARRAY_LEN(gTempADC_Results); ++i) {
         ran += gTempADC_Results[i];
