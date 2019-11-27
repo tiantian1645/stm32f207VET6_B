@@ -640,9 +640,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                         memcpy(pInBuff + 1, (uint8_t *)(&status), 2);
                         status = barcode_Motor_Read_Position();
                         memcpy(pInBuff + 3, (uint8_t *)(&status), 4);
-                        if (comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, pInBuff, 7) == 0) {
-                            error_Emit(eError_Comm_Out_Busy);
-                        }
+                        comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, pInBuff, 7);
                         m_l6470_release();
                     } else if (length == 10) {                       /* 应用层调试 */
                         barcode_Scan_Bantch(pInBuff[7], pInBuff[8]); /* 位置掩码 扫码使能掩码 */
@@ -677,9 +675,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                         memcpy(pInBuff + 1, (uint8_t *)(&status), 2);
                         status = tray_Motor_Read_Position();
                         memcpy(pInBuff + 3, (uint8_t *)(&status), 4);
-                        if (comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, pInBuff, 7) == 0) {
-                            error_Emit(eError_Comm_Out_Busy);
-                        }
+                        comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, pInBuff, 7);
                         m_l6470_release();
                     } else if (length == 9) { /* 应用层调试 */
                         switch ((pInBuff[7])) {
@@ -782,9 +778,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
 
             barcode_Read_From_Serial(&result, pInBuff, 100, 2000);
             if (result > 0) {
-                if (comm_Out_SendTask_QueueEmitWithBuildCover(0xD2, pInBuff, result) == 0) {
-                    error_Emit(eError_Comm_Out_Busy);
-                }
+                comm_Out_SendTask_QueueEmitWithBuildCover(0xD2, pInBuff, result);
             }
             break;
         case 0xD3:
@@ -807,9 +801,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 if (beater_TOP_Output_Is_Live()) {
                     pInBuff[0] |= (1 << 1);
                 }
-                if (comm_Out_SendTask_QueueEmitWithBuildCover(0xD3, pInBuff, 1) == 0) {
-                    error_Emit(eError_Comm_Out_Busy);
-                }
+                comm_Out_SendTask_QueueEmitWithBuildCover(0xD3, pInBuff, 1);
             }
             break;
         case 0xD4:
@@ -821,9 +813,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 }
             } else {
                 pInBuff[0] = protocol_Debug_Get();
-                if (comm_Out_SendTask_QueueEmitWithBuildCover(0xD4, pInBuff, 1) == 0) {
-                    error_Emit(eError_Comm_Out_Busy);
-                }
+                comm_Out_SendTask_QueueEmitWithBuildCover(0xD4, pInBuff, 1);
             }
             break;
         case 0xD5:
@@ -895,36 +885,28 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 result = Innate_Flash_Dump((pInBuff[6] << 0) + (pInBuff[7] << 8),
                                            (pInBuff[12] << 0) + (pInBuff[13] << 8) + (pInBuff[14] << 16) + (pInBuff[15] << 24));
                 pInBuff[0] = result;
-                if (comm_Out_SendTask_QueueEmitWithBuildCover(0xDE, pInBuff, 1) == 0) {
-                    error_Emit(eError_Comm_Out_Busy);
-                }
+                comm_Out_SendTask_QueueEmitWithBuildCover(0xDE, pInBuff, 1);
             } else {                                              /* 数据长度不为空 非尾包 */
                 if ((pInBuff[8] << 0) + (pInBuff[9] << 8) == 0) { /* 起始包 */
                     result = Innate_Flash_Erase_Temp();           /* 擦除Flash */
                     if (result > 0) {                             /* 擦除失败 */
                         HAL_FLASH_Lock();                         /* 回锁 */
                         pInBuff[0] = result;
-                        if (comm_Out_SendTask_QueueEmitWithBuildCover(0xDE, pInBuff, 1) == 0) {
-                            error_Emit(eError_Comm_Out_Busy);
-                        }
+                        comm_Out_SendTask_QueueEmitWithBuildCover(0xDE, pInBuff, 1);
                         break;
                     }
                 }
                 result =
                     Innate_Flash_Write(INNATE_FLASH_ADDR_TEMP + (pInBuff[8] << 0) + (pInBuff[9] << 8), pInBuff + 12, (pInBuff[10] << 0) + (pInBuff[11] << 8));
                 pInBuff[0] = result;
-                if (comm_Out_SendTask_QueueEmitWithBuildCover(0xDE, pInBuff, 1) == 0) {
-                    error_Emit(eError_Comm_Out_Busy);
-                }
+                comm_Out_SendTask_QueueEmitWithBuildCover(0xDE, pInBuff, 1);
             }
             break;
         case 0xDF:
             memcpy(pInBuff, (uint8_t *)(UID_BASE), 12);
             memcpy(pInBuff + 12, (uint8_t *)__TIME__, strlen(__TIME__));
             memcpy(pInBuff + 12 + strlen(__TIME__), (uint8_t *)__DATE__, strlen(__DATE__));
-            if (comm_Out_SendTask_QueueEmitWithBuildCover(0xDF, pInBuff, 12 + strlen(__TIME__) + strlen(__DATE__)) == 0) {
-                error_Emit(eError_Comm_Out_Busy);
-            }
+            comm_Out_SendTask_QueueEmitWithBuildCover(0xDF, pInBuff, 12 + strlen(__TIME__) + strlen(__DATE__));
             break;
         case eProtocolEmitPack_Client_CMD_START:          /* 开始测量帧 0x01 */
             comm_Data_Sample_Send_Conf();                 /* 发送测试配置 */
@@ -954,21 +936,17 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 storgeTaskNotification(eStorgeNotifyConf_Read_ID_Card, eComm_Out); /* 通知存储任务 */
             }
             break;
-        case eProtocolEmitPack_Client_CMD_STATUS:                                                            /* 状态信息查询帧 (首帧) */
-            temp = temp_Get_Temp_Data_BTM();                                                                 /* 下加热体温度 */
-            pInBuff[0] = ((uint16_t)(temp * 100)) & 0xFF;                                                    /* 小端模式 低8位 */
-            pInBuff[1] = ((uint16_t)(temp * 100)) >> 8;                                                      /* 小端模式 高8位 */
-            temp = temp_Get_Temp_Data_TOP();                                                                 /* 上加热体温度 */
-            pInBuff[2] = ((uint16_t)(temp * 100)) & 0xFF;                                                    /* 小端模式 低8位 */
-            pInBuff[3] = ((uint16_t)(temp * 100)) >> 8;                                                      /* 小端模式 高8位 */
-            if (comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_TMP, pInBuff, 4) == 0) { /* 温度信息 */
-                error_Emit(eError_Comm_Out_Busy);
-            }
+        case eProtocolEmitPack_Client_CMD_STATUS:                                                 /* 状态信息查询帧 (首帧) */
+            temp = temp_Get_Temp_Data_BTM();                                                      /* 下加热体温度 */
+            pInBuff[0] = ((uint16_t)(temp * 100)) & 0xFF;                                         /* 小端模式 低8位 */
+            pInBuff[1] = ((uint16_t)(temp * 100)) >> 8;                                           /* 小端模式 高8位 */
+            temp = temp_Get_Temp_Data_TOP();                                                      /* 上加热体温度 */
+            pInBuff[2] = ((uint16_t)(temp * 100)) & 0xFF;                                         /* 小端模式 低8位 */
+            pInBuff[3] = ((uint16_t)(temp * 100)) >> 8;                                           /* 小端模式 高8位 */
+            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_TMP, pInBuff, 4); /* 温度信息 */
 
-            protocol_Get_Version(pInBuff); /* 软件版本信息 */
-            if (comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_VER, pInBuff, 4) == 0) {
-                error_Emit(eError_Comm_Out_Busy);
-            }
+            protocol_Get_Version(pInBuff);
+            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_VER, pInBuff, 4); /* 软件版本信息 */
 
             if (tray_Motor_Get_Status_Position() == 0) { /* 托盘状态信息 */
                 pInBuff[0] = 1;                          /* 托盘处于测试位置 原点 */
@@ -977,9 +955,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             } else {
                 pInBuff[0] = 0;
             }
-            if (comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, pInBuff, 1) == 0) {
-                error_Emit(eError_Comm_Out_Busy);
-            }
+            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, pInBuff, 1); /* 托盘状态信息 */
             break;
         case eProtocolEmitPack_Client_CMD_UPGRADE: /* 下位机升级命令帧 0x0F */
             if (spi_FlashWriteAndCheck_Word(0x0000, 0x87654321) == 0) {
@@ -1049,32 +1025,25 @@ void protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
                 storgeTaskNotification(eStorgeNotifyConf_Read_ID_Card, eComm_Main); /* 通知存储任务 */
             }
             break;
-        case eProtocolEmitPack_Client_CMD_STATUS:                                                             /* 状态信息查询帧 (首帧) */
-            temp = temp_Get_Temp_Data_BTM();                                                                  /* 下加热体温度 */
-            pInBuff[0] = ((uint16_t)(temp * 100)) & 0xFF;                                                     /* 小端模式 低8位 */
-            pInBuff[1] = ((uint16_t)(temp * 100)) >> 8;                                                       /* 小端模式 高8位 */
-            temp = temp_Get_Temp_Data_TOP();                                                                  /* 上加热体温度 */
-            pInBuff[2] = ((uint16_t)(temp * 100)) & 0xFF;                                                     /* 小端模式 低8位 */
-            pInBuff[3] = ((uint16_t)(temp * 100)) >> 8;                                                       /* 小端模式 高8位 */
-            if (comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_TMP, pInBuff, 4) == 0) { /* 温度信息 */
-                error_Emit(eError_Comm_Main_Busy);
-            }
+        case eProtocolEmitPack_Client_CMD_STATUS:                                                  /* 状态信息查询帧 (首帧) */
+            temp = temp_Get_Temp_Data_BTM();                                                       /* 下加热体温度 */
+            pInBuff[0] = ((uint16_t)(temp * 100)) & 0xFF;                                          /* 小端模式 低8位 */
+            pInBuff[1] = ((uint16_t)(temp * 100)) >> 8;                                            /* 小端模式 高8位 */
+            temp = temp_Get_Temp_Data_TOP();                                                       /* 上加热体温度 */
+            pInBuff[2] = ((uint16_t)(temp * 100)) & 0xFF;                                          /* 小端模式 低8位 */
+            pInBuff[3] = ((uint16_t)(temp * 100)) >> 8;                                            /* 小端模式 高8位 */
+            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_TMP, pInBuff, 4); /* 温度信息 */
+            protocol_Get_Version(pInBuff);
+            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_VER, pInBuff, 4); /* 软件版本信息 */
 
-            protocol_Get_Version(pInBuff); /* 软件版本信息 */
-            if (comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_VER, pInBuff, 4) == 0) {
-                error_Emit(eError_Comm_Main_Busy);
-            }
-
-            if (tray_Motor_Get_Status_Position() == 0) { /* 托盘状态信息 */
+            if (tray_Motor_Get_Status_Position() == 0) { /* 托盘状态 */
                 pInBuff[0] = 1;                          /* 托盘处于测试位置 原点 */
             } else if (tray_Motor_Get_Status_Position() >= (eTrayIndex_2 / 4 - 50) && tray_Motor_Get_Status_Position() <= (eTrayIndex_2 / 4 + 50)) {
                 pInBuff[0] = 2; /* 托盘处于出仓位置 误差范围 +-50步 */
             } else {
                 pInBuff[0] = 0;
             }
-            if (comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, pInBuff, 1) == 0) {
-                error_Emit(eError_Comm_Main_Busy);
-            }
+            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, pInBuff, 1); /* 托盘状态信息 */
             break;
         case eProtocolEmitPack_Client_CMD_UPGRADE: /* 下位机升级命令帧 0x0F */
             if (spi_FlashWriteAndCheck_Word(0x0000, 0x87654321) == 0) {

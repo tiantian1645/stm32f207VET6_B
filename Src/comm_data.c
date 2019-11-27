@@ -574,6 +574,7 @@ BaseType_t comm_Data_SendTask_QueueEmit(uint8_t * pData, uint8_t length, uint32_
         return pdFALSE;
     }
     if (gComm_Data_SendInfoFlag == 0) { /* 重入标志 */
+        error_Emit(eError_Comm_Data_Busy);
         return pdFALSE;
     }
     gComm_Data_SendInfoFlag = 0;
@@ -582,6 +583,9 @@ BaseType_t comm_Data_SendTask_QueueEmit(uint8_t * pData, uint8_t length, uint32_
 
     xResult = xQueueSendToBack(comm_Data_SendQueue, &gComm_Data_SendInfo, pdMS_TO_TICKS(timeout));
     gComm_Data_SendInfoFlag = 1;
+    if (xResult != pdPASS) {
+        error_Emit(eError_Comm_Data_Busy);
+    }
     return xResult;
 }
 

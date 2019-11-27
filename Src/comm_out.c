@@ -330,6 +330,9 @@ BaseType_t comm_Out_SendTask_QueueEmitWithBuild(uint8_t cmdType, uint8_t * pData
     BaseType_t xResult;
     length = buildPackOrigin(eComm_Out, cmdType, pData, length);
     xResult = comm_Out_SendTask_QueueEmit(pData, length, timeout);
+    if (xResult != pdPASS) {
+        error_Emit(eError_Comm_Out_Busy);
+    }
     return xResult;
 }
 
