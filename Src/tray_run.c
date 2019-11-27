@@ -22,6 +22,7 @@
 #define TRAY_MOTOR_IS_FLAG (dSPIN_Flag())                                                          /* 托盘电机标志脚读取 */
 #define TRAY_MOTOR_MAX_DISP 6400                                                                   /* 出仓步数 (1/8) 物理限制步数 */
 #define TRAY_MOTOR_SCAN_DISP 1400                                                                  /* 扫码步数 (1/8) */
+#define TRAY_MOTOR_GO_HOME_SPEED	80000
 
 /* Private variables ---------------------------------------------------------*/
 static sMotorRunStatus gTray_Motor_Run_Status;
@@ -207,7 +208,7 @@ eTrayState tray_Motor_Run(void)
             while (TRAY_MOTOR_IS_BUSY && ++cnt <= 600000 && TRAY_MOTOR_IS_OPT_1)
                 ;
         }
-        dSPIN_Go_Until(ACTION_RESET, FWD, 40000);
+        dSPIN_Go_Until(ACTION_RESET, FWD, TRAY_MOTOR_GO_HOME_SPEED);
         cnt = 0;
         while (TRAY_MOTOR_IS_BUSY && ++cnt <= 60000)
             ;
@@ -288,7 +289,7 @@ eTrayState tray_Motor_Init(void)
         tray_Motor_Deal_Status();
     }
 
-    dSPIN_Go_Until(ACTION_RESET, FWD, 40000);
+    dSPIN_Go_Until(ACTION_RESET, FWD, TRAY_MOTOR_GO_HOME_SPEED);
     m_l6470_release(); /* 释放SPI总线资源*/
     return eTrayState_OK;
 }
