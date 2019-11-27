@@ -94,7 +94,7 @@ uint8_t storgeReadConfInfo(uint32_t addr, uint32_t num, uint32_t timeout)
         }
         vTaskDelay(10);
     } while (--timeout);
-
+    error_Emit(eError_Storge_Task_Busy);
     return 2; /* 错误码2 超时 */
 }
 
@@ -133,7 +133,7 @@ uint8_t storgeWriteConfInfo(uint32_t addr, uint8_t * pIn, uint32_t num, uint32_t
  * @param  rw          操作类型
  * @retval 任务通知结果
  */
-BaseType_t storgeTaskNotification(eStorgeNotifyConf type, eProtocol_COMM_Index index)
+void storgeTaskNotification(eStorgeNotifyConf type, eProtocol_COMM_Index index)
 {
     uint32_t notifyValue = 0;
 
@@ -145,7 +145,9 @@ BaseType_t storgeTaskNotification(eStorgeNotifyConf type, eProtocol_COMM_Index i
     if (index == eComm_Main) {
         notifyValue |= eStorgeNotifyConf_COMM_Main;
     }
-    return xTaskNotify(storgeTaskHandle, notifyValue, eSetValueWithoutOverwrite);
+    if (xTaskNotify(storgeTaskHandle, notifyValue, eSetValueWithoutOverwrite) != pdPASS) {
+        error_Emit(eError_Storge_Task_Busy);
+    }
 }
 
 /**

@@ -426,7 +426,7 @@ typedef struct {
 void storgeTaskInit(void);
 uint8_t storgeReadConfInfo(uint32_t addr, uint32_t num, uint32_t timeout);
 uint8_t storgeWriteConfInfo(uint32_t addr, uint8_t * pIn, uint32_t num, uint32_t timeout);
-BaseType_t storgeTaskNotification(eStorgeNotifyConf type, eProtocol_COMM_Index index);
+void storgeTaskNotification(eStorgeNotifyConf type, eProtocol_COMM_Index index);
 
 uint8_t storge_ParamSet(eStorgeParamIndex idx, uint8_t * pBuff, uint8_t length);
 uint8_t storge_ParamGet(eStorgeParamIndex idx, uint8_t * pBuff);

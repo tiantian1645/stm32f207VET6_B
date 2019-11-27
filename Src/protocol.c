@@ -835,32 +835,28 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             break;
         case 0xD6: /* SPI Flash 读测试 */
             result = storgeReadConfInfo((pInBuff[6] << 16) + (pInBuff[7] << 8) + pInBuff[8], (pInBuff[9] << 16) + (pInBuff[10] << 8) + pInBuff[11], 200);
-            if (result == 0 && storgeTaskNotification(eStorgeNotifyConf_Read_Falsh, eComm_Out) == pdPASS) { /* 通知存储任务 */
-            } else {
-                error_Emit(eError_Storge_Task_Busy);
+            if (result == 0) {
+                storgeTaskNotification(eStorgeNotifyConf_Read_Falsh, eComm_Out); /* 通知存储任务 */
             }
             break;
         case 0xD7: /* SPI Flash 写测试 */
             result = storgeWriteConfInfo((pInBuff[6] << 16) + (pInBuff[7] << 8) + pInBuff[8], &pInBuff[12],
                                          (pInBuff[9] << 16) + (pInBuff[10] << 8) + pInBuff[11], 200);
-            if (result == 0 && storgeTaskNotification(eStorgeNotifyConf_Write_Falsh, eComm_Out) == pdPASS) { /* 通知存储任务 */
-            } else {
-                error_Emit(eError_Storge_Task_Busy);
+            if (result == 0) {
+                storgeTaskNotification(eStorgeNotifyConf_Write_Falsh, eComm_Out); /* 通知存储任务 */
             }
             break;
         case 0xD8: /* EEPROM 读测试 */
             result = storgeReadConfInfo((pInBuff[6] << 16) + (pInBuff[7] << 8) + pInBuff[8], (pInBuff[9] << 16) + (pInBuff[10] << 8) + pInBuff[11], 200);
-            if (result == 0 && storgeTaskNotification(eStorgeNotifyConf_Read_ID_Card, eComm_Out) == pdPASS) { /* 通知存储任务 */
-            } else {
-                error_Emit(eError_Storge_Task_Busy);
+            if (result == 0) {
+                storgeTaskNotification(eStorgeNotifyConf_Read_ID_Card, eComm_Out); /* 通知存储任务 */
             }
             break;
         case 0xD9: /* EEPROM 写测试 */
             result = storgeWriteConfInfo((pInBuff[6] << 16) + (pInBuff[7] << 8) + pInBuff[8], &pInBuff[12],
                                          (pInBuff[9] << 16) + (pInBuff[10] << 8) + pInBuff[11], 200);
-            if (result == 0 && storgeTaskNotification(eStorgeNotifyConf_Write_ID_Card, eComm_Out) == pdPASS) { /* 通知存储任务 */
-            } else {
-                error_Emit(eError_Storge_Task_Busy);
+            if (result == 0) {
+                storgeTaskNotification(eStorgeNotifyConf_Write_ID_Card, eComm_Out); /* 通知存储任务 */
             }
             break;
         case 0xDB:
@@ -878,21 +874,17 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             if (length == 9) {                                  /* 保存参数 */
                 status = (pInBuff[6] << 0) + (pInBuff[7] << 8); /* 起始索引 */
                 if (status == 0xFFFF) {
-                    if (storgeTaskNotification(eStorgeNotifyConf_Dump_Params, eComm_Out) != pdPASS) {
-                        error_Emit(eError_Storge_Task_Busy);
-                    }
+                    storgeTaskNotification(eStorgeNotifyConf_Dump_Params, eComm_Out);
                 }
             } else if (length == 11) {                                                                                          /* 读取参数 */
                 result = storgeReadConfInfo((pInBuff[6] << 0) + (pInBuff[7] << 8), (pInBuff[8] << 0) + (pInBuff[9] << 8), 200); /* 配置 */
-                if (result == 0 && storgeTaskNotification(eStorgeNotifyConf_Read_Parmas, eComm_Out) == pdPASS) {                /* 通知存储任务 */
-                } else {
-                    error_Emit(eError_Storge_Task_Busy);
+                if (result == 0) {
+                    storgeTaskNotification(eStorgeNotifyConf_Read_Parmas, eComm_Out); /* 通知存储任务 */
                 }
             } else if (length > 11 && ((length - 11) % 4 == 0)) { /* 写入参数 */
                 result = storgeWriteConfInfo((pInBuff[6] << 0) + (pInBuff[7] << 8), &pInBuff[10], 4 * ((pInBuff[8] << 0) + (pInBuff[9] << 8)), 200); /* 配置 */
-                if (result == 0 && storgeTaskNotification(eStorgeNotifyConf_Write_Parmas, eComm_Out) == pdPASS) { /* 通知存储任务 */
-                } else {
-                    error_Emit(eError_Storge_Task_Busy);
+                if (result == 0) {
+                    storgeTaskNotification(eStorgeNotifyConf_Write_Parmas, eComm_Out); /* 通知存储任务 */
                 }
             } else {
                 error_Emit(eError_Comm_Out_Param_Error);
@@ -956,11 +948,10 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             motor_fun.fun_type = eMotor_Fun_In;    /* 配置电机动作套餐类型 进仓 */
             motor_Emit(&motor_fun, 0);             /* 交给电机任务 进仓 */
             break;
-        case eProtocolEmitPack_Client_CMD_READ_ID:                                                            /* ID卡读取命令帧 0x06 */
-            result = storgeReadConfInfo(0, 4096, 200);                                                        /* 暂无定义 按最大读取 */
-            if (result == 0 && storgeTaskNotification(eStorgeNotifyConf_Read_ID_Card, eComm_Out) == pdPASS) { /* 通知存储任务 */
-            } else {
-                error_Emit(eError_Storge_Task_Busy);
+        case eProtocolEmitPack_Client_CMD_READ_ID:     /* ID卡读取命令帧 0x06 */
+            result = storgeReadConfInfo(0, 4096, 200); /* 暂无定义 按最大读取 */
+            if (result == 0) {
+                storgeTaskNotification(eStorgeNotifyConf_Read_ID_Card, eComm_Out); /* 通知存储任务 */
             }
             break;
         case eProtocolEmitPack_Client_CMD_STATUS:                                                            /* 状态信息查询帧 (首帧) */
@@ -1052,11 +1043,10 @@ void protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
             motor_fun.fun_type = eMotor_Fun_In;    /* 配置电机动作套餐类型 进仓 */
             motor_Emit(&motor_fun, 0);             /* 交给电机任务 进仓 */
             break;
-        case eProtocolEmitPack_Client_CMD_READ_ID:                                                             /* ID卡读取命令帧 0x06 */
-            result = storgeReadConfInfo(0, 4096, 200);                                                         /* 暂无定义 按最大读取 */
-            if (result == 0 && storgeTaskNotification(eStorgeNotifyConf_Read_ID_Card, eComm_Main) == pdPASS) { /* 通知存储任务 */
-            } else {
-                error_Emit(eError_Storge_Task_Busy);
+        case eProtocolEmitPack_Client_CMD_READ_ID:     /* ID卡读取命令帧 0x06 */
+            result = storgeReadConfInfo(0, 4096, 200); /* 暂无定义 按最大读取 */
+            if (result == 0) {
+                storgeTaskNotification(eStorgeNotifyConf_Read_ID_Card, eComm_Main); /* 通知存储任务 */
             }
             break;
         case eProtocolEmitPack_Client_CMD_STATUS:                                                             /* 状态信息查询帧 (首帧) */
