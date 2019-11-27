@@ -368,10 +368,14 @@ BaseType_t motor_Sample_Info(eMotorNotifyValue info)
  * @brief  电机任务 提交
  * @param  pFun_type 任务详情指针
  * @param  timeout  最长等待时间
- * @retval 0 提交成功 1 提交失败
+ * @retval 0 提交成功 1 提交失败 2 杂散光测试未结束
  */
 uint8_t motor_Emit(sMotor_Fun * pFun_type, uint32_t timeout)
 {
+    if (comm_Data_Stary_Test_Is_Running()) {
+        error_Emit(eError_Motor_Task_Busy);
+        return 2;
+    }
     if (xQueueSendToBack(motor_Fun_Queue_Handle, pFun_type, timeout) != pdPASS) {
         error_Emit(eError_Motor_Task_Busy);
         return 1;
