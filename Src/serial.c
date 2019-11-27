@@ -260,7 +260,7 @@ BaseType_t serialSendStartDMA(eSerialIndex serialIndex, uint8_t * pSendBuff, uin
             }
             result = HAL_UART_Transmit_DMA(&huart1, pSendBuff, sendLength); /* 执行DMA发送 */
             if (result != HAL_OK) {                                         /* 发送结果判断 异常反应 HAL_BUSY */
-                comm_Out_DMA_TX_Error();                                    /* 发送失败处理 */
+                comm_Main_DMA_TX_Error();                                   /* 发送失败处理 */
                 return pdFALSE;
             } else {
                 return pdTRUE;
@@ -272,7 +272,7 @@ BaseType_t serialSendStartDMA(eSerialIndex serialIndex, uint8_t * pSendBuff, uin
             }
             result = HAL_UART_Transmit_DMA(&huart2, pSendBuff, sendLength); /* 执行DMA发送 */
             if (result != HAL_OK) {                                         /* 发送结果判断 异常反应 HAL_BUSY */
-                comm_Main_DMA_TX_Error();                                   /* 发送失败处理 */
+                comm_Data_DMA_TX_Error();                                   /* 发送失败处理 */
                 return pdFALSE;
             } else {
                 return pdTRUE;
@@ -284,7 +284,7 @@ BaseType_t serialSendStartDMA(eSerialIndex serialIndex, uint8_t * pSendBuff, uin
             }
             result = HAL_UART_Transmit_DMA(&huart5, pSendBuff, sendLength); /* 执行DMA发送 */
             if (result != HAL_OK) {                                         /* 发送结果判断 异常反应 HAL_BUSY */
-                comm_Data_DMA_TX_Error();                                   /* 发送失败处理 */
+                comm_Out_DMA_TX_Error();                                    /* 发送失败处理 */
                 return pdFALSE;
             } else {
                 return pdTRUE;
