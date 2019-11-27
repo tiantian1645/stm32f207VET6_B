@@ -42,28 +42,28 @@ void error_Emit(eError_Code code)
     switch (code) {
         case eError_Comm_Main_Busy: /* 主串口发送忙 */
         /* 外串口故障不能发送到主串口 */
-        case eError_Comm_Out_Busy:        /* 串口发送忙 */
-        case eError_Comm_Out_Send_Failed: /* 发送失败 */
-        case eError_Comm_Out_Not_ACK:     /* 没有收到ACK */
-        case eError_Comm_Out_Wrong_ID:    /* 异常ID */
-        case eError_Comm_Out_Unknow_CMD:  /* 异常功能码 */
-        case eError_Comm_Out_Param_Error: /* 报文参数异常 */
+        case eError_Comm_Out_Busy:        /* 外串口发送忙 */
+        case eError_Comm_Out_Send_Failed: /* 外串口发送失败 */
+        case eError_Comm_Out_Not_ACK:     /* 外串口没有收到ACK */
+        case eError_Comm_Out_Wrong_ID:    /* 外串口异常ID */
+        case eError_Comm_Out_Unknow_CMD:  /* 外串口异常功能码 */
+        case eError_Comm_Out_Param_Error: /* 外串口报文参数异常 */
             out_mark = 0b01;
             break;
         /* 错误调试不发送到主串口 */
-        case eError_Motor_Heater_Debug:         /* 上加热体电机错误调试 */
-        case eError_Motor_White_Debug:          /* 白板电机错误调试 */
-        case eError_Motor_Tray_Debug:           /* 托盘电机错误调试 */
-        case eError_Motor_Scan_Debug:           /* 扫码电机错误调试 */
-        case eError_Scan_Debug:                 /* 扫码枪错误调试 */
-        	out_mark = 0b01;
+        case eError_Motor_Heater_Debug: /* 上加热体电机错误调试 */
+        case eError_Motor_White_Debug:  /* 白板电机错误调试 */
+        case eError_Motor_Tray_Debug:   /* 托盘电机错误调试 */
+        case eError_Motor_Scan_Debug:   /* 扫码电机错误调试 */
+        case eError_Scan_Debug:         /* 扫码枪错误调试 */
+            out_mark = 0b00;
             break;
         default:
             break;
     }
 
     if (out_mark == 0) {
-    	return; /* 直接返回 */
+        return; /* 直接返回 */
     }
 
     switch (code) {
@@ -103,24 +103,24 @@ void error_Emit(eError_Code code)
         case eError_Out_Flash_Write_Failed:              /* 外部Flash写入失败 */
         case eError_Out_Flash_Unknow:                    /* 外部Flash型号无法识别 */
         case eError_Out_Flash_Storge_Param_Out_Of_Range: /* 外部Flash存储参数越限 */
-        case eError_Comm_Main_Busy:                      /* 串口发送忙 */
-        case eError_Comm_Main_Send_Failed:               /* 发送失败 */
-        case eError_Comm_Main_Not_ACK:                   /* 没有收到ACK */
-        case eError_Comm_Main_Wrong_ID:                  /* 异常ID */
-        case eError_Comm_Main_Unknow_CMD:                /* 异常功能码 */
-        case eError_Comm_Main_Param_Error:               /* 报文参数异常 */
-        case eError_Comm_Data_Busy:                      /* 串口发送忙 */
-        case eError_Comm_Data_Send_Failed:               /* 发送失败 */
-        case eError_Comm_Data_Not_ACK:                   /* 没有收到ACK */
-        case eError_Comm_Data_Wrong_ID:                  /* 异常ID */
-        case eError_Comm_Data_Unknow_CMD:                /* 异常功能码 */
-        case eError_Comm_Data_Param_Error:               /* 报文参数异常 */
-        case eError_Comm_Out_Busy:                       /* 串口发送忙 */
-        case eError_Comm_Out_Send_Failed:                /* 发送失败 */
-        case eError_Comm_Out_Not_ACK:                    /* 没有收到ACK */
-        case eError_Comm_Out_Wrong_ID:                   /* 异常ID */
-        case eError_Comm_Out_Unknow_CMD:                 /* 异常功能码 */
-        case eError_Comm_Out_Param_Error:                /* 报文参数异常 */
+        case eError_Comm_Main_Busy:                      /* 主串口发送忙 */
+        case eError_Comm_Main_Send_Failed:               /* 主串口发送失败 */
+        case eError_Comm_Main_Not_ACK:                   /* 主串口没有收到ACK */
+        case eError_Comm_Main_Wrong_ID:                  /* 主串口异常ID */
+        case eError_Comm_Main_Unknow_CMD:                /* 主串口异常功能码 */
+        case eError_Comm_Main_Param_Error:               /* 主串口报文参数异常 */
+        case eError_Comm_Data_Busy:                      /* 采样板查串口发送忙 */
+        case eError_Comm_Data_Send_Failed:               /* 采样板查串口发送失败 */
+        case eError_Comm_Data_Not_ACK:                   /* 采样板查串口没有收到ACK */
+        case eError_Comm_Data_Wrong_ID:                  /* 采样板查串口异常ID */
+        case eError_Comm_Data_Unknow_CMD:                /* 采样板查串口异常功能码 */
+        case eError_Comm_Data_Param_Error:               /* 采样板查串口报文参数异常 */
+        case eError_Comm_Out_Busy:                       /* 外串口发送忙 */
+        case eError_Comm_Out_Send_Failed:                /* 外串口发送失败 */
+        case eError_Comm_Out_Not_ACK:                    /* 外串口没有收到ACK */
+        case eError_Comm_Out_Wrong_ID:                   /* 外串口异常ID */
+        case eError_Comm_Out_Unknow_CMD:                 /* 外串口异常功能码 */
+        case eError_Comm_Out_Param_Error:                /* 外串口报文参数异常 */
             errorCode = code;
             break;
         default:

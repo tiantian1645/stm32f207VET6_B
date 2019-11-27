@@ -411,6 +411,7 @@ static void comm_Main_Send_Task(void * argument)
         ucResult = 0; /* 发送结果初始化 */
         for (i = 0; i < COMM_MAIN_SER_TX_RETRY_NUM; ++i) {
             if (serialSendStartDMA(COMM_MAIN_SERIAL_INDEX, sendInfo.buff, sendInfo.length, 30) != pdPASS) { /* 启动串口发送 */
+                error_Emit(eError_Comm_Main_Send_Failed);                                                   /* 提交发送失败错误信息 */
                 vTaskDelay(pdMS_TO_TICKS(30));                                                              /* 30mS 后重新尝试启动DMA发送 */
                 continue;
             }
@@ -430,7 +431,8 @@ static void comm_Main_Send_Task(void * argument)
             protocol_Temp_Upload_Comm_Set(eComm_Main, 0);            /* 关闭本串口温度上送 */
             while (xQueueReceive(comm_Main_SendQueue, &sendInfo, 0)) /* 清空发送队列 */
                 ;
-            gComm_Main_Connected_Set_Disbale(); /* 标记通信失败 */
+            gComm_Main_Connected_Set_Disbale();   /* 标记通信失败 */
+            error_Emit(eError_Comm_Main_Not_ACK); /* 提交无ACK错误信息 */
         }
         vTaskDelay(pdMS_TO_TICKS(10));
     }

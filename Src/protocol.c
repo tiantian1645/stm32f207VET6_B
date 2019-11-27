@@ -312,9 +312,9 @@ uint8_t buildPackOrigin(eProtocol_COMM_Index index, uint8_t cmdType, uint8_t * p
  * @brief  发送回应包
  * @param  index  协议出口类型
  * @param  pInbuff 入站包指针
- * @retval 数据包长度
+ * @retval None
  */
-uint8_t protocol_Parse_AnswerACK(eProtocol_COMM_Index index, uint8_t ack)
+void protocol_Parse_AnswerACK(eProtocol_COMM_Index index, uint8_t ack)
 {
     uint8_t sendLength;
     uint8_t send_buff[12];
@@ -324,22 +324,20 @@ uint8_t protocol_Parse_AnswerACK(eProtocol_COMM_Index index, uint8_t ack)
     switch (index) {
         case eComm_Out:
             if (serialSendStartDMA(eSerialIndex_5, send_buff, sendLength, 50) != pdPASS || comm_Out_DMA_TX_Wait(30) != pdPASS) { /* 发送回应包并等待发送完成 */
-                return 5;
+                error_Emit(eError_Comm_Out_Send_Failed);
             }
             break;
         case eComm_Main:
             if (serialSendStartDMA(eSerialIndex_1, send_buff, sendLength, 50) != pdPASS || comm_Main_DMA_TX_Wait(30) != pdPASS) { /* 发送回应包并等待发送完成 */
-                return 1;
+                error_Emit(eError_Comm_Main_Send_Failed);
             }
             break;
         case eComm_Data:
             if (serialSendStartDMA(eSerialIndex_2, send_buff, sendLength, 50) != pdPASS || comm_Data_DMA_TX_Wait(30) != pdPASS) { /* 发送回应包并等待发送完成 */
-                return 2;
+                error_Emit(eError_Comm_Data_Send_Failed);
             }
             break;
     }
-
-    return 0;
 }
 
 /**
@@ -865,24 +863,16 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 error_Emit(eError_Storge_Task_Busy);
             }
             break;
-        case 0xDA:
-            if (length < 8 || pInBuff[6] == 0) {
-                HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_3);
-            } else if (pInBuff[6] == 1) {
-                HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
-            } else if (pInBuff[6] == 2) {
-                HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_4);
-            } else if (pInBuff[6] == 3) {
-                HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);
-            }
-            break;
         case 0xDB:
             motor_fun.fun_type = (eMotor_Fun)pInBuff[6]; /* 开始测试 */
             motor_Emit(&motor_fun, 0);                   /* 提交到电机队列 */
             break;
         case 0xDC:
-            vTaskDelay(50);
-            HAL_NVIC_SystemReset(); /* 重新启动 */
+            if (length == 7) {
+                HAL_NVIC_SystemReset(); /* 重新启动 */
+            } else {
+                error_Emit(eError_Comm_Out_Param_Error);
+            }
             break;
         case 0xDD:
             if (length == 9) {                                  /* 保存参数 */

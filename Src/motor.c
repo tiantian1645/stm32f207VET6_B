@@ -358,6 +358,7 @@ BaseType_t motor_Sample_Info_ISR(eMotorNotifyValue info)
 BaseType_t motor_Sample_Info(eMotorNotifyValue info)
 {
     if (xTaskNotify(motor_Task_Handle, info, eSetValueWithoutOverwrite) != pdPASS) {
+        error_Emit(eError_Motor_Task_Busy);
         return pdFALSE;
     }
     return pdPASS;
@@ -371,7 +372,8 @@ BaseType_t motor_Sample_Info(eMotorNotifyValue info)
  */
 uint8_t motor_Emit(sMotor_Fun * pFun_type, uint32_t timeout)
 {
-    if (xQueueSendToBack(motor_Fun_Queue_Handle, pFun_type, timeout) != pdTRUE) {
+    if (xQueueSendToBack(motor_Fun_Queue_Handle, pFun_type, timeout) != pdPASS) {
+        error_Emit(eError_Motor_Task_Busy);
         return 1;
     }
     return 0;

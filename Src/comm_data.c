@@ -699,6 +699,7 @@ static void comm_Data_Send_Task(void * argument)
         ucResult = 0; /* 发送结果初始化 */
         for (i = 0; i < COMM_DATA_SER_TX_RETRY_NUM; ++i) {
             if (serialSendStartDMA(COMM_DATA_SERIAL_INDEX, sendInfo.buff, sendInfo.length, 30) != pdPASS) { /* 启动串口发送 */
+                error_Emit(eError_Comm_Data_Send_Failed);                                                   /* 提交发送失败错误信息 */
                 vTaskDelay(pdMS_TO_TICKS(30));                                                              /* 30mS 后重新尝试启动DMA发送 */
                 continue;
             }
@@ -713,8 +714,8 @@ static void comm_Data_Send_Task(void * argument)
                 ucResult = 0;
             }
         }
-        if (ucResult == 0) { /* 重发失败处理 */
-            /* TO DO */
+        if (ucResult == 0) {                      /* 重发失败处理 */
+            error_Emit(eError_Comm_Data_Not_ACK); /* 提交无ACK错误信息 */
         }
         xQueueReceive(comm_Data_SendQueue, &sendInfo, 0); /* 释放发送队列 */
     }

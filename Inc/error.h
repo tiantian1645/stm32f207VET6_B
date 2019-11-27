@@ -57,26 +57,26 @@ typedef enum {
     eError_Out_Flash_Unknow,                    /* 外部Flash型号无法识别 */
     eError_Out_Flash_Storge_Param_Out_Of_Range, /* 外部Flash存储参数越限 */
 
-    eError_Comm_Main_Busy,        /* 串口发送忙 */
-    eError_Comm_Main_Send_Failed, /* 发送失败 */
-    eError_Comm_Main_Not_ACK,     /* 没有收到ACK */
-    eError_Comm_Main_Wrong_ID,    /* 异常ID */
-    eError_Comm_Main_Unknow_CMD,  /* 异常功能码 */
-    eError_Comm_Main_Param_Error, /* 报文参数异常 */
+    eError_Comm_Main_Busy,        /* 主串口发送忙 */
+    eError_Comm_Main_Send_Failed, /* 主串口发送失败 */
+    eError_Comm_Main_Not_ACK,     /* 主串口没有收到ACK */
+    eError_Comm_Main_Wrong_ID,    /* 主串口异常ID */
+    eError_Comm_Main_Unknow_CMD,  /* 主串口异常功能码 */
+    eError_Comm_Main_Param_Error, /* 主串口报文参数异常 */
 
-    eError_Comm_Data_Busy,        /* 串口发送忙 */
-    eError_Comm_Data_Send_Failed, /* 发送失败 */
-    eError_Comm_Data_Not_ACK,     /* 没有收到ACK */
-    eError_Comm_Data_Wrong_ID,    /* 异常ID */
-    eError_Comm_Data_Unknow_CMD,  /* 异常功能码 */
-    eError_Comm_Data_Param_Error, /* 报文参数异常 */
+    eError_Comm_Data_Busy,        /* 采样板查串口发送忙 */
+    eError_Comm_Data_Send_Failed, /* 采样板查串口发送失败 */
+    eError_Comm_Data_Not_ACK,     /* 采样板查串口没有收到ACK */
+    eError_Comm_Data_Wrong_ID,    /* 采样板查串口异常ID */
+    eError_Comm_Data_Unknow_CMD,  /* 采样板查串口异常功能码 */
+    eError_Comm_Data_Param_Error, /* 采样板查串口报文参数异常 */
 
-    eError_Comm_Out_Busy,        /* 串口发送忙 */
-    eError_Comm_Out_Send_Failed, /* 发送失败 */
-    eError_Comm_Out_Not_ACK,     /* 没有收到ACK */
-    eError_Comm_Out_Wrong_ID,    /* 异常ID */
-    eError_Comm_Out_Unknow_CMD,  /* 异常功能码 */
-    eError_Comm_Out_Param_Error, /* 报文参数异常 */
+    eError_Comm_Out_Busy,        /* 外串口发送忙 */
+    eError_Comm_Out_Send_Failed, /* 外串口发送失败 */
+    eError_Comm_Out_Not_ACK,     /* 外串口没有收到ACK */
+    eError_Comm_Out_Wrong_ID,    /* 外串口异常ID */
+    eError_Comm_Out_Unknow_CMD,  /* 外串口异常功能码 */
+    eError_Comm_Out_Param_Error, /* 外串口报文参数异常 */
 } eError_Code;
 
 /* Exported constants --------------------------------------------------------*/
