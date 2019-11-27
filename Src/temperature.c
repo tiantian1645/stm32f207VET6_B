@@ -52,6 +52,22 @@ static uint32_t gTempADC_Conv_Cnt = 0;
 /* Private user code ---------------------------------------------------------*/
 
 /**
+ * @brief  温度 ADC 采样值做随机数
+ * @param  None
+ * @retval ADC 采样值之和
+ */
+uint32_t temp_Random_Generate(void)
+{
+    uint8_t i;
+    uint32_t ran = 0;
+
+    for (i = 0; i < ARRAY_LEN(gTempADC_Results); ++i) {
+        ran += gTempADC_Results[i];
+    }
+    return ran;
+}
+
+/**
  * @brief  温度 ADC 采样次数 读取
  * @param  None
  * @retval ADC 采样次数

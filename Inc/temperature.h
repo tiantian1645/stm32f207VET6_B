@@ -28,6 +28,7 @@ typedef enum {
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/
+uint32_t temp_Random_Generate(void);
 uint32_t temp_Get_Conv_Cnt(void);
 HAL_StatusTypeDef temp_Start_ADC_DMA(void);
 HAL_StatusTypeDef temp_Stop_ADC_DMA(void);

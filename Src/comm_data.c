@@ -14,6 +14,7 @@
 #include "comm_out.h"
 #include "comm_main.h"
 #include "motor.h"
+#include "temperature.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern UART_HandleTypeDef huart2;
@@ -485,7 +486,10 @@ static BaseType_t comm_Data_Sample_Send_Clear_Conf(void)
 BaseType_t comm_Data_Start_Stary_Test(void)
 {
     uint8_t sendLength, pData[8];
+
     sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_STRAY, pData, 0); /* 构造杂散光测试包 */
+    pData[3] = (uint8_t)(temp_Random_Generate());                                      /* 随机帧号 */
+    pData[3] = (pData[3] == 0) ? (0xA5) : (pData[3]);                                  /* 排除零值 */
     comm_Data_Stary_Test_Mark();                                                       /* 标记杂散光测试开始 */
     return comm_Data_SendTask_QueueEmit(pData, sendLength, 50);
 }
