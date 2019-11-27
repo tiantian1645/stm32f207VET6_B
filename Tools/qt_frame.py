@@ -135,6 +135,7 @@ class MainWindow(QMainWindow):
         self.pack_index = 1
         self.device_id = "no name"
         self.version = "no version"
+        self.device_datetime = None
         self.serial_recv_worker = None
         self.serial_send_worker = None
         self.initUI()
@@ -446,9 +447,9 @@ class MainWindow(QMainWindow):
         self.device_id = "-".join([f"{struct.unpack('>I', raw_bytes[6 + 4 * i : 10 + 4 * i])[0]:08X}" for i in range(3)])
         self.device_id_lb.setText(f"ID: {self.device_id}")
         date_str = f'{raw_bytes[26: 37].decode("ascii", errors="ignore")} - {raw_bytes[18: 26].decode("ascii", errors="ignore")}'
-        self.device_datetime = datetime.strptime(date_str, '%b %d %Y - %H:%M:%S')
+        self.device_datetime = datetime.strptime(date_str, "%b %d %Y - %H:%M:%S")
         logger.debug(f"get datetime obj | {self.device_datetime}")
-        self.version_lb.setToolTip(date_str)
+        self.version_lb.setToolTip(f"V{self.version}.{datetime.strftime(self.device_datetime, '%Y%m%d.%H%M%S')}")
 
     def createBarcode(self):
         self.barcode_gb = QGroupBox("测试通道")
@@ -1076,7 +1077,9 @@ class MainWindow(QMainWindow):
             conf.append(self.matplot_conf_point_sps[i].value())
             self.sample_confs.append(SampleConf(conf[-3], conf[-2], conf[-1]))
         logger.debug(f"get matplot cnf | {conf}")
-        self.sample_label = self.sample_db.build_label(name=self.device_id, version=self.version)
+        self.sample_label = self.sample_db.build_label(
+            name=self.device_id, version=f"{self.version}.{datetime.strftime(self.device_datetime, '%Y%m%d.%H%M%S')}"
+        )
         self._serialSendPack(0x03, conf)
         self._serialSendPack(0x01)
         for plot in self.matplot_plots:
@@ -1599,20 +1602,20 @@ class MainWindow(QMainWindow):
 
     def getErrorContent(self, error_code):
         for i in DC201ErrorCode:
-            if error_code == i.value[1]:
-                logger.debug(f"hit error | {i.value[1]:05d} | {i.value[0]}")
-                return i.value[0]
+            if error_code == i.value[0]:
+                logger.debug(f"hit error | {i.value[0]:05d} | {i.value[1]}")
+                return i.value[1]
         logger.error(f"unknow error code | {error_code}")
         return "Unknow Error Code"
 
     def showWarnInfo(self, info):
         error_code = struct.unpack("H", info.content[6:8])[0]
-        error_content = self.getErrorContent(error_code) 
+        error_content = self.getErrorContent(error_code)
         level = QMessageBox.Warning
         msg = QMessageBox(self)
         msg.setIcon(level)
         msg.setWindowTitle(f"故障信息 | {datetime.now()}")
-        msg.setText(f"故障码 {error_code}\n故障内容 {error_content}")
+        msg.setText(f"故障码 {error_code}\n {error_content}")
         msg.exec_()
 
 
