@@ -350,7 +350,7 @@ uint8_t barcode_Motor_Reset_Pos(void)
 
     xTick = xTaskGetTickCount();
 
-    while ((!BARCODE_MOTOR_IS_OPT) && xTaskGetTickCount() - xTick < 1000) { /* 检测光耦是否被遮挡 */
+    while ((!BARCODE_MOTOR_IS_OPT) && xTaskGetTickCount() - xTick < 2000) { /* 检测光耦是否被遮挡 */
         vTaskDelay(1);
     }
 
