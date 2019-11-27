@@ -45,8 +45,8 @@ uint16_t I2C_EEPROM_Read(uint16_t memAddr, uint8_t * pOutBuff, uint16_t length, 
             return length;
         }
     }
-    if (HAL_GPIO_ReadPin(CARD_IN_GPIO_Port, CARD_IN_Pin) == GPIO_PIN_SET) {   /* 检查ID卡是否插入 */
-        error_Emit(eError_Peripheral_Storge_ID_Card, eError_Storge_Hardware); /* 提交错误信息 */
+    if (HAL_GPIO_ReadPin(CARD_IN_GPIO_Port, CARD_IN_Pin) == GPIO_PIN_SET) { /* 检查ID卡是否插入 */
+        error_Emit(eError_ID_Card_Not_Insert);                              /* 提交错误信息 */
     }
     return 0; /* 直接返回0 */
 }
@@ -91,10 +91,9 @@ uint16_t I2C_EEPROM_Write(uint16_t memAddr, uint8_t * pOutBuff, uint16_t length,
         dealNum = (length >= AT24CXX_PAGE_WRITE_LENGTH) ? (AT24CXX_PAGE_WRITE_LENGTH) : (length); /* 下次处理长度 */
     } while (length);
 
-    if (HAL_GPIO_ReadPin(CARD_IN_GPIO_Port, CARD_IN_Pin) == GPIO_PIN_SET) {   /* 检查ID卡是否插入 */
-        error_Emit(eError_Peripheral_Storge_ID_Card, eError_Storge_Hardware); /* 提交错误信息 */
+    if (HAL_GPIO_ReadPin(CARD_IN_GPIO_Port, CARD_IN_Pin) == GPIO_PIN_SET) { /* 检查ID卡是否插入 */
+        error_Emit(eError_ID_Card_Not_Insert);                              /* 提交错误信息 */
         wroteCnt = 0;
     }
-
     return wroteCnt;
 }

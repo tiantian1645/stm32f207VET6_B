@@ -206,22 +206,22 @@ void barcode_Motor_Deal_Status()
     if (((status & dSPIN_STATUS_STEP_LOSS_A) == 0) || ((status & dSPIN_STATUS_STEP_LOSS_B) == 0)) { /* 发生失步 */
         m_l6470_Reset_HW();                                                                         /* 硬件重置 */
         m_l6470_Params_Init();                                                                      /* 初始化参数 */
-        error_Emit(eError_Peripheral_Motor_Scan, eError_Motor_Status_Warui);                        /* 提交错误信息 */
+        error_Emit(eError_Motor_Scan_Status_Warui);                                                 /* 提交错误信息 */
         return;
     }
-    if (((status & dSPIN_STATUS_UVLO)) == 0) {                               /* 低压 */
-        m_l6470_Reset_HW();                                                  /* 硬件重置 */
-        m_l6470_Params_Init();                                               /* 初始化参数 */
-        error_Emit(eError_Peripheral_Motor_Scan, eError_Motor_Status_Warui); /* 提交错误信息 */
+    if (((status & dSPIN_STATUS_UVLO)) == 0) {      /* 低压 */
+        m_l6470_Reset_HW();                         /* 硬件重置 */
+        m_l6470_Params_Init();                      /* 初始化参数 */
+        error_Emit(eError_Motor_Scan_Status_Warui); /* 提交错误信息 */
         return;
     }
     if (((status & dSPIN_STATUS_TH_WRN)) == 0 || ((status & dSPIN_STATUS_TH_SD)) == 0 || ((status & dSPIN_STATUS_OCD)) == 0) { /* 高温 超温 过流 */
         m_l6470_Reset_HW();                                                                                                    /* 硬件重置 */
         m_l6470_Params_Init();                                                                                                 /* 初始化参数 */
-        error_Emit(eError_Peripheral_Motor_Scan, eError_Motor_Status_Warui);                                                   /* 提交错误信息 */
+        error_Emit(eError_Motor_Scan_Status_Warui);                                                                            /* 提交错误信息 */
         return;
     }
-    error_Emit(eError_Peripheral_Motor_Scan, ERROR_TYPE_DEBUG); /* 提交错误信息 */
+    error_Emit(eError_Motor_Scan_Debug); /* 提交错误信息 */
     return;
 }
 
@@ -298,7 +298,7 @@ eBarcodeState barcode_Motor_Run(void)
 {
     eBarcodeState result;
 
-    error_Emit(eError_Peripheral_Motor_Scan, ERROR_TYPE_DEBUG);
+    error_Emit(eError_Motor_Scan_Debug);
     if (gBarcodeMotorRunCmdInfo.step == 0) {
         return eBarcodeState_OK;
     }
@@ -309,9 +309,9 @@ eBarcodeState barcode_Motor_Run(void)
             m_l6470_release(); /* 释放SPI总线资源*/
         }
         if (result == eBarcodeState_Busy) {
-            error_Emit(eError_Peripheral_Motor_Scan, eError_Motor_Busy);
+            error_Emit(eError_Motor_Scan_Busy);
         } else if (result == eBarcodeState_Tiemout) {
-            error_Emit(eError_Peripheral_Motor_Scan, eError_Motor_Timeout);
+            error_Emit(eError_Motor_Scan_Timeout);
         }
         return result;
     }
@@ -356,13 +356,13 @@ uint8_t barcode_Motor_Reset_Pos(void)
 
     result = barcode_Motor_Enter();
     if (result == eBarcodeState_Tiemout) { /* 获取SPI资源失败 */
-        error_Emit(eError_Peripheral_Motor_Scan, eError_Motor_Timeout);
+        error_Emit(eError_Motor_Scan_Timeout);
         return 2;
     }
     if (result == eBarcodeState_Busy) { /* 电机忙 */
         barcode_Motor_Brake();          /* 无条件刹车 */
         m_l6470_release();              /* 释放SPI总线资源*/
-        error_Emit(eError_Peripheral_Motor_Scan, eError_Motor_Busy);
+        error_Emit(eError_Motor_Scan_Busy);
         return 3;
     }
     barcode_Motor_Brake();                                 /* 刹车 */
@@ -382,16 +382,16 @@ eBarcodeState barcode_Motor_Init(void)
     eBarcodeState result;
     uint32_t cnt = 0;
 
-    error_Emit(eError_Peripheral_Motor_Scan, ERROR_TYPE_DEBUG);
+    error_Emit(eError_Motor_Scan_Debug);
     result = barcode_Motor_Enter();
     if (result != eBarcodeState_OK) { /* 入口回调 */
         if (result != eBarcodeState_Tiemout) {
             m_l6470_release(); /* 释放SPI总线资源*/
         }
         if (result == eBarcodeState_Busy) {
-            error_Emit(eError_Peripheral_Motor_Scan, eError_Motor_Busy);
+            error_Emit(eError_Motor_Scan_Busy);
         } else if (result == eBarcodeState_Tiemout) {
-            error_Emit(eError_Peripheral_Motor_Scan, eError_Motor_Timeout);
+            error_Emit(eError_Motor_Scan_Timeout);
         }
         return result;
     }
@@ -457,9 +457,9 @@ void barcode_sn2707_Init(void)
     if (result != 0) {
         error_flag = 1;
     }
-    if (error_flag != 0) {                                                 /* 存在错误 */
-        error_Emit(eError_Peripheral_Scanner, eError_Scanner_Conf_Failed); /* 报错 */
-        beep_Start_With_Conf(eBeep_Freq_re, 100, 150, 1);                  /* RE 一声 */
+    if (error_flag != 0) {                                /* 存在错误 */
+        error_Emit(eError_Scan_Config_Failed);            /* 报错 */
+        beep_Start_With_Conf(eBeep_Freq_re, 100, 150, 1); /* RE 一声 */
         return;
     }
 
@@ -473,11 +473,11 @@ void barcode_sn2707_Init(void)
         error_flag = 1;
     }
 
-    if (error_flag != 0) {                                                 /* 存在错误 */
-        error_Emit(eError_Peripheral_Scanner, eError_Scanner_Conf_Failed); /* 报错 */
-        beep_Start_With_Conf(eBeep_Freq_re, 100, 150, 1);                  /* RE 一声 */
-    } else {                                                               /* 参数项匹配 或 设置成功 */
-        beep_Start_With_Conf(eBeep_Freq_mi, 100, 150, 2);                  /* MI 两声 */
+    if (error_flag != 0) {                                /* 存在错误 */
+        error_Emit(eError_Scan_Config_Failed);            /* 报错 */
+        beep_Start_With_Conf(eBeep_Freq_re, 100, 150, 1); /* RE 一声 */
+    } else {                                              /* 参数项匹配 或 设置成功 */
+        beep_Start_With_Conf(eBeep_Freq_mi, 100, 150, 2); /* MI 两声 */
     }
 }
 

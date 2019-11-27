@@ -15,9 +15,9 @@ extern TIM_HandleTypeDef htim1;
 
 /* Private typedef -----------------------------------------------------------*/
 typedef enum {
-	eWhite_Motor_In_Finish,
-	eWhite_Motor_Out_Finish,
-	eWhite_Motor_Undone,
+    eWhite_Motor_In_Finish,
+    eWhite_Motor_Out_Finish,
+    eWhite_Motor_Undone,
 } eWhite_Motor_Status;
 
 /* Private define ------------------------------------------------------------*/
@@ -45,12 +45,14 @@ static void gWhite_Motor_Position_Clr(void);
 
 /* Private user code ---------------------------------------------------------*/
 
-eWhite_Motor_Status gWhite_Motor_Status_Get(void) {
-	return gWhite_Motor_Status;
+eWhite_Motor_Status gWhite_Motor_Status_Get(void)
+{
+    return gWhite_Motor_Status;
 }
 
-void gWhite_Motor_Status_Set(eWhite_Motor_Status status) {
-	gWhite_Motor_Status = status;
+void gWhite_Motor_Status_Set(eWhite_Motor_Status status)
+{
+    gWhite_Motor_Status = status;
 }
 
 /**
@@ -225,7 +227,7 @@ uint8_t white_Motor_Wait_Stop(uint32_t timeout)
  */
 uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout)
 {
-    error_Emit(eError_Peripheral_Motor_White, ERROR_TYPE_DEBUG);
+    error_Emit(eError_Motor_White_Debug);
     if (white_Motor_Position_Is_In()) { /* 光耦被遮挡 处于收起状态 */
         white_Motor_Deactive();
         gWhite_Motor_Position_Clr(); /* 清空位置记录 */
@@ -242,8 +244,8 @@ uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout)
     m_drv8824_SetDir(dir);                                     /* 运动方向设置 硬件管脚 */
     gWhite_Motor_Dir_Set(dir);                                 /* 运动方向设置 目标方向 */
     gWhite_Motor_Status_Set(eWhite_Motor_Undone);              /* 状态记录初始化 */
-    gPWM_TEST_AW_CNT_Clear();                                 /* PWM数目清零 */
-    if (HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1) != HAL_OK) { /* 启动PWM输出 */
+    gPWM_TEST_AW_CNT_Clear();                                  /* PWM数目清零 */
+    if (HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1) != HAL_OK) {  /* 启动PWM输出 */
         m_drv8824_release();
         return 1;
     }
@@ -255,10 +257,11 @@ uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout)
         return 0;
     }
     m_drv8824_release();
-    error_Emit(eError_Peripheral_Motor_White, eError_Motor_Timeout);
     if (dir == eMotorDir_FWD && white_Motor_Position_Is_In()) {
+        error_Emit(eError_Motor_White_Timeout_PD);
         return 3;
     } else if (dir == eMotorDir_REV && white_Motor_Position_Is_In() == 0) {
+        error_Emit(eError_Motor_White_Timeout_WH);
         return 4;
     }
     return 2;
@@ -279,18 +282,18 @@ uint8_t white_Motor_Toggle(uint32_t timeout)
  */
 uint8_t white_Motor_PWM_Gen_In(void)
 {
-	uint32_t cnt;
-	static uint16_t patch = 0;
+    uint32_t cnt;
+    static uint16_t patch = 0;
 
     if (motor_OPT_Status_Get_White() == eMotor_OPT_Status_OFF) {
-    	++patch;
+        ++patch;
     } else {
-    	patch = 0;
+        patch = 0;
     }
 
     if (patch >= WHITE_MOTOR_PCS_PATCH) {
-    	PWM_AW_Stop();
-    	gWhite_Motor_Status_Set(eWhite_Motor_In_Finish);
+        PWM_AW_Stop();
+        gWhite_Motor_Status_Set(eWhite_Motor_In_Finish);
         return 0;
     }
 

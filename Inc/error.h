@@ -8,77 +8,81 @@
 #include "protocol.h"
 
 /* Exported macro ------------------------------------------------------------*/
-#define ERROR_TYPE_DEBUG 0xFF
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum {
-    eError_Peripheral_Motor_Heater, /* 上加热体电机 */
-    eError_Peripheral_Motor_White,  /* 白板电机 */
-    eError_Peripheral_Motor_Tray,   /* 托盘电机 */
-    eError_Peripheral_Motor_Scan,   /* 扫码电机 */
+    eError_Motor_Task_Busy, /* 电机任务忙 */
 
-    eError_Peripheral_Temp_Top, /* 上加热体温度 */
-    eError_Peripheral_Temp_Btm, /* 下加热体温度 */
-    eError_Peripheral_Temp_Env, /* 环境温度 */
+    eError_Motor_Heater_Debug,        /* 上加热体电机错误调试 */
+    eError_Motor_Heater_Timeout_Up,   /* 上加热体电机运动超时 上升方向 */
+    eError_Motor_Heater_Timeout_Down, /* 上加热体电机运动超时 下降方向 */
+    eError_Motor_Heater_Status_Warui, /* 上加热体电机驱动状态异常 */
 
-    eError_Peripheral_Storge_Flash,   /* W25Q64 Flash存储芯片 */
-    eError_Peripheral_Storge_ID_Card, /* ID Code 卡 */
+    eError_Motor_White_Debug,        /* 白板电机错误调试 */
+    eError_Motor_White_Timeout_PD,   /* 白板电机运动超时 PD方向 */
+    eError_Motor_White_Timeout_WH,   /* 白板电机运动超时 白物质方向 */
+    eError_Motor_White_Status_Warui, /* 白板电机驱动状态异常 */
 
-    eError_Peripheral_COMM_Out,  /* 对外串口通信 */
-    eError_Peripheral_COMM_Main, /* 主板通信 */
-    eError_Peripheral_COMM_Data, /* 采集板通信 */
+    eError_Motor_Tray_Debug,        /* 托盘电机错误调试 */
+    eError_Motor_Tray_Busy,         /* 托盘电机驱动忙 */
+    eError_Motor_Tray_Timeout,      /* 托盘电机运动超时 */
+    eError_Motor_Tray_Status_Warui, /* 托盘电机驱动状态异常 */
 
-    eError_Peripheral_Scanner, /* 扫码枪 */
-    eError_Peripheral_Fan,     /* 风扇 */
-} eError_Peripheral;
+    eError_Motor_Scan_Debug,        /* 扫码电机错误调试 */
+    eError_Motor_Scan_Busy,         /* 扫码电机驱动忙 */
+    eError_Motor_Scan_Timeout,      /* 扫码电机运动超时 */
+    eError_Motor_Scan_Status_Warui, /* 扫码电机驱动状态异常 */
 
-typedef enum {
-    eError_Motor_Busy = 0x01,         /* 资源不可用 */
-    eError_Motor_Timeout = 0x02,      /* 电机运动超时 */
-    eError_Motor_Status_Warui = 0x04, /* 电机驱动异常 */
-} eError_Motor;
+    eError_Temperature_Top_Abnormal, /* 上加热体温度异常 */
+    eError_Temperature_Top_TooHigh,  /* 上加热体温度过高 */
+    eError_Temperature_Top_TooLow,   /* 上加热体温度过低 */
+    eError_Temperature_Btm_Abnormal, /* 下加热体温度异常 */
+    eError_Temperature_Btm_TooHigh,  /* 下加热体温度过高 */
+    eError_Temperature_Btm_TooLow,   /* 下加热体温度过低 */
 
-typedef enum {
-    eError_Temp_Nai = 0x01,       /* 温度值无效 */
-    eError_Temp_Too_Low = 0x02,   /* 温度持续过低 */
-    eError_Temp_Too_Hight = 0x04, /* 温度持续过高 */
-} eError_Temp;
+    eError_Scan_Debug,           /* 扫码枪错误调试 */
+    eError_Scan_Connect_Timeout, /* 扫码枪通讯超时 */
+    eError_Scan_Config_Failed,   /* 扫码枪配置失败 */
 
-typedef enum {
-    eError_Storge_Hardware = 0x01,       /* 硬件故障 */
-    eError_Storge_Read_Error = 0x02,     /* 读取失败 */
-    eError_Storge_Write_Error = 0x04,    /* 写入失败 */
-    eError_Storge_Param_Overload = 0x08, /* 参数越限 */
-} eError_Storge;
+    eError_Storge_Task_Busy, /* 存储任务忙 */
 
-typedef enum {
-    eError_COMM_Busy = 0x01,        /* 资源不可用 */
-    eError_COMM_Send_Failed = 0x02, /* 发送失败 */
-    eError_COMM_Wrong_ACK = 0x04,   /* 回应帧号不正确 */
-    eError_COMM_Recv_None = 0x08,   /* 无回应 */
-    eError_COMM_Unknow_CMD = 0x10,  /* 未知功能码 */
-    eError_COMM_Wrong_Param = 0x20, /* 参数不正常 */
-} eError_COMM;
+    eError_ID_Card_Deal_Param,   /* ID Code卡操作参数异常 */
+    eError_ID_Card_Read_Failed,  /* ID Code卡读取失败 */
+    eError_ID_Card_Write_Failed, /* ID Code卡写入失败 */
+    eError_ID_Card_Not_Insert,   /* ID Code卡未插卡 */
 
-typedef enum {
-    eError_Scanner_Conf_Failed = 0x01, /* 配置失败 */
-} eError_Scanner;
+    eError_Out_Flash_Deal_Param,                /* 外部Flash操作参数异常 */
+    eError_Out_Flash_Read_Failed,               /* 外部Flash读取失败 */
+    eError_Out_Flash_Write_Failed,              /* 外部Flash写入失败 */
+    eError_Out_Flash_Unknow,                    /* 外部Flash型号无法识别 */
+    eError_Out_Flash_Storge_Param_Out_Of_Range, /* 外部Flash存储参数越限 */
 
-typedef enum {
-    eError_Fan_Speed_None = 0x01, /* 转速为零 */
-    eError_Fan_Speed_Lost = 0x02, /* 失速 */
-} eError_Fan;
+    eError_Comm_Main_Busy,        /* 串口发送忙 */
+    eError_Comm_Main_Send_Failed, /* 发送失败 */
+    eError_Comm_Main_Not_ACK,     /* 没有收到ACK */
+    eError_Comm_Main_Wrong_ID,    /* 异常ID */
+    eError_Comm_Main_Unknow_CMD,  /* 异常功能码 */
+    eError_Comm_Main_Param_Error, /* 报文参数异常 */
 
-typedef struct {
-    uint8_t peripheral; /* 外设类型 */
-    uint8_t type;       /* 错误细节 */
-} sError_Info;
+    eError_Comm_Data_Busy,        /* 串口发送忙 */
+    eError_Comm_Data_Send_Failed, /* 发送失败 */
+    eError_Comm_Data_Not_ACK,     /* 没有收到ACK */
+    eError_Comm_Data_Wrong_ID,    /* 异常ID */
+    eError_Comm_Data_Unknow_CMD,  /* 异常功能码 */
+    eError_Comm_Data_Param_Error, /* 报文参数异常 */
+
+    eError_Comm_Out_Busy,        /* 串口发送忙 */
+    eError_Comm_Out_Send_Failed, /* 发送失败 */
+    eError_Comm_Out_Not_ACK,     /* 没有收到ACK */
+    eError_Comm_Out_Wrong_ID,    /* 异常ID */
+    eError_Comm_Out_Unknow_CMD,  /* 异常功能码 */
+    eError_Comm_Out_Param_Error, /* 报文参数异常 */
+} eError_Code;
 
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/
-void error_Emit(eError_Peripheral pp, uint8_t detail);
-void error_Clear(eError_Peripheral pp);
+void error_Emit(eError_Code code);
 void error_Handle(TickType_t xTick);
 
 /* Private defines -----------------------------------------------------------*/

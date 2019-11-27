@@ -669,16 +669,12 @@ BaseType_t comm_Data_Sample_Owari(void)
 static void comm_Data_Recv_Task(void * argument)
 {
     sComm_Data_RecvInfo recvInfo;
-    eProtocolParseResult pResult;
 
     for (;;) {
         if (xQueueReceive(comm_Data_RecvQueue, &recvInfo, portMAX_DELAY) != pdPASS) { /* 检查接收队列 */
             continue;                                                                 /* 队列空 */
         }
-
-        pResult = protocol_Parse_Data(recvInfo.buff, recvInfo.length); /* 数据包协议解析 */
-        if (pResult == PROTOCOL_PARSE_OK) {                            /* 数据包解析正常 */
-        }
+        protocol_Parse_Data(recvInfo.buff, recvInfo.length); /* 数据包协议解析 */
     }
 }
 

@@ -92,7 +92,7 @@ uint8_t storgeReadConfInfo(uint32_t addr, uint32_t num, uint32_t timeout)
             gStorgeTaskInfo.num = num;
             return 0;
         }
-        vTaskDelay(1);
+        vTaskDelay(10);
     } while (--timeout);
 
     return 2; /* 错误码2 超时 */
@@ -177,9 +177,9 @@ static void storgeTask(void * argument)
     storge_ParamInit();
     result = storge_ParamLoad(buff);
     if (result == 1) {
-        error_Emit(eError_Peripheral_Storge_Flash, eError_Storge_Param_Overload); /* 参数越限 */
+        error_Emit(eError_Out_Flash_Storge_Param_Out_Of_Range); /* 参数越限 */
     } else if (result == 2) {
-        error_Emit(eError_Peripheral_Storge_Flash, eError_Storge_Read_Error); /* 读取失败 */
+        error_Emit(eError_Out_Flash_Read_Failed); /* 读取失败 */
     }
 
     for (;;) {
@@ -322,14 +322,14 @@ static void storgeTask(void * argument)
             case eStorgeNotifyConf_Load_Parmas:
                 result = storge_ParamLoad(buff);
                 if (result == 1) {
-                    error_Emit(eError_Peripheral_Storge_Flash, eError_Storge_Param_Overload); /* 参数越限 */
+                    error_Emit(eError_Out_Flash_Storge_Param_Out_Of_Range); /* 参数越限 */
                 } else if (result == 2) {
-                    error_Emit(eError_Peripheral_Storge_Flash, eError_Storge_Read_Error); /* 读取失败 */
+                    error_Emit(eError_Out_Flash_Read_Failed); /* 读取失败 */
                 }
                 break;
             case eStorgeNotifyConf_Dump_Params:
                 if (storge_ParamDump() > 0) {
-                    error_Emit(eError_Peripheral_Storge_Flash, eError_Storge_Write_Error); /* 写入失败 */
+                    error_Emit(eError_Out_Flash_Write_Failed); /* 写入失败 */
                 }
                 break;
             default:

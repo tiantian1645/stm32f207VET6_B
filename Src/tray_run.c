@@ -18,11 +18,11 @@
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
-#define TRAY_MOTOR_IS_BUSY (dSPIN_Busy_SW())                                                       /* 托盘电机忙碌位读取 */
-#define TRAY_MOTOR_IS_FLAG (dSPIN_Flag())                                                          /* 托盘电机标志脚读取 */
-#define TRAY_MOTOR_MAX_DISP 6400                                                                   /* 出仓步数 (1/8) 物理限制步数 */
-#define TRAY_MOTOR_SCAN_DISP 1400                                                                  /* 扫码步数 (1/8) */
-#define TRAY_MOTOR_GO_HOME_SPEED	80000
+#define TRAY_MOTOR_IS_BUSY (dSPIN_Busy_SW()) /* 托盘电机忙碌位读取 */
+#define TRAY_MOTOR_IS_FLAG (dSPIN_Flag())    /* 托盘电机标志脚读取 */
+#define TRAY_MOTOR_MAX_DISP 6400             /* 出仓步数 (1/8) 物理限制步数 */
+#define TRAY_MOTOR_SCAN_DISP 1400            /* 扫码步数 (1/8) */
+#define TRAY_MOTOR_GO_HOME_SPEED 80000
 
 /* Private variables ---------------------------------------------------------*/
 static sMotorRunStatus gTray_Motor_Run_Status;
@@ -79,22 +79,22 @@ void tray_Motor_Deal_Status()
     if (((status & dSPIN_STATUS_STEP_LOSS_A) == 0) || ((status & dSPIN_STATUS_STEP_LOSS_B) == 0)) { /* 发生失步 */
         m_l6470_Reset_HW();                                                                         /* 硬件重置 */
         m_l6470_Params_Init();                                                                      /* 初始化参数 */
-        error_Emit(eError_Peripheral_Motor_Tray, eError_Motor_Status_Warui);                        /* 提交错误信息 */
+        error_Emit(eError_Motor_Tray_Status_Warui);                                                 /* 提交错误信息 */
         return;
     }
-    if (((status & dSPIN_STATUS_UVLO)) == 0) {                               /* 低压 */
-        m_l6470_Reset_HW();                                                  /* 硬件重置 */
-        m_l6470_Params_Init();                                               /* 初始化参数 */
-        error_Emit(eError_Peripheral_Motor_Tray, eError_Motor_Status_Warui); /* 提交错误信息 */
+    if (((status & dSPIN_STATUS_UVLO)) == 0) {      /* 低压 */
+        m_l6470_Reset_HW();                         /* 硬件重置 */
+        m_l6470_Params_Init();                      /* 初始化参数 */
+        error_Emit(eError_Motor_Tray_Status_Warui); /* 提交错误信息 */
         return;
     }
     if (((status & dSPIN_STATUS_TH_WRN)) == 0 || ((status & dSPIN_STATUS_TH_SD)) == 0 || ((status & dSPIN_STATUS_OCD)) == 0) { /* 高温 超温 过流 */
         m_l6470_Reset_HW();                                                                                                    /* 硬件重置 */
         m_l6470_Params_Init();                                                                                                 /* 初始化参数 */
-        error_Emit(eError_Peripheral_Motor_Tray, eError_Motor_Status_Warui);                                                   /* 提交错误信息 */
+        error_Emit(eError_Motor_Tray_Status_Warui);                                                                            /* 提交错误信息 */
         return;
     }
-    error_Emit(eError_Peripheral_Motor_Tray, ERROR_TYPE_DEBUG); /* 压力测试 */
+    error_Emit(eError_Motor_Tray_Debug); /* 压力测试 */
     return;
 }
 
@@ -172,7 +172,7 @@ eTrayState tray_Motor_Run(void)
     eTrayState result;
     uint32_t cnt = 0;
 
-    error_Emit(eError_Peripheral_Motor_Tray, ERROR_TYPE_DEBUG);
+    error_Emit(eError_Motor_Tray_Debug);
     if (gTray_Motor_Run_CMD_Info.step == 0) {
         return eTrayState_OK;
     }
@@ -183,9 +183,9 @@ eTrayState tray_Motor_Run(void)
             m_l6470_release(); /* 释放SPI总线资源*/
         }
         if (result == eTrayState_Busy) {
-            error_Emit(eError_Peripheral_Motor_Tray, eError_Motor_Busy);
+            error_Emit(eError_Motor_Tray_Busy);
         } else if (result == eTrayState_Tiemout) {
-            error_Emit(eError_Peripheral_Motor_Tray, eError_Motor_Timeout);
+            error_Emit(eError_Motor_Tray_Timeout);
         }
         return result;
     }
@@ -263,16 +263,16 @@ eTrayState tray_Motor_Init(void)
     eTrayState result;
     TickType_t xTick;
 
-    error_Emit(eError_Peripheral_Motor_Tray, ERROR_TYPE_DEBUG);
+    error_Emit(eError_Motor_Tray_Debug);
     result = tray_Motor_Enter();
     if (result != eTrayState_OK) { /* 入口回调 */
         if (result != eTrayState_Tiemout) {
             m_l6470_release(); /* 释放SPI总线资源*/
         }
         if (result == eTrayState_Busy) {
-            error_Emit(eError_Peripheral_Motor_Tray, eError_Motor_Busy);
+            error_Emit(eError_Motor_Tray_Busy);
         } else if (result == eTrayState_Tiemout) {
-            error_Emit(eError_Peripheral_Motor_Tray, eError_Motor_Timeout);
+            error_Emit(eError_Motor_Tray_Timeout);
         }
         return result;
     }
@@ -281,7 +281,7 @@ eTrayState tray_Motor_Init(void)
         dSPIN_Move(REV, 350);
         xTick = xTaskGetTickCount();
         while (TRAY_MOTOR_IS_OPT_1 && xTaskGetTickCount() - xTick < 5000) {
-            vTaskDelay(1);
+            vTaskDelay(100);
         }
         tray_Motor_Brake(); /* 刹车 */
     }

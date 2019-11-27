@@ -198,7 +198,7 @@ uint8_t heat_Motor_Wait_Stop(uint32_t timeout)
  */
 uint8_t heat_Motor_Run(eMotorDir dir, uint32_t timeout)
 {
-    error_Emit(eError_Peripheral_Motor_Heater, ERROR_TYPE_DEBUG);
+    error_Emit(eError_Motor_Heater_Debug);
     if (heat_Motor_Position_Is_Up()) { /* 光耦被遮挡 处于抬起状态 */
         heat_Motor_Deactive();
         gHeat_Motor_Position_Clr(); /* 清空位置记录 */
@@ -230,7 +230,14 @@ uint8_t heat_Motor_Run(eMotorDir dir, uint32_t timeout)
         m_drv8824_release();
         return 0;
     }
-    error_Emit(eError_Peripheral_Motor_Heater, eError_Motor_Timeout);
+
+    if (dir == eMotorDir_FWD && heat_Motor_Position_Is_Up() == 0) {
+        error_Emit(eError_Motor_Heater_Timeout_Up);
+    }
+
+    if (dir == eMotorDir_REV && heat_Motor_Position_Is_Up()) {
+        error_Emit(eError_Motor_Heater_Timeout_Down);
+    }
     m_drv8824_release();
     return 3;
 }

@@ -8,16 +8,6 @@
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum {
-    PROTOCOL_PARSE_OK = 0x0000,
-    PROTOCOL_PARSE_CRC_ERROR = 0x0001,
-    PROTOCOL_PARSE_ID_ERROR = 0x0002,
-    PROTOCOL_PARSE_LENGTH_ERROR = 0x0004,
-    PROTOCOL_PARSE_CMD_ERROR = 0x0008,
-    PROTOCOL_PARSE_DATA_ERROR = 0x0010,
-    PROTOCOL_PARSE_EMIT_ERROR = 0x0020,
-} eProtocolParseResult;
-
-typedef enum {
     PROTOCOL_DEVICE_ID_MAIN = 0x41,
     PROTOCOL_DEVICE_ID_CTRL = 0x45,
     PROTOCOL_DEVICE_ID_SAMP = 0x46,
@@ -53,7 +43,7 @@ typedef enum {
     eComm_Data,
 } eProtocol_COMM_Index;
 
-typedef eProtocolParseResult (*pfProtocolFun)(uint8_t * pInBuff, uint8_t length, uint8_t * pOutBuff, uint8_t * pOutLength);
+typedef void (*pfProtocolFun)(uint8_t * pInBuff, uint8_t length, uint8_t * pOutBuff, uint8_t * pOutLength);
 
 typedef struct {
     TickType_t tick;
@@ -89,9 +79,9 @@ uint8_t protocol_has_head(uint8_t * pBuff, uint16_t length);
 uint16_t protocol_has_tail(uint8_t * pBuff, uint16_t length);
 uint8_t protocol_is_comp(uint8_t * pBuff, uint16_t length);
 BaseType_t protocol_is_NeedWaitRACK(uint8_t * pData);
-eProtocolParseResult protocol_Parse_Out(uint8_t * pInBuff, uint8_t length);
-eProtocolParseResult protocol_Parse_Main(uint8_t * pInBuff, uint8_t length);
-eProtocolParseResult protocol_Parse_Data(uint8_t * pInBuff, uint8_t length);
+void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length);
+void protocol_Parse_Main(uint8_t * pInBuff, uint8_t length);
+void protocol_Parse_Data(uint8_t * pInBuff, uint8_t length);
 
 void protocol_Temp_Upload_Resume(void);
 void protocol_Temp_Upload_Pause(void);

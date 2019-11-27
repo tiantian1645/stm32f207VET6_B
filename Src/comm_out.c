@@ -207,7 +207,7 @@ void comm_Out_Init(void)
         FL_Error_Handler(__FILE__, __LINE__);
     }
     /* 发送队列 错误信息专用 */
-    comm_Out_Error_Info_SendQueue = xQueueCreate(COMM_OUT_ERROR_SEND_QUEU_LENGTH, sizeof(sError_Info));
+    comm_Out_Error_Info_SendQueue = xQueueCreate(COMM_OUT_ERROR_SEND_QUEU_LENGTH, sizeof(uint16_t));
     if (comm_Out_Error_Info_SendQueue == NULL) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
@@ -340,10 +340,10 @@ BaseType_t comm_Out_SendTask_QueueEmitWithBuild(uint8_t cmdType, uint8_t * pData
  * @param  timeout 超时时间
  * @retval 加入发送队列结果
  */
-BaseType_t comm_Out_SendTask_ErrorInfoQueueEmit(sError_Info * pErrorInfo, uint32_t timeout)
+BaseType_t comm_Out_SendTask_ErrorInfoQueueEmit(uint16_t * pErrorCode, uint32_t timeout)
 {
     BaseType_t xResult;
-    xResult = xQueueSendToBack(comm_Out_Error_Info_SendQueue, pErrorInfo, pdMS_TO_TICKS(timeout));
+    xResult = xQueueSendToBack(comm_Out_Error_Info_SendQueue, pErrorCode, pdMS_TO_TICKS(timeout));
     return xResult;
 }
 
@@ -394,28 +394,12 @@ BaseType_t comm_Out_Send_ACK_Wait(uint8_t packIndex, uint32_t timeout)
 static void comm_Out_Recv_Task(void * argument)
 {
     sComm_Out_RecvInfo recvInfo;
-    eProtocolParseResult pResult;
-    eError_COMM error_type = 0x00;
 
     for (;;) {
         if (xQueueReceive(comm_Out_RecvQueue, &recvInfo, portMAX_DELAY) != pdPASS) { /* 检查接收队列 */
             continue;                                                                /* 队列空 */
         }
-        pResult = protocol_Parse_Out(recvInfo.buff, recvInfo.length); /* 数据包协议解析 */
-        if (pResult != PROTOCOL_PARSE_OK) {                           /* 数据包解析异常 */
-            if (pResult & (PROTOCOL_PARSE_LENGTH_ERROR | PROTOCOL_PARSE_DATA_ERROR)) {
-                error_type |= eError_COMM_Wrong_Param;
-            }
-            if (pResult & PROTOCOL_PARSE_CMD_ERROR) {
-                error_type |= eError_COMM_Unknow_CMD;
-            }
-            if (pResult & PROTOCOL_PARSE_EMIT_ERROR) {
-                error_type |= eError_COMM_Busy;
-            }
-            if (error_type > 0) {
-                error_Emit(eError_Peripheral_COMM_Out, error_type);
-            }
-        }
+        protocol_Parse_Out(recvInfo.buff, recvInfo.length); /* 数据包协议解析 */
         vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
@@ -427,7 +411,7 @@ static void comm_Out_Recv_Task(void * argument)
  */
 static void comm_Out_Send_Task(void * argument)
 {
-    sError_Info errorInfo;
+    uint16_t errorCode;
     sComm_Out_SendInfo sendInfo;
     uint8_t i, ucResult;
 
@@ -436,9 +420,8 @@ static void comm_Out_Send_Task(void * argument)
             vTaskDelay(pdMS_TO_TICKS(10));
             continue;
         }
-        if (xQueueReceive(comm_Out_Error_Info_SendQueue, &errorInfo, 0) == pdPASS) {                       /* 查看错误信息队列 */
-            sendInfo.buff[0] = errorInfo.peripheral;                                                       /* 设备标识 */
-            sendInfo.buff[1] = errorInfo.type;                                                             /* 错误类型 */
+        if (xQueueReceive(comm_Out_Error_Info_SendQueue, &errorCode, 0) == pdPASS) {                       /* 查看错误信息队列 */
+            memcpy(sendInfo.buff, (uint8_t *)(&errorCode), 2);                                             /* 错误代码 */
             sendInfo.length = buildPackOrigin(eComm_Out, eProtocoleRespPack_Client_ERR, sendInfo.buff, 2); /* 构造数据包 */
         } else if (xQueueReceive(comm_Out_SendQueue, &sendInfo, pdMS_TO_TICKS(10)) != pdPASS) {            /* 发送队列为空 */
             continue;

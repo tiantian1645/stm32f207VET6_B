@@ -52,7 +52,7 @@ BaseType_t comm_Out_SendTask_QueueEmitWithBuild(uint8_t cmdType, uint8_t * pData
 #define comm_Out_SendTask_QueueEmitWithBuildCover(cmdType, pdata, length)                                                                                      \
     comm_Out_SendTask_QueueEmitWithBuild((cmdType), (pdata), (length), (COMM_OUT_SER_TX_RETRY_SUM))
 
-BaseType_t comm_Out_SendTask_ErrorInfoQueueEmit(sError_Info * pErrorInfo, uint32_t timeout);
+BaseType_t comm_Out_SendTask_ErrorInfoQueueEmit(uint16_t * pErrorCode, uint32_t timeout);
 
 BaseType_t comm_Out_Send_ACK_Give(uint8_t packIndex);
 

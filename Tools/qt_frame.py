@@ -47,7 +47,7 @@ from PyQt5.QtWidgets import (
 from pyqtgraph import GraphicsLayoutWidget, LabelItem, SignalProxy, mkPen
 
 from bytes_helper import bytes2Float, bytesPuttyPrint
-from dc201_pack import DC201_PACK, DC201_ParamInfo, write_firmware_pack_BL, write_firmware_pack_FC
+from dc201_pack import DC201_PACK, DC201_ParamInfo, write_firmware_pack_BL, write_firmware_pack_FC, DC201ErrorCode
 from qt_serial import SerialRecvWorker, SerialSendWorker
 from sample_data import MethodEnum, SampleDB, WaveEnum
 
@@ -1597,92 +1597,23 @@ class MainWindow(QMainWindow):
         self.bootload_bt.clicked.connect(self.onBootload)
         self.reboot_bt.clicked.connect(self.onReboot)
 
-    def getPeripheralType(self, p_type):
-        if p_type == 0x00:
-            return "上加热体电机"
-        elif p_type == 0x01:
-            return "白板电机"
-        elif p_type == 0x02:
-            return "托盘电机"
-        elif p_type == 0x03:
-            return "扫码电机"
-        elif p_type == 0x04:
-            return "上加热体温度"
-        elif p_type == 0x05:
-            return "下加热体温度"
-        elif p_type == 0x06:
-            return "环境温度"
-        elif p_type == 0x07:
-            return "Flash存储芯片"
-        elif p_type == 0x08:
-            return "ID Code 卡"
-        elif p_type == 0x09:
-            return "对外串口通信"
-        elif p_type == 0x0A:
-            return "主板通信"
-        elif p_type == 0x0B:
-            return "采集板通信"
-        elif p_type == 0x0C:
-            return "扫码枪"
-        elif p_type == 0x0D:
-            return "风扇"
-        else:
-            return f"0x{p_type:02X}"
-
-    def getFaultType(self, p_type, e_type):
-        if p_type in (0x00, 0x01, 0x02, 0x03):
-            error_list = ("资源不可用", "电机运动超时", "电机驱动异常")
-        elif p_type in (0x04, 0x05, 0x06):
-            error_list = ("温度值无效", "温度持续过低", "温度持续过高")
-        elif p_type in (0x07, 0x08):
-            error_list = ("硬件故障", "读取失败", "写入失败", "参数越限")
-        elif p_type in (0x09, 0x0A, 0x0B):
-            error_list = ("资源不可用", "发送失败", "回应帧号不正确", "无回应", "未知功能码", "参数不正常")
-        elif p_type in (0x0C,):
-            error_list = ("配置失败",)
-        elif p_type in (0x0D,):
-            error_list = ("转速为零", "失速")
-        result = []
-        for i, e in enumerate(error_list):
-            if e_type & (1 << i):
-                result.append(e)
-        if e_type > (1 << len(error_list)) - 1:
-            result.append(f"0x{e_type:02X}")
-        return " | ".join(result)
-
-    def getFaultLevel(self, p_type, e_type):
-        level = QMessageBox.Warning
-        # ("资源不可用", "电机运动超时", "电机驱动异常")
-        if p_type in (0x00, 0x01, 0x02, 0x03):
-            if e_type & 0x04:
-                level = QMessageBox.Critical
-        # ("温度值无效", "温度持续过低", "温度持续过高")
-        elif p_type in (0x04, 0x05, 0x06, 0x07, 0x08):
-            level = QMessageBox.Critical
-        # ("硬件故障", "读取失败", "写入失败")
-        elif p_type in (0x09, 0x0A):
-            level = QMessageBox.Critical
-        # ("资源不可用", "发送失败", "回应帧号不正确", "无回应")
-        elif p_type in (0x0B, 0x0C, 0x0D):
-            level = QMessageBox.Warning
-        # ("配置失败", )
-        elif p_type in (0x0E,):
-            level = QMessageBox.Warning
-        # ("转速为零", "失速")
-        elif p_type in (0x0F,):
-            level = QMessageBox.Critical
-        return level
+    def getErrorContent(self, error_code):
+        for i in DC201ErrorCode:
+            if error_code == i.value[1]:
+                logger.debug(f"hit error | {i.value[1]:05d} | {i.value[0]}")
+                return i.value[0]
+        logger.error(f"unknow error code | {error_code}")
+        return "Unknow Error Code"
 
     def showWarnInfo(self, info):
-        p_type, e_type = info.content[6:8]
-        e = self.getFaultType(p_type, e_type)
-        p = self.getPeripheralType(p_type)
-        level = self.getFaultLevel(p_type, e_type)
+        error_code = struct.unpack("H", info.content[6:8])[0]
+        error_content = self.getErrorContent(error_code) 
+        level = QMessageBox.Warning
         msg = QMessageBox(self)
         msg.setIcon(level)
         msg.setWindowTitle(f"故障信息 | {datetime.now()}")
-        msg.setText(f"设备类型: {p}\n故障类型: {e}")
-        msg.show()
+        msg.setText(f"故障码 {error_code}\n故障内容 {error_content}")
+        msg.exec_()
 
 
 if __name__ == "__main__":
