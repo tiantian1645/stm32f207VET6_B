@@ -445,7 +445,10 @@ class MainWindow(QMainWindow):
         raw_bytes = info.content
         self.device_id = "-".join([f"{struct.unpack('>I', raw_bytes[6 + 4 * i : 10 + 4 * i])[0]:08X}" for i in range(3)])
         self.device_id_lb.setText(f"ID: {self.device_id}")
-        self.version_lb.setToolTip(f'{raw_bytes[26: 37].decode("ascii", errors="replace")} - {raw_bytes[18: 26].decode("ascii", errors="replace")}')
+        date_str = f'{raw_bytes[26: 37].decode("ascii", errors="ignore")} - {raw_bytes[18: 26].decode("ascii", errors="ignore")}'
+        self.device_datetime = datetime.strptime(date_str, '%b %d %Y - %H:%M:%S')
+        logger.debug(f"get datetime obj | {self.device_datetime}")
+        self.version_lb.setToolTip(date_str)
 
     def createBarcode(self):
         self.barcode_gb = QGroupBox("测试通道")
