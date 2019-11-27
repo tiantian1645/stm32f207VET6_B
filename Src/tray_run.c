@@ -105,7 +105,7 @@ void tray_Motor_Deal_Status()
  */
 eTrayState tray_Motor_Enter(void)
 {
-    if (m_l6470_Index_Switch(eM_L6470_Index_1, 500) != 0) { /* 获取SPI总线资源 */
+    if (m_l6470_Index_Switch(eM_L6470_Index_1, 2500) != 0) { /* 获取SPI总线资源 */
         return eTrayState_Tiemout;
     }
 

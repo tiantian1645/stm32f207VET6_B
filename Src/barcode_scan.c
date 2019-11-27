@@ -232,7 +232,7 @@ void barcode_Motor_Deal_Status()
  */
 eBarcodeState barcode_Motor_Enter(void)
 {
-    if (m_l6470_Index_Switch(eM_L6470_Index_0, 500) != 0) { /* 获取SPI总线资源 */
+    if (m_l6470_Index_Switch(eM_L6470_Index_0, 2500) != 0) { /* 获取SPI总线资源 */
         return eBarcodeState_Tiemout;
     }
 
