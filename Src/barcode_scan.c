@@ -351,7 +351,7 @@ uint8_t barcode_Motor_Reset_Pos(void)
     xTick = xTaskGetTickCount();
 
     while ((!BARCODE_MOTOR_IS_OPT) && xTaskGetTickCount() - xTick < 2000) { /* 检测光耦是否被遮挡 */
-        vTaskDelay(1);
+        vTaskDelay(100);
     }
 
     result = barcode_Motor_Enter();
@@ -380,7 +380,7 @@ uint8_t barcode_Motor_Reset_Pos(void)
 eBarcodeState barcode_Motor_Init(void)
 {
     eBarcodeState result;
-    uint32_t xTick = 0;
+    TickType_t xTick = 0;
 
     error_Emit(eError_Motor_Scan_Debug);
     result = barcode_Motor_Enter();
