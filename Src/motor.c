@@ -358,7 +358,7 @@ BaseType_t motor_Sample_Info_ISR(eMotorNotifyValue info)
 BaseType_t motor_Sample_Info(eMotorNotifyValue info)
 {
     if (xTaskNotify(motor_Task_Handle, info, eSetValueWithoutOverwrite) != pdPASS) {
-        error_Emit(eError_Motor_Task_Busy);
+        error_Emit(eError_Motor_Notify_No_Read);
         return pdFALSE;
     }
     return pdPASS;

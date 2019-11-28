@@ -20,18 +20,19 @@ typedef enum {
 
     /* 提示类信息 */
     eError_Motor_Task_Busy = 100,       /* 电机任务忙 */
-    eError_Storge_Task_Busy = 101,      /* 存储任务忙 */
-    eError_ID_Card_Deal_Param = 102,    /* ID Code卡操作参数异常 */
-    eError_Out_Flash_Deal_Param = 103,  /* 外部Flash操作参数异常 */
-    eError_Comm_Main_Wrong_ID = 104,    /* 主串口异常ID */
-    eError_Comm_Main_Unknow_CMD = 105,  /* 主串口异常功能码 */
-    eError_Comm_Main_Param_Error = 106, /* 主串口报文参数异常 */
-    eError_Comm_Data_Wrong_ID = 107,    /* 采样板串口异常ID */
-    eError_Comm_Data_Unknow_CMD = 108,  /* 采样板串口异常功能码 */
-    eError_Comm_Data_Param_Error = 109, /* 采样板串口报文参数异常 */
-    eError_Comm_Out_Wrong_ID = 110,     /* 外串口异常ID */
-    eError_Comm_Out_Unknow_CMD = 111,   /* 外串口异常功能码 */
-    eError_Comm_Out_Param_Error = 112,  /* 外串口报文参数异常 */
+    eError_Motor_Notify_No_Read = 101,  /* 电机任务通知不能读 */
+    eError_Storge_Task_Busy = 102,      /* 存储任务忙 */
+    eError_ID_Card_Deal_Param = 103,    /* ID Code卡操作参数异常 */
+    eError_Out_Flash_Deal_Param = 104,  /* 外部Flash操作参数异常 */
+    eError_Comm_Main_Wrong_ID = 105,    /* 主串口异常ID */
+    eError_Comm_Main_Unknow_CMD = 106,  /* 主串口异常功能码 */
+    eError_Comm_Main_Param_Error = 107, /* 主串口报文参数异常 */
+    eError_Comm_Data_Wrong_ID = 108,    /* 采样板串口异常ID */
+    eError_Comm_Data_Unknow_CMD = 109,  /* 采样板串口异常功能码 */
+    eError_Comm_Data_Param_Error = 110, /* 采样板串口报文参数异常 */
+    eError_Comm_Out_Wrong_ID = 111,     /* 外串口异常ID */
+    eError_Comm_Out_Unknow_CMD = 112,   /* 外串口异常功能码 */
+    eError_Comm_Out_Param_Error = 113,  /* 外串口报文参数异常 */
 
     /* 执行异常 */
     eError_Motor_Heater_Timeout_Up = 200,             /* 上加热体电机运动超时 上升方向 */
@@ -62,8 +63,8 @@ typedef enum {
     eError_Comm_Out_Busy = 231,                       /* 外串口发送忙 */
     eError_Comm_Out_Send_Failed = 232,                /* 外串口发送失败 */
     eError_Comm_Out_Not_ACK = 233,                    /* 外串口没有收到ACK */
-    eError_Sample_Incomlete = 234,				      /* 采样未完成 */
-	eError_Stary_Incomlete = 235,				      /* 杂散光测试未完成 */
+    eError_Sample_Incomlete = 234,                    /* 采样未完成 */
+    eError_Stary_Incomlete = 235,                     /* 杂散光测试未完成 */
 
     /* 周期性上送异常 */
     eError_Temperature_Top_Abnormal = 300, /* 上加热体温度异常 */
