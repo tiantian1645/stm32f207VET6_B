@@ -26,9 +26,9 @@ typedef enum {
     eError_Comm_Main_Wrong_ID = 104,    /* 主串口异常ID */
     eError_Comm_Main_Unknow_CMD = 105,  /* 主串口异常功能码 */
     eError_Comm_Main_Param_Error = 106, /* 主串口报文参数异常 */
-    eError_Comm_Data_Wrong_ID = 107,    /* 采样板查串口异常ID */
-    eError_Comm_Data_Unknow_CMD = 108,  /* 采样板查串口异常功能码 */
-    eError_Comm_Data_Param_Error = 109, /* 采样板查串口报文参数异常 */
+    eError_Comm_Data_Wrong_ID = 107,    /* 采样板串口异常ID */
+    eError_Comm_Data_Unknow_CMD = 108,  /* 采样板串口异常功能码 */
+    eError_Comm_Data_Param_Error = 109, /* 采样板串口报文参数异常 */
     eError_Comm_Out_Wrong_ID = 110,     /* 外串口异常ID */
     eError_Comm_Out_Unknow_CMD = 111,   /* 外串口异常功能码 */
     eError_Comm_Out_Param_Error = 112,  /* 外串口报文参数异常 */
@@ -56,9 +56,9 @@ typedef enum {
     eError_Comm_Main_Busy = 225,                      /* 主串口发送忙 */
     eError_Comm_Main_Send_Failed = 226,               /* 主串口发送失败 */
     eError_Comm_Main_Not_ACK = 227,                   /* 主串口没有收到ACK */
-    eError_Comm_Data_Busy = 228,                      /* 采样板查串口发送忙 */
-    eError_Comm_Data_Send_Failed = 229,               /* 采样板查串口发送失败 */
-    eError_Comm_Data_Not_ACK = 230,                   /* 采样板查串口没有收到ACK */
+    eError_Comm_Data_Busy = 228,                      /* 采样板串口发送忙 */
+    eError_Comm_Data_Send_Failed = 229,               /* 采样板串口发送失败 */
+    eError_Comm_Data_Not_ACK = 230,                   /* 采样板串口没有收到ACK */
     eError_Comm_Out_Busy = 231,                       /* 外串口发送忙 */
     eError_Comm_Out_Send_Failed = 232,                /* 外串口发送失败 */
     eError_Comm_Out_Not_ACK = 233,                    /* 外串口没有收到ACK */
