@@ -447,7 +447,7 @@ void protocol_Temp_Upload_Error_Deal(TickType_t now, float temp_btm, float temp_
             }
         } else {
             xTick_btm_Keep_low = now;                                                   /* 温度过低计数清零 */
-            if (xTick_btm_Keep_low - xTick_btm_Keep_Hight > 60 * pdMS_TO_TICKS(1000)) { /* 过高持续次数大于 1 Min */
+            if (xTick_btm_Keep_low - xTick_btm_Keep_Hight > 60 * pdMS_TO_TICKS(1000)) { /* 过高持续时间大于 1 Min */
                 error_Emit(eError_Temperature_Btm_TooHigh);                             /* 报错 */
                 xTick_btm_Keep_Hight = xTick_btm_Keep_low;                              /* 重复报错间隔 */
             }
@@ -460,7 +460,7 @@ void protocol_Temp_Upload_Error_Deal(TickType_t now, float temp_btm, float temp_
 
     if (temp_top < 36.5) {                                                           /* 温度值低于36.5 */
         xTick_top_Keep_Hight = now;                                                  /* 温度过高计数清零 */
-        if (xTick_top_Keep_Hight - xTick_top_Keep_low > 600 * pdMS_TO_TICKS(1000)) { /* 过低持续次数大于120次 5 S * 120=10 Min */
+        if (xTick_top_Keep_Hight - xTick_top_Keep_low > 600 * pdMS_TO_TICKS(1000)) { /* 过低持续时间 10 Min */
             error_Emit(eError_Temperature_Top_TooLow);                               /* 报错 */
             xTick_top_Keep_low = xTick_top_Keep_Hight;                               /* 重复报错间隔 */
         }
@@ -472,7 +472,7 @@ void protocol_Temp_Upload_Error_Deal(TickType_t now, float temp_btm, float temp_
             }
         } else {
             xTick_top_Keep_low = now;                                                   /* 温度过低计数清零 */
-            if (xTick_top_Keep_low - xTick_top_Keep_Hight > 60 * pdMS_TO_TICKS(1000)) { /* 过高持续次数大于 1 Min */
+            if (xTick_top_Keep_low - xTick_top_Keep_Hight > 60 * pdMS_TO_TICKS(1000)) { /* 过高持续时间大于 1 Min */
                 error_Emit(eError_Temperature_Top_TooHigh);                             /* 报错 */
                 xTick_top_Keep_Hight = xTick_top_Keep_low;                              /* 重复报错间隔 */
             }
