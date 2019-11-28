@@ -717,6 +717,7 @@ static void comm_Data_Send_Task(void * argument)
             } else {
                 ucResult = 0;
             }
+            vTaskDelay(pdMS_TO_TICKS(10 << i)); /* 指数退避 */
         }
         if (ucResult == 0) {                                         /* 重发失败处理 */
             error_Emit(eError_Comm_Data_Not_ACK);                    /* 提交无ACK错误信息 */

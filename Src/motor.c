@@ -477,7 +477,7 @@ static void motor_Task(void * argument)
     if (comm_Data_Start_Stary_Test() != pdPASS) { /* 开始杂散光测试 */
         cnt = 1;
     } else {
-        xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(10000)); /* 等待杂散光完成通知 */
+        xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(15000)); /* 等待杂散光完成通知 */
         if (xResult != pdPASS) {                                                       /* 杂散光测试超时 */
             cnt = 2;
         } else if (xNotifyValue == eMotorNotifyValue_SP) { /* 正常通知量 */
