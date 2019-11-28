@@ -24,6 +24,10 @@ extern TIM_HandleTypeDef htim3;
 #define HEATER_BTM_SAMPLE 10
 #define HEATER_TOP_SAMPLE 10
 
+#define HEATER_BTM_TIM htim4
+#define HEATER_BTM_CHN TIM_CHANNEL_4
+#define HEATER_TOP_TIM htim3
+#define HEATER_TOP_CHN TIM_CHANNEL_3
 /* Private variables ---------------------------------------------------------*/
 static sPID_Ctrl_Conf gHeater_BTM_PID_Conf;
 static sPID_Ctrl_Conf gHeater_TOP_PID_Conf;
@@ -39,17 +43,97 @@ static float top_input = 0, top_output = 0, top_setpoint = 37;
 /* Private user code ---------------------------------------------------------*/
 
 /**
+ * @brief  PID参数 读取
+ * @param  pConf  参数结构体指针
+ * @param  offset 参数项别
+ * @retval 参数数值
+ */
+float heater_PID_Conf_Param_Get(sPID_Ctrl_Conf * pConf, eHeater_PID_Conf offset)
+{
+    switch (offset) {
+        case eHeater_PID_Conf_Kp:
+            return pConf->Kp;
+        case eHeater_PID_Conf_Ki:
+            return pConf->Ki;
+        case eHeater_PID_Conf_Kd:
+            return pConf->Kd;
+    }
+    return 0;
+}
+
+/**
+ * @brief  PID参数 设置
+ * @param  pConf  参数结构体指针
+ * @param  offset 参数项别
+ * @param  data   数据
+ * @retval None
+ */
+void heater_PID_Conf_Param_Set(sPID_Ctrl_Conf * pConf, eHeater_PID_Conf offset, float data)
+{
+    switch (offset) {
+        case eHeater_PID_Conf_Kp:
+            pConf->Kp = data;
+        case eHeater_PID_Conf_Ki:
+            pConf->Ki = data;
+        case eHeater_PID_Conf_Kd:
+            pConf->Kd = data;
+    }
+}
+
+/**
+ * @brief  PID参数 读取 上加热体
+ * @param  offset 参数项别
+ * @retval 参数数值
+ */
+float heater_BTM_Conf_Get(eHeater_PID_Conf offset)
+{
+    return heater_PID_Conf_Param_Get(&gHeater_BTM_PID_Conf, offset);
+}
+
+/**
+ * @brief  PID参数 设置 上加热体
+ * @param  offset 参数项别
+ * @param  data   数据
+ * @retval None
+ */
+void heater_BTM_Conf_Set(eHeater_PID_Conf offset, float data)
+{
+    return heater_PID_Conf_Param_Set(&gHeater_BTM_PID_Conf, offset, data);
+}
+
+/**
+ * @brief  PID参数 读取 下加热体
+ * @param  offset 参数项别
+ * @retval 参数数值
+ */
+float heater_TOP_Conf_Get(eHeater_PID_Conf offset)
+{
+    return heater_PID_Conf_Param_Get(&gHeater_TOP_PID_Conf, offset);
+}
+
+/**
+ * @brief  PID参数 设置 下加热体
+ * @param  offset 参数项别
+ * @param  data   数据
+ * @retval None
+ */
+void heater_TOP_Conf_Set(eHeater_PID_Conf offset, float data)
+{
+    return heater_PID_Conf_Param_Set(&gHeater_TOP_PID_Conf, offset, data);
+}
+
+/**
  * @brief  下加热体 PWM 输出占空比调整
  * @note   范围 0 ~ 100
  * @param  pr 浮点数形式占空比
  * @retval None
  */
-void beater_BTM_Output_Ctl(float pr)
+void heater_BTM_Output_Ctl(float pr)
 {
     uint16_t ccr;
 
     ccr = ((uint16_t)(pr * HEATER_BTM_ARR)) % (HEATER_BTM_ARR + 1);
-    __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, ccr);
+    __HAL_TIM_SET_COMPARE(&HEATER_BTM_TIM, HEATER_BTM_CHN, ccr);
 }
 
 /**
@@ -58,9 +142,9 @@ void beater_BTM_Output_Ctl(float pr)
  * @retval None
  */
 
-void beater_BTM_Output_Start(void)
+void heater_BTM_Output_Start(void)
 {
-    HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);
+    HAL_TIM_PWM_Start(&HEATER_BTM_TIM, HEATER_BTM_CHN);
 }
 
 /**
@@ -68,9 +152,9 @@ void beater_BTM_Output_Start(void)
  * @param  None
  * @retval None
  */
-void beater_BTM_Output_Stop(void)
+void heater_BTM_Output_Stop(void)
 {
-    HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_4);
+    HAL_TIM_PWM_Stop(&HEATER_BTM_TIM, HEATER_BTM_CHN);
 }
 
 /**
@@ -78,9 +162,9 @@ void beater_BTM_Output_Stop(void)
  * @param  None
  * @retval PWM 输出 状态
  */
-uint8_t beater_BTM_Output_Is_Live(void)
+uint8_t heater_BTM_Output_Is_Live(void)
 {
-    return htim4.Instance->CR1 == TIM_CR1_CEN;
+    return HEATER_BTM_TIM.Instance->CR1 == TIM_CR1_CEN;
 }
 
 /**
@@ -93,7 +177,7 @@ void heater_BTM_Output_Init(void)
     // Prepare PID controller for operation
     pid_ctrl_init(&gHeater_BTM_PID_Conf, HEATER_BTM_SAMPLE, &btm_input, &btm_output, &btm_setpoint, 6000, 36000, 200);
     // Set controler output limits from 0 to 200
-    pid_ctrl_limits(&gHeater_BTM_PID_Conf, 0, 100);
+    pid_ctrl_limits(&gHeater_BTM_PID_Conf, 0, gHeater_BTM_PID_Conf.omax);
     // Allow PID to compute and change output
     pid_ctrl_auto(&gHeater_BTM_PID_Conf);
 }
@@ -112,7 +196,7 @@ void heater_BTM_Output_Keep_Deal(void)
         // Compute new PID output value
         pid_ctrl_compute(&gHeater_BTM_PID_Conf);
         // Change actuator value
-        beater_BTM_Output_Ctl(btm_output / gHeater_BTM_PID_Conf.omax);
+        heater_BTM_Output_Ctl(btm_output / gHeater_BTM_PID_Conf.omax);
     }
 }
 
@@ -127,12 +211,12 @@ void heater_BTM_Log_PID(void)
  * @param  pr 浮点数形式占空比
  * @retval None
  */
-void beater_TOP_Output_Ctl(float pr)
+void heater_TOP_Output_Ctl(float pr)
 {
     uint16_t ccr;
 
     ccr = ((uint16_t)(pr * HEATER_TOP_ARR)) % (HEATER_TOP_ARR + 1);
-    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, ccr);
+    __HAL_TIM_SET_COMPARE(&HEATER_TOP_TIM, HEATER_TOP_CHN, ccr);
 }
 
 /**
@@ -141,9 +225,9 @@ void beater_TOP_Output_Ctl(float pr)
  * @retval None
  */
 
-void beater_TOP_Output_Start(void)
+void heater_TOP_Output_Start(void)
 {
-    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
+    HAL_TIM_PWM_Start(&HEATER_TOP_TIM, HEATER_TOP_CHN);
 }
 
 /**
@@ -151,9 +235,9 @@ void beater_TOP_Output_Start(void)
  * @param  None
  * @retval None
  */
-void beater_TOP_Output_Stop(void)
+void heater_TOP_Output_Stop(void)
 {
-    HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_3);
+    HAL_TIM_PWM_Stop(&HEATER_TOP_TIM, HEATER_TOP_CHN);
 }
 
 /**
@@ -161,9 +245,9 @@ void beater_TOP_Output_Stop(void)
  * @param  None
  * @retval PWM 输出 状态
  */
-HAL_TIM_StateTypeDef beater_TOP_Output_Is_Live(void)
+HAL_TIM_StateTypeDef heater_TOP_Output_Is_Live(void)
 {
-    return htim3.Instance->CR1 == TIM_CR1_CEN;
+    return HEATER_TOP_TIM.Instance->CR1 == TIM_CR1_CEN;
 }
 
 /**
@@ -195,7 +279,7 @@ void heater_TOP_Output_Keep_Deal(void)
         // Compute new PID output value
         pid_ctrl_compute(&gHeater_TOP_PID_Conf);
         // Change actuator value
-        beater_TOP_Output_Ctl(top_output / gHeater_TOP_PID_Conf.omax);
+        heater_TOP_Output_Ctl(top_output / gHeater_TOP_PID_Conf.omax);
     }
 }
 

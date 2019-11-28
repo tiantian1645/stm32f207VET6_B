@@ -61,10 +61,10 @@ void soft_timer_Heater_Init(void)
     motor_OPT_Status_Init();
     beep_Init(); /* 蜂鸣器初始化 */
     heater_BTM_Output_Init();
-    beater_BTM_Output_Start();
+    heater_BTM_Output_Start();
 
     heater_TOP_Output_Init();
-    beater_TOP_Output_Start();
+    heater_TOP_Output_Start();
 
     xTimerStart(gTimerHandleHeater, portMAX_DELAY);
 }

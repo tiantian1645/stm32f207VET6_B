@@ -498,10 +498,10 @@ void protocol_Temp_Upload_Main_Deal(float temp_btm, float temp_top)
         return;
     }
 
-    buffer[0] = ((uint16_t)(temp_btm * 100)) & 0xFF;                                /* 小端模式 低8位 */
-    buffer[1] = ((uint16_t)(temp_btm * 100)) >> 8;                                  /* 小端模式 高8位 */
-    buffer[2] = ((uint16_t)(temp_top * 100)) & 0xFF;                                /* 小端模式 低8位 */
-    buffer[3] = ((uint16_t)(temp_top * 100)) >> 8;                                  /* 小端模式 高8位 */
+    buffer[0] = ((uint16_t)(temp_btm * 100 + 0.5)) & 0xFF;                                /* 小端模式 低8位 */
+    buffer[1] = ((uint16_t)(temp_btm * 100 + 0.5)) >> 8;                                  /* 小端模式 高8位 */
+    buffer[2] = ((uint16_t)(temp_top * 100 + 0.5)) & 0xFF;                                /* 小端模式 低8位 */
+    buffer[3] = ((uint16_t)(temp_top * 100 + 0.5)) >> 8;                                  /* 小端模式 高8位 */
     length = buildPackOrigin(eComm_Main, eProtocoleRespPack_Client_TMP, buffer, 4); /* 构造数据包 */
 
     if (comm_Main_SendTask_Queue_GetWaiting() == 0) {                         /* 允许发送且发送队列内没有其他数据包 */
@@ -526,10 +526,10 @@ void protocol_Temp_Upload_Out_Deal(float temp_btm, float temp_top)
         return;
     }
 
-    buffer[0] = ((uint16_t)(temp_btm * 100)) & 0xFF;                               /* 小端模式 低8位 */
-    buffer[1] = ((uint16_t)(temp_btm * 100)) >> 8;                                 /* 小端模式 高8位 */
-    buffer[2] = ((uint16_t)(temp_top * 100)) & 0xFF;                               /* 小端模式 低8位 */
-    buffer[3] = ((uint16_t)(temp_top * 100)) >> 8;                                 /* 小端模式 高8位 */
+    buffer[0] = ((uint16_t)(temp_btm * 100 + 0.5)) & 0xFF;                               /* 小端模式 低8位 */
+    buffer[1] = ((uint16_t)(temp_btm * 100 + 0.5)) >> 8;                                 /* 小端模式 高8位 */
+    buffer[2] = ((uint16_t)(temp_top * 100 + 0.5)) & 0xFF;                               /* 小端模式 低8位 */
+    buffer[3] = ((uint16_t)(temp_top * 100 + 0.5)) >> 8;                                 /* 小端模式 高8位 */
     length = buildPackOrigin(eComm_Out, eProtocoleRespPack_Client_TMP, buffer, 4); /* 构造数据包  */
 
     if (comm_Out_SendTask_Queue_GetWaiting() == 0) {                          /* 允许发送且发送队列内没有其他数据包 */
@@ -782,26 +782,64 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             }
             break;
         case 0xD3:
-            if (length == 8) {
-                if (pInBuff[6] & (1 << 0)) {
-                    beater_BTM_Output_Start();
-                } else {
-                    beater_BTM_Output_Stop();
-                }
-                if (pInBuff[6] & (1 << 1)) {
-                    beater_TOP_Output_Start();
-                } else {
-                    beater_TOP_Output_Stop();
-                }
-            } else {
-                pInBuff[0] = 0;
-                if (beater_BTM_Output_Is_Live()) {
-                    pInBuff[0] |= (1 << 0);
-                }
-                if (beater_TOP_Output_Is_Live()) {
-                    pInBuff[0] |= (1 << 1);
-                }
-                comm_Out_SendTask_QueueEmitWithBuildCover(0xD3, pInBuff, 1);
+            switch (length) {
+                case 7:  /* 无参数 读取加热使能状态*/
+                default: /* 兜底 */
+                    pInBuff[0] = 0;
+                    if (heater_BTM_Output_Is_Live()) { /* 下加热体存货状态 */
+                        pInBuff[0] |= (1 << 0);
+                    }
+                    if (heater_TOP_Output_Is_Live()) { /* 上加热体存活状态 */
+                        pInBuff[0] |= (1 << 1);
+                    }
+                    comm_Out_SendTask_QueueEmitWithBuildCover(0xD3, pInBuff, 1);
+                    break;
+                case 8:                            /* 一个参数 配置加热使能状态 */
+                    if (pInBuff[6] & (1 << 0)) {   /* 下加热体 */
+                        heater_BTM_Output_Start(); /* 下加热体使能 */
+                    } else {
+                        heater_BTM_Output_Stop(); /* 下加热体失能 */
+                    }
+                    if (pInBuff[6] & (1 << 1)) {   /* 上加热体 */
+                        heater_TOP_Output_Start(); /* 上加热体使能 */
+                    } else {
+                        heater_TOP_Output_Stop(); /* 上加热体失能 */
+                    }
+                    break;
+                case 10:                   /* 3个参数 读取PID参数 */
+                    if (pInBuff[6] == 0) { /* 下加热体 */
+                        pInBuff[0] = pInBuff[6];
+                        pInBuff[1] = pInBuff[7];
+                        pInBuff[2] = pInBuff[8];
+                        for (result = 0; result < pInBuff[2]; ++result) {
+                            temp = heater_BTM_Conf_Get(pInBuff[7] + result);
+                            memcpy(pInBuff + 3 + 4 * result, (uint8_t *)(&temp), 4);
+                        }
+                        comm_Out_SendTask_QueueEmitWithBuildCover(0xD3, pInBuff, 3 + 4 * pInBuff[2]);
+                    } else { /* 上加热体 */
+                        pInBuff[0] = pInBuff[6];
+                        pInBuff[1] = pInBuff[7];
+                        pInBuff[2] = pInBuff[8];
+                        for (result = 0; result < pInBuff[2]; ++result) {
+                            temp = heater_TOP_Conf_Get(pInBuff[7] + result);
+                            memcpy(pInBuff + 3 + 4 * result, (uint8_t *)(&temp), 4);
+                        }
+                        comm_Out_SendTask_QueueEmitWithBuildCover(0xD3, pInBuff, 3 + 4 * pInBuff[2]);
+                    }
+                    break;
+                case 22:                   /* 22个参数 修改PID参数 */
+                    if (pInBuff[6] == 0) { /* 下加热体 */
+                        for (result = 0; result < pInBuff[8]; ++result) {
+                            temp = *(float *)(pInBuff + 9 + 4 * result);
+                            heater_BTM_Conf_Set(pInBuff[7] + result, temp);
+                        }
+                    } else { /* 上加热体 */
+                        for (result = 0; result < pInBuff[8]; ++result) {
+                            temp = *(float *)(pInBuff + 9 + 4 * result);
+                            heater_TOP_Conf_Set(pInBuff[7] + result, temp);
+                        }
+                    }
+                    break;
             }
             break;
         case 0xD4:
