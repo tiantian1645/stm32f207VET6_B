@@ -718,8 +718,11 @@ static void comm_Data_Send_Task(void * argument)
                 ucResult = 0;
             }
         }
-        if (ucResult == 0) {                      /* 重发失败处理 */
-            error_Emit(eError_Comm_Data_Not_ACK); /* 提交无ACK错误信息 */
+        if (ucResult == 0) {                                         /* 重发失败处理 */
+            error_Emit(eError_Comm_Data_Not_ACK);                    /* 提交无ACK错误信息 */
+            if (sendInfo.buff[5] == eComm_Data_Outbound_CMD_STRAY) { /* 发送无回应的是杂散光测试报文 */
+                motor_Sample_Info(eMotorNotifyValue_SP_ERR);         /* 结束电机等待 */
+            }
         }
         xQueueReceive(comm_Data_SendQueue, &sendInfo, 0); /* 释放发送队列 */
     }

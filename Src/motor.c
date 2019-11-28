@@ -464,7 +464,7 @@ void motor_Sample_Owari(void)
 static void motor_Task(void * argument)
 {
     BaseType_t xResult = pdFALSE;
-    uint32_t xNotifyValue, cnt=0;
+    uint32_t xNotifyValue, cnt = 0;
     sMotor_Fun mf;
     uint8_t buffer[15];
 
@@ -480,15 +480,15 @@ static void motor_Task(void * argument)
         xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(10000)); /* 等待杂散光完成通知 */
         if (xResult != pdPASS) {                                                       /* 杂散光测试超时 */
             cnt = 2;
-        } else if (xNotifyValue != eMotorNotifyValue_SP) { /* 异常通知量 */
-            cnt = 3;
-        } else {
+        } else if (xNotifyValue == eMotorNotifyValue_SP) { /* 正常通知量 */
             cnt = 0;
+        } else { /* 异常通知量 */
+            cnt = 3;
         }
         comm_Data_Stary_Test_Clear(); /* finally 清除杂散光测试标记 */
     }
     if (cnt > 0) {
-    	error_Emit(eError_Stary_Incomlete);
+        error_Emit(eError_Stary_Incomlete);
     }
 
     for (;;) {
