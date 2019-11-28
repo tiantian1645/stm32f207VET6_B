@@ -70,6 +70,7 @@ TEMP_RAW_COLORS = (
 )
 TEMP_RAW_SYMBOL_CONFIG = (("o", 4, "b"), ("s", 4, "g"), ("t", 4, "r"), ("d", 4, "c"), ("+", 4, "m"), ("o", 4, "y"), ("s", 4, "k"), ("t", 4, "w"), ("d", 4, "r"))
 SampleConf = namedtuple("SampleConf", "method wave point_num")
+HEATER_PID_PS = [1, 100, 0.01]
 
 logger = loguru.logger
 
@@ -159,6 +160,8 @@ class MainWindow(QMainWindow):
 
     def _getHeater(self):
         self._serialSendPack(0xD3)
+        self._serialSendPack(0xD3, (0, 0, 3))
+        self._serialSendPack(0xD3, (1, 0, 3))
 
     def _getDebuFlag(self):
         self._serialSendPack(0xD4)
@@ -247,18 +250,47 @@ class MainWindow(QMainWindow):
         self.temperature_plot_dg.setWindowTitle("温度记录")
         temperature_plot_ly = QVBoxLayout(self.temperature_plot_dg)
         self.temperature_plot_win = GraphicsLayoutWidget()
-        self.temperature_plot_clear_bt = QPushButton("清零")
-        self.temperature_heater_btm_cb = QCheckBox("下加热体使能")
-        self.temperature_heater_top_cb = QCheckBox("上加热体使能")
         temperature_plot_ly.addWidget(self.temperature_plot_win)
-
+        self.temperature_plot_clear_bt = QPushButton("清零")
+        temperature_heater_ctl_ly = QVBoxLayout()
+        temperature_heater_ctl_btm_ly = QHBoxLayout()
+        self.temperature_heater_btm_ks_bts = [QPushButton(i) for i in ("读", "写")]
+        self.temperature_heater_btm_ks_sps = [QDoubleSpinBox() for _ in range(3)]
+        for i, sp in enumerate(self.temperature_heater_btm_ks_sps):
+            sp.setRange(0, 99999999)
+            sp.setDecimals(2)
+            sp.setMaximumWidth(90)
+            temperature_heater_ctl_btm_ly.addWidget(QLabel(("Kp", "Ki", "Kd")[i]))
+            temperature_heater_ctl_btm_ly.addWidget(sp)
+        for bt in self.temperature_heater_btm_ks_bts:
+            bt.setMaximumWidth(45)
+            bt.clicked.connect(partial(self.onHeaterCtlRW, pbt=bt))
+            temperature_heater_ctl_btm_ly.addWidget(bt)
+        self.temperature_heater_btm_cb = QCheckBox("下加热体使能")
+        temperature_heater_ctl_btm_ly.addWidget(self.temperature_heater_btm_cb)
+        temperature_heater_ctl_top_ly = QHBoxLayout()
+        self.temperature_heater_top_ks_bts = [QPushButton(i) for i in ("读", "写")]
+        self.temperature_heater_top_ks_sps = [QDoubleSpinBox() for _ in range(3)]
+        for i, sp in enumerate(self.temperature_heater_top_ks_sps):
+            sp.setRange(0, 99999999)
+            sp.setDecimals(2)
+            sp.setMaximumWidth(90)
+            temperature_heater_ctl_top_ly.addWidget(QLabel(("Kp", "Ki", "Kd")[i]))
+            temperature_heater_ctl_top_ly.addWidget(sp)
+        for bt in self.temperature_heater_top_ks_bts:
+            bt.setMaximumWidth(45)
+            bt.clicked.connect(partial(self.onHeaterCtlRW, pbt=bt))
+            temperature_heater_ctl_top_ly.addWidget(bt)
+        self.temperature_heater_top_cb = QCheckBox("上加热体使能")
+        temperature_heater_ctl_top_ly.addWidget(self.temperature_heater_top_cb)
+        temperature_heater_ctl_ly.addLayout(temperature_heater_ctl_btm_ly)
+        temperature_heater_ctl_ly.addLayout(temperature_heater_ctl_top_ly)
         temp_ly = QHBoxLayout()
         temp_ly.setSpacing(3)
         temp_ly.setContentsMargins(3, 3, 3, 3)
         temp_ly.addWidget(self.temperature_plot_clear_bt)
         temp_ly.addStretch(1)
-        temp_ly.addWidget(self.temperature_heater_btm_cb)
-        temp_ly.addWidget(self.temperature_heater_top_cb)
+        temp_ly.addLayout(temperature_heater_ctl_ly)
         temperature_plot_ly.addLayout(temp_ly)
         self.temperature_heater_btm_cb.clicked.connect(self.onTemperatureHeaterChanged)
         self.temperature_heater_top_cb.clicked.connect(self.onTemperatureHeaterChanged)
@@ -322,16 +354,47 @@ class MainWindow(QMainWindow):
             data &= ~(1 << 1)
         self._serialSendPack(0xD3, (data,))
 
+    def onHeaterCtlRW(self, event=None, pbt=None):
+        logger.debug(f"invoke onHeaterCtlRW | event {event} | pbt {pbt}")
+        if pbt in self.temperature_heater_btm_ks_bts:
+            idx = self.temperature_heater_btm_ks_bts.index(pbt)
+            if idx == 0:
+                self._serialSendPack(0xD3, (0, 0, 3))
+            else:
+                data = b"".join(struct.pack("f", sp.value() / HEATER_PID_PS[i]) for i, sp in enumerate(self.temperature_heater_btm_ks_sps))
+                self._serialSendPack(0xD3, (0, 0, 3, *data))
+        elif pbt in self.temperature_heater_top_ks_bts:
+            idx = self.temperature_heater_top_ks_bts.index(pbt)
+            if idx == 0:
+                self._serialSendPack(0xD3, (1, 0, 3))
+            else:
+                data = b"".join(struct.pack("f", sp.value() / HEATER_PID_PS[i]) for i, sp in enumerate(self.temperature_heater_top_ks_sps))
+                self._serialSendPack(0xD3, (1, 0, 3, *data))
+        else:
+            return
+
     def updateTemperatureHeater(self, info):
-        data = info.content[6]
-        if data & (1 << 0):
-            self.temperature_heater_btm_cb.setChecked(True)
-        else:
-            self.temperature_heater_btm_cb.setChecked(False)
-        if data & (1 << 1):
-            self.temperature_heater_top_cb.setChecked(True)
-        else:
-            self.temperature_heater_top_cb.setChecked(False)
+        raw_bytes = info.content
+        if len(raw_bytes) == 8:
+            data = raw_bytes[6]
+            if data & (1 << 0):
+                self.temperature_heater_btm_cb.setChecked(True)
+            else:
+                self.temperature_heater_btm_cb.setChecked(False)
+            if data & (1 << 1):
+                self.temperature_heater_top_cb.setChecked(True)
+            else:
+                self.temperature_heater_top_cb.setChecked(False)
+        if len(raw_bytes) == 22:
+            bt = raw_bytes[6]
+            logger.debug(f"get heater conf value | bt {bt}")
+            for i in range(3):
+                value = struct.unpack("f", raw_bytes[9 + i * 4 : 13 + i * 4])[0]
+                value = value * HEATER_PID_PS[i]
+                if bt == 0:
+                    self.temperature_heater_btm_ks_sps[i].setValue(value)
+                else:
+                    self.temperature_heater_top_ks_sps[i].setValue(value)
 
     def onTemperautreDataClear(self, event):
         self.temp_btm_record.clear()
@@ -401,6 +464,7 @@ class MainWindow(QMainWindow):
         else:
             self.temperautre_lbs[1].setText("数据异常")
             self.temperautre_lbs[1].setStyleSheet("background-color: red;")
+        self.temperature_plot_dg.setWindowTitle(f"温度记录 | 下 {self.temperautre_lbs[0].text()} | 上 {self.temperautre_lbs[1].text()}")
 
     def updateTemperautreRaw(self, info):
         if len(info.content) != 43:
@@ -1161,6 +1225,9 @@ class MainWindow(QMainWindow):
         self._serialSendPack(0xDC)
         QTimer.singleShot(3000, self._getStatus)
 
+    def onSelfCheck(self, event):
+        pass
+
     def onUpgrade(self, event):
         self.upgrade_dg = QDialog(self)
         self.upgrade_dg.setWindowTitle("固件升级")
@@ -1603,6 +1670,7 @@ class MainWindow(QMainWindow):
         self.upgrade_bt.clicked.connect(self.onUpgrade)
         self.bootload_bt.clicked.connect(self.onBootload)
         self.reboot_bt.clicked.connect(self.onReboot)
+        self.selftest_bt.clicked.connect(self.onSelfCheck)
 
     def getErrorContent(self, error_code):
         for i in DC201ErrorCode:
