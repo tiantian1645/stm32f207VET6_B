@@ -361,15 +361,23 @@ class MainWindow(QMainWindow):
             if idx == 0:
                 self._serialSendPack(0xD3, (0, 0, 3))
             else:
-                data = b"".join(struct.pack("f", sp.value() / HEATER_PID_PS[i]) for i, sp in enumerate(self.temperature_heater_btm_ks_sps))
+                data = b""
+                for i, sp in enumerate(self.temperature_heater_btm_ks_sps):
+                    data += struct.pack("f", sp.value() / HEATER_PID_PS[i])
+                    self._setColor(sp, nfg="red")
                 self._serialSendPack(0xD3, (0, 0, 3, *data))
+                QTimer.singleShot(1000, lambda: self._serialSendPack(0xD3, (0, 0, 3)))
         elif pbt in self.temperature_heater_top_ks_bts:
             idx = self.temperature_heater_top_ks_bts.index(pbt)
             if idx == 0:
                 self._serialSendPack(0xD3, (1, 0, 3))
             else:
-                data = b"".join(struct.pack("f", sp.value() / HEATER_PID_PS[i]) for i, sp in enumerate(self.temperature_heater_top_ks_sps))
+                data = b""
+                for i, sp in enumerate(self.temperature_heater_top_ks_sps):
+                    data += struct.pack("f", sp.value() / HEATER_PID_PS[i])
+                    self._setColor(sp, nfg="red")
                 self._serialSendPack(0xD3, (1, 0, 3, *data))
+                QTimer.singleShot(1000, lambda: self._serialSendPack(0xD3, (1, 0, 3)))
         else:
             return
 
@@ -392,9 +400,13 @@ class MainWindow(QMainWindow):
                 value = struct.unpack("f", raw_bytes[9 + i * 4 : 13 + i * 4])[0]
                 value = value * HEATER_PID_PS[i]
                 if bt == 0:
-                    self.temperature_heater_btm_ks_sps[i].setValue(value)
+                    sp = self.temperature_heater_btm_ks_sps[i]
+                    sp.setValue(value)
+                    self._setColor(sp)
                 else:
-                    self.temperature_heater_top_ks_sps[i].setValue(value)
+                    sp = self.temperature_heater_top_ks_sps[i]
+                    sp.setValue(value)
+                    self._setColor(sp)
 
     def onTemperautreDataClear(self, event):
         self.temp_btm_record.clear()
