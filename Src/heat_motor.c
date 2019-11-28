@@ -172,7 +172,7 @@ uint8_t heat_Motor_Wait_Stop(uint32_t timeout)
                     gHeat_Motor_Position_Clr();
                     return 0;
                 }
-                vTaskDelay(1);
+                vTaskDelay(5);
             } while (xTaskGetTickCount() - xTick < timeout);
             return 1;
         case eMotorDir_REV:
@@ -184,7 +184,7 @@ uint8_t heat_Motor_Wait_Stop(uint32_t timeout)
                     }
                     return 0;
                 }
-                vTaskDelay(1);
+                vTaskDelay(5);
             } while (xTaskGetTickCount() - xTick < timeout);
             return 1;
     }

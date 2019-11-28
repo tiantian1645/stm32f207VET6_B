@@ -263,7 +263,7 @@ eBarcodeState barcode_Motor_Leave_On_OPT(void)
             motor_Status_Set_Position(&gBarcodeMotorRunStatus, 0); /* 重置电机状态步数记录 */
             return eBarcodeState_OK;
         }
-        vTaskDelay(1); /* 延时 */
+        vTaskDelay(5); /* 延时 */
     }
     barcode_Motor_Brake(); /* 刹车 */
     barcode_Motor_Deal_Status();
@@ -283,7 +283,7 @@ eBarcodeState barcode_Motor_Leave_On_Busy_Bit(void)
             motor_Status_Set_Position(&gBarcodeMotorRunStatus, barcode_Motor_Read_Position()); /* 更新电机状态步数记录 */
             return eBarcodeState_OK;
         }
-        vTaskDelay(1); /* 延时 */
+        vTaskDelay(5); /* 延时 */
     }
     motor_Status_Set_Position(&gBarcodeMotorRunStatus, barcode_Motor_Read_Position()); /* 更新电机状态步数记录 */
     return eBarcodeState_Error;                                                        /* 超时返回错误 */

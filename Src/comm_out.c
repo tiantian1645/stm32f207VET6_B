@@ -285,6 +285,9 @@ BaseType_t comm_Out_SendTask_QueueEmit(uint8_t * pData, uint8_t length, uint32_t
     gSendInfoTemp.length = length;
     xResult = xQueueSendToBack(comm_Out_SendQueue, &gSendInfoTemp, pdMS_TO_TICKS(timeout));
     gSendInfoTempLock = 0; /* 解除占用标识 */
+    if (xResult != pdPASS) {
+        error_Emit(eError_Comm_Out_Busy);
+    }
     return xResult;
 }
 
@@ -315,6 +318,9 @@ BaseType_t comm_Out_SendTask_QueueEmitWithModify(uint8_t * pData, uint8_t length
     gSendInfoTemp.buff[3] = gProtocol_ACK_IndexGet(eComm_Out);                              /* 应用帧号 */
     xResult = xQueueSendToBack(comm_Out_SendQueue, &gSendInfoTemp, pdMS_TO_TICKS(timeout)); /* 加入队列 */
     gSendInfoTempLock = 0;                                                                  /* 解除占用标识 */
+    if (xResult != pdPASS) {
+        error_Emit(eError_Comm_Out_Busy);
+    }
     return xResult;
 }
 
@@ -330,9 +336,6 @@ BaseType_t comm_Out_SendTask_QueueEmitWithBuild(uint8_t cmdType, uint8_t * pData
     BaseType_t xResult;
     length = buildPackOrigin(eComm_Out, cmdType, pData, length);
     xResult = comm_Out_SendTask_QueueEmit(pData, length, timeout);
-    if (xResult != pdPASS) {
-        error_Emit(eError_Comm_Out_Busy);
-    }
     return xResult;
 }
 

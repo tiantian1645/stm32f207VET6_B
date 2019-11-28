@@ -278,6 +278,9 @@ BaseType_t comm_Main_SendTask_QueueEmit(uint8_t * pData, uint8_t length, uint32_
 
     xResult = xQueueSendToBack(comm_Main_SendQueue, &gComm_Main_SendInfo, pdMS_TO_TICKS(timeout));
     gComm_Main_SendInfoFlag = 1;
+    if (xResult != pdPASS) {
+        error_Emit(eError_Comm_Main_Busy);
+    }
     return xResult;
 }
 
@@ -293,9 +296,6 @@ BaseType_t comm_Main_SendTask_QueueEmitWithBuild(uint8_t cmdType, uint8_t * pDat
     BaseType_t xResult;
     length = buildPackOrigin(eComm_Main, cmdType, pData, length);
     xResult = comm_Main_SendTask_QueueEmit(pData, length, timeout);
-    if (xResult != pdPASS) {
-        error_Emit(eError_Comm_Main_Busy);
-    }
     return xResult;
 }
 
