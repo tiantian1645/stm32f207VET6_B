@@ -225,7 +225,7 @@ class MainWindow(QMainWindow):
             self.serial_recv_worker.signals.owari.emit()
         if self.serial_send_worker is not None:
             self.serial_send_worker.signals.owari.emit()
-        time.sleep(0.2)
+        self.threadpool.waitForDone(500)
         sys.exit()
 
     def createStatusBar(self):
@@ -444,6 +444,9 @@ class MainWindow(QMainWindow):
     def udpateDeviceIDLabel(self, info):
         logger.debug(f"udpateDeviceIDLabel | {info.text}")
         raw_bytes = info.content
+        if len(raw_bytes) < 37:
+            logger.error(f"udpateDeviceIDLabel no enough length | {len(raw_bytes)} | {info.text}")
+            return
         self.device_id = "-".join([f"{struct.unpack('>I', raw_bytes[6 + 4 * i : 10 + 4 * i])[0]:08X}" for i in range(3)])
         self.device_id_lb.setText(f"ID: {self.device_id}")
         date_str = f'{raw_bytes[26: 37].decode("ascii", errors="ignore")} - {raw_bytes[18: 26].decode("ascii", errors="ignore")}'
@@ -895,6 +898,7 @@ class MainWindow(QMainWindow):
         else:
             self.serial_recv_worker.signals.owari.emit()
             self.serial_send_worker.signals.owari.emit()
+            self.threadpool.waitForDone(500)
             self.serial.close()
             self.serial_post_co.setEnabled(True)
             self.serial_refresh_bt.setEnabled(True)
@@ -1615,12 +1619,15 @@ class MainWindow(QMainWindow):
         msg = QMessageBox(self)
         msg.setIcon(level)
         msg.setWindowTitle(f"故障信息 | {datetime.now()}")
-        msg.setText(f"故障码 {error_code}\n {error_content}")
+        msg.setText(f"故障码 {error_code}\n{error_content}")
         msg.exec_()
 
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = MainWindow()
-    window.show()
-    app.exec_()
+    try:
+        app = QApplication(sys.argv)
+        window = MainWindow()
+        window.show()
+        app.exec_()
+    except Exception:
+        logger.error(f"exception in main loop \n{stackprinter.format()}")

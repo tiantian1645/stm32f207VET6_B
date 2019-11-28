@@ -36,7 +36,7 @@ class SerialRecvWorker(QRunnable):
         self.serial = serial
         self.logger = logger
         self.henji_queue = henji_queue
-        self.need_henji = ()
+        self.need_henji = (0xAA,)
         self.dd = DC201_PACK()
         self.signals = SeialWorkerSignals()
         self.signals.owari.connect(self.stoptask)
@@ -47,7 +47,12 @@ class SerialRecvWorker(QRunnable):
         self.stop = True
 
     def _str_Henji(self):
-        return ", ".join(f"0x{i:02X}" for i in self.need_henji)
+        logger.debug(f"self.need_henji {self.need_henji}")
+        if len(self.need_henji) > 0:
+            return ", ".join(f"0x{i:02X}" for i in self.need_henji)
+        else:
+            logger.error(f"self.need_henji is empty | {self.need_henji}")
+            return "(, )"
 
     def _find_Henji(self, write_data):
         for ht in HENJI_TABLE:
