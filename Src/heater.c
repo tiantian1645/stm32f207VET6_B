@@ -175,7 +175,7 @@ uint8_t heater_BTM_Output_Is_Live(void)
 void heater_BTM_Output_Init(void)
 {
     // Prepare PID controller for operation
-    pid_ctrl_init(&gHeater_BTM_PID_Conf, HEATER_BTM_SAMPLE, &btm_input, &btm_output, &btm_setpoint, 6000, 36000, 200);
+    pid_ctrl_init(&gHeater_BTM_PID_Conf, HEATER_BTM_SAMPLE, &btm_input, &btm_output, &btm_setpoint, 6000, 12000, 150);
     // Set controler output limits from 0 to 200
     pid_ctrl_limits(&gHeater_BTM_PID_Conf, 0, gHeater_BTM_PID_Conf.omax);
     // Allow PID to compute and change output
