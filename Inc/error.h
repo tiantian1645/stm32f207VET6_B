@@ -62,6 +62,8 @@ typedef enum {
     eError_Comm_Out_Busy = 231,                       /* 外串口发送忙 */
     eError_Comm_Out_Send_Failed = 232,                /* 外串口发送失败 */
     eError_Comm_Out_Not_ACK = 233,                    /* 外串口没有收到ACK */
+    eError_Sample_Incomlete = 234,				      /* 采样未完成 */
+	eError_Stary_Incomlete = 235,				      /* 杂散光测试未完成 */
 
     /* 周期性上送异常 */
     eError_Temperature_Top_Abnormal = 300, /* 上加热体温度异常 */

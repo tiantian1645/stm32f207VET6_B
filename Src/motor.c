@@ -464,7 +464,7 @@ void motor_Sample_Owari(void)
 static void motor_Task(void * argument)
 {
     BaseType_t xResult = pdFALSE;
-    uint32_t xNotifyValue, cnt;
+    uint32_t xNotifyValue, cnt=0;
     sMotor_Fun mf;
     uint8_t buffer[15];
 
@@ -486,6 +486,9 @@ static void motor_Task(void * argument)
             cnt = 0;
         }
         comm_Data_Stary_Test_Clear(); /* finally 清除杂散光测试标记 */
+    }
+    if (cnt > 0) {
+    	error_Emit(eError_Stary_Incomlete);
     }
 
     for (;;) {
@@ -555,8 +558,13 @@ static void motor_Task(void * argument)
                 comm_Data_Sample_Start(); /* 启动定时器同步发包 开始采样 */
                 for (;;) {
                     xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(9850)); /* 等待任务通知 */
-                    if (xResult != pdTRUE || xNotifyValue == eMotorNotifyValue_BR) {              /* 超时 或 收到中终止命令 直接退出循环 */
-                        beep_Start_With_Conf(eBeep_Freq_mi, 500, 500, 3);                         /* 蜂鸣器输出调试 */
+                    if (xResult != pdPASS || xNotifyValue == eMotorNotifyValue_BR) {              /* 超时 或 收到中终止命令 直接退出循环 */
+                        if (xResult != pdPASS) {                                                  /* 超时  */
+                            beep_Start_With_Conf(eBeep_Freq_mi, 1000, 500, 5);                    /* 蜂鸣器输出调试 */
+                            error_Emit(eError_Sample_Incomlete);                                  /* 提交错误信息 */
+                        } else {                                                                  /* 打断指令 */
+                            beep_Start_With_Conf(eBeep_Freq_mi, 500, 500, 3);                     /* 蜂鸣器输出调试 */
+                        }
                         break;
                     }
                     if (xNotifyValue == eMotorNotifyValue_TG) {               /* 本次采集完成 */

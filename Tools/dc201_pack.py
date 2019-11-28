@@ -133,6 +133,8 @@ class DC201ErrorCode(Enum):
     eError_Comm_Out_Busy = (231, "外串口发送忙")
     eError_Comm_Out_Send_Failed = (232, "外串口发送失败")
     eError_Comm_Out_Not_ACK = (233, "外串口没有收到ACK")
+    eError_Sample_Incomplete = (234, "采样过程提前结束")
+    eError_Stary_Incomplete = (235, "杂散光测试提前结束")
     eError_Temperature_Top_Abnormal = (300, "上加热体温度异常")
     eError_Temperature_Top_TooHigh = (301, "上加热体温度过高")
     eError_Temperature_Top_TooLow = (302, "上加热体温度过低")

@@ -40,8 +40,15 @@ void error_Emit(eError_Code code)
     uint8_t out_mark = 0b11;
 
     switch (code) {
-        case eError_Comm_Main_Busy: /* 主串口发送忙 */
+        case eError_Comm_Main_Send_Failed: /* 主串口发送失败 */
+        case eError_Comm_Main_Not_ACK:     /* 主串口没有收到ACK */
+        case eError_Comm_Main_Wrong_ID:    /* 主串口异常ID */
+        case eError_Comm_Main_Unknow_CMD:  /* 主串口异常功能码 */
+        case eError_Comm_Main_Param_Error: /* 主串口报文参数异常 */
+            out_mark = 0b10;
+            break;
         /* 外串口故障不能发送到主串口 */
+        case eError_Comm_Main_Busy:       /* 主串口发送忙 */
         case eError_Comm_Out_Busy:        /* 外串口发送忙 */
         case eError_Comm_Out_Send_Failed: /* 外串口发送失败 */
         case eError_Comm_Out_Not_ACK:     /* 外串口没有收到ACK */
