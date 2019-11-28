@@ -1138,7 +1138,7 @@ class MainWindow(QMainWindow):
         for k in range(6):
             color = LINE_COLORS[k % len(LINE_COLORS)]
             symbol = LINE_SYMBOLS[k % len(LINE_SYMBOLS)]
-            self.matplot_plots.append(self.plot_wg.plot([], name=f"B{k+1}", pen=mkPen(color=color), symbol=symbol, symbolSize=10, symbolBrush=(color)))
+            self.matplot_plots.append(self.plot_wg.plot([], name=f"B{k+1}", pen=mkPen(color=color), symbol=symbol, symbolSize=4, symbolBrush=(color)))
 
     def onPlotMouseMove(self, event):
         mouse_point = self.plot_wg.vb.mapSceneToView(event[0])
@@ -1157,9 +1157,10 @@ class MainWindow(QMainWindow):
             conf.append(self.matplot_conf_point_sps[i].value())
             self.sample_confs.append(SampleConf(conf[-3], conf[-2], conf[-1]))
         logger.debug(f"get matplot cnf | {conf}")
-        self.sample_label = self.sample_db.build_label(
-            name=self.device_id, version=f"{self.version}.{datetime.strftime(self.device_datetime, '%Y%m%d.%H%M%S')}"
-        )
+        if self.device_datetime is not None:
+            self.sample_label = self.sample_db.build_label(
+                name=self.device_id, version=f"{self.version}.{datetime.strftime(self.device_datetime, '%Y%m%d.%H%M%S')}"
+            )
         self._serialSendPack(0x03, conf)
         self._serialSendPack(0x01)
         for plot in self.matplot_plots:
