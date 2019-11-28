@@ -43,10 +43,10 @@ void spi_FlashEraseSector(uint32_t _uiSectorAddr);
 void spi_FlashPageWrite(uint8_t * _pBuf, uint32_t _uiWriteAddr, uint16_t _usSize);
 uint16_t spi_FlashWriteBuffer(uint32_t _uiWriteAddr, uint8_t * _pBuf, uint16_t _usWriteSize);
 uint32_t spi_FlashReadBuffer(uint32_t _uiReadAddr, uint8_t * _pBuf, uint32_t _uiSize);
-void spi_FlashReadInfo(void);
+uint8_t spi_FlashReadInfo(void);
 
 uint8_t spi_FlashWriteAndCheck_Word(uint32_t addr, uint32_t data);
 
-extern SFLASH_T g_tSF;
+uint8_t spi_FalshIsInRange(uint32_t addr, uint32_t total);
 
 #endif

@@ -77,6 +77,34 @@ uint8_t gStorgeTaskInfoLockAcquire(void)
 }
 
 /**
+ * @brief  外部Flash读取失败处理
+ * @param  None
+ * @retval None
+ */
+void storgeOutFlashReadErrorHandle(void)
+{
+    if (spi_FlashReadInfo() > 250) {
+        error_Emit(eError_Out_Flash_Unknow);
+    } else {
+        error_Emit(eError_Out_Flash_Read_Failed);
+    }
+}
+
+/**
+ * @brief  外部Flash写入失败处理
+ * @param  None
+ * @retval None
+ */
+void storgeOutFlashWriteErrorHandle(void)
+{
+    if (spi_FlashReadInfo() > 250) {
+        error_Emit(eError_Out_Flash_Unknow);
+    } else {
+        error_Emit(eError_Out_Flash_Write_Failed);
+    }
+}
+
+/**
  * @brief  存储任务运行参数
  * @param  addr        操作地址
  * @param  pIn         写操作时数据源指针
@@ -138,6 +166,13 @@ void storgeTaskNotification(eStorgeNotifyConf type, eProtocol_COMM_Index index)
     uint32_t notifyValue = 0;
 
     notifyValue = type;
+
+    if (type == eStorgeNotifyConf_Read_Falsh || type == eStorgeNotifyConf_Write_Falsh) {
+        if (spi_FalshIsInRange(gStorgeTaskInfo.addr, gStorgeTaskInfo.num) == 0) {
+            error_Emit(eError_Out_Flash_Deal_Param);
+            return;
+        }
+    }
 
     if (index == eComm_Out) {
         notifyValue |= eStorgeNotifyConf_COMM_Out;
@@ -221,12 +256,17 @@ static void storgeTask(void * argument)
                             break;
                         }
                     }
+                    if (length == 0) {
+                        storgeOutFlashReadErrorHandle();
+                        break;
+                    }
                 }
                 break;
             case eStorgeNotifyConf_Write_Falsh:
                 wroteCnt = spi_FlashWriteBuffer(gStorgeTaskInfo.addr, gStorgeTaskInfo.buffer, gStorgeTaskInfo.num);
                 if (wroteCnt != gStorgeTaskInfo.num) {
                     buff[0] = 1;
+                    storgeOutFlashWriteErrorHandle();
                 } else {
                     buff[0] = 0;
                 }
@@ -271,6 +311,7 @@ static void storgeTask(void * argument)
                         }
                     }
                     if (length == 0) {
+                        error_Emit(eError_ID_Card_Read_Failed);
                         break;
                     }
                 }
@@ -278,6 +319,7 @@ static void storgeTask(void * argument)
             case eStorgeNotifyConf_Write_ID_Card:
                 wroteCnt = I2C_EEPROM_Write(gStorgeTaskInfo.addr, gStorgeTaskInfo.buffer, gStorgeTaskInfo.num, 30);
                 if (wroteCnt != gStorgeTaskInfo.num) {
+                    error_Emit(eError_ID_Card_Write_Failed);
                     buff[0] = 1;
                 } else {
                     buff[0] = 0;
@@ -316,22 +358,29 @@ static void storgeTask(void * argument)
                             break;
                         }
                     }
+                    if (length == 0) {
+                        storgeOutFlashReadErrorHandle();
+                        break;
+                    }
                 }
                 break;
             case eStorgeNotifyConf_Write_Parmas:
                 wroteCnt = storge_ParamWrite(gStorgeTaskInfo.addr, gStorgeTaskInfo.num, gStorgeTaskInfo.buffer);
+                if (wroteCnt != gStorgeTaskInfo.num) {
+                    storgeOutFlashWriteErrorHandle();
+                }
                 break;
             case eStorgeNotifyConf_Load_Parmas:
                 result = storge_ParamLoad(buff);
                 if (result == 1) {
                     error_Emit(eError_Out_Flash_Storge_Param_Out_Of_Range); /* 参数越限 */
                 } else if (result == 2) {
-                    error_Emit(eError_Out_Flash_Read_Failed); /* 读取失败 */
+                    storgeOutFlashReadErrorHandle();
                 }
                 break;
             case eStorgeNotifyConf_Dump_Params:
                 if (storge_ParamDump() > 0) {
-                    error_Emit(eError_Out_Flash_Write_Failed); /* 写入失败 */
+                    storgeOutFlashWriteErrorHandle(); /* 写入失败 */
                 }
                 break;
             default:

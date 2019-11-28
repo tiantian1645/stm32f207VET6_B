@@ -608,7 +608,7 @@ uint32_t spi_FlashReadID(void)
 *	返 回 值: 无
 *********************************************************************************************************
 */
-void spi_FlashReadInfo(void)
+uint8_t spi_FlashReadInfo(void)
 {
     uint8_t cnt = 0;
 
@@ -622,6 +622,7 @@ void spi_FlashReadInfo(void)
         if (++cnt < 5) {
             HAL_Delay(10 * (1 << cnt));
         } else {
+            return 254;
             break;
         }
     } while (1);
@@ -631,31 +632,33 @@ void spi_FlashReadInfo(void)
             strcpy(g_tSF.ChipName, "SST25VF016B");
             g_tSF.TotalSize = 2 * 1024 * 1024; /* 总容量 = 2M */
             g_tSF.PageSize = 4 * 1024;         /* 页面大小 = 4K */
-            break;
+            return 1;
+            ;
 
         case MX25L1606E_ID:
             strcpy(g_tSF.ChipName, "MX25L1606E");
             g_tSF.TotalSize = 2 * 1024 * 1024; /* 总容量 = 2M */
             g_tSF.PageSize = 4 * 1024;         /* 页面大小 = 4K */
-            break;
+            return 2;
+            ;
 
         case W25Q64BV_ID:
             strcpy(g_tSF.ChipName, "W25Q64BV");
             g_tSF.TotalSize = 8 * 1024 * 1024; /* 总容量 = 8M */
             g_tSF.PageSize = 4 * 1024;         /* 页面大小 = 4K */
-            break;
+            return 3;
 
         case W25Q64FW_ID:
             strcpy(g_tSF.ChipName, "W25Q64FW");
             g_tSF.TotalSize = 8 * 1024 * 1024; /* 总容量 = 8M */
             g_tSF.PageSize = 4 * 1024;         /* 页面大小 = 4K */
-            break;
+            return 4;
 
         default:
             strcpy(g_tSF.ChipName, "Unknow Flash");
             g_tSF.TotalSize = 2 * 1024 * 1024;
             g_tSF.PageSize = 4 * 1024;
-            break;
+            return 255;
     }
 }
 
@@ -745,4 +748,18 @@ uint8_t spi_FlashWriteAndCheck_Word(uint32_t addr, uint32_t data)
     }
 
     return (((buffer[0] << 24) + (buffer[1] << 16) + (buffer[2] << 8) + (buffer[3] << 0)) != data) ? (3) : (0);
+}
+
+/**
+ * @brief  是否操作范围
+ * @param  addr    地址
+ * @param  total   操作长度
+ * @retval 1 范围内 0 范围外
+ **/
+uint8_t spi_FalshIsInRange(uint32_t addr, uint32_t total)
+{
+    if ((addr + total) > g_tSF.TotalSize) {
+        return 0;
+    }
+    return 1;
 }
