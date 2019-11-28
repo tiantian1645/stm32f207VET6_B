@@ -716,6 +716,16 @@ static void comm_Data_Send_Task(void * argument)
                 break;
             } else {
                 ucResult = 0;
+                switch (i) {
+                    case 0:
+                        error_Emit(eError_Comm_Out_Resend_1);
+                        break;
+                    case 1:
+                        error_Emit(eError_Comm_Out_Resend_2);
+                        break;
+                    default:
+                        break;
+                }
             }
             vTaskDelay(pdMS_TO_TICKS(10 << i)); /* 指数退避 */
         }
