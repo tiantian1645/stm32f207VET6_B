@@ -445,7 +445,7 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
 void motor_Sample_Owari(void)
 {
     heat_Motor_Up();                             /* 采样结束 抬起加热体电机 */
-    white_Motor_PD();                            /* 运动白板电机 PD位置 清零位置 */
+    white_Motor_WH();                            /* 运动白板电机 白板位置 */
     motor_Tray_Move_By_Index(eTrayIndex_2);      /* 出仓 */
     barcode_Motor_Run_By_Index(eBarcodeIndex_0); /* 复位 */
     barcode_Motor_Run_By_Index(eBarcodeIndex_6); /* 二维码位置就位 */
@@ -490,7 +490,7 @@ static void motor_Task(void * argument)
     if (cnt > 0) {
         error_Emit(eError_Stary_Incomlete);
     }
-
+    white_Motor_WH(); /* 运动白板电机 白板位置 */
     for (;;) {
         xResult = xQueuePeek(motor_Fun_Queue_Handle, &mf, portMAX_DELAY);
         if (xResult != pdPASS) {
@@ -550,6 +550,7 @@ static void motor_Task(void * argument)
                     barcode_Interrupt_Flag_Clear();           /* 清除打断标志位 */
                     break;                                    /* 提前结束 */
                 }
+                white_Motor_PD();                   /* 运动白板电机 PD位置 清零位置 */
                 white_Motor_WH();                   /* 运动白板电机 白物质位置 */
                 if (barcode_Interrupt_Flag_Get()) { /* 中途打断 */
                     motor_Sample_Owari();           /* 清理 */
