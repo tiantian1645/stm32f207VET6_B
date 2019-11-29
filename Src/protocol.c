@@ -498,10 +498,10 @@ void protocol_Temp_Upload_Main_Deal(float temp_btm, float temp_top)
         return;
     }
 
-    buffer[0] = ((uint16_t)(temp_btm * 100 + 0.5)) & 0xFF;                                /* 小端模式 低8位 */
-    buffer[1] = ((uint16_t)(temp_btm * 100 + 0.5)) >> 8;                                  /* 小端模式 高8位 */
-    buffer[2] = ((uint16_t)(temp_top * 100 + 0.5)) & 0xFF;                                /* 小端模式 低8位 */
-    buffer[3] = ((uint16_t)(temp_top * 100 + 0.5)) >> 8;                                  /* 小端模式 高8位 */
+    buffer[0] = ((uint16_t)(temp_btm * 100 + 0.5)) & 0xFF;                          /* 小端模式 低8位 */
+    buffer[1] = ((uint16_t)(temp_btm * 100 + 0.5)) >> 8;                            /* 小端模式 高8位 */
+    buffer[2] = ((uint16_t)(temp_top * 100 + 0.5)) & 0xFF;                          /* 小端模式 低8位 */
+    buffer[3] = ((uint16_t)(temp_top * 100 + 0.5)) >> 8;                            /* 小端模式 高8位 */
     length = buildPackOrigin(eComm_Main, eProtocoleRespPack_Client_TMP, buffer, 4); /* 构造数据包 */
 
     if (comm_Main_SendTask_Queue_GetWaiting() == 0) {                         /* 允许发送且发送队列内没有其他数据包 */
@@ -526,10 +526,10 @@ void protocol_Temp_Upload_Out_Deal(float temp_btm, float temp_top)
         return;
     }
 
-    buffer[0] = ((uint16_t)(temp_btm * 100 + 0.5)) & 0xFF;                               /* 小端模式 低8位 */
-    buffer[1] = ((uint16_t)(temp_btm * 100 + 0.5)) >> 8;                                 /* 小端模式 高8位 */
-    buffer[2] = ((uint16_t)(temp_top * 100 + 0.5)) & 0xFF;                               /* 小端模式 低8位 */
-    buffer[3] = ((uint16_t)(temp_top * 100 + 0.5)) >> 8;                                 /* 小端模式 高8位 */
+    buffer[0] = ((uint16_t)(temp_btm * 100 + 0.5)) & 0xFF;                         /* 小端模式 低8位 */
+    buffer[1] = ((uint16_t)(temp_btm * 100 + 0.5)) >> 8;                           /* 小端模式 高8位 */
+    buffer[2] = ((uint16_t)(temp_top * 100 + 0.5)) & 0xFF;                         /* 小端模式 低8位 */
+    buffer[3] = ((uint16_t)(temp_top * 100 + 0.5)) >> 8;                           /* 小端模式 高8位 */
     length = buildPackOrigin(eComm_Out, eProtocoleRespPack_Client_TMP, buffer, 4); /* 构造数据包  */
 
     if (comm_Out_SendTask_Queue_GetWaiting() == 0) {                          /* 允许发送且发送队列内没有其他数据包 */
