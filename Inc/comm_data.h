@@ -114,6 +114,8 @@ BaseType_t comm_Data_Start_Stary_Test(void);
 void comm_Data_Stary_Test_Mark(void);
 void comm_Data_Stary_Test_Clear(void);
 uint8_t comm_Data_Stary_Test_Is_Running(void);
+
+void gComm_Data_Sample_Period_Set(uint8_t se);
 /* Private defines -----------------------------------------------------------*/
 
 #endif

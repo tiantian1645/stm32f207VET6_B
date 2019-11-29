@@ -544,8 +544,11 @@ class MainWindow(QMainWindow):
         self.matplot_start_bt.setMaximumWidth(60)
         self.matplot_cancel_bt = QPushButton("取消")
         self.matplot_cancel_bt.setMaximumWidth(60)
-        self.matplot_save_cb = QCheckBox("保存")
-        self.matplot_save_cb.setChecked(True)
+        self.matplot_period_sp = QSpinBox()
+        self.matplot_period_sp.setMaximumWidth(45)
+        self.matplot_period_sp.setRange(3, 20)
+        self.matplot_period_sp.setValue(10)
+        self.matplot_period_sp.setSuffix("S")
         for i in range(7):
             self.motor_scan_bts[i].setMaximumWidth(45)
             barcode_ly.addWidget(self.motor_scan_bts[i], i, 0)
@@ -570,7 +573,7 @@ class MainWindow(QMainWindow):
                 temp_ly.addWidget(self.barcode_scan_bt)
                 temp_ly.addWidget(self.matplot_start_bt)
                 temp_ly.addWidget(self.matplot_cancel_bt)
-                temp_ly.addWidget(self.matplot_save_cb)
+                temp_ly.addWidget(self.matplot_period_sp)
                 barcode_ly.addLayout(temp_ly, i, 2, 1, 3)
         self.barcode_scan_bt.clicked.connect(self.onBarcodeScan)
         self.matplot_start_bt.clicked.connect(self.onMatplotStart)
@@ -1138,7 +1141,7 @@ class MainWindow(QMainWindow):
         for k in range(6):
             color = LINE_COLORS[k % len(LINE_COLORS)]
             symbol = LINE_SYMBOLS[k % len(LINE_SYMBOLS)]
-            self.matplot_plots.append(self.plot_wg.plot([], name=f"B{k+1}", pen=mkPen(color=color), symbol=symbol, symbolSize=4, symbolBrush=(color)))
+            self.matplot_plots.append(self.plot_wg.plot([], name=f"B{k+1}", pen=mkPen(color=color), symbol=symbol, symbolSize=5, symbolBrush=(color)))
 
     def onPlotMouseMove(self, event):
         mouse_point = self.plot_wg.vb.mapSceneToView(event[0])
@@ -1161,6 +1164,7 @@ class MainWindow(QMainWindow):
             self.sample_label = self.sample_db.build_label(
                 name=self.device_id, version=f"{self.version}.{datetime.strftime(self.device_datetime, '%Y%m%d.%H%M%S')}"
             )
+        self._serialSendPack(0xDC, (self.matplot_period_sp.value(), ))
         self._serialSendPack(0x03, conf)
         self._serialSendPack(0x01)
         for plot in self.matplot_plots:

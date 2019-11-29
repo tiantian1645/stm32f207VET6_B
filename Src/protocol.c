@@ -894,6 +894,8 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
         case 0xDC:
             if (length == 7) {
                 HAL_NVIC_SystemReset(); /* 重新启动 */
+            } else if (length == 8) {
+                gComm_Data_Sample_Period_Set(pInBuff[6] % 20);
             } else {
                 error_Emit(eError_Comm_Out_Param_Error);
             }

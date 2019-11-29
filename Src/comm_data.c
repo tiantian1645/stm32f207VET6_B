@@ -71,6 +71,8 @@ static uint8_t gCoMM_Data_Sample_ISR_Buffer[16];
 
 static uint8_t gComm_Data_PD_Next_Flag = 0;
 static uint8_t gComm_Data_Stary_test_Falg = 0;
+
+static uint16_t gComm_Data_Sample_Period = 500;
 /* Private constants ---------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -82,6 +84,16 @@ static BaseType_t comm_Data_Send_ACK_Check(uint8_t packIndex);
 
 static BaseType_t comm_Data_Sample_Send_Clear_Conf(void);
 /* Private user code ---------------------------------------------------------*/
+
+uint16_t gComm_Data_Sample_Period_Get(void)
+{
+    return gComm_Data_Sample_Period;
+}
+
+void gComm_Data_Sample_Period_Set(uint8_t se)
+{
+    gComm_Data_Sample_Period = se * 50;
+}
 
 /**
  * @brief  当前采样项目 获取
@@ -337,9 +349,9 @@ void comm_Data_PD_Time_Deal_FromISR(void)
         pair_cnt = 0;
     }
 
-    if (gComm_Data_Sample_ISR_Cnt % 500 == 0 || comm_Data_PD_Next_Flag_Get()) { /* 每 500 次  10S 或者 存在下包标记 构造一个新包  */
-        gCoMM_Data_Sample_ISR_Buffer[0] = pair_cnt % 2 + 1;                     /* 采样类型 白物质 -> PD */
-        gComm_Data_Sample_PD_WH_Idx_Set(gCoMM_Data_Sample_ISR_Buffer[0]);       /* 更新当前采样项目 */
+    if (gComm_Data_Sample_ISR_Cnt % gComm_Data_Sample_Period_Get() == 0 || comm_Data_PD_Next_Flag_Get()) { /* 每 500 次  10S 或者 存在下包标记 构造一个新包  */
+        gCoMM_Data_Sample_ISR_Buffer[0] = pair_cnt % 2 + 1;                                                /* 采样类型 白物质 -> PD */
+        gComm_Data_Sample_PD_WH_Idx_Set(gCoMM_Data_Sample_ISR_Buffer[0]);                                  /* 更新当前采样项目 */
         length = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_START, gCoMM_Data_Sample_ISR_Buffer, 1); /* 构造下一个数据包 */
         last_idx = gCoMM_Data_Sample_ISR_Buffer[3];                                                           /* 记录帧号 */
 
