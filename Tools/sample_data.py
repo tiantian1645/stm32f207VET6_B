@@ -69,7 +69,9 @@ class SampleDB:
         self.session = Session()
         logger.success("init db over")
 
-    def build_label(self, dt=datetime.now(), name="no name", version="no version"):
+    def build_label(self, dt=None, name="no name", version="no version"):
+        if dt is None:
+            dt = datetime.now()
         label = Label(datetime=dt, name=name, version=version)
         logger.debug(f"insert new label | {label}")
         return label
@@ -97,6 +99,15 @@ class SampleDB:
         self._save_data(label)
         nl = len(label.sample_datas)
         logger.debug(f"bind label and sample_datas | {ol} --> {nl} | {label} | {sample_datas}")
+
+    def get_label_cnt(self):
+        return self.session.query(Label).count()
+
+    def get_label_by_index(self, index):
+        try:
+            return self.session.query(Label).order_by(Label.id)[index]
+        except IndexError:
+            return None
 
 
 if __name__ == "__main__":
