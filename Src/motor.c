@@ -620,6 +620,7 @@ static void motor_Task(void * argument)
                 } while (gMotorPRessureStopBits_Get(mf.fun_type) == 0);
                 break;
             case eMotor_Fun_PRE_BARCODE: /* 压力测试 扫码 */
+                motor_Tray_Move_By_Index(eTrayIndex_1);
                 do {
                     buffer[0] = 1;
                     switch (cnt % 7) {
@@ -677,19 +678,15 @@ static void motor_Task(void * argument)
                 do {
                     buffer[0] = 4;
                     buffer[5] = 0;
-                    switch (cnt % 3) {
+                    switch (cnt % 2) {
                         case 0:
                             motor_Tray_Move_By_Index(eTrayIndex_0);
                             barcode_Scan_By_Index(eBarcodeIndex_0);
                             heat_Motor_Down(); /* 砸下上加热体电机 */
                             break;
                         case 1:
-                            motor_Tray_Move_By_Index(eTrayIndex_1);
-                            barcode_Scan_By_Index(eBarcodeIndex_6);
-                            break;
-                        case 2:
                             motor_Tray_Move_By_Index(eTrayIndex_2);
-                            barcode_Scan_By_Index(eBarcodeIndex_3);
+                            barcode_Scan_By_Index(eBarcodeIndex_6);
                             break;
                     }
                     white_Motor_Toggle(3000); /* 切换白板电机位置 */
