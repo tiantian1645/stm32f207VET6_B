@@ -15,6 +15,7 @@
 #include "comm_main.h"
 #include "motor.h"
 #include "temperature.h"
+#include "white_motor.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern UART_HandleTypeDef huart2;
@@ -69,10 +70,10 @@ static uint32_t gComm_Data_Sample_ISR_Cnt = 0;
 static uint8_t gComm_Data_Sample_PD_WH_Idx = 0xFF;
 static uint8_t gCoMM_Data_Sample_ISR_Buffer[16];
 
-static uint8_t gComm_Data_PD_Next_Flag = 0;
 static uint8_t gComm_Data_Stary_test_Falg = 0;
 
 static uint16_t gComm_Data_Sample_Period = 500;
+static uint16_t gComm_Data_Sample_Next_Idle = WHITE_MOTOR_RUN_PERIOD;
 /* Private constants ---------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -85,14 +86,56 @@ static BaseType_t comm_Data_Send_ACK_Check(uint8_t packIndex);
 static BaseType_t comm_Data_Sample_Send_Clear_Conf(void);
 /* Private user code ---------------------------------------------------------*/
 
+/**
+ * @brief  采样周期 获取
+ * @param  None
+ * @note   单位 定时器次数
+ * @retval 采样周期 gComm_Data_Sample_Period
+ */
 uint16_t gComm_Data_Sample_Period_Get(void)
 {
     return gComm_Data_Sample_Period;
 }
 
+/**
+ * @brief  采样周期 设置
+ * @param  se 采样周期单位 秒
+ * @retval None
+ */
 void gComm_Data_Sample_Period_Set(uint8_t se)
 {
     gComm_Data_Sample_Period = se * 50;
+}
+
+/**
+ * @brief  白板电机切换时间 获取
+ * @param  None
+ * @note   单位 毫秒
+ * @retval 白板电机切换时间 gComm_Data_Sample_Next_Idle
+ */
+uint16_t gComm_Data_Sample_Next_Idle_Get(void)
+{
+    return gComm_Data_Sample_Next_Idle;
+}
+
+/**
+ * @brief  白板电机切换时间 设置
+ * @param  idle 白板电机切换时间 单位 毫秒
+ * @retval None
+ */
+void gComm_Data_Sample_Next_Idle_Set(uint16_t idle)
+{
+    gComm_Data_Sample_Next_Idle = idle;
+}
+
+/**
+ * @brief  白板电机切换时间 初始化
+ * @param  None
+ * @retval None
+ */
+void gComm_Data_Sample_Next_Idle_Clr(void)
+{
+    gComm_Data_Sample_Next_Idle = WHITE_MOTOR_RUN_PERIOD;
 }
 
 /**
@@ -289,21 +332,6 @@ uint8_t gComm_Data_TIM_StartFlag_Check(void)
     return gComm_Data_TIM_StartFlag == 1;
 }
 
-uint8_t comm_Data_PD_Next_Flag_Get(void)
-{
-    return gComm_Data_PD_Next_Flag;
-}
-
-void comm_Data_PD_Next_Flag_Clear(void)
-{
-    gComm_Data_PD_Next_Flag = 0;
-}
-
-void comm_Data_PD_Next_Flag_Mark(void)
-{
-    gComm_Data_PD_Next_Flag = 1;
-}
-
 /**
  * @brief  杂散光测试标志 标记
  * @param  None
@@ -343,27 +371,32 @@ uint8_t comm_Data_Stary_Test_Is_Running(void)
 void comm_Data_PD_Time_Deal_FromISR(void)
 {
     static uint8_t length, last_idx = 0, pair_cnt = 0;
-    static uint32_t start_cnt;
+    static uint32_t start_cnt_rs, start_cnt_pd;
+    uint32_t period;
 
     if (gComm_Data_Sample_ISR_Cnt == 0) {
         pair_cnt = 0;
     }
 
-    if (gComm_Data_Sample_ISR_Cnt % gComm_Data_Sample_Period_Get() == 0 || comm_Data_PD_Next_Flag_Get()) { /* 每 500 次  10S 或者 存在下包标记 构造一个新包  */
-        gCoMM_Data_Sample_ISR_Buffer[0] = pair_cnt % 2 + 1;                                                /* 采样类型 白物质 -> PD */
-        gComm_Data_Sample_PD_WH_Idx_Set(gCoMM_Data_Sample_ISR_Buffer[0]);                                  /* 更新当前采样项目 */
-        length = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_START, gCoMM_Data_Sample_ISR_Buffer, 1); /* 构造下一个数据包 */
-        last_idx = gCoMM_Data_Sample_ISR_Buffer[3];                                                           /* 记录帧号 */
+    period = gComm_Data_Sample_Period_Get();
+    if (gComm_Data_Sample_ISR_Cnt % period == 0 ||                                                                   /* 每 500 次  10S 或者 */
+        gComm_Data_Sample_ISR_Cnt - start_cnt_pd == (gComm_Data_Sample_Next_Idle_Get() / COMM_DATA_PD_TIMER_TIME)) { /* 每 500k + 30 次  10S * k + 0.6*/
+        gCoMM_Data_Sample_ISR_Buffer[0] = pair_cnt % 2 + 1;                                                          /* 采样类型 白物质 -> PD */
+        gComm_Data_Sample_PD_WH_Idx_Set(gCoMM_Data_Sample_ISR_Buffer[0]);                                            /* 更新当前采样项目 */
+        length = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_START, gCoMM_Data_Sample_ISR_Buffer, 1);        /* 构造下一个数据包 */
+        last_idx = gCoMM_Data_Sample_ISR_Buffer[3];                                                                  /* 记录帧号 */
 
         if (HAL_UART_Transmit_DMA(&COMM_DATA_UART_HANDLE, gCoMM_Data_Sample_ISR_Buffer, length) != HAL_OK) { /* 首次发送 */
             FL_Error_Handler(__FILE__, __LINE__);
         } else {
             ++pair_cnt;
         }
-        start_cnt = gComm_Data_Sample_ISR_Cnt; /* 记录当前中断次数 */
-        if (comm_Data_PD_Next_Flag_Get()) {
-            comm_Data_PD_Next_Flag_Clear();
+        if (gComm_Data_Sample_ISR_Cnt % period == 0) { /* 白板 */
+            start_cnt_pd = gComm_Data_Sample_ISR_Cnt;  /* 记录当前中断次数 */
+        } else {
+            start_cnt_pd = 0;
         }
+        start_cnt_rs = gComm_Data_Sample_ISR_Cnt;                                         /* 记录当前中断次数 */
     } else if (gComm_Data_Sample_ISR_Cnt % 10 == 0 && gComm_Data_TIM_StartFlag_Check() && /* 其余时刻 每10次 200mS 处理是否需要重发 */
                comm_Data_Send_ACK_Check(last_idx) != pdPASS) {                            /* 收到的回应帧号不匹配 */
 
@@ -371,10 +404,10 @@ void comm_Data_PD_Time_Deal_FromISR(void)
             FL_Error_Handler(__FILE__, __LINE__);
         }
 
-        if (gComm_Data_Sample_ISR_Cnt - start_cnt >= COMM_DATA_SER_TX_RETRY_NUM - 1) { /* 重发数目达到3次 放弃采样测试 */
-            HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_PD);                                   /* 停止定时器 */
-            gComm_Data_TIM_StartFlag_Clear();                                          /* 标记定时器停止 */
-            gComm_Data_Sample_ISR_Cnt = 0;                                             /* 定时器中断计数清零 */
+        if (gComm_Data_Sample_ISR_Cnt - start_cnt_rs >= COMM_DATA_SER_TX_RETRY_NUM - 1) { /* 重发数目达到3次 放弃采样测试 */
+            HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_PD);                                      /* 停止定时器 */
+            gComm_Data_TIM_StartFlag_Clear();                                             /* 标记定时器停止 */
+            gComm_Data_Sample_ISR_Cnt = 0;                                                /* 定时器中断计数清零 */
             return;
         }
     }

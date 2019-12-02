@@ -8,8 +8,11 @@
 /* Private includes ----------------------------------------------------------*/
 
 /* Exported macro ------------------------------------------------------------*/
-#define white_Motor_PD() white_Motor_Run(eMotorDir_REV, 600)
-#define white_Motor_WH() white_Motor_Run(eMotorDir_FWD, 600)
+#define WHITE_MOTOR_RUN_PERIOD 4000
+
+#define WHITE_MOTOR_RUN_TIMEOUT 600
+#define white_Motor_PD() white_Motor_Run(eMotorDir_REV, WHITE_MOTOR_RUN_TIMEOUT)
+#define white_Motor_WH() white_Motor_Run(eMotorDir_FWD, WHITE_MOTOR_RUN_TIMEOUT)
 
 /* Exported types ------------------------------------------------------------*/
 

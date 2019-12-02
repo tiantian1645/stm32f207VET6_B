@@ -454,6 +454,7 @@ void motor_Sample_Owari(void)
     led_Mode_Set(eLED_Mode_Keep_Green);          /* LED 绿灯常亮 */
     barcode_Interrupt_Flag_Clear();              /* 清除打断标志位 */
     comm_Data_Sample_Owari();                    /* 上送采样结束报文 */
+    gComm_Data_Sample_Next_Idle_Clr();           /* 重新初始化白板测试时间 */
 }
 
 /**
@@ -467,6 +468,7 @@ static void motor_Task(void * argument)
     uint32_t xNotifyValue, cnt = 0;
     sMotor_Fun mf;
     uint8_t buffer[15];
+    TickType_t xTick;
 
     eBarcodeState barcode_result;
 
@@ -556,7 +558,8 @@ static void motor_Task(void * argument)
                     motor_Sample_Owari();           /* 清理 */
                     break;                          /* 提前结束 */
                 }
-                comm_Data_Sample_Start(); /* 启动定时器同步发包 开始采样 */
+                comm_Data_Sample_Start();    /* 启动定时器同步发包 开始采样 */
+                xTick = xTaskGetTickCount(); /* 记录起始时间 */
                 for (;;) {
                     xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(9850)); /* 等待任务通知 */
                     if (xResult != pdPASS || xNotifyValue == eMotorNotifyValue_BR) {              /* 超时 或 收到中终止命令 直接退出循环 */
@@ -575,9 +578,16 @@ static void motor_Task(void * argument)
                         } else {                                              /* 最后一次采样 */
                             beep_Start_With_Conf(eBeep_Freq_re, 100, 100, 5); /* 蜂鸣器输出调试 */
                         }
-                        if (gComm_Data_Sample_PD_WH_Idx_Get() == 1) {           /* 当前检测白物质 */
-                            white_Motor_PD();                                   /* 运动白板电机 PD位置 清零位置 */
-                            comm_Data_PD_Next_Flag_Mark();                      /* 标记发送下一包 */
+                        if (gComm_Data_Sample_PD_WH_Idx_Get() == 1) {                                    /* 当前检测白物质 */
+                            white_Motor_PD();                                                            /* 运动白板电机 PD位置 */
+                            if (xTick != 0) {                                                            /* 只设置一次 */
+                                xTick = xTaskGetTickCount() - xTick - WHITE_MOTOR_RUN_TIMEOUT;           /* 间隔时间 */
+                                xTick += (COMM_DATA_PD_TIMER_TIME - xTick % COMM_DATA_PD_TIMER_TIME);    /* 补整 */
+                                if (xTick > WHITE_MOTOR_RUN_TIMEOUT && xTick < WHITE_MOTOR_RUN_PERIOD) { /* 范围检查 */
+                                    gComm_Data_Sample_Next_Idle_Set(xTick);                              /* 标记白板测试完成时间 */
+                                }
+                                xTick = 0; /* 清零 */
+                            }
                         } else if (gComm_Data_Sample_PD_WH_Idx_Get() == 2) {    /* 当前检测PD */
                             white_Motor_WH();                                   /* 运动白板电机 白物质位置 */
                         } else if (gComm_Data_Sample_PD_WH_Idx_Get() == 0xFF) { /* 最后一次采样 */
