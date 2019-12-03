@@ -30,7 +30,10 @@
 			"xiosbase": "c",
 			"xlocale": "c",
 			"xstring": "c",
-			"xutility": "c"
+			"xutility": "c",
+			"freertos.h": "c",
+			"portable.h": "c",
+			"portmacro.h": "c"
 		},
 		"python.autoComplete.extraPaths": [
 			"Tools/"
