@@ -301,15 +301,26 @@ BaseType_t comm_Main_SendTask_QueueEmitWithBuild(uint8_t cmdType, uint8_t * pDat
 
 /**
  * @brief  加入串口发送队列
- * @param  pData   数据指针
- * @param  length  数据长度
- * @param  timeout 超时时间
+ * @param  pErrorCode   错误码指针
+ * @param  timeout      超时时间
  * @retval 加入发送队列结果
  */
 BaseType_t comm_Main_SendTask_ErrorInfoQueueEmit(uint16_t * pErrorCode, uint32_t timeout)
 {
     BaseType_t xResult;
     xResult = xQueueSendToBack(comm_Main_Error_Info_SendQueue, pErrorCode, pdMS_TO_TICKS(timeout));
+    return xResult;
+}
+
+/**
+ * @brief  加入串口发送队列 中断版本
+ * @param  pErrorCode   错误码指针
+ * @retval 加入发送队列结果
+ */
+BaseType_t comm_Main_SendTask_ErrorInfoQueueEmitFromISR(uint16_t * pErrorCode)
+{
+    BaseType_t xResult, xHigherPriorityTaskWoken = pdFALSE;
+    xResult = xQueueSendToBackFromISR(comm_Main_Error_Info_SendQueue, pErrorCode, &xHigherPriorityTaskWoken);
     return xResult;
 }
 

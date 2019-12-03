@@ -562,8 +562,10 @@ static void motor_Task(void * argument)
                 xTick = xTaskGetTickCount(); /* 记录起始时间 */
                 for (;;) {
                     xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(9850)); /* 等待任务通知 */
-                    if (xResult != pdPASS || xNotifyValue == eMotorNotifyValue_BR) {              /* 超时 或 收到中终止命令 直接退出循环 */
-                        if (xResult != pdPASS) {                                                  /* 超时  */
+                    if (xResult != pdPASS ||                                                      /* 超时 */
+                        xNotifyValue == eMotorNotifyValue_BR_ERR ||                               /* 收到中终止命令(异常) */
+                        xNotifyValue == eMotorNotifyValue_BR) {                                   /* 收到中终止命令 */
+                        if (xResult != pdPASS || xNotifyValue == eMotorNotifyValue_BR_ERR) {      /* 超时  */
                             beep_Start_With_Conf(eBeep_Freq_mi, 1000, 500, 5);                    /* 蜂鸣器输出调试 */
                             error_Emit(eError_Sample_Incomlete);                                  /* 提交错误信息 */
                         } else {                                                                  /* 打断指令 */

@@ -44,6 +44,8 @@ void comm_Main_DMA_TX_Error(void);
 UBaseType_t comm_Main_SendTask_Queue_GetWaiting(void);
 
 BaseType_t comm_Main_SendTask_ErrorInfoQueueEmit(uint16_t * pErrorCode, uint32_t timeout);
+BaseType_t comm_Main_SendTask_ErrorInfoQueueEmitFromISR(uint16_t * pErrorCode);
+
 BaseType_t comm_Main_SendTask_QueueEmit(uint8_t * pdata, uint8_t length, uint32_t timeout);
 #define comm_Main_SendTask_QueueEmitCover(pdata, length) comm_Main_SendTask_QueueEmit((pdata), (length), (COMM_MAIN_SER_TX_RETRY_SUM))
 BaseType_t comm_Main_SendTask_QueueEmitWithBuild(uint8_t cmdType, uint8_t * pData, uint8_t length, uint32_t timeout);
