@@ -1248,7 +1248,7 @@ class MainWindow(QMainWindow):
         if press_result and len(name_text) > 0:
             self.sample_record_lable_name = name_text
         else:
-            self.sample_record_lable_name = self.device_id
+            self.sample_record_lable_name = f"{datetime.now()} | {self.device_id}"
         logger.debug(f"set label name | {name_text} | {press_result} | {self.sample_record_lable_name}")
         conf = []
         self.sample_confs = []
