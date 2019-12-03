@@ -70,6 +70,8 @@ TEMP_RAW_COLORS = (
     (156, 100, 12),
 )
 TEMP_RAW_SYMBOL_CONFIG = (("o", 4, "b"), ("s", 4, "g"), ("t", 4, "r"), ("d", 4, "c"), ("+", 4, "m"), ("o", 4, "y"), ("s", 4, "k"), ("t", 4, "w"), ("d", 4, "r"))
+METHOD_NAMES = ("无项目", "速率法", "终点法", "两点终点法")
+WAVE_NAMES = ("610", "550", "405")
 SampleConf = namedtuple("SampleConf", "method wave point_num")
 HEATER_PID_PS = [1, 100, 0.01]
 
@@ -142,6 +144,7 @@ class MainWindow(QMainWindow):
         self.serial_send_worker = None
         self.initUI()
         self.sample_db = SampleDB("sqlite:///data/db.sqlite3")
+        self.sample_record_current_label = None
 
     def _serialSendPack(self, *args, **kwargs):
         pack = self.dd.buildPack(0x13, self.getPackIndex(), *args, **kwargs)
@@ -559,10 +562,10 @@ class MainWindow(QMainWindow):
             barcode_ly.addWidget(self.motor_scan_bts[i], i, 0)
             barcode_ly.addWidget(self.barcode_lbs[i], i, 1)
             if i < 6:
-                self.matplot_conf_houhou_cs[i].addItems(("无项目", "速率法", "终点法", "两点终点法"))
+                self.matplot_conf_houhou_cs[i].addItems(METHOD_NAMES)
                 self.matplot_conf_houhou_cs[i].setMaximumWidth(75)
                 self.matplot_conf_houhou_cs[i].setCurrentIndex(1)
-                self.matplot_conf_wavelength_cs[i].addItems(("610", "550", "405"))
+                self.matplot_conf_wavelength_cs[i].addItems(WAVE_NAMES)
                 self.matplot_conf_wavelength_cs[i].setMaximumWidth(60)
                 self.matplot_conf_wavelength_cs[i].setCurrentIndex(0)
                 self.matplot_conf_point_sps[i].setRange(0, 120)
@@ -600,6 +603,7 @@ class MainWindow(QMainWindow):
         for i in range(7):
             self.motor_scan_bts[i].clicked.connect(partial(self.onMotorScan, idx=i))
         self.sample_record_idx_sp.valueChanged.connect(self.onSampleRecordReadBySp)
+        self.sample_record_label.mousePressEvent = self.onSampleLabelClick
 
     def initBarcodeScan(self):
         for lb in self.barcode_lbs:
@@ -933,8 +937,19 @@ class MainWindow(QMainWindow):
         self.barcode_lbs[idx].setText("*" * 10)
         self._serialSendPack(0xD0, (0, (1 << idx), (1 << idx)))
 
+    def sample_record_parse_raw_data(self, raw_data):
+        data = []
+        data_len = len(raw_data)
+        if data_len % 2 != 0:
+            logger.error(f"sample data length error | {data_len}")
+            return data
+        for i in range(0, data_len, 2):
+            data.append(struct.unpack("H", raw_data[i : i + 2])[0])
+        return data
+
     def sample_record_plot_by_index(self, idx):
         label = self.sample_db.get_label_by_index(idx)
+        self.sample_record_current_label = label
         if label is None:
             logger.error("hit the label limit")
             cnt = self.sample_db.get_label_cnt()
@@ -943,22 +958,45 @@ class MainWindow(QMainWindow):
         logger.debug(f"get Label {label}")
         self.sample_record_label.setText(f"{label.name}")
         self.sample_record_label.setToolTip(f"{label.datetime}")
+        for plot in self.matplot_plots:
+            plot.clear()
         for sd in label.sample_datas:
-            logger.debug(f"get Sample Data | {sd}")
-            raw_data = sd.raw_data
-            data_len = len(raw_data)
-            if data_len % 2 != 0:
-                logger.error(f"sample data length error | {data_len}")
-                continue
-            datas = []
-            for i in range(0, data_len, 2):
-                datas.append(struct.unpack("H", raw_data[i : i + 2])[0])
-            logger.debug(f"get sample real datas | {datas}")
             channel_idx = sd.channel - 1
-            self.matplot_plots[channel_idx].setData(datas)
+            data = self.sample_record_parse_raw_data(sd.raw_data)
+            self.matplot_plots[channel_idx].setData(data)
             self.matplot_conf_houhou_cs[channel_idx].setCurrentIndex(sd.method.value)
             self.matplot_conf_wavelength_cs[channel_idx].setCurrentIndex(sd.wave.value - 1)
             self.matplot_conf_point_sps[channel_idx].setValue(sd.total)
+
+    def onSampleLabelClick(self, event):
+        def data_format_list(data):
+            result = ", ".join(str(i) for i in data)
+            if len(result) > 300:
+                result = result[:300] + "..."
+            return result
+
+        label = self.sample_record_current_label
+        if label is None:
+            return
+        sds = sorted(label.sample_datas, key=lambda x: x.channel)
+        logger.debug(f"get sds | {sds}")
+        msg = QMessageBox(self)
+        msg.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        msg.setIcon(QMessageBox.Information)
+        msg.setWindowTitle(f"采样数据 | {label.datetime} | {label.name}")
+        data_text = "\n".join(f"通道 {sd.channel} | {data_format_list(self.sample_record_parse_raw_data(sd.raw_data))}" for sd in sds)
+        text = f"{data_text}"
+        msg.setText(text)
+        detail_head_text = f"时间 | {label.datetime}\n标签 | {label.name}\n版本 | {label.version}\n容量 | {len(sds)}"
+        detail_text = f"\n{'=' * 24}\n".join(
+            (
+                f"通道 {sd.channel} | {sd.datetime} | {METHOD_NAMES[sd.method.value]} | {WAVE_NAMES[sd.wave.value - 1]}\n"
+                f"{self.sample_record_parse_raw_data(sd.raw_data)}\n{bytesPuttyPrint(sd.raw_data)}"
+            )
+            for sd in sds
+        )
+        msg.setDetailedText(f"{detail_head_text}\n{'*' * 40}\n{detail_text}")
+        msg.exec_()
 
     def onSampleRecordReadBySp(self, value):
         self.sample_record_plot_by_index(value)
@@ -1201,7 +1239,7 @@ class MainWindow(QMainWindow):
 
     def onMatplotStart(self, event):
         self.initBarcodeScan()
-        name_text, press_result = QInputDialog.getText(self, "测试标签", "输入标签名称", QLineEdit.Normal, self.device_id)
+        name_text, press_result = QInputDialog.getText(self, "测试标签", "输入标签名称", QLineEdit.Normal, f"{datetime.now()} | {self.device_id}")
         if press_result and len(name_text) > 0:
             self.sample_record_lable_name = name_text
         else:
@@ -1374,7 +1412,7 @@ class MainWindow(QMainWindow):
         pyperclip.copy("\n".join(records))
         cnt = self.sample_db.get_label_cnt()
         self.sample_record_idx_sp.setRange(0, cnt - 1)
-        self.sample_record_idx_sp.setValue(cnt- 1)
+        self.sample_record_idx_sp.setValue(cnt - 1)
 
     def updateMatplotData(self, info):
         length = info.content[6]
