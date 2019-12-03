@@ -11,6 +11,7 @@ from datetime import datetime
 from functools import partial
 from hashlib import sha256
 
+import numpy as np
 import loguru
 import pyperclip
 import serial
@@ -47,7 +48,7 @@ from PyQt5.QtWidgets import (
 )
 from pyqtgraph import GraphicsLayoutWidget, LabelItem, SignalProxy, mkPen
 
-from bytes_helper import bytes2Float, bytesPuttyPrint
+from bytes_helper import bytes2Float, bytesPuttyPrint, best_fit_slope_and_intercept
 from dc201_pack import DC201_PACK, DC201_ParamInfo, write_firmware_pack_BL, write_firmware_pack_FC, DC201ErrorCode
 from qt_serial import SerialRecvWorker, SerialSendWorker
 from sample_data import MethodEnum, SampleDB, WaveEnum
@@ -979,18 +980,22 @@ class MainWindow(QMainWindow):
         if label is None:
             return
         sds = sorted(label.sample_datas, key=lambda x: x.channel)
-        logger.debug(f"get sds | {sds}")
         msg = QMessageBox(self)
         msg.setTextInteractionFlags(Qt.TextSelectableByMouse)
         msg.setIcon(QMessageBox.Information)
         msg.setWindowTitle(f"采样数据 | {label.datetime} | {label.name}")
-        data_text = "\n".join(f"通道 {sd.channel} | {data_format_list(self.sample_record_parse_raw_data(sd.raw_data))}" for sd in sds)
-        text = f"{data_text}"
-        msg.setText(text)
+        data_infos = []
+        for sd in sds:
+            real_data = self.sample_record_parse_raw_data(sd.raw_data)
+            xs = np.array([10 * i for i in range(len(real_data))], dtype=np.int32)
+            ys = np.array(real_data, dtype=np.int32)
+            m, b = best_fit_slope_and_intercept(xs, ys)
+            data_infos.append(f"通道 {sd.channel} | {data_format_list(real_data)} | (m = {m:.4f}, b = {b:.4f})")
+        msg.setText("\n".join(data_infos))
         detail_head_text = f"时间 | {label.datetime}\n标签 | {label.name}\n版本 | {label.version}\n容量 | {len(sds)}"
         detail_text = f"\n{'=' * 24}\n".join(
             (
-                f"通道 {sd.channel} | {sd.datetime} | {METHOD_NAMES[sd.method.value]} | {WAVE_NAMES[sd.wave.value - 1]}\n"
+                f"通道 {sd.channel} | {sd.datetime} | {METHOD_NAMES[sd.method.value]} | {WAVE_NAMES[sd.wave.value - 1]} | 点数 {sd.total}\n"
                 f"{self.sample_record_parse_raw_data(sd.raw_data)}\n{bytesPuttyPrint(sd.raw_data)}"
             )
             for sd in sds

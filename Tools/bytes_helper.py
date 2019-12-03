@@ -2,6 +2,7 @@ import re
 import struct
 import loguru
 import codecs
+from statistics import mean
 
 logger = loguru.logger.bind(name=__name__)
 CRC8Table = [
@@ -309,3 +310,9 @@ def bytes2Float(b: bytes, model="DCBA"):
         return struct.unpack("f", b[2:] + b[:2])[0]
     else:
         return struct.unpack(">f", b[2:] + b[:2])[0]
+
+
+def best_fit_slope_and_intercept(xs, ys):
+    m = ((mean(xs) * mean(ys)) - mean(xs * ys)) / ((mean(xs) * mean(xs)) - mean(xs * xs))
+    b = mean(ys) - m * mean(xs)
+    return m, b
