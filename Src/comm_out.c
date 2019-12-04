@@ -437,10 +437,10 @@ static void comm_Out_Send_Task(void * argument)
             vTaskDelay(pdMS_TO_TICKS(10));
             continue;
         }
-        if (xQueueReceive(comm_Out_Error_Info_SendQueue, &errorCode, 0) == pdPASS) {                       /* 查看错误信息队列 */
-            memcpy(sendInfo.buff, (uint8_t *)(&errorCode), 2);                                             /* 错误代码 */
-            sendInfo.length = buildPackOrigin(eComm_Out, eProtocoleRespPack_Client_ERR, sendInfo.buff, 2); /* 构造数据包 */
-        } else if (xQueueReceive(comm_Out_SendQueue, &sendInfo, pdMS_TO_TICKS(10)) != pdPASS) {            /* 发送队列为空 */
+        if (xQueueReceive(comm_Out_Error_Info_SendQueue, &errorCode, 0) == pdPASS) {                      /* 查看错误信息队列 */
+            memcpy(sendInfo.buff, (uint8_t *)(&errorCode), 2);                                            /* 错误代码 */
+            sendInfo.length = buildPackOrigin(eComm_Out, eProtocolRespPack_Client_ERR, sendInfo.buff, 2); /* 构造数据包 */
+        } else if (xQueueReceive(comm_Out_SendQueue, &sendInfo, pdMS_TO_TICKS(10)) != pdPASS) {           /* 发送队列为空 */
             continue;
         }
         ucResult = 0; /* 发送结果初始化 */

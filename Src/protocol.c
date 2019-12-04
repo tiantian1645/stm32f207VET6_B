@@ -198,7 +198,7 @@ void gProtocol_ACK_IndexAutoIncrease(eProtocol_COMM_Index index)
  */
 BaseType_t protocol_is_NeedWaitRACK(uint8_t * pData)
 {
-    if (pData[5] == eProtocoleRespPack_Client_ACK || pData[5] == eProtocoleRespPack_Client_ERR) {
+    if (pData[5] == eProtocolRespPack_Client_ACK || pData[5] == eProtocolRespPack_Client_ERR) {
         return pdFALSE;
     }
     return pdTRUE;
@@ -320,7 +320,7 @@ void protocol_Parse_AnswerACK(eProtocol_COMM_Index index, uint8_t ack)
     uint8_t send_buff[12];
 
     send_buff[0] = ack;
-    sendLength = buildPackOrigin(index, eProtocoleRespPack_Client_ACK, send_buff, 1); /* 构造回应包 */
+    sendLength = buildPackOrigin(index, eProtocolRespPack_Client_ACK, send_buff, 1); /* 构造回应包 */
     switch (index) {
         case eComm_Out:
             if (serialSendStartDMA(eSerialIndex_5, send_buff, sendLength, 50) != pdPASS || comm_Out_DMA_TX_Wait(30) != pdPASS) { /* 发送回应包并等待发送完成 */
@@ -498,11 +498,11 @@ void protocol_Temp_Upload_Main_Deal(float temp_btm, float temp_top)
         return;
     }
 
-    buffer[0] = ((uint16_t)(temp_btm * 100 + 0.5)) & 0xFF;                          /* 小端模式 低8位 */
-    buffer[1] = ((uint16_t)(temp_btm * 100 + 0.5)) >> 8;                            /* 小端模式 高8位 */
-    buffer[2] = ((uint16_t)(temp_top * 100 + 0.5)) & 0xFF;                          /* 小端模式 低8位 */
-    buffer[3] = ((uint16_t)(temp_top * 100 + 0.5)) >> 8;                            /* 小端模式 高8位 */
-    length = buildPackOrigin(eComm_Main, eProtocoleRespPack_Client_TMP, buffer, 4); /* 构造数据包 */
+    buffer[0] = ((uint16_t)(temp_btm * 100 + 0.5)) & 0xFF;                         /* 小端模式 低8位 */
+    buffer[1] = ((uint16_t)(temp_btm * 100 + 0.5)) >> 8;                           /* 小端模式 高8位 */
+    buffer[2] = ((uint16_t)(temp_top * 100 + 0.5)) & 0xFF;                         /* 小端模式 低8位 */
+    buffer[3] = ((uint16_t)(temp_top * 100 + 0.5)) >> 8;                           /* 小端模式 高8位 */
+    length = buildPackOrigin(eComm_Main, eProtocolRespPack_Client_TMP, buffer, 4); /* 构造数据包 */
 
     if (comm_Main_SendTask_Queue_GetWaiting() == 0) {                         /* 允许发送且发送队列内没有其他数据包 */
         if (temp_btm != TEMP_INVALID_DATA || temp_top != TEMP_INVALID_DATA) { /* 温度值都不是无效值 */
@@ -526,11 +526,11 @@ void protocol_Temp_Upload_Out_Deal(float temp_btm, float temp_top)
         return;
     }
 
-    buffer[0] = ((uint16_t)(temp_btm * 100 + 0.5)) & 0xFF;                         /* 小端模式 低8位 */
-    buffer[1] = ((uint16_t)(temp_btm * 100 + 0.5)) >> 8;                           /* 小端模式 高8位 */
-    buffer[2] = ((uint16_t)(temp_top * 100 + 0.5)) & 0xFF;                         /* 小端模式 低8位 */
-    buffer[3] = ((uint16_t)(temp_top * 100 + 0.5)) >> 8;                           /* 小端模式 高8位 */
-    length = buildPackOrigin(eComm_Out, eProtocoleRespPack_Client_TMP, buffer, 4); /* 构造数据包  */
+    buffer[0] = ((uint16_t)(temp_btm * 100 + 0.5)) & 0xFF;                        /* 小端模式 低8位 */
+    buffer[1] = ((uint16_t)(temp_btm * 100 + 0.5)) >> 8;                          /* 小端模式 高8位 */
+    buffer[2] = ((uint16_t)(temp_top * 100 + 0.5)) & 0xFF;                        /* 小端模式 低8位 */
+    buffer[3] = ((uint16_t)(temp_top * 100 + 0.5)) >> 8;                          /* 小端模式 高8位 */
+    length = buildPackOrigin(eComm_Out, eProtocolRespPack_Client_TMP, buffer, 4); /* 构造数据包  */
 
     if (comm_Out_SendTask_Queue_GetWaiting() == 0) {                          /* 允许发送且发送队列内没有其他数据包 */
         if (temp_btm != TEMP_INVALID_DATA || temp_top != TEMP_INVALID_DATA) { /* 温度值都不是无效值 */
@@ -540,9 +540,9 @@ void protocol_Temp_Upload_Out_Deal(float temp_btm, float temp_top)
             temperature = temp_Get_Temp_Data(i);
             memcpy(buffer + 4 * i, &temperature, 4);
         }
-        if (protocol_Debug_Temperature()) {
-            length = buildPackOrigin(eComm_Out, 0xEE, buffer, 36); /* 构造数据包  */
-            comm_Out_SendTask_QueueEmitCover(buffer, length);      /* 提交到发送队列 */
+        if (protocol_Debug_Temperature()) {                                                       /* 使能温度调试 */
+            length = buildPackOrigin(eComm_Out, eProtocolRespPack_Client_Debug_Temp, buffer, 36); /* 构造数据包  */
+            comm_Out_SendTask_QueueEmitCover(buffer, length);                                     /* 提交到发送队列 */
         }
     }
 }
@@ -605,10 +605,10 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
         return;
     }
 
-    protocol_Temp_Upload_Comm_Set(eComm_Out, 1);       /* 通讯接收成功 使能本串口温度上送 */
-    if (pInBuff[5] == eProtocoleRespPack_Client_ACK) { /* 收到对方回应帧 */
-        comm_Out_Send_ACK_Give(pInBuff[6]);            /* 通知串口发送任务 回应包收到 */
-        return;                                        /* 直接返回 */
+    protocol_Temp_Upload_Comm_Set(eComm_Out, 1);      /* 通讯接收成功 使能本串口温度上送 */
+    if (pInBuff[5] == eProtocolRespPack_Client_ACK) { /* 收到对方回应帧 */
+        comm_Out_Send_ACK_Give(pInBuff[6]);           /* 通知串口发送任务 回应包收到 */
+        return;                                       /* 直接返回 */
     }
 
     if (pInBuff[4] == PROTOCOL_DEVICE_ID_SAMP) {             /* ID为数据板的数据包 直接透传 调试用 */
@@ -1028,10 +1028,10 @@ void protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
         return;
     }
 
-    gComm_Main_Connected_Set_Enable();                 /* 标记通信成功 */
-    if (pInBuff[5] == eProtocoleRespPack_Client_ACK) { /* 收到对方回应帧 */
-        comm_Main_Send_ACK_Give(pInBuff[6]);           /* 通知串口发送任务 回应包收到 */
-        return;                                        /* 直接返回 */
+    gComm_Main_Connected_Set_Enable();                /* 标记通信成功 */
+    if (pInBuff[5] == eProtocolRespPack_Client_ACK) { /* 收到对方回应帧 */
+        comm_Main_Send_ACK_Give(pInBuff[6]);          /* 通知串口发送任务 回应包收到 */
+        return;                                       /* 直接返回 */
     }
 
     protocol_Temp_Upload_Comm_Set(eComm_Main, 1); /* 通讯接收成功 使能本串口温度上送 */
@@ -1114,9 +1114,9 @@ void protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
         return;
     }
 
-    if (pInBuff[5] == eProtocoleRespPack_Client_ACK) { /* 收到对方回应帧 */
-        comm_Data_Send_ACK_Give(pInBuff[6]);           /* 通知串口发送任务 回应包收到 */
-        return;                                        /* 直接返回 */
+    if (pInBuff[5] == eProtocolRespPack_Client_ACK) { /* 收到对方回应帧 */
+        comm_Data_Send_ACK_Give(pInBuff[6]);          /* 通知串口发送任务 回应包收到 */
+        return;                                       /* 直接返回 */
     }
 
     protocol_Parse_AnswerACK(eComm_Data, pInBuff[3]);                                /* 发送回应包 */

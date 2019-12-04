@@ -26,16 +26,17 @@ typedef enum {
 } eProtocolEmitPack_Client_CMD_Type;
 
 typedef enum {
-    eProtocoleRespPack_Client_ACK = 0xAA,       /* 应答帧 */
-    eProtocoleRespPack_Client_TMP = 0xA0,       /* 温度数据帧 */
-    eProtocoleRespPack_Client_DISH = 0xB0,      /* 托盘状态帧 */
-    eProtocoleRespPack_Client_ID_CARD = 0xB1,   /* ID卡信息包 */
-    eProtocoleRespPack_Client_BARCODE = 0xB2,   /* 扫码信息帧 */
-    eProtocoleRespPack_Client_SAMP_DATA = 0xB3, /* 采集数据帧 */
-    eProtocoleRespPack_Client_ERR = 0xB5,       /* 仪器错误帧 */
-    eProtocoleRespPack_Client_SAMP_OVER = 0xB6, /* 采样完成帧 */
-    eProtocoleRespPack_Client_VER = 0xB7,       /* 版本信息帧 */
-} eProtocoleRespPack_Client_Type;
+    eProtocolRespPack_Client_ACK = 0xAA,        /* 应答帧 */
+    eProtocolRespPack_Client_TMP = 0xA0,        /* 温度数据帧 */
+    eProtocolRespPack_Client_DISH = 0xB0,       /* 托盘状态帧 */
+    eProtocolRespPack_Client_ID_CARD = 0xB1,    /* ID卡信息包 */
+    eProtocolRespPack_Client_BARCODE = 0xB2,    /* 扫码信息帧 */
+    eProtocolRespPack_Client_SAMP_DATA = 0xB3,  /* 采集数据帧 */
+    eProtocolRespPack_Client_ERR = 0xB5,        /* 仪器错误帧 */
+    eProtocolRespPack_Client_SAMP_OVER = 0xB6,  /* 采样完成帧 */
+    eProtocolRespPack_Client_VER = 0xB7,        /* 版本信息帧 */
+    eProtocolRespPack_Client_Debug_Temp = 0xEE, /* 温度上送 调试用 */
+} eProtocolRespPack_Client_Type;
 
 typedef enum {
     eComm_Out,
