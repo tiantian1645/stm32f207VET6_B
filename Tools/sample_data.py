@@ -20,9 +20,10 @@ class Label(Base):
     datetime = Column(DATETIME)
     name = Column(String)
     version = Column(String)
+    device_id = Column(String)
 
     def __repr__(self):
-        return f"<Label(id={self.id}, datetime='{self.datetime}', name='{self.name}', version='{self.version}')>"
+        return f"<Label(id={self.id}, datetime='{self.datetime}', name='{self.name}', version='{self.version}', device_id='{self.device_id}')>"
 
 
 class WaveEnum(enum.Enum):
@@ -69,10 +70,10 @@ class SampleDB:
         self.session = Session()
         logger.success("init db over")
 
-    def build_label(self, dt=None, name="no name", version="no version"):
+    def build_label(self, dt=None, name="no name", version="no version", device_id="no device id"):
         if dt is None:
             dt = datetime.now()
-        label = Label(datetime=dt, name=name, version=version)
+        label = Label(datetime=dt, name=name, version=version, device_id=device_id)
         logger.debug(f"insert new label | {label}")
         return label
 
@@ -112,7 +113,7 @@ class SampleDB:
 
 if __name__ == "__main__":
     self = SampleDB("sqlite:///data/db.sqlite3")
-    lb = self.build_label(name="test", version="0.1")
+    lb = self.build_label(name="test", version="0.1", device_id="200-200-300")
     sds = [
         self.build_sample_data(datetime.now(), channel=i, method=MethodEnum(1 + i), wave=WaveEnum(1 + i), total=i * 4, raw_data=b"\x01\x02" * i)
         for i in range(3)

@@ -1244,11 +1244,11 @@ class MainWindow(QMainWindow):
 
     def onMatplotStart(self, event):
         self.initBarcodeScan()
-        name_text, press_result = QInputDialog.getText(self, "测试标签", "输入标签名称", QLineEdit.Normal, f"{datetime.now()} | {self.device_id}")
+        name_text, press_result = QInputDialog.getText(self, "测试标签", "输入标签名称", QLineEdit.Normal, datetime.now().strftime("%Y%m%d%H%M%S"))
         if press_result and len(name_text) > 0:
             self.sample_record_lable_name = name_text
         else:
-            self.sample_record_lable_name = f"{datetime.now()} | {self.device_id}"
+            self.sample_record_lable_name = datetime.now().strftime("%Y%m%d%H%M%S")
         logger.debug(f"set label name | {name_text} | {press_result} | {self.sample_record_lable_name}")
         conf = []
         self.sample_confs = []
@@ -1261,7 +1261,9 @@ class MainWindow(QMainWindow):
         logger.debug(f"get matplot cnf | {conf}")
         if self.device_datetime is not None:
             self.sample_label = self.sample_db.build_label(
-                name=self.sample_record_lable_name, version=f"{self.version}.{datetime.strftime(self.device_datetime, '%Y%m%d.%H%M%S')}"
+                name=self.sample_record_lable_name,
+                version=f"{self.version}.{datetime.strftime(self.device_datetime, '%Y%m%d.%H%M%S')}",
+                device_id=self.device_id,
             )
         self._serialSendPack(0xDC, (self.matplot_period_sp.value(),))
         self._serialSendPack(0x03, conf)
@@ -1342,7 +1344,69 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(3000, self._getStatus)
 
     def onSelfCheck(self, event):
-        pass
+        button = event.button()
+        logger.debug(f"invoke onSelfCheck | event {event.type()} | {button}")
+        if button == Qt.LeftButton:
+            self._serialSendPack(0xDB, (0x00,))
+        elif button == Qt.RightButton:
+            logger.debug("show self test dialog")
+            self.selftest_dg = QDialog(self)
+            self.selftest_dg.setWindowTitle("自检测试")
+            self.selftest_temp_lbs = [QLabel("128.00") for _ in range(9)]
+            selftest_dg_ly = QVBoxLayout(self.selftest_dg)
+            selftest_temp_ly = QHBoxLayout()
+            selftest_temp_top_gb = QGroupBox("上加热体温度")
+            selftest_temp_top_gb.setLayout(QHBoxLayout())
+            for lb in self.selftest_temp_lbs[0:6]:
+                selftest_temp_top_gb.layout().addWidget(lb)
+            selftest_temp_btm_gb = QGroupBox("下加热体温度")
+            selftest_temp_btm_gb.setLayout(QHBoxLayout())
+            for lb in self.selftest_temp_lbs[6:8]:
+                selftest_temp_btm_gb.layout().addWidget(lb)
+            selftest_temp_env_gb = QGroupBox("环境温度")
+            selftest_temp_env_gb.setLayout(QHBoxLayout())
+            for lb in self.selftest_temp_lbs[8:9]:
+                selftest_temp_env_gb.layout().addWidget(lb)
+            selftest_temp_ly.addWidget(selftest_temp_top_gb)
+            selftest_temp_ly.addWidget(selftest_temp_btm_gb)
+            selftest_temp_ly.addWidget(selftest_temp_env_gb)
+
+            selftest_motor_ly = QHBoxLayout()
+            self.selftest_motor_pbs = [QPushButton(t) for t in ("上", "下", "进", "扫", "出", "PD", "白", "1", "2", "3", "4", "5", "6", "QR")]
+            selftest_motor_heater_gb = QGroupBox("上加热体")
+            selftest_motor_heater_gb.setLayout(QHBoxLayout())
+            for pb in self.selftest_motor_pbs[0:2]:
+                pb.setMaximumWidth(20)
+                selftest_motor_heater_gb.layout().addWidget(pb)
+            selftest_motor_tray_gb = QGroupBox("托盘")
+            selftest_motor_tray_gb.setLayout(QHBoxLayout())
+            for pb in self.selftest_motor_pbs[2:5]:
+                pb.setMaximumWidth(20)
+                selftest_motor_tray_gb.layout().addWidget(pb)
+            selftest_motor_white_gb = QGroupBox("白板")
+            selftest_motor_white_gb.setLayout(QHBoxLayout())
+            for pb in self.selftest_motor_pbs[5:7]:
+                pb.setMaximumWidth(20)
+                selftest_motor_white_gb.layout().addWidget(pb)
+            selftest_motor_scan_gb = QGroupBox("扫码")
+            selftest_motor_scan_gb.setLayout(QHBoxLayout())
+            for pb in self.selftest_motor_pbs[7:14]:
+                pb.setMaximumWidth(20)
+                selftest_motor_scan_gb.layout().addWidget(pb)
+            selftest_motor_ly.addWidget(selftest_motor_heater_gb)
+            selftest_motor_ly.addWidget(selftest_motor_tray_gb)
+            selftest_motor_ly.addWidget(selftest_motor_white_gb)
+            selftest_motor_ly.addWidget(selftest_motor_scan_gb)
+
+            selftest_storge_ly = QHBoxLayout()
+            selftest_storge_pbs = (QPushButton(t) for t in ("片外 Flash", "ID Code 卡"))
+            selftest_storge_gb = QGroupBox("存储")
+            selftest_storge_gb
+
+            selftest_dg_ly.addLayout(selftest_temp_ly)
+            selftest_dg_ly.addLayout(selftest_motor_ly)
+            selftest_dg_ly.addLayout(selftest_storge_ly)
+            self.selftest_dg.show()
 
     def onUpgrade(self, event):
         self.upgrade_dg = QDialog(self)
@@ -1790,7 +1854,7 @@ class MainWindow(QMainWindow):
         self.upgrade_bt.clicked.connect(self.onUpgrade)
         self.bootload_bt.clicked.connect(self.onBootload)
         self.reboot_bt.clicked.connect(self.onReboot)
-        self.selftest_bt.clicked.connect(self.onSelfCheck)
+        self.selftest_bt.mousePressEvent = self.onSelfCheck
 
     def getErrorContent(self, error_code):
         for i in DC201ErrorCode:
