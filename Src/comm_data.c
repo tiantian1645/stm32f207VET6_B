@@ -48,7 +48,7 @@ static uint8_t gComm_Data_RX_serial_buffer[COMM_DATA_SER_RX_SIZE];
 static xQueueHandle comm_Data_RecvQueue = NULL;
 
 /* 串口接收ACK记录 */
-static sProcol_COMM_ACK_Record gComm_Data_ACK_Records[6];
+static sProcol_COMM_ACK_Record gComm_Data_ACK_Records[12];
 
 /* 串口发送队列 */
 static xQueueHandle comm_Data_SendQueue = NULL;
@@ -503,6 +503,20 @@ BaseType_t comm_Data_Sample_Send_Conf(void)
     }
 
     sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 18); /* 构造测试配置包 */
+    return comm_Data_SendTask_QueueEmit(pData, sendLength, 50);
+}
+
+/**
+ * @brief  发送采样配置 工装测试
+ * @param  None
+ * @retval pdPASS 提交成功 pdFALSE 提交失败
+ */
+BaseType_t comm_Data_Sample_Send_Conf_TV(uint8_t * pData)
+{
+    uint8_t sendLength;
+
+    comm_Data_Sample_Apply_Conf(pData);
+    sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_TEST, pData, 19); /* 构造工装测试配置包 */
     return comm_Data_SendTask_QueueEmit(pData, sendLength, 50);
 }
 

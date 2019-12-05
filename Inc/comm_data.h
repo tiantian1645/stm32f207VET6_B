@@ -59,6 +59,7 @@ typedef enum {
     eComm_Data_Outbound_CMD_CONF = 0x26,  /* 测试项信息帧 */
     eComm_Data_Outbound_CMD_START = 0x27, /* 采样开始控制帧 */
     eComm_Data_Outbound_CMD_STRAY = 0x28, /* 杂散光采集帧 */
+    eComm_Data_Outbound_CMD_TEST = 0x30,  /* 工装测试配置帧 */
 } eComm_Data_Outbound_CMD;
 
 typedef enum {
@@ -104,6 +105,7 @@ uint8_t comm_Data_Build_Sample_Conf_Pack(uint8_t * pData);
 
 BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData);
 BaseType_t comm_Data_Sample_Send_Conf(void);
+BaseType_t comm_Data_Sample_Send_Conf_TV(uint8_t * pData);
 
 BaseType_t comm_Data_Sample_Owari(void);
 

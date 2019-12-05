@@ -1099,7 +1099,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 storgeTaskNotification(eStorgeNotifyConf_Read_ID_Card, eComm_Out); /* 通知存储任务 */
             }
             break;
-        case eProtocolEmitPack_Client_CMD_STATUS:                                                /* 状态信息查询帧 (首帧) */
+        case eProtocolEmitPack_Client_CMD_STATUS:                                                /* 状态信息查询帧 (首帧) 0x07 */
             temp = temp_Get_Temp_Data_BTM();                                                     /* 下加热体温度 */
             pInBuff[0] = ((uint16_t)(temp * 100)) & 0xFF;                                        /* 小端模式 低8位 */
             pInBuff[1] = ((uint16_t)(temp * 100)) >> 8;                                          /* 小端模式 高8位 */
@@ -1119,6 +1119,9 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 pInBuff[0] = 0;
             }
             comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, pInBuff, 1); /* 托盘状态信息 */
+            break;
+        case eProtocolEmitPack_Client_CMD_TEST:         /* 工装测试配置帧 */
+            comm_Data_Sample_Send_Conf_TV(&pInBuff[6]); /* 保存测试配置 */
             break;
         case eProtocolEmitPack_Client_CMD_UPGRADE: /* 下位机升级命令帧 0x0F */
             if (spi_FlashWriteAndCheck_Word(0x0000, 0x87654321) == 0) {

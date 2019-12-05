@@ -565,6 +565,10 @@ class MainWindow(QMainWindow):
         self.matplot_period_sp.setRange(3, 20)
         self.matplot_period_sp.setValue(10)
         self.matplot_period_sp.setSuffix("S")
+        self.matplot_period_tv_lb = QLabel("NL")
+        self.matplot_period_tv_cb = QCheckBox()
+        self.matplot_period_tv_cb.setTristate(True)
+        self.matplot_period_tv_cb.stateChanged.connect(lambda x: self.matplot_period_tv_lb.setText(('NL', 'OD', 'PD')[x]))
         for i in range(7):
             self.motor_scan_bts[i].setMaximumWidth(45)
             barcode_ly.addWidget(self.motor_scan_bts[i], i, 0)
@@ -590,6 +594,8 @@ class MainWindow(QMainWindow):
                 temp_ly.addWidget(self.matplot_start_bt)
                 temp_ly.addWidget(self.matplot_cancel_bt)
                 temp_ly.addWidget(self.matplot_period_sp)
+                temp_ly.addWidget(self.matplot_period_tv_lb)
+                temp_ly.addWidget(self.matplot_period_tv_cb)
                 barcode_ly.addLayout(temp_ly, i, 2, 1, 3)
         self.sample_record_idx_sp = QSpinBox()
         self.sample_record_idx_sp.setRange(0, 99999999)
@@ -1275,7 +1281,11 @@ class MainWindow(QMainWindow):
                 device_id=self.device_id,
             )
         self._serialSendPack(0xDC, (self.matplot_period_sp.value(),))
-        self._serialSendPack(0x03, conf)
+        if self.matplot_period_tv_cb.isChecked():
+            conf.append(self.matplot_period_tv_cb.checkState())
+            self._serialSendPack(0x08, conf)
+        else:
+            self._serialSendPack(0x03, conf)
         self._serialSendPack(0x01)
         for plot in self.matplot_plots:
             plot.clear()
