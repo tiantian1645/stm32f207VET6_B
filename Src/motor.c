@@ -59,6 +59,11 @@ static eMotor_OPT_Status motor_OPT_Status_Get_Scan(void);
 static eMotor_OPT_Status motor_OPT_Status_Get_Tray(void);
 static eMotor_OPT_Status motor_OPT_Status_Get_Heater(void);
 
+static void motor_Self_Check_Motor_White(uint8_t * pBuffer);
+static void motor_Self_Check_Motor_Heater(uint8_t * pBuffer);
+static void motor_Self_Check_Motor_Tray(uint8_t * pBuffer);
+static void motor_Self_Check_Motor_Scan(uint8_t * pBuffer);
+static void motor_Self_Check_Scan(uint8_t * pBuffer);
 /* Private constants ---------------------------------------------------------*/
 const eMotor_OPT_Status (*gOPT_Status_Get_Funs[])(void) = {motor_OPT_Status_Get_Scan, motor_OPT_Status_Get_Tray, motor_OPT_Status_Get_Heater,
                                                            motor_OPT_Status_Get_White};
@@ -401,20 +406,20 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
     if (flag && heat_Motor_Up() != 0) { /* 上加热体光耦位置未被阻挡 则抬起上加热体电机 */
         buffer[0] = 0x00;               /* 抬起上加热体失败 */
         comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
-        comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                   /* 转发至外串口但不允许阻塞 */
+        comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                  /* 转发至外串口但不允许阻塞 */
         beep_Start_With_Conf(eBeep_Freq_do, 300, 0, 1);
         return;
     }
     /* 托盘保持力矩不足 托盘容易位置会发生变化 实际位置与驱动记录位置不匹配 每次移动托盘电机必须重置 */
-    if ((index == eTrayIndex_0 && TRAY_MOTOR_IS_OPT_1 == 0)                                        /* 从光耦外回到原点 */
-        || (index != eTrayIndex_0 && TRAY_MOTOR_IS_OPT_1 && flag)) {                               /* 或者 起点时上加热体砸下 从光耦处离开 */
-    } else {                                                                                       /* 其他情况需要回到原点 */
-        tray_Motor_Init();                                                                         /* 托盘电机初始化 */
-        vTaskDelay(100);                                                                           /* 延时 */
-        if (tray_Motor_Reset_Pos() != 0) {                                                         /* 重置托盘电机位置 */
-            buffer[0] = 0x00;                                                                      /* 托盘电机运动失败 */
+    if ((index == eTrayIndex_0 && TRAY_MOTOR_IS_OPT_1 == 0)                                       /* 从光耦外回到原点 */
+        || (index != eTrayIndex_0 && TRAY_MOTOR_IS_OPT_1 && flag)) {                              /* 或者 起点时上加热体砸下 从光耦处离开 */
+    } else {                                                                                      /* 其他情况需要回到原点 */
+        tray_Motor_Init();                                                                        /* 托盘电机初始化 */
+        vTaskDelay(100);                                                                          /* 延时 */
+        if (tray_Motor_Reset_Pos() != 0) {                                                        /* 重置托盘电机位置 */
+            buffer[0] = 0x00;                                                                     /* 托盘电机运动失败 */
             comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
-            comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                   /* 转发至外串口但不允许阻塞 */
+            comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                  /* 转发至外串口但不允许阻塞 */
             beep_Start_With_Conf(eBeep_Freq_fa, 300, 0, 1);
             return;
         }
@@ -434,9 +439,9 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
         }
         return;
     } else {
-        buffer[0] = 0x00;                                                                      /* 托盘电机运动失败 */
+        buffer[0] = 0x00;                                                                     /* 托盘电机运动失败 */
         comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
-        comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                   /* 转发至外串口但不允许阻塞 */
+        comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                  /* 转发至外串口但不允许阻塞 */
         beep_Start_With_Conf(eBeep_Freq_fa, 300, 0, 1);
         return;
     }
@@ -709,7 +714,38 @@ static void motor_Task(void * argument)
                 } while (gMotorPRessureStopBits_Get(mf.fun_type) == 0);
                 break;
             case eMotor_Fun_Self_Check: /* 自检测试 */
-
+                motor_Self_Check_Motor_White(buffer);
+                motor_Self_Check_Motor_Heater(buffer);
+                motor_Self_Check_Motor_Tray(buffer);
+                motor_Self_Check_Motor_Scan(buffer);
+                motor_Self_Check_Scan(buffer);
+                break;
+            case eMotor_Fun_Self_Check_Motor_White: /* 自检测试 单项 白板电机 */
+                motor_Self_Check_Motor_White(buffer);
+                break;
+            case eMotor_Fun_Self_Check_Motor_Heater: /* 自检测试 单项 上加热体电机 */
+                motor_Self_Check_Motor_Heater(buffer);
+                break;
+            case eMotor_Fun_Self_Check_Motor_Tray: /* 自检测试 单项 托盘电机 */
+                motor_Self_Check_Motor_Tray(buffer);
+                break;
+            case eMotor_Fun_Self_Check_Motor_Scan: /* 自检测试 单项 扫码电机*/
+                motor_Self_Check_Motor_Scan(buffer);
+                break;
+            case eMotor_Fun_Self_Check_Scan: /* 自检测试 单项 扫码头 */
+                motor_Self_Check_Scan(buffer);
+                break;
+            case eMotor_Fun_Self_Check_PD_1: /* 自检测试 单项 PD 1 */
+                break;
+            case eMotor_Fun_Self_Check_PD_2: /* 自检测试 单项 PD 2 */
+                break;
+            case eMotor_Fun_Self_Check_PD_3: /* 自检测试 单项 PD 3 */
+                break;
+            case eMotor_Fun_Self_Check_PD_4: /* 自检测试 单项 PD 4 */
+                break;
+            case eMotor_Fun_Self_Check_PD_5: /* 自检测试 单项 PD 5 */
+                break;
+            case eMotor_Fun_Self_Check_PD_6: /* 自检测试 单项 PD 6 */
                 break;
             default:
                 break;
@@ -717,4 +753,100 @@ static void motor_Task(void * argument)
         xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0); /* 清除任务通知 */
         xQueueReceive(motor_Fun_Queue_Handle, &mf, 0);
     }
+}
+
+/**
+ * @brief  自检测试 单项 白板电机
+ * @param  pBuffer   数据指针
+ * @retval None
+ */
+static void motor_Self_Check_Motor_White(uint8_t * pBuffer)
+{
+    white_Motor_WH();                                                                       /* 推出光耦准备测试 */
+    pBuffer[0] = eMotor_Fun_Self_Check_Motor_White - eMotor_Fun_Self_Check_Motor_White + 6; /* 自检测试 单项 白板电机 */
+    pBuffer[2] = white_Motor_PD();                                                          /* PD 位置测试 */
+    pBuffer[3] = white_Motor_WH();                                                          /* 白物质测试 */
+    if (pBuffer[2] == 0 && pBuffer[3] == 0) {
+        pBuffer[1] = 0; /* 通过结论 */
+    } else {
+        pBuffer[1] = 1; /* 故障结论 */
+    }
+    comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 4);
+}
+
+/**
+ * @brief  自检测试 单项 上加热体电机
+ * @param  pBuffer   数据指针
+ * @retval None
+ */
+static void motor_Self_Check_Motor_Heater(uint8_t * pBuffer)
+{
+    heat_Motor_Down();                                                                       /* 推出光耦准备测试 */
+    pBuffer[0] = eMotor_Fun_Self_Check_Motor_Heater - eMotor_Fun_Self_Check_Motor_White + 6; /* 自检测试 单项 上加热体电机 */
+    pBuffer[2] = heat_Motor_Up();                                                            /* 抬起上加热体*/
+    pBuffer[3] = heat_Motor_Down();                                                          /* 砸下上加热体 */
+    if (pBuffer[2] == 0 && pBuffer[3] == 0) {
+        pBuffer[1] = 0; /* 通过结论 */
+    } else {
+        pBuffer[1] = 1; /* 故障结论 */
+    }
+    comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 4);
+}
+
+/**
+ * @brief  自检测试 单项 托盘电机
+ * @param  pBuffer   数据指针
+ * @retval None
+ */
+static void motor_Self_Check_Motor_Tray(uint8_t * pBuffer)
+{
+    heat_Motor_Up();                                                                       /* 抬起上加热体 */
+    tray_Motor_Init();                                                                     /* 托盘电机初始化 */
+    vTaskDelay(100);                                                                       /* 延时 */
+    tray_Motor_Reset_Pos();                                                                /* 初始化位置 */
+    vTaskDelay(100);                                                                       /* 延时 */
+    pBuffer[0] = eMotor_Fun_Self_Check_Motor_Tray - eMotor_Fun_Self_Check_Motor_White + 6; /* 自检测试 单项 托盘电机 */
+    pBuffer[2] = tray_Move_By_Index(eTrayIndex_2, 3000);                                   /* 出仓 */
+    pBuffer[3] = tray_Move_By_Index(eTrayIndex_0, 3000);                                   /* 进仓 */
+    if (pBuffer[2] == 0 && pBuffer[3] == 0) {
+        pBuffer[1] = 0; /* 通过结论 */
+    } else {
+        pBuffer[1] = 1; /* 故障结论 */
+    }
+    comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 4);
+}
+
+/**
+ * @brief  自检测试 单项 扫码电机
+ * @param  pBuffer   数据指针
+ * @retval None
+ */
+static void motor_Self_Check_Motor_Scan(uint8_t * pBuffer)
+{
+    barcode_Motor_Init();                                                                  /* 扫码电机初始化 */
+    barcode_Motor_Reset_Pos();                                                             /* 初始化位置 */
+    pBuffer[0] = eMotor_Fun_Self_Check_Motor_Scan - eMotor_Fun_Self_Check_Motor_White + 6; /* 自检测试 单项 扫码电机 */
+    pBuffer[2] = barcode_Motor_Run_By_Index(eBarcodeIndex_6);                              /* QR码位置 */
+    pBuffer[3] = barcode_Motor_Run_By_Index(eBarcodeIndex_0);                              /* 初始位置 */
+    if (pBuffer[2] == 0 && pBuffer[3] == 0) {
+        pBuffer[1] = 0; /* 通过结论 */
+    } else {
+        pBuffer[1] = 1; /* 故障结论 */
+    }
+    comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 4);
+}
+
+/**
+ * @brief  自检测试 单项 扫码头
+ * @param  pBuffer   数据指针
+ * @retval None
+ */
+static void motor_Self_Check_Scan(uint8_t * pBuffer)
+{
+    heat_Motor_Up();                                                                 /* 抬起上加热体*/
+    tray_Move_By_Index(eTrayIndex_1, 3000);                                          /* 扫码位置 */
+    pBuffer[0] = eMotor_Fun_Self_Check_Scan - eMotor_Fun_Self_Check_Motor_White + 6; /* 自检测试 单项 扫码头 */
+    barcode_Motor_Run_By_Index(eBarcodeIndex_0);                                     /* 移动到初始位置 */
+    pBuffer[1] = barcode_Read_From_Serial(pBuffer + 2, pBuffer + 3, 10, 1000);         /* 读取扫码结果 */
+    comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, pBuffer[2] + 3);
 }

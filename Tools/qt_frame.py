@@ -197,6 +197,12 @@ class MainWindow(QMainWindow):
         else:
             wg.setStyleSheet(f"background-color: {bg}; color: {fg}")
 
+    def _clear_widget_style_sheet(self, widget):
+        widget.setStyleSheet("")
+        layout = widget.layout()
+        for i in range(layout.count()):
+            layout.itemAt(i).widget().setStyleSheet("")
+
     def initUI(self):
         self.createBarcode()
         self.createMotor()
@@ -205,6 +211,7 @@ class MainWindow(QMainWindow):
         self.createStatusBar()
         self.createSysConf()
         self.createStorgeDialog()
+        self.createSelfCheckDialog()
         widget = QWidget()
         layout = QHBoxLayout(widget)
 
@@ -1127,6 +1134,8 @@ class MainWindow(QMainWindow):
             self.updateTemperatureHeater(info)
         elif cmd_type == 0xD4:
             self.updateDebugFlag(info)
+        elif cmd_type == 0xDA:
+            self.updateSelfCheckDialog(info)
         elif cmd_type == 0xDD:
             self.updateOutFalshParam(info)
         elif cmd_type == 0xEE:
@@ -1343,69 +1352,202 @@ class MainWindow(QMainWindow):
         self._serialSendPack(0xDC)
         QTimer.singleShot(3000, self._getStatus)
 
+    def createSelfCheckDialog(self):
+        self.selftest_dg = QDialog(self)
+        self.selftest_dg.setWindowTitle("自检测试")
+        self.selftest_temp_lbs = [QLabel("**.**") for _ in range(9)]
+        selftest_dg_ly = QVBoxLayout(self.selftest_dg)
+        selftest_temp_ly = QHBoxLayout()
+        self.selftest_temp_top_gb = QGroupBox("上加热体温度")
+        self.selftest_temp_top_gb.setLayout(QHBoxLayout())
+        for lb in self.selftest_temp_lbs[0:6]:
+            lb.setAlignment(Qt.AlignCenter)
+            self.selftest_temp_top_gb.layout().addWidget(lb)
+        self.selftest_temp_btm_gb = QGroupBox("下加热体温度")
+        self.selftest_temp_btm_gb.setLayout(QHBoxLayout())
+        for lb in self.selftest_temp_lbs[6:8]:
+            lb.setAlignment(Qt.AlignCenter)
+            self.selftest_temp_btm_gb.layout().addWidget(lb)
+        self.selftest_temp_env_gb = QGroupBox("环境")
+        self.selftest_temp_env_gb.setLayout(QHBoxLayout())
+        for lb in self.selftest_temp_lbs[8:9]:
+            lb.setAlignment(Qt.AlignCenter)
+            self.selftest_temp_env_gb.layout().addWidget(lb)
+        selftest_temp_ly.addWidget(self.selftest_temp_top_gb)
+        selftest_temp_ly.addWidget(self.selftest_temp_btm_gb)
+        selftest_temp_ly.addWidget(self.selftest_temp_env_gb)
+        self.selftest_temp_top_gb.mousePressEvent = lambda x: [self._clear_widget_style_sheet(self.selftest_temp_top_gb), self._serialSendPack(0xDA, (0x01,))]
+        self.selftest_temp_btm_gb.mousePressEvent = lambda x: [self._clear_widget_style_sheet(self.selftest_temp_btm_gb), self._serialSendPack(0xDA, (0x02,))]
+        self.selftest_temp_env_gb.mousePressEvent = lambda x: [self._clear_widget_style_sheet(self.selftest_temp_env_gb), self._serialSendPack(0xDA, (0x03,))]
+
+        selftest_motor_ly = QHBoxLayout()
+        self.selftest_motor_lbs = [QLabel(t) for t in ("上", "下", "进", "出", "PD", "白")]
+        self.selftest_motor_heater_gb = QGroupBox("上加热体")
+        self.selftest_motor_heater_gb.setLayout(QHBoxLayout())
+        for lb in self.selftest_motor_lbs[0:2]:
+            lb.setAlignment(Qt.AlignCenter)
+            self.selftest_motor_heater_gb.layout().addWidget(lb)
+        self.selftest_motor_tray_gb = QGroupBox("托盘")
+        self.selftest_motor_tray_gb.setLayout(QHBoxLayout())
+        for lb in self.selftest_motor_lbs[2:4]:
+            lb.setAlignment(Qt.AlignCenter)
+            self.selftest_motor_tray_gb.layout().addWidget(lb)
+        self.selftest_motor_white_gb = QGroupBox("白板")
+        self.selftest_motor_white_gb.setLayout(QHBoxLayout())
+        for lb in self.selftest_motor_lbs[4:6]:
+            lb.setAlignment(Qt.AlignCenter)
+            self.selftest_motor_white_gb.layout().addWidget(lb)
+        self.selftest_motor_scan_gb = QGroupBox("扫码")
+        self.selftest_motor_scan_gb.setLayout(QHBoxLayout())
+        self.selftest_motor_scan_m = QLabel("电机")
+        self.selftest_motor_scan_l = QLabel("*" * 10)
+        self.selftest_motor_scan_gb.layout().addWidget(self.selftest_motor_scan_m)
+        self.selftest_motor_scan_gb.layout().addWidget(QVLine())
+        self.selftest_motor_scan_gb.layout().addWidget(self.selftest_motor_scan_l)
+        selftest_motor_ly.addWidget(self.selftest_motor_heater_gb)
+        selftest_motor_ly.addWidget(self.selftest_motor_tray_gb)
+        selftest_motor_ly.addWidget(self.selftest_motor_white_gb)
+        selftest_motor_ly.addWidget(self.selftest_motor_scan_gb)
+        self.selftest_motor_heater_gb.mousePressEvent = lambda x: [
+            self._clear_widget_style_sheet(self.selftest_motor_heater_gb),
+            self._serialSendPack(0xDA, (0x07,)),
+        ]
+        self.selftest_motor_tray_gb.mousePressEvent = lambda x: [
+            self._clear_widget_style_sheet(self.selftest_motor_tray_gb),
+            self._serialSendPack(0xDA, (0x08,)),
+        ]
+        self.selftest_motor_white_gb.mousePressEvent = lambda x: [
+            self._clear_widget_style_sheet(self.selftest_motor_white_gb),
+            self._serialSendPack(0xDA, (0x06,)),
+        ]
+        self.selftest_motor_scan_m.mousePressEvent = lambda x: [self._setColor(self.selftest_motor_scan_m), self._serialSendPack(0xDA, (0x09,))]
+        self.selftest_motor_scan_l.mousePressEvent = lambda x: [
+            self._setColor(self.selftest_motor_scan_l),
+            self.selftest_motor_scan_l.setText("*" * 10),
+            self._serialSendPack(0xDA, (0x0A,)),
+        ]
+
+        selftest_storge_ly = QHBoxLayout()
+        self.selftest_storge_lb_f = QLabel("片外 Flash") 
+        self.selftest_storge_lb_c = QLabel("ID Code 卡")
+        selftest_storge_gb = QGroupBox("存储")
+        selftest_storge_gb.setLayout(QHBoxLayout())
+        self.selftest_storge_lb_f.setAlignment(Qt.AlignCenter)
+        self.selftest_storge_lb_c.setAlignment(Qt.AlignCenter)
+        selftest_storge_gb.layout().addWidget(self.selftest_storge_lb_f)
+        selftest_storge_gb.layout().addWidget(self.selftest_storge_lb_c)
+        self.selftest_storge_lb_f.mousePressEvent = lambda x: [self._setColor(self.selftest_storge_lb_f), self._serialSendPack(0xDA, (0x04, ))]
+        self.selftest_storge_lb_c.mousePressEvent = lambda x: [self._setColor(self.selftest_storge_lb_c), self._serialSendPack(0xDA, (0x05, ))]
+        selftest_storge_ly.addWidget(selftest_storge_gb)
+
+        selftest_dg_ly.addLayout(selftest_temp_ly)
+        selftest_dg_ly.addLayout(selftest_motor_ly)
+        selftest_dg_ly.addLayout(selftest_storge_ly)
+
+    def updateSelfCheckDialog(self, info):
+        raw_bytes = info.content
+        item = raw_bytes[6]
+        result = raw_bytes[7]
+        if item == 1:
+            if result > 0:
+                self.selftest_temp_top_gb.setStyleSheet("QGroupBox:title {color: red};")
+            else:
+                self.selftest_temp_top_gb.setStyleSheet("QGroupBox:title {color: green};")
+            for i, lb in enumerate(self.selftest_temp_lbs[0:6]):
+                temp = struct.unpack("f", raw_bytes[8 + 4 * i : 12 + 4 * i])[0]
+                lb.setText(f"{temp:.2f}")
+                if 36.7 < temp < 37.3:
+                    self._setColor(lb, nbg="green")
+                else:
+                    self._setColor(lb, nbg="red")
+        elif item == 2:
+            if result > 0:
+                self.selftest_temp_btm_gb.setStyleSheet("QGroupBox:title {color: red};")
+            else:
+                self.selftest_temp_btm_gb.setStyleSheet("QGroupBox:title {color: green};")
+            for i, lb in enumerate(self.selftest_temp_lbs[6:8]):
+                temp = struct.unpack("f", raw_bytes[8 + 4 * i : 12 + 4 * i])[0]
+                lb.setText(f"{temp:.2f}")
+                if 36.7 < temp < 37.3:
+                    self._setColor(lb, nbg="green")
+                else:
+                    self._setColor(lb, nbg="red")
+        elif item == 3:
+            if result > 0:
+                self.selftest_temp_env_gb.setStyleSheet("QGroupBox:title {color: red};")
+            else:
+                self.selftest_temp_env_gb.setStyleSheet("QGroupBox:title {color: green};")
+            for i, lb in enumerate(self.selftest_temp_lbs[8:9]):
+                temp = struct.unpack("f", raw_bytes[8 + 4 * i : 12 + 4 * i])[0]
+                lb.setText(f"{temp:.2f}")
+                if 16 < temp < 46:
+                    self._setColor(lb, nbg="green")
+                else:
+                    self._setColor(lb, nbg="red")
+        elif item == 6:
+            if result > 0:
+                self.selftest_motor_white_gb.setStyleSheet("QGroupBox:title {color: red};")
+            else:
+                self.selftest_motor_white_gb.setStyleSheet("QGroupBox:title {color: green};")
+            for i, lb in enumerate(self.selftest_motor_lbs[4:6]):
+                data = raw_bytes[8 + i]
+                if data == 0:
+                    self._setColor(lb, nbg="green")
+                else:
+                    self._setColor(lb, nbg="red")
+        elif item == 7:
+            if result > 0:
+                self.selftest_motor_heater_gb.setStyleSheet("QGroupBox:title {color: red};")
+            else:
+                self.selftest_motor_heater_gb.setStyleSheet("QGroupBox:title {color: green};")
+            for i, lb in enumerate(self.selftest_motor_lbs[0:2]):
+                data = raw_bytes[8 + i]
+                if data == 0:
+                    self._setColor(lb, nbg="green")
+                else:
+                    self._setColor(lb, nbg="red")
+        elif item == 8:
+            if result > 0:
+                self.selftest_motor_tray_gb.setStyleSheet("QGroupBox:title {color: red};")
+            else:
+                self.selftest_motor_tray_gb.setStyleSheet("QGroupBox:title {color: green};")
+            for i, lb in enumerate(self.selftest_motor_lbs[2:4]):
+                data = raw_bytes[8 + i]
+                if data == 0:
+                    self._setColor(lb, nbg="green")
+                else:
+                    self._setColor(lb, nbg="red")
+        elif item == 9:
+            if result > 0:
+                self._setColor(self.selftest_motor_scan_m, nbg="red")
+            else:
+                self._setColor(self.selftest_motor_scan_m, nbg="green")
+        elif item == 10:
+            if result > 0:
+                self._setColor(self.selftest_motor_scan_l, nbg="red")
+            else:
+                self._setColor(self.selftest_motor_scan_l, nbg="green")
+                text = raw_bytes[9 : 9 + raw_bytes[8]].decode(errors="replace")
+                self.selftest_motor_scan_l.setText(text)
+
     def onSelfCheck(self, event):
         button = event.button()
         logger.debug(f"invoke onSelfCheck | event {event.type()} | {button}")
         if button == Qt.LeftButton:
-            self._serialSendPack(0xDB, (0x00,))
+            for lb in self.selftest_temp_lbs:
+                lb.setText("**.**")
+            self._clear_widget_style_sheet(self.selftest_temp_top_gb)
+            self._clear_widget_style_sheet(self.selftest_temp_btm_gb)
+            self._clear_widget_style_sheet(self.selftest_temp_env_gb)
+            self._clear_widget_style_sheet(self.selftest_motor_heater_gb),
+            self._clear_widget_style_sheet(self.selftest_motor_tray_gb),
+            self._clear_widget_style_sheet(self.selftest_motor_white_gb),
+            self._setColor(self.selftest_motor_scan_m)
+            self._setColor(self.selftest_motor_scan_l),
+            self.selftest_motor_scan_l.setText("*" * 10),
+            self._serialSendPack(0xDA)
         elif button == Qt.RightButton:
             logger.debug("show self test dialog")
-            self.selftest_dg = QDialog(self)
-            self.selftest_dg.setWindowTitle("自检测试")
-            self.selftest_temp_lbs = [QLabel("128.00") for _ in range(9)]
-            selftest_dg_ly = QVBoxLayout(self.selftest_dg)
-            selftest_temp_ly = QHBoxLayout()
-            selftest_temp_top_gb = QGroupBox("上加热体温度")
-            selftest_temp_top_gb.setLayout(QHBoxLayout())
-            for lb in self.selftest_temp_lbs[0:6]:
-                selftest_temp_top_gb.layout().addWidget(lb)
-            selftest_temp_btm_gb = QGroupBox("下加热体温度")
-            selftest_temp_btm_gb.setLayout(QHBoxLayout())
-            for lb in self.selftest_temp_lbs[6:8]:
-                selftest_temp_btm_gb.layout().addWidget(lb)
-            selftest_temp_env_gb = QGroupBox("环境温度")
-            selftest_temp_env_gb.setLayout(QHBoxLayout())
-            for lb in self.selftest_temp_lbs[8:9]:
-                selftest_temp_env_gb.layout().addWidget(lb)
-            selftest_temp_ly.addWidget(selftest_temp_top_gb)
-            selftest_temp_ly.addWidget(selftest_temp_btm_gb)
-            selftest_temp_ly.addWidget(selftest_temp_env_gb)
-
-            selftest_motor_ly = QHBoxLayout()
-            self.selftest_motor_pbs = [QPushButton(t) for t in ("上", "下", "进", "扫", "出", "PD", "白", "1", "2", "3", "4", "5", "6", "QR")]
-            selftest_motor_heater_gb = QGroupBox("上加热体")
-            selftest_motor_heater_gb.setLayout(QHBoxLayout())
-            for pb in self.selftest_motor_pbs[0:2]:
-                pb.setMaximumWidth(20)
-                selftest_motor_heater_gb.layout().addWidget(pb)
-            selftest_motor_tray_gb = QGroupBox("托盘")
-            selftest_motor_tray_gb.setLayout(QHBoxLayout())
-            for pb in self.selftest_motor_pbs[2:5]:
-                pb.setMaximumWidth(20)
-                selftest_motor_tray_gb.layout().addWidget(pb)
-            selftest_motor_white_gb = QGroupBox("白板")
-            selftest_motor_white_gb.setLayout(QHBoxLayout())
-            for pb in self.selftest_motor_pbs[5:7]:
-                pb.setMaximumWidth(20)
-                selftest_motor_white_gb.layout().addWidget(pb)
-            selftest_motor_scan_gb = QGroupBox("扫码")
-            selftest_motor_scan_gb.setLayout(QHBoxLayout())
-            for pb in self.selftest_motor_pbs[7:14]:
-                pb.setMaximumWidth(20)
-                selftest_motor_scan_gb.layout().addWidget(pb)
-            selftest_motor_ly.addWidget(selftest_motor_heater_gb)
-            selftest_motor_ly.addWidget(selftest_motor_tray_gb)
-            selftest_motor_ly.addWidget(selftest_motor_white_gb)
-            selftest_motor_ly.addWidget(selftest_motor_scan_gb)
-
-            selftest_storge_ly = QHBoxLayout()
-            selftest_storge_pbs = (QPushButton(t) for t in ("片外 Flash", "ID Code 卡"))
-            selftest_storge_gb = QGroupBox("存储")
-            selftest_storge_gb
-
-            selftest_dg_ly.addLayout(selftest_temp_ly)
-            selftest_dg_ly.addLayout(selftest_motor_ly)
-            selftest_dg_ly.addLayout(selftest_storge_ly)
             self.selftest_dg.show()
 
     def onUpgrade(self, event):

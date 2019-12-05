@@ -383,6 +383,10 @@ static void storgeTask(void * argument)
                     storgeOutFlashWriteErrorHandle(); /* 写入失败 */
                 }
                 break;
+            case eStorgeNotifyConf_Test_Falsh:
+                break;
+            case eStorgeNotifyConf_Test_ID_Card:
+                break;
             default:
                 break;
         }

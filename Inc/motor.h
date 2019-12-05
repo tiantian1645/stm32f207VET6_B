@@ -44,20 +44,31 @@ typedef struct {
 
 /* 电机任务队列效果枚举 */
 typedef enum {
-    eMotor_Fun_In,           /* 入仓 */
-    eMotor_Fun_Out,          /* 出仓 */
-    eMotor_Fun_Scan,         /* 扫码 */
-    eMotor_Fun_PD,           /* PD值测试 */
-    eMotor_Fun_WH,           /* 白底值测试 */
-    eMotor_Fun_Sample_Start, /* 开始测试 */
-    eMotor_Fun_SYK,          /* 交错 */
-    eMotor_Fun_RLB,          /* 回滚 */
-    eMotor_Fun_PRE_TRAY,     /* 压力测试 托盘 */
-    eMotor_Fun_PRE_BARCODE,  /* 压力测试 扫码 */
-    eMotor_Fun_PRE_HEATER,   /* 压力测试 上加热体 */
-    eMotor_Fun_PRE_WHITE,    /* 压力测试 白板 */
-    eMotor_Fun_PRE_ALL,      /* 压力测试 */
-    eMotor_Fun_Self_Check,   /* 自检测试 */
+    eMotor_Fun_In,                      /* 入仓 */
+    eMotor_Fun_Out,                     /* 出仓 */
+    eMotor_Fun_Scan,                    /* 扫码 */
+    eMotor_Fun_PD,                      /* PD值测试 */
+    eMotor_Fun_WH,                      /* 白底值测试 */
+    eMotor_Fun_Sample_Start,            /* 开始测试 */
+    eMotor_Fun_SYK,                     /* 交错 */
+    eMotor_Fun_RLB,                     /* 回滚 */
+    eMotor_Fun_PRE_TRAY,                /* 压力测试 托盘 */
+    eMotor_Fun_PRE_BARCODE,             /* 压力测试 扫码 */
+    eMotor_Fun_PRE_HEATER,              /* 压力测试 上加热体 */
+    eMotor_Fun_PRE_WHITE,               /* 压力测试 白板 */
+    eMotor_Fun_PRE_ALL,                 /* 压力测试 */
+    eMotor_Fun_Self_Check,              /* 自检测试 */
+    eMotor_Fun_Self_Check_Motor_White,  /* 自检测试 单项 白板电机 */
+    eMotor_Fun_Self_Check_Motor_Heater, /* 自检测试 单项 上加热体电机 */
+    eMotor_Fun_Self_Check_Motor_Tray,   /* 自检测试 单项 托盘电机 */
+    eMotor_Fun_Self_Check_Motor_Scan,   /* 自检测试 单项 扫码电机*/
+    eMotor_Fun_Self_Check_Scan,         /* 自检测试 单项 扫码头 */
+    eMotor_Fun_Self_Check_PD_1,         /* 自检测试 单项 PD 1 */
+    eMotor_Fun_Self_Check_PD_2,         /* 自检测试 单项 PD 2 */
+    eMotor_Fun_Self_Check_PD_3,         /* 自检测试 单项 PD 3 */
+    eMotor_Fun_Self_Check_PD_4,         /* 自检测试 单项 PD 4 */
+    eMotor_Fun_Self_Check_PD_5,         /* 自检测试 单项 PD 5 */
+    eMotor_Fun_Self_Check_PD_6,         /* 自检测试 单项 PD 6 */
 } eMotor_Fun;
 
 /* 电机任务队列效果结构 */

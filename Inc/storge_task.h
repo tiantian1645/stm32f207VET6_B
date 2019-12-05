@@ -16,6 +16,8 @@ typedef enum {
     eStorgeNotifyConf_Dump_Params = 0x00000020,
     eStorgeNotifyConf_Read_ID_Card = 0x00000040,
     eStorgeNotifyConf_Write_ID_Card = 0x00000080,
+    eStorgeNotifyConf_Test_Falsh = 0x00000100,
+    eStorgeNotifyConf_Test_ID_Card = 0x00000200,
     eStorgeNotifyConf_COMM_Out = 0x10000000,
     eStorgeNotifyConf_COMM_Main = 0x20000000,
 } eStorgeNotifyConf;

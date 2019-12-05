@@ -587,6 +587,99 @@ void protocol_Temp_Upload_Deal(void)
 }
 
 /**
+ * @brief  自检测试 温度判断
+ * @param  pBuffer 数据指针
+ * @retval 0 正常 1 异常 2 过高 3 过低
+ **/
+void protocol_Self_Check_Temp_TOP(uint8_t * pBuffer)
+{
+    float temp;
+    uint8_t result = 0, i;
+
+    temp = temp_Get_Temp_Data_TOP(); /* 读取温度值 */
+    if (temp == TEMP_INVALID_DATA) { /* 排除无效值 */
+        result = 1;
+    } else if (temp > 37.3) { /* 温度过高 */
+        result = 2;
+    } else if (temp < 36.7) { /* 温度过低 */
+        result = 3;
+    } else {
+        result = 0; /* 正常范围 */
+    }
+
+    for (i = 0; i < 6; ++i) {
+        temp = temp_Get_Temp_Data(i); /* 读取温度值 */
+        memcpy(pBuffer + 2 + 4 * i, (uint8_t *)(&temp), 4);
+    }
+
+    pBuffer[0] = 1;
+    pBuffer[1] = result;
+    comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 26);
+}
+
+/**
+ * @brief  自检测试 温度判断
+ * @param  pBuffer 数据指针
+ * @retval 0 正常 1 异常 2 过高 3 过低
+ **/
+void protocol_Self_Check_Temp_BTM(uint8_t * pBuffer)
+{
+    float temp;
+    uint8_t result = 0, i;
+
+    temp = temp_Get_Temp_Data_BTM(); /* 读取温度值 */
+    if (temp == TEMP_INVALID_DATA) { /* 排除无效值 */
+        result = 1;
+    } else if (temp > 37.3) { /* 温度过高 */
+        result = 2;
+    } else if (temp < 36.7) { /* 温度过低 */
+        result = 3;
+    } else {
+        result = 0; /* 正常范围 */
+    }
+
+    for (i = 0; i < 2; ++i) {
+        temp = temp_Get_Temp_Data(6 + i); /* 读取温度值 */
+        memcpy(pBuffer + 2 + 4 * i, (uint8_t *)(&temp), 4);
+    }
+
+    pBuffer[0] = 2;
+    pBuffer[1] = result;
+    comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 10);
+}
+
+/**
+ * @brief  自检测试 温度判断
+ * @param  pBuffer 数据指针
+ * @retval 0 正常 1 异常 2 过高 3 过低
+ **/
+void protocol_Self_Check_Temp_ENV(uint8_t * pBuffer)
+{
+    float temp;
+    uint8_t result = 0, i;
+
+    temp = temp_Get_Temp_Data_ENV(); /* 读取温度值 */
+    if (temp == TEMP_INVALID_DATA) { /* 排除无效值 */
+        result = 1;
+    } else if (temp > 46) { /* 温度过高 */
+        result = 2;
+    } else if (temp < 16) { /* 温度过低 */
+        result = 3;
+    } else {
+        result = 0; /* 正常范围 */
+    }
+
+    for (i = 0; i < 1; ++i) {
+        temp = temp_Get_Temp_Data(8 + i); /* 读取温度值 */
+        memcpy(pBuffer + 2 + 4 * i, (uint8_t *)(&temp), 4);
+    }
+
+    pBuffer[0] = 3;
+    pBuffer[1] = result;
+    comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 6);
+}
+
+/**
  * @brief  外串口解析协议
  * @param  pInBuff 入站指针
  * @param  length 入站长度
@@ -887,12 +980,41 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 storgeTaskNotification(eStorgeNotifyConf_Write_ID_Card, eComm_Out); /* 通知存储任务 */
             }
             break;
-        case eProtocolEmitPack_Client_CMD_Debug_Motor_Fun:
-            motor_fun.fun_type = (eMotor_Fun)pInBuff[6]; /* 开始测试 */
-            pInbuff[0] = motor_Emit(&motor_fun, 0);      /* 提交到电机队列 */
+        case eProtocolEmitPack_Client_CMD_Debug_Motor_Fun: /* 电机功能 */
+            motor_fun.fun_type = (eMotor_Fun)pInBuff[6];   /* 开始测试 */
+            pInBuff[0] = motor_Emit(&motor_fun, 0);        /* 提交到电机队列 */
             comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Motor_Fun, pInBuff, 1);
             break;
-        case 0xDC:
+        case eProtocolEmitPack_Client_CMD_Debug_Self_Check:
+            if (length == 7) {
+                protocol_Self_Check_Temp_TOP(pInBuff);
+                protocol_Self_Check_Temp_BTM(pInBuff);
+                protocol_Self_Check_Temp_ENV(pInBuff);
+                motor_fun.fun_type = eMotor_Fun_Self_Check; /* 整体自检测试 */
+                pInBuff[0] = motor_Emit(&motor_fun, 0);     /* 提交到电机队列 */
+                comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pInBuff, 1);
+            } else if (length == 8) { /* 单向测试结果 */
+                switch (pInBuff[6]) {
+                    case 1: /* 上加热体温度结果 */
+                        protocol_Self_Check_Temp_TOP(pInBuff);
+                        break;
+                    case 2: /* 下加热体温度结果 */
+                        protocol_Self_Check_Temp_BTM(pInBuff);
+                        break;
+                    case 3: /* 环境温度结果 */
+                        protocol_Self_Check_Temp_ENV(pInBuff);
+                        break;
+                    case 4: /* ID Code 卡 */
+                    case 5: /* 外部Flash */
+                        break;
+                    default:
+                        motor_fun.fun_type = eMotor_Fun_Self_Check_Motor_White - 6 + pInBuff[6]; /* 整体自检测试 单项 */
+                        motor_Emit(&motor_fun, 0);                                               /* 提交到电机队列 */
+                        break;
+                }
+            }
+            break;
+        case eProtocolEmitPack_Client_CMD_Debug_System: /* 系统控制 */
             if (length == 7) {
                 HAL_NVIC_SystemReset(); /* 重新启动 */
             } else if (length == 8) {
@@ -977,17 +1099,17 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 storgeTaskNotification(eStorgeNotifyConf_Read_ID_Card, eComm_Out); /* 通知存储任务 */
             }
             break;
-        case eProtocolEmitPack_Client_CMD_STATUS:                                                 /* 状态信息查询帧 (首帧) */
-            temp = temp_Get_Temp_Data_BTM();                                                      /* 下加热体温度 */
-            pInBuff[0] = ((uint16_t)(temp * 100)) & 0xFF;                                         /* 小端模式 低8位 */
-            pInBuff[1] = ((uint16_t)(temp * 100)) >> 8;                                           /* 小端模式 高8位 */
-            temp = temp_Get_Temp_Data_TOP();                                                      /* 上加热体温度 */
-            pInBuff[2] = ((uint16_t)(temp * 100)) & 0xFF;                                         /* 小端模式 低8位 */
-            pInBuff[3] = ((uint16_t)(temp * 100)) >> 8;                                           /* 小端模式 高8位 */
-            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_TMP, pInBuff, 4); /* 温度信息 */
+        case eProtocolEmitPack_Client_CMD_STATUS:                                                /* 状态信息查询帧 (首帧) */
+            temp = temp_Get_Temp_Data_BTM();                                                     /* 下加热体温度 */
+            pInBuff[0] = ((uint16_t)(temp * 100)) & 0xFF;                                        /* 小端模式 低8位 */
+            pInBuff[1] = ((uint16_t)(temp * 100)) >> 8;                                          /* 小端模式 高8位 */
+            temp = temp_Get_Temp_Data_TOP();                                                     /* 上加热体温度 */
+            pInBuff[2] = ((uint16_t)(temp * 100)) & 0xFF;                                        /* 小端模式 低8位 */
+            pInBuff[3] = ((uint16_t)(temp * 100)) >> 8;                                          /* 小端模式 高8位 */
+            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_TMP, pInBuff, 4); /* 温度信息 */
 
             protocol_Get_Version(pInBuff);
-            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_VER, pInBuff, 4); /* 软件版本信息 */
+            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_VER, pInBuff, 4); /* 软件版本信息 */
 
             if (tray_Motor_Get_Status_Position() == 0) { /* 托盘状态信息 */
                 pInBuff[0] = 1;                          /* 托盘处于测试位置 原点 */
@@ -996,7 +1118,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             } else {
                 pInBuff[0] = 0;
             }
-            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, pInBuff, 1); /* 托盘状态信息 */
+            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, pInBuff, 1); /* 托盘状态信息 */
             break;
         case eProtocolEmitPack_Client_CMD_UPGRADE: /* 下位机升级命令帧 0x0F */
             if (spi_FlashWriteAndCheck_Word(0x0000, 0x87654321) == 0) {
@@ -1066,16 +1188,16 @@ void protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
                 storgeTaskNotification(eStorgeNotifyConf_Read_ID_Card, eComm_Main); /* 通知存储任务 */
             }
             break;
-        case eProtocolEmitPack_Client_CMD_STATUS:                                                  /* 状态信息查询帧 (首帧) */
-            temp = temp_Get_Temp_Data_BTM();                                                       /* 下加热体温度 */
-            pInBuff[0] = ((uint16_t)(temp * 100)) & 0xFF;                                          /* 小端模式 低8位 */
-            pInBuff[1] = ((uint16_t)(temp * 100)) >> 8;                                            /* 小端模式 高8位 */
-            temp = temp_Get_Temp_Data_TOP();                                                       /* 上加热体温度 */
-            pInBuff[2] = ((uint16_t)(temp * 100)) & 0xFF;                                          /* 小端模式 低8位 */
-            pInBuff[3] = ((uint16_t)(temp * 100)) >> 8;                                            /* 小端模式 高8位 */
-            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_TMP, pInBuff, 4); /* 温度信息 */
+        case eProtocolEmitPack_Client_CMD_STATUS:                                                 /* 状态信息查询帧 (首帧) */
+            temp = temp_Get_Temp_Data_BTM();                                                      /* 下加热体温度 */
+            pInBuff[0] = ((uint16_t)(temp * 100)) & 0xFF;                                         /* 小端模式 低8位 */
+            pInBuff[1] = ((uint16_t)(temp * 100)) >> 8;                                           /* 小端模式 高8位 */
+            temp = temp_Get_Temp_Data_TOP();                                                      /* 上加热体温度 */
+            pInBuff[2] = ((uint16_t)(temp * 100)) & 0xFF;                                         /* 小端模式 低8位 */
+            pInBuff[3] = ((uint16_t)(temp * 100)) >> 8;                                           /* 小端模式 高8位 */
+            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_TMP, pInBuff, 4); /* 温度信息 */
             protocol_Get_Version(pInBuff);
-            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_VER, pInBuff, 4); /* 软件版本信息 */
+            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_VER, pInBuff, 4); /* 软件版本信息 */
 
             if (tray_Motor_Get_Status_Position() == 0) { /* 托盘状态 */
                 pInBuff[0] = 1;                          /* 托盘处于测试位置 原点 */
@@ -1084,7 +1206,7 @@ void protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
             } else {
                 pInBuff[0] = 0;
             }
-            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, pInBuff, 1); /* 托盘状态信息 */
+            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, pInBuff, 1); /* 托盘状态信息 */
             break;
         case eProtocolEmitPack_Client_CMD_UPGRADE: /* 下位机升级命令帧 0x0F */
             if (spi_FlashWriteAndCheck_Word(0x0000, 0x87654321) == 0) {
@@ -1131,7 +1253,7 @@ void protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
                 }
             }
             cnt = pInBuff[6] * 2 + 2;
-            comm_Main_SendTask_QueueEmitWithBuild(eProtocoleRespPack_Client_SAMP_DATA, &pInBuff[6], cnt, 20);
+            comm_Main_SendTask_QueueEmitWithBuild(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], cnt, 20);
             comm_Out_SendTask_QueueEmitWithModify(pInBuff + 6, length, 0);
             break;
         case eComm_Data_Inbound_CMD_OVER: /* 采集数据完成帧 */
@@ -1142,7 +1264,7 @@ void protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
             }
             break;
         case eComm_Data_Inbound_CMD_ERROR: /* 采集板错误信息帧 */
-            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_ERR, &pInBuff[6], 2);
+            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_ERR, &pInBuff[6], 2);
             break;
         default:
             error_Emit(eError_Comm_Data_Unknow_CMD);
