@@ -708,6 +708,9 @@ static void motor_Task(void * argument)
                     comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, buffer, 6);
                 } while (gMotorPRessureStopBits_Get(mf.fun_type) == 0);
                 break;
+            case eMotor_Fun_Self_Check: /* 自检测试 */
+
+                break;
             default:
                 break;
         }

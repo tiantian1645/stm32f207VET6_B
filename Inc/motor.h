@@ -57,6 +57,7 @@ typedef enum {
     eMotor_Fun_PRE_HEATER,   /* 压力测试 上加热体 */
     eMotor_Fun_PRE_WHITE,    /* 压力测试 白板 */
     eMotor_Fun_PRE_ALL,      /* 压力测试 */
+    eMotor_Fun_Self_Check,   /* 自检测试 */
 } eMotor_Fun;
 
 /* 电机任务队列效果结构 */

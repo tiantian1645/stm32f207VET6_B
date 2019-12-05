@@ -618,12 +618,12 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
         return;
     }
 
-    protocol_Parse_AnswerACK(eComm_Out, pInBuff[3]); /* 发送回应包 */
-    switch (pInBuff[5]) {                            /* 进一步处理 功能码 */
-        case 0xD0:                                   /* 电机调试 */
-            switch (pInBuff[6]) {                    /* 电机索引 */
-                case 0:                              /* 扫码电机 */
-                    if (length == 13) {              /* 驱动层调试 */
+    protocol_Parse_AnswerACK(eComm_Out, pInBuff[3]);   /* 发送回应包 */
+    switch (pInBuff[5]) {                              /* 进一步处理 功能码 */
+        case eProtocolEmitPack_Client_CMD_Debug_Motor: /* 电机调试 */
+            switch (pInBuff[6]) {                      /* 电机索引 */
+                case 0:                                /* 扫码电机 */
+                    if (length == 13) {                /* 驱动层调试 */
                         m_l6470_Index_Switch(eM_L6470_Index_0, portMAX_DELAY);
                         step = *((uint32_t *)(&pInBuff[8]));
                         if (pInBuff[7] == 0) {
@@ -640,7 +640,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                         memcpy(pInBuff + 1, (uint8_t *)(&status), 2);
                         status = barcode_Motor_Read_Position();
                         memcpy(pInBuff + 3, (uint8_t *)(&status), 4);
-                        comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, pInBuff, 7);
+                        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Motor, pInBuff, 7);
                         m_l6470_release();
                     } else if (length == 10) {                       /* 应用层调试 */
                         barcode_Scan_Bantch(pInBuff[7], pInBuff[8]); /* 位置掩码 扫码使能掩码 */
@@ -675,7 +675,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                         memcpy(pInBuff + 1, (uint8_t *)(&status), 2);
                         status = tray_Motor_Read_Position();
                         memcpy(pInBuff + 3, (uint8_t *)(&status), 4);
-                        comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, pInBuff, 7);
+                        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Motor, pInBuff, 7);
                         m_l6470_release();
                     } else if (length == 9) { /* 应用层调试 */
                         switch ((pInBuff[7])) {
@@ -768,7 +768,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                     break;
             }
             break;
-        case 0xD2:
+        case eProtocolEmitPack_Client_CMD_Debug_Scan:
             if (length == 9) {
                 barcode_serial_Test();
                 break;
@@ -778,10 +778,10 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
 
             barcode_Read_From_Serial(&result, pInBuff, 100, 2000);
             if (result > 0) {
-                comm_Out_SendTask_QueueEmitWithBuildCover(0xD2, pInBuff, result);
+                comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Scan, pInBuff, result);
             }
             break;
-        case 0xD3:
+        case eProtocolEmitPack_Client_CMD_Debug_Heater:
             switch (length) {
                 case 7:  /* 无参数 读取加热使能状态*/
                 default: /* 兜底 */
@@ -792,7 +792,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                     if (heater_TOP_Output_Is_Live()) { /* 上加热体存活状态 */
                         pInBuff[0] |= (1 << 1);
                     }
-                    comm_Out_SendTask_QueueEmitWithBuildCover(0xD3, pInBuff, 1);
+                    comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Heater, pInBuff, 1);
                     break;
                 case 8:                            /* 一个参数 配置加热使能状态 */
                     if (pInBuff[6] & (1 << 0)) {   /* 下加热体 */
@@ -815,7 +815,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                             temp = heater_BTM_Conf_Get(pInBuff[7] + result);
                             memcpy(pInBuff + 3 + 4 * result, (uint8_t *)(&temp), 4);
                         }
-                        comm_Out_SendTask_QueueEmitWithBuildCover(0xD3, pInBuff, 3 + 4 * pInBuff[2]);
+                        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Heater, pInBuff, 3 + 4 * pInBuff[2]);
                     } else { /* 上加热体 */
                         pInBuff[0] = pInBuff[6];
                         pInBuff[1] = pInBuff[7];
@@ -824,7 +824,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                             temp = heater_TOP_Conf_Get(pInBuff[7] + result);
                             memcpy(pInBuff + 3 + 4 * result, (uint8_t *)(&temp), 4);
                         }
-                        comm_Out_SendTask_QueueEmitWithBuildCover(0xD3, pInBuff, 3 + 4 * pInBuff[2]);
+                        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Heater, pInBuff, 3 + 4 * pInBuff[2]);
                     }
                     break;
                 case 22:                   /* 22个参数 修改PID参数 */
@@ -842,7 +842,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                     break;
             }
             break;
-        case 0xD4:
+        case eProtocolEmitPack_Client_CMD_Debug_Flag:
             if (length == 9) {
                 if (pInBuff[7] == 0) {
                     protocol_Debug_Clear(pInBuff[6]);
@@ -851,45 +851,46 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 }
             } else {
                 pInBuff[0] = protocol_Debug_Get();
-                comm_Out_SendTask_QueueEmitWithBuildCover(0xD4, pInBuff, 1);
+                comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Flag, pInBuff, 1);
             }
             break;
-        case 0xD5:
+        case eProtocolEmitPack_Client_CMD_Debug_Beep:
             if (length != 14) {
                 beep_Start();
             } else {
                 beep_Start_With_Conf(pInBuff[6] % 7, (pInBuff[7] << 8) + pInBuff[8], (pInBuff[9] << 8) + pInBuff[10], (pInBuff[11] << 8) + pInBuff[12]);
             }
             break;
-        case 0xD6: /* SPI Flash 读测试 */
+        case eProtocolEmitPack_Client_CMD_Debug_Flash_Read: /* SPI Flash 读测试 */
             result = storgeReadConfInfo((pInBuff[6] << 16) + (pInBuff[7] << 8) + pInBuff[8], (pInBuff[9] << 16) + (pInBuff[10] << 8) + pInBuff[11], 200);
             if (result == 0) {
                 storgeTaskNotification(eStorgeNotifyConf_Read_Falsh, eComm_Out); /* 通知存储任务 */
             }
             break;
-        case 0xD7: /* SPI Flash 写测试 */
+        case eProtocolEmitPack_Client_CMD_Debug_Flash_Write: /* SPI Flash 写测试 */
             result = storgeWriteConfInfo((pInBuff[6] << 16) + (pInBuff[7] << 8) + pInBuff[8], &pInBuff[12],
                                          (pInBuff[9] << 16) + (pInBuff[10] << 8) + pInBuff[11], 200);
             if (result == 0) {
                 storgeTaskNotification(eStorgeNotifyConf_Write_Falsh, eComm_Out); /* 通知存储任务 */
             }
             break;
-        case 0xD8: /* EEPROM 读测试 */
+        case eProtocolEmitPack_Client_CMD_Debug_EEPROM_Read: /* EEPROM 读测试 */
             result = storgeReadConfInfo((pInBuff[6] << 16) + (pInBuff[7] << 8) + pInBuff[8], (pInBuff[9] << 16) + (pInBuff[10] << 8) + pInBuff[11], 200);
             if (result == 0) {
                 storgeTaskNotification(eStorgeNotifyConf_Read_ID_Card, eComm_Out); /* 通知存储任务 */
             }
             break;
-        case 0xD9: /* EEPROM 写测试 */
+        case eProtocolEmitPack_Client_CMD_Debug_EEPROM_Write: /* EEPROM 写测试 */
             result = storgeWriteConfInfo((pInBuff[6] << 16) + (pInBuff[7] << 8) + pInBuff[8], &pInBuff[12],
                                          (pInBuff[9] << 16) + (pInBuff[10] << 8) + pInBuff[11], 200);
             if (result == 0) {
                 storgeTaskNotification(eStorgeNotifyConf_Write_ID_Card, eComm_Out); /* 通知存储任务 */
             }
             break;
-        case 0xDB:
+        case eProtocolEmitPack_Client_CMD_Debug_Motor_Fun:
             motor_fun.fun_type = (eMotor_Fun)pInBuff[6]; /* 开始测试 */
-            motor_Emit(&motor_fun, 0);                   /* 提交到电机队列 */
+            pInbuff[0] = motor_Emit(&motor_fun, 0);      /* 提交到电机队列 */
+            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Motor_Fun, pInBuff, 1);
             break;
         case 0xDC:
             if (length == 7) {
@@ -900,7 +901,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 error_Emit(eError_Comm_Out_Param_Error);
             }
             break;
-        case 0xDD:
+        case eProtocolEmitPack_Client_CMD_Debug_Params:
             if (length == 9) {                                  /* 保存参数 */
                 status = (pInBuff[6] << 0) + (pInBuff[7] << 8); /* 起始索引 */
                 if (status == 0xFFFF) {
@@ -920,7 +921,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 error_Emit(eError_Comm_Out_Param_Error);
             }
             break;
-        case 0xDE:                                              /* 升级Bootloader */
+        case eProtocolEmitPack_Client_CMD_Debug_BL:             /* 升级Bootloader */
             if ((pInBuff[10] << 0) + (pInBuff[11] << 8) == 0) { /* 数据长度为空 尾包 */
                 result = Innate_Flash_Dump((pInBuff[6] << 0) + (pInBuff[7] << 8),
                                            (pInBuff[12] << 0) + (pInBuff[13] << 8) + (pInBuff[14] << 16) + (pInBuff[15] << 24));
@@ -942,7 +943,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 comm_Out_SendTask_QueueEmitWithBuildCover(0xDE, pInBuff, 1);
             }
             break;
-        case 0xDF:
+        case eProtocolEmitPack_Client_CMD_Debug_Version:
             memcpy(pInBuff, (uint8_t *)(UID_BASE), 12);
             memcpy(pInBuff + 12, (uint8_t *)__TIME__, strlen(__TIME__));
             memcpy(pInBuff + 12 + strlen(__TIME__), (uint8_t *)__DATE__, strlen(__DATE__));

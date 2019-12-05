@@ -23,6 +23,20 @@ typedef enum {
     eProtocolEmitPack_Client_CMD_READ_ID = 0x06, /* ID卡读取命令帧 */
     eProtocolEmitPack_Client_CMD_STATUS = 0x07,  /* 状态信息查询帧 (首帧) */
     eProtocolEmitPack_Client_CMD_UPGRADE = 0x0F, /* 下位机升级命令帧 */
+
+    eProtocolEmitPack_Client_CMD_Debug_Motor = 0xD0,        /* 调试用 电机控制 */
+    eProtocolEmitPack_Client_CMD_Debug_Scan = 0xD2,         /* 调试用 扫码测试 */
+    eProtocolEmitPack_Client_CMD_Debug_Heater = 0xD3,       /* 调试用 加热控制 */
+    eProtocolEmitPack_Client_CMD_Debug_Flag = 0xD4,         /* 调试用 标志位设置 */
+    eProtocolEmitPack_Client_CMD_Debug_Beep = 0xD5,         /* 调试用 蜂鸣器控制 */
+    eProtocolEmitPack_Client_CMD_Debug_Flash_Read = 0xD6,   /* 调试用 外部Flash读 */
+    eProtocolEmitPack_Client_CMD_Debug_Flash_Write = 0xD7,  /* 调试用 外部Flash写 */
+    eProtocolEmitPack_Client_CMD_Debug_EEPROM_Read = 0xD8,  /* 调试用 EEPROM读 */
+    eProtocolEmitPack_Client_CMD_Debug_EEPROM_Write = 0xD9, /* 调试用 EEPROM写 */
+    eProtocolEmitPack_Client_CMD_Debug_Motor_Fun = 0xDB,    /* 调试用 电机任务功能 */
+    eProtocolEmitPack_Client_CMD_Debug_Params = 0xDD,       /* 调试用 参数配置 */
+    eProtocolEmitPack_Client_CMD_Debug_BL = 0xDE,           /* 调试用 升级Bootloader */
+    eProtocolEmitPack_Client_CMD_Debug_Version = 0xDF,      /* 调试用 编译日期信息 */
 } eProtocolEmitPack_Client_CMD_Type;
 
 typedef enum {
