@@ -47,6 +47,6 @@ uint8_t spi_FlashReadInfo(void);
 
 uint8_t spi_FlashWriteAndCheck_Word(uint32_t addr, uint32_t data);
 
-uint8_t spi_FalshIsInRange(uint32_t addr, uint32_t total);
+uint8_t spi_FlashIsInRange(uint32_t addr, uint32_t total);
 
 #endif

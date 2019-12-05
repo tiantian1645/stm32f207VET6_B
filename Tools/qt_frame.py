@@ -568,7 +568,7 @@ class MainWindow(QMainWindow):
         self.matplot_period_tv_lb = QLabel("NL")
         self.matplot_period_tv_cb = QCheckBox()
         self.matplot_period_tv_cb.setTristate(True)
-        self.matplot_period_tv_cb.stateChanged.connect(lambda x: self.matplot_period_tv_lb.setText(('NL', 'OD', 'PD')[x]))
+        self.matplot_period_tv_cb.stateChanged.connect(lambda x: self.matplot_period_tv_lb.setText(("NL", "OD", "PD")[x]))
         for i in range(7):
             self.motor_scan_bts[i].setMaximumWidth(45)
             barcode_ly.addWidget(self.motor_scan_bts[i], i, 0)
@@ -1143,7 +1143,7 @@ class MainWindow(QMainWindow):
         elif cmd_type == 0xDA:
             self.updateSelfCheckDialog(info)
         elif cmd_type == 0xDD:
-            self.updateOutFalshParam(info)
+            self.updateOutFlashParam(info)
         elif cmd_type == 0xEE:
             self.updateTemperautreRaw(info)
         elif cmd_type == 0xDF:
@@ -1364,28 +1364,33 @@ class MainWindow(QMainWindow):
 
     def createSelfCheckDialog(self):
         self.selftest_dg = QDialog(self)
+        self.selftest_dg.resize(467, 181)
+        self.selftest_dg.resizeEvent = lambda x: logger.debug(f"windows size | {self.selftest_dg.size()}")
         self.selftest_dg.setWindowTitle("自检测试")
         self.selftest_temp_lbs = [QLabel("**.**") for _ in range(9)]
         selftest_dg_ly = QVBoxLayout(self.selftest_dg)
         selftest_temp_ly = QHBoxLayout()
         self.selftest_temp_top_gb = QGroupBox("上加热体温度")
         self.selftest_temp_top_gb.setLayout(QHBoxLayout())
+        self.selftest_temp_top_gb.layout().setContentsMargins(3, 3, 3, 3)
         for lb in self.selftest_temp_lbs[0:6]:
             lb.setAlignment(Qt.AlignCenter)
             self.selftest_temp_top_gb.layout().addWidget(lb)
         self.selftest_temp_btm_gb = QGroupBox("下加热体温度")
         self.selftest_temp_btm_gb.setLayout(QHBoxLayout())
+        self.selftest_temp_btm_gb.layout().setContentsMargins(3, 3, 3, 3)
         for lb in self.selftest_temp_lbs[6:8]:
             lb.setAlignment(Qt.AlignCenter)
             self.selftest_temp_btm_gb.layout().addWidget(lb)
         self.selftest_temp_env_gb = QGroupBox("环境")
         self.selftest_temp_env_gb.setLayout(QHBoxLayout())
+        self.selftest_temp_env_gb.layout().setContentsMargins(3, 3, 3, 3)
         for lb in self.selftest_temp_lbs[8:9]:
             lb.setAlignment(Qt.AlignCenter)
             self.selftest_temp_env_gb.layout().addWidget(lb)
-        selftest_temp_ly.addWidget(self.selftest_temp_top_gb)
-        selftest_temp_ly.addWidget(self.selftest_temp_btm_gb)
-        selftest_temp_ly.addWidget(self.selftest_temp_env_gb)
+        selftest_temp_ly.addWidget(self.selftest_temp_top_gb, stretch=6)
+        selftest_temp_ly.addWidget(self.selftest_temp_btm_gb, stretch=2)
+        selftest_temp_ly.addWidget(self.selftest_temp_env_gb, stretch=1)
         self.selftest_temp_top_gb.mousePressEvent = lambda x: [self._clear_widget_style_sheet(self.selftest_temp_top_gb), self._serialSendPack(0xDA, (0x01,))]
         self.selftest_temp_btm_gb.mousePressEvent = lambda x: [self._clear_widget_style_sheet(self.selftest_temp_btm_gb), self._serialSendPack(0xDA, (0x02,))]
         self.selftest_temp_env_gb.mousePressEvent = lambda x: [self._clear_widget_style_sheet(self.selftest_temp_env_gb), self._serialSendPack(0xDA, (0x03,))]
@@ -1394,30 +1399,36 @@ class MainWindow(QMainWindow):
         self.selftest_motor_lbs = [QLabel(t) for t in ("上", "下", "进", "出", "PD", "白")]
         self.selftest_motor_heater_gb = QGroupBox("上加热体")
         self.selftest_motor_heater_gb.setLayout(QHBoxLayout())
+        self.selftest_motor_heater_gb.layout().setContentsMargins(3, 3, 3, 3)
         for lb in self.selftest_motor_lbs[0:2]:
             lb.setAlignment(Qt.AlignCenter)
             self.selftest_motor_heater_gb.layout().addWidget(lb)
         self.selftest_motor_tray_gb = QGroupBox("托盘")
         self.selftest_motor_tray_gb.setLayout(QHBoxLayout())
+        self.selftest_motor_tray_gb.layout().setContentsMargins(3, 3, 3, 3)
         for lb in self.selftest_motor_lbs[2:4]:
             lb.setAlignment(Qt.AlignCenter)
             self.selftest_motor_tray_gb.layout().addWidget(lb)
         self.selftest_motor_white_gb = QGroupBox("白板")
         self.selftest_motor_white_gb.setLayout(QHBoxLayout())
+        self.selftest_motor_white_gb.layout().setContentsMargins(3, 3, 3, 3)
         for lb in self.selftest_motor_lbs[4:6]:
             lb.setAlignment(Qt.AlignCenter)
             self.selftest_motor_white_gb.layout().addWidget(lb)
         self.selftest_motor_scan_gb = QGroupBox("扫码")
         self.selftest_motor_scan_gb.setLayout(QHBoxLayout())
+        self.selftest_motor_scan_gb.layout().setContentsMargins(3, 3, 3, 3)
         self.selftest_motor_scan_m = QLabel("电机")
         self.selftest_motor_scan_l = QLabel("*" * 10)
-        self.selftest_motor_scan_gb.layout().addWidget(self.selftest_motor_scan_m)
+        self.selftest_motor_scan_m.setAlignment(Qt.AlignCenter)
+        self.selftest_motor_scan_l.setAlignment(Qt.AlignCenter)
+        self.selftest_motor_scan_gb.layout().addWidget(self.selftest_motor_scan_m, stretch=1)
         self.selftest_motor_scan_gb.layout().addWidget(QVLine())
-        self.selftest_motor_scan_gb.layout().addWidget(self.selftest_motor_scan_l)
-        selftest_motor_ly.addWidget(self.selftest_motor_heater_gb)
-        selftest_motor_ly.addWidget(self.selftest_motor_tray_gb)
-        selftest_motor_ly.addWidget(self.selftest_motor_white_gb)
-        selftest_motor_ly.addWidget(self.selftest_motor_scan_gb)
+        self.selftest_motor_scan_gb.layout().addWidget(self.selftest_motor_scan_l, stretch=2)
+        selftest_motor_ly.addWidget(self.selftest_motor_heater_gb, stretch=1)
+        selftest_motor_ly.addWidget(self.selftest_motor_tray_gb, stretch=1)
+        selftest_motor_ly.addWidget(self.selftest_motor_white_gb, stretch=1)
+        selftest_motor_ly.addWidget(self.selftest_motor_scan_gb, stretch=3)
         self.selftest_motor_heater_gb.mousePressEvent = lambda x: [
             self._clear_widget_style_sheet(self.selftest_motor_heater_gb),
             self._serialSendPack(0xDA, (0x07,)),
@@ -1438,16 +1449,17 @@ class MainWindow(QMainWindow):
         ]
 
         selftest_storge_ly = QHBoxLayout()
-        self.selftest_storge_lb_f = QLabel("片外 Flash") 
+        self.selftest_storge_lb_f = QLabel("片外 Flash")
         self.selftest_storge_lb_c = QLabel("ID Code 卡")
         selftest_storge_gb = QGroupBox("存储")
         selftest_storge_gb.setLayout(QHBoxLayout())
+        selftest_storge_gb.layout().setContentsMargins(3, 3, 3, 3)
         self.selftest_storge_lb_f.setAlignment(Qt.AlignCenter)
         self.selftest_storge_lb_c.setAlignment(Qt.AlignCenter)
         selftest_storge_gb.layout().addWidget(self.selftest_storge_lb_f)
         selftest_storge_gb.layout().addWidget(self.selftest_storge_lb_c)
-        self.selftest_storge_lb_f.mousePressEvent = lambda x: [self._setColor(self.selftest_storge_lb_f), self._serialSendPack(0xDA, (0x04, ))]
-        self.selftest_storge_lb_c.mousePressEvent = lambda x: [self._setColor(self.selftest_storge_lb_c), self._serialSendPack(0xDA, (0x05, ))]
+        self.selftest_storge_lb_f.mousePressEvent = lambda x: [self._setColor(self.selftest_storge_lb_f), self._serialSendPack(0xDA, (0x04,))]
+        self.selftest_storge_lb_c.mousePressEvent = lambda x: [self._setColor(self.selftest_storge_lb_c), self._serialSendPack(0xDA, (0x05,))]
         selftest_storge_ly.addWidget(selftest_storge_gb)
 
         selftest_dg_ly.addLayout(selftest_temp_ly)
@@ -1494,6 +1506,16 @@ class MainWindow(QMainWindow):
                     self._setColor(lb, nbg="green")
                 else:
                     self._setColor(lb, nbg="red")
+        elif item == 4:
+            if result > 0:
+                self._setColor(self.selftest_storge_lb_f, nbg="red")
+            else:
+                self._setColor(self.selftest_storge_lb_f, nbg="green")
+        elif item == 5:
+            if result > 0:
+                self._setColor(self.selftest_storge_lb_c, nbg="red")
+            else:
+                self._setColor(self.selftest_storge_lb_c, nbg="green")
         elif item == 6:
             if result > 0:
                 self.selftest_motor_white_gb.setStyleSheet("QGroupBox:title {color: red};")
@@ -1549,13 +1571,16 @@ class MainWindow(QMainWindow):
             self._clear_widget_style_sheet(self.selftest_temp_top_gb)
             self._clear_widget_style_sheet(self.selftest_temp_btm_gb)
             self._clear_widget_style_sheet(self.selftest_temp_env_gb)
-            self._clear_widget_style_sheet(self.selftest_motor_heater_gb),
-            self._clear_widget_style_sheet(self.selftest_motor_tray_gb),
-            self._clear_widget_style_sheet(self.selftest_motor_white_gb),
+            self._clear_widget_style_sheet(self.selftest_motor_heater_gb)
+            self._clear_widget_style_sheet(self.selftest_motor_tray_gb)
+            self._clear_widget_style_sheet(self.selftest_motor_white_gb)
             self._setColor(self.selftest_motor_scan_m)
-            self._setColor(self.selftest_motor_scan_l),
-            self.selftest_motor_scan_l.setText("*" * 10),
+            self._setColor(self.selftest_motor_scan_l)
+            self.selftest_motor_scan_l.setText("*" * 10)
+            self._setColor(self.selftest_storge_lb_f)
+            self._setColor(self.selftest_storge_lb_c)
             self._serialSendPack(0xDA)
+            self.selftest_dg.show()
         elif button == Qt.RightButton:
             logger.debug("show self test dialog")
             self.selftest_dg.show()
@@ -1736,14 +1761,14 @@ class MainWindow(QMainWindow):
         out_flash_param_gb = QGroupBox("系统参数")
         out_flash_param_ly = QVBoxLayout(out_flash_param_gb)
         out_flash_param_ly.setSpacing(5)
-        self.out_falsh_param_temp_sps = [QDoubleSpinBox(self) for _ in range(9)]
-        self.out_falsh_param_read_bt = QPushButton("读取")
-        self.out_falsh_param_write_bt = QPushButton("写入")
+        self.out_flash_param_temp_sps = [QDoubleSpinBox(self) for _ in range(9)]
+        self.out_flash_param_read_bt = QPushButton("读取")
+        self.out_flash_param_write_bt = QPushButton("写入")
 
         out_flash_param_temp_cc_wg = QGroupBox("温度校正参数")
         out_flash_param_temp_cc_ly = QGridLayout(out_flash_param_temp_cc_wg)
 
-        for i, sp in enumerate(self.out_falsh_param_temp_sps):
+        for i, sp in enumerate(self.out_flash_param_temp_sps):
             sp.setMaximumWidth(90)
             sp.setRange(-5, 5)
             sp.setDecimals(3)
@@ -1764,8 +1789,8 @@ class MainWindow(QMainWindow):
 
         out_flash_param_od_cc_wg = QGroupBox("OD校正参数")
         out_flash_param_od_cc_ly = QVBoxLayout(out_flash_param_od_cc_wg)
-        self.out_falsh_param_cc_sps = [QDoubleSpinBox(self) for _ in range(156)]
-        for idx, sp in enumerate(self.out_falsh_param_cc_sps):
+        self.out_flash_param_cc_sps = [QDoubleSpinBox(self) for _ in range(156)]
+        for idx, sp in enumerate(self.out_flash_param_cc_sps):
             sp.setRange(0, 99999999)
             sp.setDecimals(0)
             sp.setValue(idx)
@@ -1786,8 +1811,8 @@ class MainWindow(QMainWindow):
                 for k in range(6):
                     temp_ly.addWidget(QVLine())
                     head = k * 1 + j * 12 + i * 24 + 36 - 12 * pp
-                    temp_ly.addWidget(self.out_falsh_param_cc_sps[head])
-                    temp_ly.addWidget(self.out_falsh_param_cc_sps[head + 6])
+                    temp_ly.addWidget(self.out_flash_param_cc_sps[head])
+                    temp_ly.addWidget(self.out_flash_param_cc_sps[head + 6])
                 out_flash_param_od_cc_ly.addLayout(temp_ly)
         out_flash_param_ly.addWidget(out_flash_param_od_cc_wg)
 
@@ -1799,13 +1824,13 @@ class MainWindow(QMainWindow):
         temp_ly = QHBoxLayout()
         temp_ly.setContentsMargins(5, 0, 5, 0)
         temp_ly.setSpacing(5)
-        temp_ly.addWidget(self.out_falsh_param_read_bt)
-        temp_ly.addWidget(self.out_falsh_param_write_bt)
+        temp_ly.addWidget(self.out_flash_param_read_bt)
+        temp_ly.addWidget(self.out_flash_param_write_bt)
         out_flash_data_ly.addLayout(temp_ly)
 
         self.out_flash_data_read_bt.clicked.connect(self.onOutFlashRead)
-        self.out_falsh_param_read_bt.clicked.connect(self.onOutFlashParamRead)
-        self.out_falsh_param_write_bt.clicked.connect(self.onOutFlashParamWrite)
+        self.out_flash_param_read_bt.clicked.connect(self.onOutFlashParamRead)
+        self.out_flash_param_write_bt.clicked.connect(self.onOutFlashParamWrite)
 
     def onOutFlashParamRead(self, event):
         data = (*(struct.pack("H", 0)), *(struct.pack("H", 165)))
@@ -1813,10 +1838,10 @@ class MainWindow(QMainWindow):
 
     def onOutFlashParamWrite(self, event):
         data = []
-        for idx, sp in enumerate(self.out_falsh_param_temp_sps):
+        for idx, sp in enumerate(self.out_flash_param_temp_sps):
             for d in struct.pack("f", sp.value()):
                 data.append(d)
-        for idx, sp in enumerate(self.out_falsh_param_cc_sps):
+        for idx, sp in enumerate(self.out_flash_param_cc_sps):
             for d in struct.pack("I", int(sp.value())):
                 data.append(d)
         for i in range(0, len(data), 224):
@@ -1826,24 +1851,24 @@ class MainWindow(QMainWindow):
             self._serialSendPack(0xDD, start + num + sl)
         data = (0xFF, 0xFF)
         self._serialSendPack(0xDD, data)
-        for sp in self.out_falsh_param_cc_sps + self.out_falsh_param_temp_sps:
+        for sp in self.out_flash_param_cc_sps + self.out_flash_param_temp_sps:
             self._setColor(sp, nfg="red")
         QTimer.singleShot(500, partial(self.onOutFlashParamRead, event=False))
 
-    def updateOutFalshParam(self, info):
+    def updateOutFlashParam(self, info):
         raw_pack = info.content
         start = struct.unpack("H", raw_pack[6:8])[0]
         num = struct.unpack("H", raw_pack[8:10])[0]
         for i in range(num):
             idx = start + i
-            if idx < len(self.out_falsh_param_temp_sps):
+            if idx < len(self.out_flash_param_temp_sps):
                 value = struct.unpack("f", raw_pack[10 + i * 4 : 14 + i * 4])[0]
-                self.out_falsh_param_temp_sps[idx].setValue(value)
-                self._setColor(self.out_falsh_param_temp_sps[idx])
+                self.out_flash_param_temp_sps[idx].setValue(value)
+                self._setColor(self.out_flash_param_temp_sps[idx])
             else:
                 value = struct.unpack("I", raw_pack[10 + i * 4 : 14 + i * 4])[0]
-                self.out_falsh_param_cc_sps[idx - len(self.out_falsh_param_temp_sps)].setValue(value)
-                self._setColor(self.out_falsh_param_cc_sps[idx - len(self.out_falsh_param_temp_sps)])
+                self.out_flash_param_cc_sps[idx - len(self.out_flash_param_temp_sps)].setValue(value)
+                self._setColor(self.out_flash_param_cc_sps[idx - len(self.out_flash_param_temp_sps)])
 
     def genBinaryData(self, data, unit=32, offset=0):
         result = []
@@ -1929,7 +1954,7 @@ class MainWindow(QMainWindow):
         self.out_flash_data_dg.setWindowTitle(f"外部Flash | sha256 {sha256(self.out_flash_data).hexdigest()}")
         result = self.genBinaryData(self.out_flash_data[: start + length], offset=self.out_flash_start)
         raw_text = "\n".join(result)
-        logger.debug(f"Out Falsh Raw Data | {start} | {length}\n{raw_text}")
+        logger.debug(f"Out Flash Raw Data | {start} | {length}\n{raw_text}")
         if self.out_flash_start == 0x1000 and self.out_flash_length == 660:
             info = DC201_ParamInfo(self.out_flash_data[: start + length])
             plain_text = f"{info}\n{'=' * 100}\nraw bytes:\n{raw_text}"

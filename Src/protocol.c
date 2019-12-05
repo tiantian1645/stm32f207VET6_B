@@ -957,14 +957,14 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
         case eProtocolEmitPack_Client_CMD_Debug_Flash_Read: /* SPI Flash 读测试 */
             result = storgeReadConfInfo((pInBuff[6] << 16) + (pInBuff[7] << 8) + pInBuff[8], (pInBuff[9] << 16) + (pInBuff[10] << 8) + pInBuff[11], 200);
             if (result == 0) {
-                storgeTaskNotification(eStorgeNotifyConf_Read_Falsh, eComm_Out); /* 通知存储任务 */
+                storgeTaskNotification(eStorgeNotifyConf_Read_Flash, eComm_Out); /* 通知存储任务 */
             }
             break;
         case eProtocolEmitPack_Client_CMD_Debug_Flash_Write: /* SPI Flash 写测试 */
             result = storgeWriteConfInfo((pInBuff[6] << 16) + (pInBuff[7] << 8) + pInBuff[8], &pInBuff[12],
                                          (pInBuff[9] << 16) + (pInBuff[10] << 8) + pInBuff[11], 200);
             if (result == 0) {
-                storgeTaskNotification(eStorgeNotifyConf_Write_Falsh, eComm_Out); /* 通知存储任务 */
+                storgeTaskNotification(eStorgeNotifyConf_Write_Flash, eComm_Out); /* 通知存储任务 */
             }
             break;
         case eProtocolEmitPack_Client_CMD_Debug_EEPROM_Read: /* EEPROM 读测试 */
@@ -990,10 +990,10 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 protocol_Self_Check_Temp_TOP(pInBuff);
                 protocol_Self_Check_Temp_BTM(pInBuff);
                 protocol_Self_Check_Temp_ENV(pInBuff);
-                motor_fun.fun_type = eMotor_Fun_Self_Check; /* 整体自检测试 */
-                pInBuff[0] = motor_Emit(&motor_fun, 0);     /* 提交到电机队列 */
-                comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pInBuff, 1);
-            } else if (length == 8) { /* 单向测试结果 */
+                motor_fun.fun_type = eMotor_Fun_Self_Check;                    /* 整体自检测试 */
+                motor_Emit(&motor_fun, 0);                                     /* 提交到电机队列 */
+                storgeTaskNotification(eStorgeNotifyConf_Test_All, eComm_Out); /* 通知存储任务 */
+            } else if (length == 8) {                                          /* 单向测试结果 */
                 switch (pInBuff[6]) {
                     case 1: /* 上加热体温度结果 */
                         protocol_Self_Check_Temp_TOP(pInBuff);
@@ -1004,8 +1004,11 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                     case 3: /* 环境温度结果 */
                         protocol_Self_Check_Temp_ENV(pInBuff);
                         break;
-                    case 4: /* ID Code 卡 */
-                    case 5: /* 外部Flash */
+                    case 4:                                                              /* 外部Flash */
+                        storgeTaskNotification(eStorgeNotifyConf_Test_Flash, eComm_Out); /* 通知存储任务 */
+                        break;
+                    case 5:                                                                /* ID Code 卡 */
+                        storgeTaskNotification(eStorgeNotifyConf_Test_ID_Card, eComm_Out); /* 通知存储任务 */
                         break;
                     default:
                         motor_fun.fun_type = eMotor_Fun_Self_Check_Motor_White - 6 + pInBuff[6]; /* 整体自检测试 单项 */

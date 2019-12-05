@@ -756,7 +756,7 @@ uint8_t spi_FlashWriteAndCheck_Word(uint32_t addr, uint32_t data)
  * @param  total   操作长度
  * @retval 1 范围内 0 范围外
  **/
-uint8_t spi_FalshIsInRange(uint32_t addr, uint32_t total)
+uint8_t spi_FlashIsInRange(uint32_t addr, uint32_t total)
 {
     if ((addr + total) > g_tSF.TotalSize) {
         return 0;

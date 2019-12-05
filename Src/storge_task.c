@@ -21,8 +21,9 @@
 #endif
 
 #define STORGE_DEAL_MASK                                                                                                                                       \
-    (eStorgeNotifyConf_Read_Falsh + eStorgeNotifyConf_Write_Falsh + eStorgeNotifyConf_Read_Parmas + eStorgeNotifyConf_Write_Parmas +                           \
-     eStorgeNotifyConf_Load_Parmas + eStorgeNotifyConf_Dump_Params + eStorgeNotifyConf_Read_ID_Card + eStorgeNotifyConf_Write_ID_Card)
+    (eStorgeNotifyConf_Read_Flash + eStorgeNotifyConf_Write_Flash + eStorgeNotifyConf_Read_Parmas + eStorgeNotifyConf_Write_Parmas +                           \
+     eStorgeNotifyConf_Load_Parmas + eStorgeNotifyConf_Dump_Params + eStorgeNotifyConf_Read_ID_Card + eStorgeNotifyConf_Write_ID_Card +                        \
+     eStorgeNotifyConf_Test_Flash + eStorgeNotifyConf_Test_ID_Card + eStorgeNotifyConf_Test_All)
 
 #define STORGE_APP_PARAMS_ADDR (0x1000) /* Sector 1 */
 #define STORGE_APP_APRAM_PART_NUM (56)  /* 单次操作最大数目 */
@@ -36,6 +37,8 @@ typedef struct {
 /* Private macro -------------------------------------------------------------*/
 
 /* Private constants ---------------------------------------------------------*/
+const uint32_t cStorge_Test_Flash_Addrs[3] = {0x200000, 0x400000, 0x7ff000};
+const uint16_t cStorge_Test_EEPROM_Addrs[3] = {0, 2048, 4080};
 
 /* Private variables ---------------------------------------------------------*/
 static sStorgeTaskQueueInfo gStorgeTaskInfo;
@@ -50,6 +53,8 @@ static uint8_t storge_ParamDump(void);
 static uint8_t storge_ParamApply(uint8_t * pBuff, uint16_t length);
 static uint8_t storge_ParamLoad(uint8_t * pBuff);
 
+static void storge_Test_Flash(uint8_t * pBuffer);
+static void storge_Test_EEPROM(uint8_t * pBuffer);
 /* Private user code ---------------------------------------------------------*/
 
 /**
@@ -167,8 +172,8 @@ void storgeTaskNotification(eStorgeNotifyConf type, eProtocol_COMM_Index index)
 
     notifyValue = type;
 
-    if (type == eStorgeNotifyConf_Read_Falsh || type == eStorgeNotifyConf_Write_Falsh) {
-        if (spi_FalshIsInRange(gStorgeTaskInfo.addr, gStorgeTaskInfo.num) == 0) {
+    if (type == eStorgeNotifyConf_Read_Flash || type == eStorgeNotifyConf_Write_Flash) {
+        if (spi_FlashIsInRange(gStorgeTaskInfo.addr, gStorgeTaskInfo.num) == 0) {
             error_Emit(eError_Out_Flash_Deal_Param);
             return;
         }
@@ -226,7 +231,7 @@ static void storgeTask(void * argument)
         }
         protocol_Temp_Upload_Pause(); /* 暂停温度上送 */
         switch (ulNotifyValue & STORGE_DEAL_MASK) {
-            case eStorgeNotifyConf_Read_Falsh:
+            case eStorgeNotifyConf_Read_Flash:
                 for (i = 0; i < ((gStorgeTaskInfo.num + STORGE_FLASH_PART_NUM - 1) / STORGE_FLASH_PART_NUM); ++i) {
                     readCnt =
                         (gStorgeTaskInfo.num >= STORGE_FLASH_PART_NUM * (i + 1)) ? (STORGE_FLASH_PART_NUM) : (gStorgeTaskInfo.num % STORGE_FLASH_PART_NUM);
@@ -262,7 +267,7 @@ static void storgeTask(void * argument)
                     }
                 }
                 break;
-            case eStorgeNotifyConf_Write_Falsh:
+            case eStorgeNotifyConf_Write_Flash:
                 wroteCnt = spi_FlashWriteBuffer(gStorgeTaskInfo.addr, gStorgeTaskInfo.buffer, gStorgeTaskInfo.num);
                 if (wroteCnt != gStorgeTaskInfo.num) {
                     buff[0] = 1;
@@ -383,10 +388,15 @@ static void storgeTask(void * argument)
                     storgeOutFlashWriteErrorHandle(); /* 写入失败 */
                 }
                 break;
-            case eStorgeNotifyConf_Test_Falsh:
+            case eStorgeNotifyConf_Test_Flash:
+                storge_Test_Flash(buff);
                 break;
             case eStorgeNotifyConf_Test_ID_Card:
+                storge_Test_EEPROM(buff);
                 break;
+            case eStorgeNotifyConf_Test_All:
+                storge_Test_Flash(buff);
+                storge_Test_EEPROM(buff);
             default:
                 break;
         }
@@ -591,4 +601,86 @@ uint16_t storge_ParamRead(eStorgeParamIndex idx, uint16_t num, uint8_t * pBuff)
     p += idx * 4;
     memcpy(pBuff, p, num * 4);
     return num * 4;
+}
+
+/**
+ * @brief  存储测试 Flash
+ * @param  pBuffer 缓存指针
+ * @retval None
+ */
+static void storge_Test_Flash(uint8_t * pBuffer)
+{
+    uint8_t i, j, readCnt, wroteCnt;
+
+    pBuffer[0] = 4;
+    for (i = 0; i < ARRAY_LEN(cStorge_Test_Flash_Addrs); ++i) {
+        readCnt = spi_FlashReadBuffer(cStorge_Test_Flash_Addrs[i], pBuffer + 2, 16);
+        if (readCnt != 16) {
+            pBuffer[1] = 1;
+            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+            break;
+        }
+        for (j = 0; j < 16; ++j) {
+            pBuffer[2 + j] = 0xFF - pBuffer[2 + j];
+        }
+        wroteCnt = spi_FlashWriteBuffer(cStorge_Test_Flash_Addrs[i], pBuffer + 2, 16);
+        if (wroteCnt != 16) {
+            pBuffer[1] = 1;
+            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+            break;
+        }
+        for (j = 0; j < 16; ++j) {
+            pBuffer[2 + j] = 0xFF - pBuffer[2 + j];
+        }
+        wroteCnt = spi_FlashWriteBuffer(cStorge_Test_Flash_Addrs[i], pBuffer + 2, 16);
+    }
+    pBuffer[1] = 0;
+    comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+}
+
+/**
+ * @brief  存储测试 EEPROM
+ * @param  pBuffer 缓存指针
+ * @retval None
+ */
+static void storge_Test_EEPROM(uint8_t * pBuffer)
+{
+    uint8_t i, j, readCnt, wroteCnt;
+
+    pBuffer[0] = 5;
+    for (i = 0; i < ARRAY_LEN(cStorge_Test_EEPROM_Addrs); ++i) {
+        readCnt = I2C_EEPROM_Read(cStorge_Test_EEPROM_Addrs[i], pBuffer + 2, 16, 1000); /* 首次读出数据 */
+        if (readCnt != 16) {
+            pBuffer[1] = 1;
+            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+            break;
+        }
+        for (j = 0; j < 16; ++j) { /*  取反作测试数据 */
+            pBuffer[2 + j] = 0xFF - pBuffer[2 + j];
+        }
+        wroteCnt = I2C_EEPROM_Write(cStorge_Test_EEPROM_Addrs[i], pBuffer + 2, 16, 1000); /* 写入数据 */
+        if (wroteCnt != 16) {
+            pBuffer[1] = 2;
+            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+            break;
+        }
+        readCnt = I2C_EEPROM_Read(cStorge_Test_EEPROM_Addrs[i], pBuffer + 2 + 16, 16, 1000); /* 回读数据 */
+        if (readCnt != 16) {
+            pBuffer[1] = 3;
+            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+            break;
+        }
+        for (j = 0; j < 16; ++j) { /* 二次取反数据 */
+            pBuffer[2 + j] = 0xFF - pBuffer[2 + j];
+            pBuffer[2 + j + 16] = 0xFF - pBuffer[2 + j + 16];
+        }
+        wroteCnt = I2C_EEPROM_Write(cStorge_Test_EEPROM_Addrs[i], pBuffer + 2, 16, 1000); /* 写回原始数据 */
+        if (memcmp(pBuffer + 2, pBuffer + 2 + 16, 16) != 0) {                             /* 对比结果 */
+            pBuffer[1] = 4;
+            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+            break;
+        }
+    }
+    pBuffer[1] = 0;
+    comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
 }

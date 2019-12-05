@@ -8,16 +8,17 @@
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum {
-    eStorgeNotifyConf_Read_Falsh = 0x00000001,
-    eStorgeNotifyConf_Write_Falsh = 0x00000002,
+    eStorgeNotifyConf_Read_Flash = 0x00000001,
+    eStorgeNotifyConf_Write_Flash = 0x00000002,
     eStorgeNotifyConf_Read_Parmas = 0x00000004,
     eStorgeNotifyConf_Write_Parmas = 0x00000008,
     eStorgeNotifyConf_Load_Parmas = 0x00000010,
     eStorgeNotifyConf_Dump_Params = 0x00000020,
     eStorgeNotifyConf_Read_ID_Card = 0x00000040,
     eStorgeNotifyConf_Write_ID_Card = 0x00000080,
-    eStorgeNotifyConf_Test_Falsh = 0x00000100,
+    eStorgeNotifyConf_Test_Flash = 0x00000100,
     eStorgeNotifyConf_Test_ID_Card = 0x00000200,
+    eStorgeNotifyConf_Test_All = 0x00000400,
     eStorgeNotifyConf_COMM_Out = 0x10000000,
     eStorgeNotifyConf_COMM_Main = 0x20000000,
 } eStorgeNotifyConf;
