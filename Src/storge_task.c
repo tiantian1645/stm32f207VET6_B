@@ -299,13 +299,13 @@ static void storgeTask(void * argument)
                     buff[3] = (gStorgeTaskInfo.addr + STORGE_EEPROM_PART_NUM * i) >> 8;   /* 地址信息 小端模式 */
                     buff[4] = length;                                                     /* 数据长度 小端模式 */
                     if (ulNotifyValue & eStorgeNotifyConf_COMM_Out) {
-                        xResult = comm_Out_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_ID_CARD, buff, length + 5);
+                        xResult = comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_ID_CARD, buff, length + 5);
                         if (xResult != pdPASS) {
                             break;
                         }
                     }
                     if (ulNotifyValue & eStorgeNotifyConf_COMM_Main) {
-                        xResult = comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_ID_CARD, buff, length + 5);
+                        xResult = comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_ID_CARD, buff, length + 5);
                         if (xResult != pdPASS) {
                             break;
                         }

@@ -610,7 +610,7 @@ eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index)
             pResult->pData[0] = idx;
             pResult->pData[1] = pResult->length;
             if (index != eBarcodeIndex_6 || pResult->length > 0) {
-                comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_BARCODE, pResult->pData, pResult->length + 2);
+                comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_BARCODE, pResult->pData, pResult->length + 2);
                 comm_Out_SendTask_QueueEmitWithModify(pResult->pData, pResult->length + 2 + 7, 0);
             }
         }

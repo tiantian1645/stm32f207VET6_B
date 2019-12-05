@@ -33,7 +33,9 @@ typedef enum {
     eProtocolEmitPack_Client_CMD_Debug_Flash_Write = 0xD7,  /* 调试用 外部Flash写 */
     eProtocolEmitPack_Client_CMD_Debug_EEPROM_Read = 0xD8,  /* 调试用 EEPROM读 */
     eProtocolEmitPack_Client_CMD_Debug_EEPROM_Write = 0xD9, /* 调试用 EEPROM写 */
+    eProtocolEmitPack_Client_CMD_Debug_Self_Check = 0xDA,   /* 调试用 自检测试 */
     eProtocolEmitPack_Client_CMD_Debug_Motor_Fun = 0xDB,    /* 调试用 电机任务功能 */
+    eProtocolEmitPack_Client_CMD_Debug_System = 0xDC,       /* 调试用 系统控制 */
     eProtocolEmitPack_Client_CMD_Debug_Params = 0xDD,       /* 调试用 参数配置 */
     eProtocolEmitPack_Client_CMD_Debug_BL = 0xDE,           /* 调试用 升级Bootloader */
     eProtocolEmitPack_Client_CMD_Debug_Version = 0xDF,      /* 调试用 编译日期信息 */

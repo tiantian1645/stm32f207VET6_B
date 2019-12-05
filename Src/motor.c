@@ -400,7 +400,7 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
     }
     if (flag && heat_Motor_Up() != 0) { /* 上加热体光耦位置未被阻挡 则抬起上加热体电机 */
         buffer[0] = 0x00;               /* 抬起上加热体失败 */
-        comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
+        comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
         comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                   /* 转发至外串口但不允许阻塞 */
         beep_Start_With_Conf(eBeep_Freq_do, 300, 0, 1);
         return;
@@ -413,7 +413,7 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
         vTaskDelay(100);                                                                           /* 延时 */
         if (tray_Motor_Reset_Pos() != 0) {                                                         /* 重置托盘电机位置 */
             buffer[0] = 0x00;                                                                      /* 托盘电机运动失败 */
-            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
+            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
             comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                   /* 转发至外串口但不允许阻塞 */
             beep_Start_With_Conf(eBeep_Freq_fa, 300, 0, 1);
             return;
@@ -423,19 +423,19 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
     if (tray_Move_By_Index(index, 5000) == eTrayState_OK) { /* 运动托盘电机 */
         if (index == eTrayIndex_0) {                        /* 托盘在检测位置 */
             buffer[0] = 0x01;
-            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1);
+            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, buffer, 1);
             comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0); /* 转发至外串口但不允许阻塞 */
             beep_Start_With_Conf(eBeep_Freq_re, 300, 0, 1);
         } else if (index == eTrayIndex_2) { /* 托盘在加样位置 */
             buffer[0] = 0x02;
-            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1);
+            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, buffer, 1);
             comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0); /* 转发至外串口但不允许阻塞 */
             beep_Start_With_Conf(eBeep_Freq_mi, 300, 0, 1);
         }
         return;
     } else {
         buffer[0] = 0x00;                                                                      /* 托盘电机运动失败 */
-        comm_Main_SendTask_QueueEmitWithBuildCover(eProtocoleRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
+        comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
         comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                   /* 转发至外串口但不允许阻塞 */
         beep_Start_With_Conf(eBeep_Freq_fa, 300, 0, 1);
         return;
