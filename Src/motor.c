@@ -735,17 +735,7 @@ static void motor_Task(void * argument)
             case eMotor_Fun_Self_Check_Scan: /* 自检测试 单项 扫码头 */
                 motor_Self_Check_Scan(buffer);
                 break;
-            case eMotor_Fun_Self_Check_PD_1: /* 自检测试 单项 PD 1 */
-                break;
-            case eMotor_Fun_Self_Check_PD_2: /* 自检测试 单项 PD 2 */
-                break;
-            case eMotor_Fun_Self_Check_PD_3: /* 自检测试 单项 PD 3 */
-                break;
-            case eMotor_Fun_Self_Check_PD_4: /* 自检测试 单项 PD 4 */
-                break;
-            case eMotor_Fun_Self_Check_PD_5: /* 自检测试 单项 PD 5 */
-                break;
-            case eMotor_Fun_Self_Check_PD_6: /* 自检测试 单项 PD 6 */
+            case eMotor_Fun_Self_Check_PD: /* 自检测试 单项 PD */
                 break;
             default:
                 break;
@@ -847,6 +837,6 @@ static void motor_Self_Check_Scan(uint8_t * pBuffer)
     tray_Move_By_Index(eTrayIndex_1, 3000);                                          /* 扫码位置 */
     pBuffer[0] = eMotor_Fun_Self_Check_Scan - eMotor_Fun_Self_Check_Motor_White + 6; /* 自检测试 单项 扫码头 */
     barcode_Motor_Run_By_Index(eBarcodeIndex_0);                                     /* 移动到初始位置 */
-    pBuffer[1] = barcode_Read_From_Serial(pBuffer + 2, pBuffer + 3, 10, 1000);         /* 读取扫码结果 */
+    pBuffer[1] = barcode_Read_From_Serial(pBuffer + 2, pBuffer + 3, 10, 1000);       /* 读取扫码结果 */
     comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, pBuffer[2] + 3);
 }

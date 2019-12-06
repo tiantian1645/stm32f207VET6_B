@@ -63,12 +63,7 @@ typedef enum {
     eMotor_Fun_Self_Check_Motor_Tray,   /* 自检测试 单项 托盘电机 */
     eMotor_Fun_Self_Check_Motor_Scan,   /* 自检测试 单项 扫码电机*/
     eMotor_Fun_Self_Check_Scan,         /* 自检测试 单项 扫码头 */
-    eMotor_Fun_Self_Check_PD_1,         /* 自检测试 单项 PD 1 */
-    eMotor_Fun_Self_Check_PD_2,         /* 自检测试 单项 PD 2 */
-    eMotor_Fun_Self_Check_PD_3,         /* 自检测试 单项 PD 3 */
-    eMotor_Fun_Self_Check_PD_4,         /* 自检测试 单项 PD 4 */
-    eMotor_Fun_Self_Check_PD_5,         /* 自检测试 单项 PD 5 */
-    eMotor_Fun_Self_Check_PD_6,         /* 自检测试 单项 PD 6 */
+    eMotor_Fun_Self_Check_PD,           /* 自检测试 单项 PD */
 } eMotor_Fun;
 
 /* 电机任务队列效果结构 */
