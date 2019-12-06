@@ -19,7 +19,7 @@ import serial
 import serial.tools.list_ports
 import stackprinter
 from PyQt5.QtCore import Qt, QThreadPool, QTimer
-from PyQt5.QtGui import QIcon, QPalette
+from PyQt5.QtGui import QIcon, QPalette, QFont
 from PyQt5.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -40,7 +40,9 @@ from PyQt5.QtWidgets import (
     QProgressBar,
     QPushButton,
     QRadioButton,
+    QSizePolicy,
     QSlider,
+    QSpacerItem,
     QSpinBox,
     QStatusBar,
     QTextEdit,
@@ -986,7 +988,7 @@ class MainWindow(QMainWindow):
 
     def onSampleLabelClick(self, event):
         def data_format_list(data):
-            result = ", ".join(str(i) for i in data)
+            result = ", ".join(f"{i:#5d}" for i in data)
             if len(result) > 300:
                 result = result[:300] + "..."
             return result
@@ -1004,8 +1006,14 @@ class MainWindow(QMainWindow):
             real_data = self.sample_record_parse_raw_data(sd.raw_data)
             xs = np.array([10 * i for i in range(len(real_data))], dtype=np.int32)
             ys = np.array(real_data, dtype=np.int32)
+            yv = np.std(ys)
+            ym = np.mean(ys)
             m, b = best_fit_slope_and_intercept(xs, ys)
-            data_infos.append(f"通道 {sd.channel} | {data_format_list(real_data)} | (m = {m:.4f}, b = {b:.4f})")
+            data_infos.append(f"通道 {sd.channel} | {data_format_list(real_data)} | (m = {m:.4f}, b = {b:.4f}) | (yv = {yv:.4f}, ym = {ym:.4f})")
+        # https://stackoverflow.com/a/10977872
+        font = QFont("Consolas")
+        font.setFixedPitch(True)
+        msg.setFont(font)
         msg.setText("\n".join(data_infos))
         detail_head_text = f"时间 | {label.datetime}\n标签 | {label.name}\n版本 | {label.version}\n容量 | {len(sds)}"
         detail_text = f"\n{'=' * 24}\n".join(
@@ -1016,6 +1024,9 @@ class MainWindow(QMainWindow):
             for sd in sds
         )
         msg.setDetailedText(f"{detail_head_text}\n{'*' * 40}\n{detail_text}")
+        # https://stackoverflow.com/a/50549396
+        layout = msg.layout()
+        layout.addItem(QSpacerItem(1500, 0, QSizePolicy.Minimum, QSizePolicy.Expanding), layout.rowCount(), 0, 1, layout.columnCount())
         msg.exec_()
 
     def onSampleRecordReadBySp(self, value):
@@ -2065,6 +2076,7 @@ if __name__ == "__main__":
     sys.excepthook = trap_exc_during_debug
     try:
         app = QApplication(sys.argv)
+        app.setStyle('Windows')
         window = MainWindow()
         window.show()
         app.exec_()
