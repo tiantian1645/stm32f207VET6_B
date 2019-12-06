@@ -5,6 +5,7 @@ import os
 import queue
 import struct
 import sys
+import traceback
 import time
 from collections import namedtuple
 from datetime import datetime
@@ -969,7 +970,8 @@ class MainWindow(QMainWindow):
             cnt = self.sample_db.get_label_cnt()
             self.sample_record_idx_sp.setRange(0, cnt - 1)
             return
-        logger.debug(f"get Label {label}")
+        # logger.debug(f"get Label {label}")
+        # logger.debug(f"get sample datas | {label.sample_datas}")
         self.sample_record_label.setText(f"{label.name}")
         self.sample_record_label.setToolTip(f"{label.datetime}")
         for plot in self.matplot_plots:
@@ -1657,8 +1659,11 @@ class MainWindow(QMainWindow):
             records.append(f"{k} | {v}")
         pyperclip.copy("\n".join(records))
         cnt = self.sample_db.get_label_cnt()
-        self.sample_record_idx_sp.setRange(0, cnt - 1)
-        self.sample_record_idx_sp.setValue(cnt - 1)
+        if cnt > 1:
+            self.sample_record_idx_sp.setRange(0, cnt - 1)
+            self.sample_record_idx_sp.setValue(cnt - 1)
+        else:
+            self.sample_record_plot_by_index(0)
 
     def updateMatplotData(self, info):
         length = info.content[6]
@@ -2053,6 +2058,11 @@ class MainWindow(QMainWindow):
 
 
 if __name__ == "__main__":
+
+    def trap_exc_during_debug(exc_type, exc_value, exc_traceback):
+        logger.error(f"sys execpthook\n{''.join(traceback.format_exception(exc_type, exc_value, exc_traceback))}")
+
+    sys.excepthook = trap_exc_during_debug
     try:
         app = QApplication(sys.argv)
         window = MainWindow()
