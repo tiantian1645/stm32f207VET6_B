@@ -103,8 +103,7 @@ void gComm_Data_TIM_StartFlag_Clear(void);
 
 uint8_t comm_Data_Build_Sample_Conf_Pack(uint8_t * pData);
 
-BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData);
-BaseType_t comm_Data_Sample_Send_Conf(void);
+BaseType_t comm_Data_Sample_Send_Conf(uint8_t * pData);
 BaseType_t comm_Data_Sample_Send_Conf_TV(uint8_t * pData);
 
 BaseType_t comm_Data_Sample_Owari(void);

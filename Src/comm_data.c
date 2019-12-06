@@ -83,6 +83,7 @@ static void comm_Data_Send_Task(void * argument);
 static BaseType_t comm_Data_RecvTask_QueueEmit_ISR(uint8_t * pData, uint16_t length);
 static BaseType_t comm_Data_Send_ACK_Check(uint8_t packIndex);
 
+static BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData);
 static BaseType_t comm_Data_Sample_Send_Clear_Conf(void);
 /* Private user code ---------------------------------------------------------*/
 
@@ -463,10 +464,11 @@ uint8_t comm_Data_Sample_Force_Stop(void)
 
 /**
  * @brief  采样板配置数据包
+ * @note   记录最大点数 决定采样终点
  * @param  pData 结果存放指针
  * @retval 提交到采集板发送队列结果
  */
-BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData)
+static BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData)
 {
     uint8_t i;
 
@@ -492,16 +494,11 @@ BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData)
  * @param  None
  * @retval pdPASS 提交成功 pdFALSE 提交失败
  */
-BaseType_t comm_Data_Sample_Send_Conf(void)
+BaseType_t comm_Data_Sample_Send_Conf(uint8_t * pData)
 {
-    uint8_t i, sendLength, pData[30];
+    uint8_t sendLength;
 
-    for (i = 0; i < ARRAY_LEN(gComm_Data_Sample_Confs); ++i) {
-        pData[3 * i + 0] = gComm_Data_Sample_Confs[i].assay;      /* 测试方法 */
-        pData[3 * i + 1] = gComm_Data_Sample_Confs[i].radiant;    /* 测试波长 */
-        pData[3 * i + 2] = gComm_Data_Sample_Confs[i].points_num; /* 测试点数 */
-    }
-
+    comm_Data_Sample_Apply_Conf(pData);
     sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 18); /* 构造测试配置包 */
     return comm_Data_SendTask_QueueEmit(pData, sendLength, 50);
 }

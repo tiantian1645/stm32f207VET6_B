@@ -1075,7 +1075,6 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             comm_Out_SendTask_QueueEmitWithBuildCover(0xDF, pInBuff, 12 + strlen(__TIME__) + strlen(__DATE__));
             break;
         case eProtocolEmitPack_Client_CMD_START:          /* 开始测量帧 0x01 */
-            comm_Data_Sample_Send_Conf();                 /* 发送测试配置 */
             protocol_Temp_Upload_Pause();                 /* 暂停温度上送 */
             motor_fun.fun_type = eMotor_Fun_Sample_Start; /* 开始测试 */
             motor_Emit(&motor_fun, 0);                    /* 提交到电机队列 */
@@ -1085,8 +1084,8 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             comm_Data_Sample_Force_Stop();           /* 强行停止采样定时器 */
             motor_Sample_Info(eMotorNotifyValue_BR); /* 提交打断信息 */
             break;
-        case eProtocolEmitPack_Client_CMD_CONFIG:     /* 测试项信息帧 0x03 */
-            comm_Data_Sample_Apply_Conf(&pInBuff[6]); /* 保存测试配置 */
+        case eProtocolEmitPack_Client_CMD_CONFIG:    /* 测试项信息帧 0x03 */
+            comm_Data_Sample_Send_Conf(&pInBuff[6]); /* 发送测试配置 */
             break;
         case eProtocolEmitPack_Client_CMD_FORWARD: /* 打开托盘帧 0x04 */
             motor_fun.fun_type = eMotor_Fun_Out;   /* 配置电机动作套餐类型 出仓 */
@@ -1123,7 +1122,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             }
             comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, pInBuff, 1); /* 托盘状态信息 */
             break;
-        case eProtocolEmitPack_Client_CMD_TEST:         /* 工装测试配置帧 */
+        case eProtocolEmitPack_Client_CMD_TEST:         /* 工装测试配置帧 0x08 */
             comm_Data_Sample_Send_Conf_TV(&pInBuff[6]); /* 保存测试配置 */
             break;
         case eProtocolEmitPack_Client_CMD_UPGRADE: /* 下位机升级命令帧 0x0F */
@@ -1168,7 +1167,6 @@ void protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
     protocol_Parse_AnswerACK(eComm_Main, pInBuff[3]);     /* 发送回应包 */
     switch (pInBuff[5]) {                                 /* 进一步处理 功能码 */
         case eProtocolEmitPack_Client_CMD_START:          /* 开始测量帧 0x01 */
-            comm_Data_Sample_Send_Conf();                 /* 发送测试配置 */
             protocol_Temp_Upload_Pause();                 /* 暂停温度上送 */
             motor_fun.fun_type = eMotor_Fun_Sample_Start; /* 开始测试 */
             motor_Emit(&motor_fun, 0);                    /* 提交到电机队列 */
@@ -1177,8 +1175,8 @@ void protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
             comm_Data_Sample_Force_Stop();           /* 强行停止采样定时器 */
             motor_Sample_Info(eMotorNotifyValue_BR); /* 提交打断信息 */
             break;
-        case eProtocolEmitPack_Client_CMD_CONFIG:     /* 测试项信息帧 0x03 */
-            comm_Data_Sample_Apply_Conf(&pInBuff[6]); /* 保存测试配置 */
+        case eProtocolEmitPack_Client_CMD_CONFIG:    /* 测试项信息帧 0x03 */
+            comm_Data_Sample_Send_Conf(&pInBuff[6]); /* 发送测试配置 */
             break;
         case eProtocolEmitPack_Client_CMD_FORWARD: /* 打开托盘帧 0x04 */
             motor_fun.fun_type = eMotor_Fun_Out;   /* 配置电机动作套餐类型 出仓 */
