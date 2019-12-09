@@ -1294,12 +1294,12 @@ class MainWindow(QMainWindow):
                 device_id=self.device_id,
             )
         self._serialSendPack(0xDC, (self.matplot_period_sp.value(),))
+        self._serialSendPack(0x01)
         if self.matplot_period_tv_cb.isChecked():
             conf.append(self.matplot_period_tv_cb.checkState())
             self._serialSendPack(0x08, conf)
         else:
             self._serialSendPack(0x03, conf)
-        self._serialSendPack(0x01)
         for plot in self.matplot_plots:
             plot.clear()
 

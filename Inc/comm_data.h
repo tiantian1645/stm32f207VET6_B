@@ -106,6 +106,9 @@ uint8_t comm_Data_Build_Sample_Conf_Pack(uint8_t * pData);
 BaseType_t comm_Data_Sample_Send_Conf(uint8_t * pData);
 BaseType_t comm_Data_Sample_Send_Conf_TV(uint8_t * pData);
 
+BaseType_t comm_Data_Conf_Sem_Wait(uint32_t timeout);
+BaseType_t comm_Data_Conf_Sem_Give(void);
+
 BaseType_t comm_Data_Sample_Owari(void);
 
 uint8_t gComm_Data_Sample_PD_WH_Idx_Get(void);

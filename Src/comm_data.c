@@ -60,6 +60,9 @@ static xSemaphoreHandle comm_Data_Send_Sem = NULL;
 static xTaskHandle comm_Data_Recv_Task_Handle = NULL;
 static xTaskHandle comm_Data_Send_Task_Handle = NULL;
 
+/* 测试配置项信号量 */
+static xSemaphoreHandle comm_Data_Conf_Sem = NULL;
+
 static sComm_Data_SendInfo gComm_Data_SendInfo;
 static uint8_t gComm_Data_SendInfoFlag = 1; /* 加入发送队列缓存修改重入标志 */
 static uint8_t gComm_Data_TIM_StartFlag = 0;
@@ -470,7 +473,7 @@ uint8_t comm_Data_Sample_Force_Stop(void)
  */
 static BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData)
 {
-    uint8_t i;
+    uint8_t i, result = 0;
 
     gComm_Data_Sample_Max_Point_Clear(); /* 清除最大点数 */
     for (i = 0; i < ARRAY_LEN(gComm_Data_Sample_Confs); ++i) {
@@ -484,7 +487,11 @@ static BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData)
         } else {
             gComm_Data_Sample_Confs[i].points_num = (pData[3 * i + 2] > 120) ? (0) : (pData[3 * i + 2]); /* 测试点数 */
             gComm_Data_Sample_Max_Point_Update(gComm_Data_Sample_Confs[i].points_num);                   /* 更新最大点数 */
+            ++result;
         }
+    }
+    if (result > 0) {
+        comm_Data_Conf_Sem_Give(); /* 通知电机任务 配置项已下达 */
     }
     return pdPASS;
 }
@@ -554,6 +561,26 @@ BaseType_t comm_Data_Start_Stary_Test(void)
 }
 
 /**
+ * @brief 测试配置项信号量 等待
+ * @param  timeout 超时时间
+ * @retval 等待结果
+ */
+BaseType_t comm_Data_Conf_Sem_Wait(uint32_t timeout)
+{
+    return xSemaphoreTake(comm_Data_Conf_Sem, timeout);
+}
+
+/**
+ * @brief 测试配置项信号量 释放
+ * @param  None
+ * @retval 释放结果
+ */
+BaseType_t comm_Data_Conf_Sem_Give(void)
+{
+    return xSemaphoreGive(comm_Data_Conf_Sem);
+}
+
+/**
  * @brief  串口任务初始化
  * @param  None
  * @retval None
@@ -576,6 +603,13 @@ void comm_Data_Init(void)
         FL_Error_Handler(__FILE__, __LINE__);
     }
     xSemaphoreGive(comm_Data_Send_Sem);
+
+    /* 测试配置项信号量 */
+    comm_Data_Conf_Sem = xSemaphoreCreateBinary();
+    if (comm_Data_Conf_Sem == NULL) {
+        FL_Error_Handler(__FILE__, __LINE__);
+    }
+    xSemaphoreTake(comm_Data_Conf_Sem, 0);
 
     /* 发送队列 */
     comm_Data_SendQueue = xQueueCreate(2, sizeof(sComm_Data_SendInfo));

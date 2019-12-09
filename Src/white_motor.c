@@ -23,7 +23,7 @@ typedef enum {
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
-#define WHITE_MOTOR_PCS_MAX 24000
+#define WHITE_MOTOR_PCS_MAX 30000
 #define WHITE_MOTOR_PCS_MIN 24000
 #define WHITE_MOTOR_PCS_UNT 8
 #define WHITE_MOTOR_PCS_SUM 297
@@ -257,11 +257,11 @@ uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout)
         return 0;
     }
     m_drv8824_release();
-    if (dir == eMotorDir_FWD && white_Motor_Position_Is_In()) {
-        error_Emit(eError_Motor_White_Timeout_PD);
+    if (dir == eMotorDir_FWD && (white_Motor_Position_Is_In() || gWhite_Motor_Status_Get() == eWhite_Motor_Undone)) {
+        error_Emit(eError_Motor_White_Timeout_WH);
         return 3;
     } else if (dir == eMotorDir_REV && white_Motor_Position_Is_In() == 0) {
-        error_Emit(eError_Motor_White_Timeout_WH);
+        error_Emit(eError_Motor_White_Timeout_PD);
         return 4;
     }
     return 2;

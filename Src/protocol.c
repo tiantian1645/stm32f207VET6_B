@@ -1075,6 +1075,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             comm_Out_SendTask_QueueEmitWithBuildCover(0xDF, pInBuff, 12 + strlen(__TIME__) + strlen(__DATE__));
             break;
         case eProtocolEmitPack_Client_CMD_START:          /* 开始测量帧 0x01 */
+            gComm_Data_Sample_Max_Point_Clear();          /* 清除最大点数 */
             protocol_Temp_Upload_Pause();                 /* 暂停温度上送 */
             motor_fun.fun_type = eMotor_Fun_Sample_Start; /* 开始测试 */
             motor_Emit(&motor_fun, 0);                    /* 提交到电机队列 */
@@ -1167,6 +1168,7 @@ void protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
     protocol_Parse_AnswerACK(eComm_Main, pInBuff[3]);     /* 发送回应包 */
     switch (pInBuff[5]) {                                 /* 进一步处理 功能码 */
         case eProtocolEmitPack_Client_CMD_START:          /* 开始测量帧 0x01 */
+            gComm_Data_Sample_Max_Point_Clear();          /* 清除最大点数 */
             protocol_Temp_Upload_Pause();                 /* 暂停温度上送 */
             motor_fun.fun_type = eMotor_Fun_Sample_Start; /* 开始测试 */
             motor_Emit(&motor_fun, 0);                    /* 提交到电机队列 */
