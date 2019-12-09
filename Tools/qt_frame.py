@@ -19,12 +19,13 @@ import serial
 import serial.tools.list_ports
 import stackprinter
 from PyQt5.QtCore import Qt, QThreadPool, QTimer
-from PyQt5.QtGui import QIcon, QPalette, QFont, QColor
+from PyQt5.QtGui import QIcon, QPalette, QFont
 from PyQt5.QtWidgets import (
     QApplication,
     QButtonGroup,
     QCheckBox,
     QComboBox,
+    QDesktopWidget,
     QDialog,
     QDoubleSpinBox,
     QFileDialog,
@@ -55,6 +56,10 @@ from bytes_helper import bytes2Float, bytesPuttyPrint, best_fit_slope_and_interc
 from dc201_pack import DC201_PACK, DC201_ParamInfo, write_firmware_pack_BL, write_firmware_pack_FC, DC201ErrorCode
 from qt_serial import SerialRecvWorker, SerialSendWorker
 from sample_data import MethodEnum, SampleDB, WaveEnum
+
+import qtmodern.styles
+import qtmodern.windows
+from qt_modern_dialog import ModernDialog, ModernMessageBox
 
 BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
 TEMPERAUTRE_NAMES = ("下加热体:", "上加热体:")
@@ -143,12 +148,13 @@ class MainWindow(QMainWindow):
         self.pack_index = 1
         self.device_id = "no name"
         self.version = "no version"
-        self.device_datetime = None
+        self.device_datetime = datetime.now()
         self.serial_recv_worker = None
         self.serial_send_worker = None
-        self.initUI()
         self.sample_db = SampleDB("sqlite:///data/db.sqlite3")
         self.sample_record_current_label = None
+        self.initUI()
+        self.center()
 
     def _serialSendPack(self, *args, **kwargs):
         pack = self.dd.buildPack(0x13, self.getPackIndex(), *args, **kwargs)
@@ -232,6 +238,13 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon(image_path))
         self.setCentralWidget(widget)
         self.resize(850, 492)
+
+    def center(self):
+        logger.debug(f"invoke center in ModernWidget")
+        qr = self.frameGeometry()
+        cp = QDesktopWidget().availableGeometry().center()
+        qr.moveCenter(cp)
+        self.move(qr.topLeft())
 
     def resizeEvent(self, event):
         logger.debug(f"windows size | {self.size()}")
@@ -355,6 +368,7 @@ class MainWindow(QMainWindow):
         self.status_bar.addWidget(self.version_bl_lb, 0)
         self.status_bar.addWidget(self.device_id_lb, 0)
         self.setStatusBar(self.status_bar)
+        self.temperature_plot_dg = ModernDialog(self.temperature_plot_dg, self)
 
     def onTemperautreLabelClick(self, event):
         self._getHeater()
@@ -811,6 +825,7 @@ class MainWindow(QMainWindow):
         self.motor_debug_tray_dis_sl.valueChanged.connect(self.onMotorDebugTraySliderChanged)
         self.motor_debug_scan_bt.clicked.connect(self.onMotorDebugScan)
         self.motor_debug_tray_bt.clicked.connect(self.onMotorDebugTray)
+        self.motor_debug_dg = ModernDialog(self.motor_debug_dg, self)
 
     def onMotorHeaterUp(self, event):
         self._serialSendPack(0xD0, (2, 0))
@@ -997,7 +1012,7 @@ class MainWindow(QMainWindow):
         if label is None:
             return
         sds = sorted(label.sample_datas, key=lambda x: x.channel)
-        msg = QMessageBox(self)
+        msg = ModernMessageBox(self)
         msg.setTextInteractionFlags(Qt.TextSelectableByMouse)
         msg.setIcon(QMessageBox.Information)
         msg.setWindowTitle(f"采样数据 | {label.datetime} | {label.name}")
@@ -1025,8 +1040,9 @@ class MainWindow(QMainWindow):
         )
         msg.setDetailedText(f"{detail_head_text}\n{'*' * 40}\n{detail_text}")
         # https://stackoverflow.com/a/50549396
-        layout = msg.layout()
-        layout.addItem(QSpacerItem(1500, 0, QSizePolicy.Minimum, QSizePolicy.Expanding), layout.rowCount(), 0, 1, layout.columnCount())
+        if isinstance(msg, QMessageBox):
+            layout = msg.layout()
+            layout.addItem(QSpacerItem(1500, 0, QSizePolicy.Minimum, QSizePolicy.Expanding), layout.rowCount(), 0, 1, layout.columnCount())
         msg.exec_()
 
     def onSampleRecordReadBySp(self, value):
@@ -1113,7 +1129,7 @@ class MainWindow(QMainWindow):
 
     def onSerialWorkerError(self, s):
         logger.error(f"emit from serial worker error signal | {s}")
-        msg = QMessageBox(self)
+        msg = ModernMessageBox(self)
         msg.setIcon(QMessageBox.Critical)
         msg.setWindowTitle("串口通讯故障")
         msg.setText(repr(s[1]))
@@ -1287,12 +1303,9 @@ class MainWindow(QMainWindow):
             conf.append(self.matplot_conf_point_sps[i].value())
             self.sample_confs.append(SampleConf(conf[-3], conf[-2], conf[-1]))
         logger.debug(f"get matplot cnf | {conf}")
-        if self.device_datetime is not None:
-            self.sample_label = self.sample_db.build_label(
-                name=self.sample_record_lable_name,
-                version=f"{self.version}.{datetime.strftime(self.device_datetime, '%Y%m%d.%H%M%S')}",
-                device_id=self.device_id,
-            )
+        self.sample_label = self.sample_db.build_label(
+            name=self.sample_record_lable_name, version=f"{self.version}.{datetime.strftime(self.device_datetime, '%Y%m%d.%H%M%S')}", device_id=self.device_id
+        )
         self._serialSendPack(0xDC, (self.matplot_period_sp.value(),))
         self._serialSendPack(0x01)
         if self.matplot_period_tv_cb.isChecked():
@@ -1338,6 +1351,7 @@ class MainWindow(QMainWindow):
         self.upgbl_dg_bt.clicked.connect(self.onUpgBLDialog)
 
         self.upgbl_dg.resize(600, 75)
+        self.upgbl_dg = ModernDialog(self.upgbl_dg, self)
         self.upgbl_dg.exec_()
 
     def onUpgBLDialog(self, event):
@@ -1478,6 +1492,7 @@ class MainWindow(QMainWindow):
         selftest_dg_ly.addLayout(selftest_temp_ly)
         selftest_dg_ly.addLayout(selftest_motor_ly)
         selftest_dg_ly.addLayout(selftest_storge_ly)
+        self.selftest_dg = ModernDialog(self.selftest_dg, self)
 
     def updateSelfCheckDialog(self, info):
         raw_bytes = info.content
@@ -1628,6 +1643,7 @@ class MainWindow(QMainWindow):
         self.upgrade_dg_bt.clicked.connect(self.onUpgradeDialog)
 
         self.upgrade_dg.resize(600, 75)
+        self.upgrade_dg = ModernDialog(self.upgrade_dg, self)
         self.upgrade_dg.exec_()
 
     def onUpgradeDialog(self, event):
@@ -1713,6 +1729,7 @@ class MainWindow(QMainWindow):
 
         self.id_card_data_read_bt.clicked.connect(self.onID_CardRead)
         self.id_card_data_write_bt.clicked.connect(self.onID_CardWrite)
+        self.id_card_data_dg = ModernDialog(self.id_card_data_dg, self)
 
         temperautre_raw_wg = QWidget()
         temperautre_raw_ly = QHBoxLayout(temperautre_raw_wg)
@@ -1752,6 +1769,7 @@ class MainWindow(QMainWindow):
             )
             self.temperature_raw_plots.append(plot)
         self.temperature_raw_plot_clear_bt.clicked.connect(self.onTemperautreRawDataClear)
+        self.temperature_raw_plot_dg = ModernDialog(self.temperature_raw_plot_dg, self)
 
         self.out_flash_data_dg = QDialog(self)
         self.out_flash_data_dg.setWindowTitle("外部Flash")
@@ -1847,6 +1865,7 @@ class MainWindow(QMainWindow):
         self.out_flash_data_read_bt.clicked.connect(self.onOutFlashRead)
         self.out_flash_param_read_bt.clicked.connect(self.onOutFlashParamRead)
         self.out_flash_param_write_bt.clicked.connect(self.onOutFlashParamWrite)
+        self.out_flash_data_dg = ModernDialog(self.out_flash_data_dg, self)
 
     def onOutFlashParamRead(self, event):
         data = (*(struct.pack("H", 0)), *(struct.pack("H", 165)))
@@ -1908,7 +1927,7 @@ class MainWindow(QMainWindow):
             return
         file_size = os.path.getsize(file_path)
         if file_size > 4096:
-            msg = QMessageBox(self)
+            msg = ModernMessageBox(self)
             msg.setIcon(QMessageBox.Warning)
             msg.setWindowTitle(f"文件大小异常 | {file_size}")
             msg.setText("只取头部4096字节数据")
@@ -2061,7 +2080,7 @@ class MainWindow(QMainWindow):
         error_code = struct.unpack("H", info.content[6:8])[0]
         error_content = self.getErrorContent(error_code)
         level = QMessageBox.Warning
-        msg = QMessageBox(self)
+        msg = ModernMessageBox(self)
         msg.setIcon(level)
         msg.setWindowTitle(f"故障信息 | {datetime.now()}")
         msg.setText(f"故障码 {error_code}\n{error_content}")
@@ -2078,25 +2097,29 @@ if __name__ == "__main__":
         app = QApplication(sys.argv)
         # app.setStyle('Windows')
 
-        app.setStyle("Fusion")
-        dark_palette = QPalette()
-        dark_palette.setColor(QPalette.Window, QColor(53, 53, 53))
-        dark_palette.setColor(QPalette.WindowText, Qt.white)
-        dark_palette.setColor(QPalette.Base, QColor(25, 25, 25))
-        dark_palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
-        dark_palette.setColor(QPalette.ToolTipBase, Qt.white)
-        dark_palette.setColor(QPalette.ToolTipText, Qt.white)
-        dark_palette.setColor(QPalette.Text, Qt.white)
-        dark_palette.setColor(QPalette.Button, QColor(53, 53, 53))
-        dark_palette.setColor(QPalette.ButtonText, Qt.white)
-        dark_palette.setColor(QPalette.BrightText, Qt.red)
-        dark_palette.setColor(QPalette.Link, QColor(42, 130, 218))
-        dark_palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
-        dark_palette.setColor(QPalette.HighlightedText, Qt.black)
-        app.setPalette(dark_palette)
-        app.setStyleSheet("QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }")
+        # app.setStyle("Fusion")
+        # dark_palette = QPalette()
+        # dark_palette.setColor(QPalette.Window, QColor(53, 53, 53))
+        # dark_palette.setColor(QPalette.WindowText, Qt.white)
+        # dark_palette.setColor(QPalette.Base, QColor(25, 25, 25))
+        # dark_palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+        # dark_palette.setColor(QPalette.ToolTipBase, Qt.white)
+        # dark_palette.setColor(QPalette.ToolTipText, Qt.white)
+        # dark_palette.setColor(QPalette.Text, Qt.white)
+        # dark_palette.setColor(QPalette.Button, QColor(53, 53, 53))
+        # dark_palette.setColor(QPalette.ButtonText, Qt.white)
+        # dark_palette.setColor(QPalette.BrightText, Qt.red)
+        # dark_palette.setColor(QPalette.Link, QColor(42, 130, 218))
+        # dark_palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
+        # dark_palette.setColor(QPalette.HighlightedText, Qt.black)
+        # app.setPalette(dark_palette)
+        # app.setStyleSheet("QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }")
 
         window = MainWindow()
+
+        qtmodern.styles.dark(app)
+        window = qtmodern.windows.ModernWindow(window)
+
         window.show()
         app.exec_()
     except Exception:
