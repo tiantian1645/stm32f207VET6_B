@@ -5,21 +5,21 @@ import os
 import queue
 import struct
 import sys
-import traceback
 import time
+import traceback
 from collections import namedtuple
 from datetime import datetime
 from functools import partial
 from hashlib import sha256
 
-import numpy as np
 import loguru
+import numpy as np
 import pyperclip
 import serial
 import serial.tools.list_ports
 import stackprinter
 from PyQt5.QtCore import Qt, QThreadPool, QTimer
-from PyQt5.QtGui import QIcon, QPalette, QFont
+from PyQt5.QtGui import QFont, QIcon, QPalette
 from PyQt5.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -52,14 +52,13 @@ from PyQt5.QtWidgets import (
 )
 from pyqtgraph import GraphicsLayoutWidget, LabelItem, SignalProxy, mkPen
 
-from bytes_helper import bytes2Float, bytesPuttyPrint, best_fit_slope_and_intercept
-from dc201_pack import DC201_PACK, DC201_ParamInfo, write_firmware_pack_BL, write_firmware_pack_FC, DC201ErrorCode
-from qt_serial import SerialRecvWorker, SerialSendWorker
-from sample_data import MethodEnum, SampleDB, WaveEnum
-
+from bytes_helper import best_fit_slope_and_intercept, bytes2Float, bytesPuttyPrint
+from dc201_pack import DC201_PACK, DC201_ParamInfo, DC201ErrorCode, write_firmware_pack_BL, write_firmware_pack_FC
 import qtmodern.styles
 import qtmodern.windows
 from qt_modern_dialog import ModernDialog, ModernMessageBox
+from qt_serial import SerialRecvWorker, SerialSendWorker
+from sample_data import MethodEnum, SampleDB, WaveEnum
 
 BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
 TEMPERAUTRE_NAMES = ("下加热体:", "上加热体:")
@@ -330,7 +329,7 @@ class MainWindow(QMainWindow):
         self.temperature_plot_win.addItem(self.temperature_plot_lb, 0, 0)
         self.temperature_plot_wg = self.temperature_plot_win.addPlot(row=0, col=0)
         self.temperature_plot_wg.addLegend()
-        self.temperature_plot_wg.showGrid(x=True, y=True)
+        self.temperature_plot_wg.showGrid(x=True, y=True, alpha=1.0)
         self.temperature_plot_proxy = SignalProxy(self.temperature_plot_wg.scene().sigMouseMoved, rateLimit=60, slot=self.onTemperaturePlotMouseMove)
         self.temperature_btm_plot = self.temperature_plot_wg.plot(self.temp_time_record, self.temp_btm_record, name="下加热体", pen=mkPen(color="r"))
         self.temperature_top_plot = self.temperature_plot_wg.plot(self.temp_time_record, self.temp_top_record, name="上加热体", pen=mkPen(color="b"))
@@ -1043,7 +1042,7 @@ class MainWindow(QMainWindow):
         # https://stackoverflow.com/a/50549396
         if isinstance(msg, QMessageBox):
             layout = msg.layout()
-            layout.addItem(QSpacerItem(1500, 0, QSizePolicy.Minimum, QSizePolicy.Expanding), layout.rowCount(), 0, 1, layout.columnCount())
+            layout.addItem(QSpacerItem(1000, 0, QSizePolicy.Minimum, QSizePolicy.Expanding), layout.rowCount(), 0, 1, layout.columnCount())
         msg.exec_()
 
     def onSampleRecordReadBySp(self, value):
@@ -1134,6 +1133,7 @@ class MainWindow(QMainWindow):
         msg.setIcon(QMessageBox.Critical)
         msg.setWindowTitle("串口通讯故障")
         msg.setText(repr(s[1]))
+        msg.setDetailedText(s[2])
         msg.exec_()
         self.serial.close()
         self.serial_post_co.setEnabled(True)
@@ -1272,7 +1272,7 @@ class MainWindow(QMainWindow):
         self.plot_win.addItem(self.plot_lb, 0, 0)
         self.plot_wg = self.plot_win.addPlot(row=0, col=0)
         self.plot_wg.addLegend()
-        self.plot_wg.showGrid(x=True, y=True)
+        self.plot_wg.showGrid(x=True, y=True, alpha=1.0)
         self.plot_proxy = SignalProxy(self.plot_wg.scene().sigMouseMoved, rateLimit=60, slot=self.onPlotMouseMove)
         matplot_ly.addWidget(self.plot_win)
         self.matplot_plots = []
@@ -1754,7 +1754,7 @@ class MainWindow(QMainWindow):
         self.temperature_raw_plot_win.addItem(self.temperature_raw_plot_lb, 0, 0)
         self.temperature_raw_plot_wg = self.temperature_raw_plot_win.addPlot(row=0, col=0)
         self.temperature_raw_plot_wg.addLegend()
-        self.temperature_raw_plot_wg.showGrid(x=True, y=True)
+        self.temperature_raw_plot_wg.showGrid(x=True, y=True, alpha=1.0)
         self.temperature_raw_plot_proxy = SignalProxy(self.temperature_raw_plot_wg.scene().sigMouseMoved, rateLimit=60, slot=self.onTemperatureRawPlotMouseMove)
         self.temperature_raw_plots.clear()
         for i in range(9):

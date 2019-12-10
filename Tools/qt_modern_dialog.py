@@ -254,8 +254,9 @@ class ModernMessageBox(QDialog, ModernWidget):
         self.msgTextLabel = QLabel("\n".join(("Test Content") * 10))
         self.msgTextLabel.setWordWrap(True)
         self.msgTextLabel.setMinimumWidth(100)
-        self.msgDetailTextLabel = QTextEdit(self)
-        self.msgDetailTextLabel.hide()
+        self.msgDetailTextEdit = QTextEdit(self)
+        self.msgDetailTextEdit.hide()
+        self.msgDetailTextEdit.setReadOnly(True)
 
         msgButtonLayout = QHBoxLayout()
         msgButtonLayout.setSpacing(0)
@@ -264,6 +265,10 @@ class ModernMessageBox(QDialog, ModernWidget):
         self.msgDetailBtn = QPushButton("&显示详细")
         self.msgDetailBtn.setCheckable(True)
         self.msgDetailBtn.hide()
+        self.msgOKBtn.setMaximumWidth(100)
+        self.msgDetailBtn.setMaximumWidth(100)
+
+        msgButtonLayout.addStretch()
         msgButtonLayout.addWidget(self.msgOKBtn)
         msgButtonLayout.addWidget(self.msgDetailBtn)
 
@@ -272,7 +277,7 @@ class ModernMessageBox(QDialog, ModernWidget):
 
         self.windowContent.layout().addWidget(self.msgTextLabel)
         self.windowContent.layout().addLayout(msgButtonLayout)
-        self.windowContent.layout().addWidget(self.msgDetailTextLabel)
+        self.windowContent.layout().addWidget(self.msgDetailTextEdit)
         self.vboxFrame.addWidget(self.windowContent)
 
         self.vboxWindow.addWidget(self.windowFrame)
@@ -324,22 +329,26 @@ class ModernMessageBox(QDialog, ModernWidget):
         text_length = self.msgTextLabel.fontMetrics().boundingRect(text).width()
         self.msgTextLabel.setText(text)
         self.msgTextLabel.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed))
+        if text_length > 800:
+            text_length = 800
         self.msgTextLabel.setMinimumWidth(text_length)
 
     def setDetailedText(self, detail_text):
         dd = sorted(detail_text.split("\n"), key=lambda x: len(x))
-        logger.debug(f"selecty the longest line | {dd[-1]}")
         text_length = self.msgTextLabel.fontMetrics().boundingRect(dd[-1]).width()
+        logger.debug(f"selecty the longest line | {dd[-1]} | {text_length}")
+        if text_length > 800:
+            text_length = 800
         self.msgTextLabel.setMinimumWidth(text_length)
         self.msgDetailBtn.show()
-        self.msgDetailTextLabel.setText(detail_text)
-        self.msgDetailTextLabel.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed))
+        self.msgDetailTextEdit.setText(detail_text)
+        self.msgDetailTextEdit.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed))
 
     def onDeatilShow(self, e):
         if e:
             self.msgDetailBtn.setText("&隐藏详细")
-            self.msgDetailTextLabel.show()
+            self.msgDetailTextEdit.show()
         else:
             self.msgDetailBtn.setText("&显示详细")
-            self.msgDetailTextLabel.hide()
+            self.msgDetailTextEdit.hide()
             self.layout().setSizeConstraint(QLayout.SetFixedSize)
