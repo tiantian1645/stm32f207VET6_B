@@ -368,6 +368,7 @@ class MainWindow(QMainWindow):
         self.status_bar.addWidget(self.version_bl_lb, 0)
         self.status_bar.addWidget(self.device_id_lb, 0)
         self.setStatusBar(self.status_bar)
+        self.temperature_plot_dg.resize(600, 600)
         self.temperature_plot_dg = ModernDialog(self.temperature_plot_dg, self)
 
     def onTemperautreLabelClick(self, event):
@@ -1769,6 +1770,7 @@ class MainWindow(QMainWindow):
             )
             self.temperature_raw_plots.append(plot)
         self.temperature_raw_plot_clear_bt.clicked.connect(self.onTemperautreRawDataClear)
+        self.temperature_raw_plot_dg.resize(600, 600)
         self.temperature_raw_plot_dg = ModernDialog(self.temperature_raw_plot_dg, self)
 
         self.out_flash_data_dg = QDialog(self)

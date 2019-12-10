@@ -75,8 +75,7 @@ class ModernWidget(QWidget):
         qr.moveCenter(cp)
         self.move(qr.topLeft())
 
-    def setupUi(self):
-        # create title bar, content
+    def _createFrame(self):
         self.vboxWindow = QVBoxLayout(self)
         self.vboxWindow.setContentsMargins(0, 0, 0, 0)
 
@@ -86,12 +85,13 @@ class ModernWidget(QWidget):
         self.vboxFrame = QVBoxLayout(self.windowFrame)
         self.vboxFrame.setContentsMargins(0, 0, 0, 0)
 
+    def _createTitle(self):
         self.titleBar = WindowDragger(self, self.windowFrame)
         self.titleBar.setObjectName("titleBar")
         self.titleBar.setSizePolicy(QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed))
 
         self.hboxTitle = QHBoxLayout(self.titleBar)
-        self.hboxTitle.setContentsMargins(0, 0, 0, 0)
+        self.hboxTitle.setContentsMargins(10, 0, 10, 0)
         self.hboxTitle.setSpacing(0)
 
         self.lblTitle = QLabel("Title")
@@ -121,6 +121,10 @@ class ModernWidget(QWidget):
         self.btnClose.setObjectName("btnClose")
         self.btnClose.setSizePolicy(spButtons)
         self.hboxTitle.addWidget(self.btnClose)
+
+    def setupUi(self):
+        self._createFrame()
+        self._createTitle()
 
         self.vboxFrame.addWidget(self.titleBar)
 
@@ -240,51 +244,8 @@ class ModernMessageBox(QDialog, ModernWidget):
         logger.debug(f"self geometry | {self.geometry()}")
 
     def setupUi(self):
-        # create title bar, content
-        self.vboxWindow = QVBoxLayout(self)
-        self.vboxWindow.setContentsMargins(0, 0, 0, 0)
-
-        self.windowFrame = QWidget(self)
-        self.windowFrame.setObjectName("windowFrame")
-
-        self.vboxFrame = QVBoxLayout(self.windowFrame)
-        self.vboxFrame.setContentsMargins(0, 0, 0, 0)
-
-        self.titleBar = WindowDragger(self, self.windowFrame)
-        self.titleBar.setObjectName("titleBar")
-        self.titleBar.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed))
-
-        self.hboxTitle = QHBoxLayout(self.titleBar)
-        self.hboxTitle.setContentsMargins(0, 0, 0, 0)
-        self.hboxTitle.setSpacing(0)
-
-        self.lblTitle = QLabel("Title")
-        self.lblTitle.setObjectName("lblTitle")
-        self.lblTitle.setAlignment(Qt.AlignCenter)
-        self.hboxTitle.addWidget(self.lblTitle)
-
-        spButtons = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-
-        self.btnMinimize = QToolButton(self.titleBar)
-        self.btnMinimize.setObjectName("btnMinimize")
-        self.btnMinimize.setSizePolicy(spButtons)
-        self.hboxTitle.addWidget(self.btnMinimize)
-
-        self.btnRestore = QToolButton(self.titleBar)
-        self.btnRestore.setObjectName("btnRestore")
-        self.btnRestore.setSizePolicy(spButtons)
-        self.btnRestore.setVisible(False)
-        self.hboxTitle.addWidget(self.btnRestore)
-
-        self.btnMaximize = QToolButton(self.titleBar)
-        self.btnMaximize.setObjectName("btnMaximize")
-        self.btnMaximize.setSizePolicy(spButtons)
-        self.hboxTitle.addWidget(self.btnMaximize)
-
-        self.btnClose = QToolButton(self.titleBar)
-        self.btnClose.setObjectName("btnClose")
-        self.btnClose.setSizePolicy(spButtons)
-        self.hboxTitle.addWidget(self.btnClose)
+        self._createFrame()
+        self._createTitle()
 
         self.vboxFrame.addWidget(self.titleBar)
 
