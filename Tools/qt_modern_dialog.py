@@ -1,5 +1,8 @@
-from qtpy.QtCore import Qt, QMetaObject, Signal, Slot
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QToolButton, QLabel, QSizePolicy, QDialog, QDesktopWidget, QPushButton, QTextEdit
+# Qt Frameless Window resizing with QSizeGrip
+# https://gist.github.com/mgrady3/c04890e44e6c89ed38246d77d0d6e2f7
+
+from qtpy.QtCore import Qt, QMetaObject, Signal, Slot, QRect
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QToolButton, QLabel, QSizePolicy, QDialog, QDesktopWidget, QPushButton, QTextEdit, QSizeGrip
 from qtpy.QtGui import QLayout
 
 from qtmodern._utils import QT_VERSION
@@ -203,6 +206,8 @@ class ModernDialog(QDialog, ModernWidget):
         contentLayout.addWidget(w)
 
         self.windowContent.setLayout(contentLayout)
+        sizegrip = QSizeGrip(self.windowContent)
+        self.windowContent.layout().addWidget(sizegrip, 0, Qt.AlignBottom | Qt.AlignRight)
 
         self.setWindowTitle(w.windowTitle())
         self.setGeometry(w.geometry())
@@ -241,7 +246,9 @@ class ModernMessageBox(QDialog, ModernWidget):
         QDialog.__init__(self, parent)
         self.setupUi()
         self.center()
-        logger.debug(f"self geometry | {self.geometry()}")
+        self.mih = None
+        self.mah = None
+        logger.debug(f"self geometry | {self.geometry()} | self.minimumHeight | {self.minimumHeight()}")
 
     def setupUi(self):
         self._createFrame()
@@ -275,9 +282,13 @@ class ModernMessageBox(QDialog, ModernWidget):
         self.msgOKBtn.clicked.connect(self.close)
         self.msgDetailBtn.clicked.connect(self.onDeatilShow)
 
+        self.windowContent.layout().setSpacing(0)
+        self.windowContent.layout().setContentsMargins(15, 5, 15, 5)
         self.windowContent.layout().addWidget(self.msgTextLabel)
         self.windowContent.layout().addLayout(msgButtonLayout)
         self.windowContent.layout().addWidget(self.msgDetailTextEdit)
+        sizegrip = QSizeGrip(self.windowContent)
+        self.windowContent.layout().addWidget(sizegrip, 0, Qt.AlignBottom | Qt.AlignRight)
         self.vboxFrame.addWidget(self.windowContent)
 
         self.vboxWindow.addWidget(self.windowFrame)
@@ -331,7 +342,8 @@ class ModernMessageBox(QDialog, ModernWidget):
         self.msgTextLabel.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed))
         if text_length > 800:
             text_length = 800
-        self.msgTextLabel.setMinimumWidth(text_length)
+        if text_length > self.msgTextLabel.minimumWidth():
+            self.msgTextLabel.setMinimumWidth(text_length)
 
     def setDetailedText(self, detail_text):
         dd = sorted(detail_text.split("\n"), key=lambda x: len(x))
@@ -339,7 +351,8 @@ class ModernMessageBox(QDialog, ModernWidget):
         logger.debug(f"selecty the longest line | {dd[-1]} | {text_length}")
         if text_length > 800:
             text_length = 800
-        self.msgTextLabel.setMinimumWidth(text_length)
+        if text_length > self.msgTextLabel.minimumWidth():
+            self.msgTextLabel.setMinimumWidth(text_length)
         self.msgDetailBtn.show()
         self.msgDetailTextEdit.setText(detail_text)
         self.msgDetailTextEdit.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed))
@@ -348,7 +361,17 @@ class ModernMessageBox(QDialog, ModernWidget):
         if e:
             self.msgDetailBtn.setText("&隐藏详细")
             self.msgDetailTextEdit.show()
+            self.setMinimumHeight(self.mah)
         else:
             self.msgDetailBtn.setText("&显示详细")
             self.msgDetailTextEdit.hide()
-            self.layout().setSizeConstraint(QLayout.SetFixedSize)
+            # self.layout().setSizeConstraint(QLayout.SetFixedSize)
+            self.setMinimumHeight(self.mih)
+            self.resize(self.width(), self.mih)
+
+    def resizeEvent(self, e):
+        logger.debug(f"invoke resizeEvent | {e.oldSize()} --> {e.size()}")
+        if e.oldSize().height() == -1 and self.mih is None:
+            self.mih = self.height()
+        if e.size().height() > self.mih and self.mah is None:
+            self.mah = e.size().height()
