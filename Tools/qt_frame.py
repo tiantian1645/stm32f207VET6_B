@@ -993,6 +993,10 @@ class MainWindow(QMainWindow):
         self.sample_record_label.setToolTip(f"{label.datetime}")
         for plot in self.matplot_plots:
             plot.clear()
+        for i in range(6):
+            self.matplot_conf_houhou_cs[i].setCurrentIndex(0)
+            self.matplot_conf_wavelength_cs[i].setCurrentIndex(0)
+            self.matplot_conf_point_sps[i].setValue(0)
         for sd in label.sample_datas:
             channel_idx = sd.channel - 1
             data = self.sample_record_parse_raw_data(sd.raw_data)
@@ -1019,6 +1023,8 @@ class MainWindow(QMainWindow):
         data_infos = []
         for sd in sds:
             real_data = self.sample_record_parse_raw_data(sd.raw_data)
+            if len(real_data) == 0:
+                continue
             xs = np.array([10 * i for i in range(len(real_data))], dtype=np.int32)
             ys = np.array(real_data, dtype=np.int32)
             yv = np.std(ys)

@@ -68,7 +68,7 @@ class SampleDB:
         Base.metadata.create_all(self.engine)
         Session = sessionmaker(bind=self.engine)
         self.session = Session()
-        logger.success("init db over")
+        logger.success(f"init db over | {db_url}")
 
     def build_label(self, dt=None, name="no name", version="no version", device_id="no device id"):
         if dt is None:

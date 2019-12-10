@@ -248,7 +248,7 @@ class ModernMessageBox(QDialog, ModernWidget):
         self.center()
         self.mih = None
         self.mah = None
-        logger.debug(f"self geometry | {self.geometry()} | self.minimumHeight | {self.minimumHeight()}")
+        logger.debug(f"self geometry | {self.geometry()}")
 
     def setupUi(self):
         self._createFrame()
@@ -269,6 +269,8 @@ class ModernMessageBox(QDialog, ModernWidget):
         msgButtonLayout.setSpacing(0)
         msgButtonLayout.setContentsMargins(0, 0, 0, 0)
         self.msgOKBtn = QPushButton("&退出")
+        self.msgOKBtn.setDefault(True)
+        self.msgOKBtn.setFocus()
         self.msgDetailBtn = QPushButton("&显示详细")
         self.msgDetailBtn.setCheckable(True)
         self.msgDetailBtn.hide()
@@ -370,7 +372,6 @@ class ModernMessageBox(QDialog, ModernWidget):
             self.resize(self.width(), self.mih)
 
     def resizeEvent(self, e):
-        logger.debug(f"invoke resizeEvent | {e.oldSize()} --> {e.size()}")
         if e.oldSize().height() == -1 and self.mih is None:
             self.mih = self.height()
         if e.size().height() > self.mih and self.mah is None:
