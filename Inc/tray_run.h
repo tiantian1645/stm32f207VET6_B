@@ -6,15 +6,17 @@
 /* Private includes ----------------------------------------------------------*/
 
 /* Exported macro ------------------------------------------------------------*/
-#define TRAY_MOTOR_IS_OPT_1 (motor_OPT_Status_Get(eMotor_OPT_Index_Tray) == eMotor_OPT_Status_OFF) /* 光耦输入 */
+#define TRAY_MOTOR_IS_OPT_1 (motor_OPT_Status_Get(eMotor_OPT_Index_Tray) == eMotor_OPT_Status_OFF)      /* 光耦输入 */
+#define TRAY_MOTOR_IS_OPT_2 (motor_OPT_Status_Get(eMotor_OPT_Index_Tray_Scan) == eMotor_OPT_Status_OFF) /* 光耦输入 */
 
 /* Exported types ------------------------------------------------------------*/
 
 /* 条码索引 32细分步下标准 */
 typedef enum {
-    eTrayIndex_0 = 0,
-    eTrayIndex_1 = 5692,
-    eTrayIndex_2 = 25600,
+    eTrayIndex_0 = 0,     /* 原点位置 */
+    eTrayIndex_1 = 5692,  /* 扫码位置 步数定位 */
+    eTrayIndex_2 = 25600, /* 加样位置 */
+    eTrayIndex_3 = 5600,  /* 扫码位置 光耦定位 */
 } eTrayIndex;
 
 typedef enum {

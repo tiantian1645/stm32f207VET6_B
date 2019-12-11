@@ -624,11 +624,8 @@ eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index)
  * @note   Bug 进入此函数前 若电机已经发生位置偏移 则所有结果均不可信
  * @retval 扫码结果
  */
-eBarcodeState barcode_Scan_Whole(void)
+eBarcodeState barcode_Scan_QR(void)
 {
-    uint8_t i;
-    eBarcodeState result;
-
     if (barcode_Interrupt_Flag_Get()) {
         return eBarcodeState_Interrupt;
     }
@@ -638,6 +635,19 @@ eBarcodeState barcode_Scan_Whole(void)
             return eBarcodeState_OK;                                     /* 提前返回 */
         }
     }
+    return eBarcodeState_Error; /* 返回 */
+}
+
+/**
+ * @brief  扫码执行 电机任务调用
+ * @param  None
+ * @note   Bug 进入此函数前 若电机已经发生位置偏移 则所有结果均不可信
+ * @retval 扫码结果
+ */
+eBarcodeState barcode_Scan_Bar(void)
+{
+    uint8_t i;
+    eBarcodeState result;
 
     for (i = 0; i < ARRAY_LEN(cBarCodeIndex); ++i) { /* 不存在有效QR Code */
         if (barcode_Interrupt_Flag_Get()) {

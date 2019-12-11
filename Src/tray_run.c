@@ -144,6 +144,28 @@ eTrayState tray_Motor_Leave_On_OPT(void)
 }
 
 /**
+ * @brief  电机运动后回调 光耦位置硬件检测停车 扫码位置
+ * @note   光耦位置处重置电机状态记录中步数值 重置电机驱动中步数记录值
+ * @param  None
+ * @retval 运动结果 0 正常 1 运动超时
+ */
+eTrayState tray_Motor_Leave_On_OPT_2(void)
+{
+    while (xTaskGetTickCount() - motor_Status_Get_TickInit(&gTray_Motor_Run_Status) < motor_CMD_Info_Get_Tiemout(&gTray_Motor_Run_CMD_Info)) { /* 超时等待 */
+        if (TRAY_MOTOR_IS_BUSY == 0 || TRAY_MOTOR_IS_OPT_2) {      /* 已配置硬件检测停车 电机驱动空闲状态 */
+            tray_Motor_Brake();                                    /* 刹车 */
+            tray_Motor_Deal_Status();                              /* 状态脚处理 */
+            motor_Status_Set_Position(&gTray_Motor_Run_Status, 0); /* 重置电机状态步数记录 */
+            return eTrayState_OK;
+        }
+        vTaskDelay(5); /* 延时 */
+    }
+    tray_Motor_Brake();       /* 刹车 */
+    tray_Motor_Deal_Status(); /* 状态脚处理 */
+    return eTrayState_Error;  /* 超时返回错误 */
+}
+
+/**
  * @brief  电机运动后回调 被动检查停车状态
  * @param  None
  * @retval 运动结果 0 正常 1 异常
@@ -330,12 +352,22 @@ eTrayState tray_Move_By_Index(eTrayIndex index, uint32_t timeout)
 
     motor_CMD_Info_Set_PF_Enter(&gTray_Motor_Run_CMD_Info, tray_Motor_Enter); /* 配置启动前回调 */
     motor_CMD_Info_Set_Tiemout(&gTray_Motor_Run_CMD_Info, timeout);           /* 运动超时时间 1000mS */
-    if (index != eTrayIndex_0) {
-        tray_Motor_Calculate((index >> 5) << 3);                                              /* 计算运动距离 及方向 32细分转8细分 */
-        motor_CMD_Info_Set_PF_Leave(&gTray_Motor_Run_CMD_Info, tray_Motor_Leave_On_Busy_Bit); /* 等待驱动状态位空闲 */
-    } else {
-        motor_CMD_Info_Set_PF_Leave(&gTray_Motor_Run_CMD_Info, tray_Motor_Leave_On_OPT); /* 等待驱动状态位空闲 */
-        motor_CMD_Info_Set_Step(&gTray_Motor_Run_CMD_Info, 0xFFFFFF);
+    switch (index) {
+        case eTrayIndex_0:
+            motor_CMD_Info_Set_PF_Leave(&gTray_Motor_Run_CMD_Info, tray_Motor_Leave_On_OPT); /* 等待驱动状态位空闲 */
+            motor_CMD_Info_Set_Step(&gTray_Motor_Run_CMD_Info, 0xFFFFFF);
+            break;
+        case eTrayIndex_1:
+        case eTrayIndex_2:
+            tray_Motor_Calculate((index >> 5) << 3);                                              /* 计算运动距离 及方向 32细分转8细分 */
+            motor_CMD_Info_Set_PF_Leave(&gTray_Motor_Run_CMD_Info, tray_Motor_Leave_On_Busy_Bit); /* 等待驱动状态位空闲 */
+            break;
+        case eTrayIndex_3:
+        	tray_Motor_Calculate(0);                                              				/* 计算运动距离 及方向 32细分转8细分 */
+            motor_CMD_Info_Set_PF_Leave(&gTray_Motor_Run_CMD_Info, tray_Motor_Leave_On_OPT_2); /* 等待驱动状态位空闲 */
+            break;
+        default:
+            return eTrayState_Error;
     }
     result = tray_Motor_Run(); /* 执行电机运动 */
     return result;

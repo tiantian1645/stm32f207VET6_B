@@ -60,7 +60,8 @@ uint8_t barcode_Motor_Reset_Pos(void);
 eBarcodeState barcode_Motor_Run_By_Index(eBarcodeIndex index);
 
 eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index);
-eBarcodeState barcode_Scan_Whole(void);
+eBarcodeState barcode_Scan_QR(void);
+eBarcodeState barcode_Scan_Bar(void);
 eBarcodeState barcode_Read_From_Serial(uint8_t * pOut_length, uint8_t * pData, uint8_t max_read_length, uint32_t timeout);
 
 uint8_t barcode_Interrupt_Flag_Get(void);

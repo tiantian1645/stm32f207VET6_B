@@ -434,7 +434,15 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
     }
     /* 托盘保持力矩不足 托盘容易位置会发生变化 实际位置与驱动记录位置不匹配 每次移动托盘电机必须重置 */
     if ((index == eTrayIndex_0 && TRAY_MOTOR_IS_OPT_1 == 0)                                       /* 从光耦外回到原点 */
-        || (index != eTrayIndex_0 && TRAY_MOTOR_IS_OPT_1 && flag)) {                              /* 或者 起点时上加热体砸下 从光耦处离开 */
+        || (index == eTrayIndex_2 && TRAY_MOTOR_IS_OPT_1 && flag)) {                              /* 或者 起点时上加热体砸下 从光耦处离开 */
+    } else if ((index == eTrayIndex_1 && flag == 0 && TRAY_MOTOR_IS_OPT_1 == 0)) {                /* 从出仓位移动到扫码位置 */
+        if (tray_Move_By_Index(eTrayIndex_3, 5000) != eTrayState_OK) {                            /* 运动托盘电机 */
+            buffer[0] = 0x00;                                                                     /* 托盘电机运动失败 */
+            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
+            comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                  /* 转发至外串口但不允许阻塞 */
+            beep_Start_With_Conf(eBeep_Freq_fa, 300, 0, 1);
+        }
+        return;
     } else {                                                                                      /* 其他情况需要回到原点 */
         tray_Motor_Init();                                                                        /* 托盘电机初始化 */
         vTaskDelay(100);                                                                          /* 延时 */
@@ -544,7 +552,7 @@ static void motor_Task(void * argument)
                     break;
                 };
                 tray_Move_By_Index(eTrayIndex_1, 5000); /* 运动托盘电机 */
-                barcode_Scan_Whole();                   /* 执行扫码 */
+                barcode_Scan_QR();                      /* 执行扫码 */
                 break;
             case eMotor_Fun_PD:                         /* PD值测试 */
                 motor_Tray_Move_By_Index(eTrayIndex_0); /* 运动托盘电机 */
@@ -562,7 +570,7 @@ static void motor_Task(void * argument)
                 led_Mode_Set(eLED_Mode_Kirakira_Green);              /* LED 绿灯闪烁 */
                 if (protocol_Debug_SampleBarcode() == 0) {           /* 非调试模式 */
                     motor_Tray_Move_By_Index(eTrayIndex_1);          /* 扫码位置 */
-                    barcode_result = barcode_Scan_Whole();           /* 执行扫码 */
+                    barcode_result = barcode_Scan_QR();              /* 扫描二维条码 */
                     if (barcode_result == eBarcodeState_Interrupt) { /* 中途打断 */
                         motor_Sample_Owari();                        /* 清理 */
                         break;                                       /* 提前结束 */
@@ -571,12 +579,20 @@ static void motor_Task(void * argument)
 
                 if (protocol_Debug_SampleMotorTray() == 0) { /* 非调试模式 */
                     motor_Tray_Move_By_Index(eTrayIndex_0);  /* 入仓 */
+                    heat_Motor_Down();                       /* 砸下上加热体电机 */
                 } else {                                     /* 调试模式 */
                     motor_Tray_Move_By_Index(eTrayIndex_2);  /*  出仓 */
                 }
 
+                if (protocol_Debug_SampleBarcode() == 0) {           /* 非调试模式 */
+                    barcode_result = barcode_Scan_Bar();             /* 扫描一维条码 */
+                    if (barcode_result == eBarcodeState_Interrupt) { /* 中途打断 */
+                        motor_Sample_Owari();                        /* 清理 */
+                        break;                                       /* 提前结束 */
+                    }
+                }
+
                 xTick = xTaskGetTickCount();                                                   /* 记录起始时间 */
-                heat_Motor_Down();                                                             /* 砸下上加热体电机 */
                 white_Motor_PD();                                                              /* 运动白板电机 PD位置 清零位置 */
                 white_Motor_WH();                                                              /* 运动白板电机 白物质位置 */
                 if (comm_Data_Conf_Sem_Wait(5000 - (xTaskGetTickCount() - xTick)) != pdPASS) { /* 等待配置信息 */
