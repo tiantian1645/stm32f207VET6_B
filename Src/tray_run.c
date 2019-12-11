@@ -214,7 +214,7 @@ eTrayState tray_Motor_Run(void)
         do {
             vTaskDelay(100);
         } while (TRAY_MOTOR_IS_BUSY && (xTaskGetTickCount() - xTick < 2500));
-        dSPIN_Move(FWD, 24); /* 0.5 毫米 */
+        // dSPIN_Move(FWD, 24); /* 0.5 毫米 */
     }
 
     result = gTray_Motor_Run_CMD_Info.pfLeave(); /* 出口回调 */

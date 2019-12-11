@@ -175,9 +175,9 @@ uint8_t heater_BTM_Output_Is_Live(void)
 void heater_BTM_Output_Init(void)
 {
     // Prepare PID controller for operation
-    pid_ctrl_init(&gHeater_BTM_PID_Conf, HEATER_BTM_SAMPLE, &btm_input, &btm_output, &btm_setpoint, 20000, 12000, 225);
+    pid_ctrl_init(&gHeater_BTM_PID_Conf, HEATER_BTM_SAMPLE, &btm_input, &btm_output, &btm_setpoint, 95200, 500, 2500);
     // Set controler output limits from 0 to 200
-    pid_ctrl_limits(&gHeater_BTM_PID_Conf, 0, gHeater_BTM_PID_Conf.omax);
+    pid_ctrl_limits(&gHeater_BTM_PID_Conf, 0, HEATER_BTM_ARR);
     // Allow PID to compute and change output
     pid_ctrl_auto(&gHeater_BTM_PID_Conf);
 }
@@ -258,7 +258,7 @@ HAL_TIM_StateTypeDef heater_TOP_Output_Is_Live(void)
 void heater_TOP_Output_Init(void)
 {
     // Prepare PID controller for operation
-    pid_ctrl_init(&gHeater_TOP_PID_Conf, HEATER_TOP_SAMPLE, &top_input, &top_output, &top_setpoint, 5000, 4000, 150); /* 37摄氏度 kp 7650 临界波动点 */
+    pid_ctrl_init(&gHeater_TOP_PID_Conf, HEATER_TOP_SAMPLE, &top_input, &top_output, &top_setpoint, 5000, 400, 150);
     // Set controler output limits from 0 to 200
     pid_ctrl_limits(&gHeater_TOP_PID_Conf, 0, 100);
     // Allow PID to compute and change output

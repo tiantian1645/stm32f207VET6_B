@@ -574,7 +574,7 @@ void protocol_Temp_Upload_Deal(void)
     }
 
     if (protocol_Debug_Temperature()) {
-        if (now - xTick_Out > 1 * pdMS_TO_TICKS(1000)) {
+        if (now - xTick_Out > 0.5 * pdMS_TO_TICKS(1000)) {
             xTick_Out = now;
             protocol_Temp_Upload_Out_Deal(temp_btm, temp_top);
         }
