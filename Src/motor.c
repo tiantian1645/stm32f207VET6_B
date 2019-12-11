@@ -48,8 +48,8 @@ typedef struct {
 xQueueHandle motor_Fun_Queue_Handle = NULL; /* 电机功能队列 */
 xTaskHandle motor_Task_Handle = NULL;       /* 电机任务句柄 */
 
-static sMotor_OPT_Record gMotor_OPT_Records[4]; /* 光耦记录 */
-static uint8_t gMotorPRessureStopBits = 0xFF;   /* 压力测试停止标志位 */
+static sMotor_OPT_Record gMotor_OPT_Records[eMotor_OPT_Index_NUM]; /* 光耦记录 */
+static uint8_t gMotorPRessureStopBits = 0xFF;                      /* 压力测试停止标志位 */
 
 /* Private function prototypes -----------------------------------------------*/
 static void motor_Task(void * argument);
@@ -57,7 +57,10 @@ static void motor_Tray_Move_By_Index(eTrayIndex index);
 
 static eMotor_OPT_Status motor_OPT_Status_Get_Scan(void);
 static eMotor_OPT_Status motor_OPT_Status_Get_Tray(void);
+static eMotor_OPT_Status motor_OPT_Status_Get_Tray_Scan(void);
 static eMotor_OPT_Status motor_OPT_Status_Get_Heater(void);
+//
+static eMotor_OPT_Status motor_OPT_Status_Get_QR(void);
 
 static void motor_Self_Check_Motor_White(uint8_t * pBuffer);
 static void motor_Self_Check_Motor_Heater(uint8_t * pBuffer);
@@ -65,8 +68,8 @@ static void motor_Self_Check_Motor_Tray(uint8_t * pBuffer);
 static void motor_Self_Check_Motor_Scan(uint8_t * pBuffer);
 static void motor_Self_Check_Scan(uint8_t * pBuffer);
 /* Private constants ---------------------------------------------------------*/
-const eMotor_OPT_Status (*gOPT_Status_Get_Funs[])(void) = {motor_OPT_Status_Get_Scan, motor_OPT_Status_Get_Tray, motor_OPT_Status_Get_Heater,
-                                                           motor_OPT_Status_Get_White};
+const eMotor_OPT_Status (*gOPT_Status_Get_Funs[])(void) = {motor_OPT_Status_Get_Scan,   motor_OPT_Status_Get_Tray,  motor_OPT_Status_Get_Tray_Scan,
+                                                           motor_OPT_Status_Get_Heater, motor_OPT_Status_Get_White, motor_OPT_Status_Get_QR};
 
 /* Private user code ---------------------------------------------------------*/
 /**
@@ -96,6 +99,19 @@ static eMotor_OPT_Status motor_OPT_Status_Get_Tray(void)
 }
 
 /**
+ * @brief  软定时器光耦状态硬件读取 托盘电机扫码位置
+ * @param  None
+ * @retval 光耦状态
+ */
+static eMotor_OPT_Status motor_OPT_Status_Get_Tray_Scan(void)
+{
+    if (HAL_GPIO_ReadPin(OPTSW_OUT2_GPIO_Port, OPTSW_OUT2_Pin) == GPIO_PIN_RESET) {
+        return eMotor_OPT_Status_OFF;
+    }
+    return eMotor_OPT_Status_ON;
+}
+
+/**
  * @brief  软定时器光耦状态硬件读取 上加热体电机
  * @param  None
  * @retval 光耦状态
@@ -116,6 +132,19 @@ static eMotor_OPT_Status motor_OPT_Status_Get_Heater(void)
 eMotor_OPT_Status motor_OPT_Status_Get_White(void)
 {
     if (HAL_GPIO_ReadPin(OPTSW_OUT4_GPIO_Port, OPTSW_OUT4_Pin) == GPIO_PIN_RESET) {
+        return eMotor_OPT_Status_OFF;
+    }
+    return eMotor_OPT_Status_ON;
+}
+
+/**
+ * @brief  软定时器光耦状态硬件读取 二维条码遮挡
+ * @param  None
+ * @retval 光耦状态
+ */
+static eMotor_OPT_Status motor_OPT_Status_Get_QR(void)
+{
+    if (HAL_GPIO_ReadPin(OPTSW_OUT5_GPIO_Port, OPTSW_OUT5_Pin) == GPIO_PIN_RESET) {
         return eMotor_OPT_Status_OFF;
     }
     return eMotor_OPT_Status_ON;
@@ -220,8 +249,8 @@ void motor_OPT_Status_Init(void)
         gMotor_OPT_Records[i].status_result = eMotor_OPT_Status_None;   /* 初始状态 */
         gMotor_OPT_Records[i].opt_status_get = gOPT_Status_Get_Funs[i]; /* 硬件层光耦状态读取 */
     }
-    gMotor_OPT_Records[3].threshold_on = 6;  /* 断开次数阈值 */
-    gMotor_OPT_Records[3].threshold_off = 6; /* 遮挡次数阈值 */
+    gMotor_OPT_Records[eMotor_OPT_Index_Heater].threshold_on = 6;  /* 断开次数阈值 */
+    gMotor_OPT_Records[eMotor_OPT_Index_Heater].threshold_off = 6; /* 遮挡次数阈值 */
 }
 
 /**
@@ -286,17 +315,10 @@ void motor_OPT_Status_Update(void)
  */
 eMotor_OPT_Status motor_OPT_Status_Get(eMotor_OPT_Index idx)
 {
-    switch (idx) {
-        case eMotor_OPT_Index_Scan:
-            return gMotor_OPT_Records[0].status_result;
-        case eMotor_OPT_Index_Tray:
-            return gMotor_OPT_Records[1].status_result;
-        case eMotor_OPT_Index_Heater:
-            return gMotor_OPT_Records[2].status_result;
-        case eMotor_OPT_Index_White:
-            return gMotor_OPT_Records[3].status_result;
+    if (idx >= eMotor_OPT_Index_NUM) {
+        return eMotor_OPT_Status_OFF;
     }
-    return eMotor_OPT_Status_OFF;
+    return gMotor_OPT_Records[idx].status_result;
 }
 
 /**

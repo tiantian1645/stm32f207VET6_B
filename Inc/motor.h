@@ -86,10 +86,13 @@ typedef enum {
 } eMotor_OPT_Status;
 
 typedef enum {
-    eMotor_OPT_Index_Scan = 0,
-    eMotor_OPT_Index_Tray = 1,
-    eMotor_OPT_Index_Heater = 3,
-    eMotor_OPT_Index_White = 4,
+    eMotor_OPT_Index_Scan,
+    eMotor_OPT_Index_Tray,
+    eMotor_OPT_Index_Tray_Scan,
+    eMotor_OPT_Index_Heater,
+    eMotor_OPT_Index_White,
+    eMotor_OPT_Index_QR,
+    eMotor_OPT_Index_NUM,
 } eMotor_OPT_Index;
 
 /* Exported define -----------------------------------------------------------*/
