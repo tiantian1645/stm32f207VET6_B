@@ -1237,8 +1237,6 @@ void protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
  */
 void protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
 {
-    uint8_t i, cnt;
-
     if (pInBuff[4] == PROTOCOL_DEVICE_ID_CTRL) { /* 回声现象 */
         return;
     }
@@ -1248,18 +1246,22 @@ void protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
         return;                                       /* 直接返回 */
     }
 
-    protocol_Parse_AnswerACK(eComm_Data, pInBuff[3]);                                /* 发送回应包 */
-    switch (pInBuff[5]) {                                                            /* 进一步处理 功能码 */
-        case eComm_Data_Inbound_CMD_DATA:                                            /* 采集数据帧 */
-            if (pInBuff[7] >= 1 && pInBuff[7] <= 6) {                                /* 检查通道编码 */
-                gComm_Data_Sample_Buffer[pInBuff[7] - 1].num = pInBuff[6];           /* 数据个数 u16 */
-                gComm_Data_Sample_Buffer[pInBuff[7] - 1].channel = pInBuff[7];       /* 通道编码 */
-                for (i = 0; i < gComm_Data_Sample_Buffer[pInBuff[7] - 1].num; ++i) { /* 具体数据 */
-                    gComm_Data_Sample_Buffer[pInBuff[7] - 1].data[i] = pInBuff[8 + (i * 2)] + (pInBuff[9 + (i * 2)] << 8);
+    protocol_Parse_AnswerACK(eComm_Data, pInBuff[3]);                          /* 发送回应包 */
+    switch (pInBuff[5]) {                                                      /* 进一步处理 功能码 */
+        case eComm_Data_Inbound_CMD_DATA:                                      /* 采集数据帧 */
+            if (pInBuff[7] >= 1 && pInBuff[7] <= 6) {                          /* 检查通道编码 */
+                gComm_Data_Sample_Buffer[pInBuff[7] - 1].num = pInBuff[6];     /* 数据个数 u16 / u32 */
+                gComm_Data_Sample_Buffer[pInBuff[7] - 1].channel = pInBuff[7]; /* 通道编码 */
+                if (length - 9 == pInBuff[6] * 2) {                            /* u16 */
+                    gComm_Data_Sample_Buffer[pInBuff[7] - 1].data_type = 2;    /* 数据类型标识 */
+                } else if (length - 9 == pInBuff[6] * 4) {                     /* u32 */
+                    gComm_Data_Sample_Buffer[pInBuff[7] - 1].data_type = 4;    /* 数据类型标识 */
+                } else {                                                       /* 异常长度 */
+                    gComm_Data_Sample_Buffer[pInBuff[7] - 1].data_type = 1;    /* 数据类型标识 */
                 }
+                memcpy(gComm_Data_Sample_Buffer[pInBuff[7] - 1].raw_datas, pInBuff + 8, length - 9); /* 原封不动复制 */
             }
-            cnt = pInBuff[6] * 2 + 2;
-            comm_Main_SendTask_QueueEmitWithBuild(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], cnt, 20);
+            comm_Main_SendTask_QueueEmitWithBuild(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7, 20);
             comm_Out_SendTask_QueueEmitWithModify(pInBuff + 6, length, 0);
             break;
         case eComm_Data_Inbound_CMD_OVER: /* 采集数据完成帧 */

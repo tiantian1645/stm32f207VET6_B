@@ -71,7 +71,8 @@ typedef enum {
 typedef struct {
     uint8_t num;
     uint8_t channel;
-    uint16_t data[120];
+    uint8_t data_type;
+    uint8_t raw_datas[240];
 } eComm_Data_Sample;
 
 /* Exported constants --------------------------------------------------------*/
