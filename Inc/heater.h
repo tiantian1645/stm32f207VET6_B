@@ -19,6 +19,9 @@ typedef enum {
     eHeater_PID_Conf_Kp,
     eHeater_PID_Conf_Ki,
     eHeater_PID_Conf_Kd,
+    eHeater_PID_Conf_Set_Point,
+    eHeater_PID_Conf_Input,
+    eHeater_PID_Conf_Output,
 } eHeater_PID_Conf;
 
 /* Exported constants --------------------------------------------------------*/
@@ -48,6 +51,7 @@ float heater_BTM_Conf_Get(eHeater_PID_Conf offset);
 void heater_BTM_Conf_Set(eHeater_PID_Conf offset, float data);
 float heater_TOP_Conf_Get(eHeater_PID_Conf offset);
 void heater_TOP_Conf_Set(eHeater_PID_Conf offset, float data);
+
 /* Private defines -----------------------------------------------------------*/
 
 #endif

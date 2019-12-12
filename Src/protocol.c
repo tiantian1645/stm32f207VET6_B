@@ -920,7 +920,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                         comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Heater, pInBuff, 3 + 4 * pInBuff[2]);
                     }
                     break;
-                case 22:                   /* 22个参数 修改PID参数 */
+                case 26:                   /* 26个参数 修改PID参数 */
                     if (pInBuff[6] == 0) { /* 下加热体 */
                         for (result = 0; result < pInBuff[8]; ++result) {
                             temp = *(float *)(pInBuff + 9 + 4 * result);
@@ -935,7 +935,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                     break;
             }
             break;
-        case eProtocolEmitPack_Client_CMD_Debug_Flag:
+        case eProtocolEmitPack_Client_CMD_Debug_Flag: /* 调试开关 */
             if (length == 9) {
                 if (pInBuff[7] == 0) {
                     protocol_Debug_Clear(pInBuff[6]);
@@ -947,7 +947,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Flag, pInBuff, 1);
             }
             break;
-        case eProtocolEmitPack_Client_CMD_Debug_Beep:
+        case eProtocolEmitPack_Client_CMD_Debug_Beep: /* 蜂鸣器控制 */
             if (length != 14) {
                 beep_Start();
             } else {
@@ -985,7 +985,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             pInBuff[0] = motor_Emit(&motor_fun, 0);        /* 提交到电机队列 */
             comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Motor_Fun, pInBuff, 1);
             break;
-        case eProtocolEmitPack_Client_CMD_Debug_Self_Check:
+        case eProtocolEmitPack_Client_CMD_Debug_Self_Check: /* 自检测试 */
             if (length == 7) {
                 protocol_Self_Check_Temp_TOP(pInBuff);
                 protocol_Self_Check_Temp_BTM(pInBuff);
@@ -1026,7 +1026,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 error_Emit(eError_Comm_Out_Param_Error);
             }
             break;
-        case eProtocolEmitPack_Client_CMD_Debug_Params:
+        case eProtocolEmitPack_Client_CMD_Debug_Params:         /* 参数设置 */
             if (length == 9) {                                  /* 保存参数 */
                 status = (pInBuff[6] << 0) + (pInBuff[7] << 8); /* 起始索引 */
                 if (status == 0xFFFF) {

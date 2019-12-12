@@ -57,6 +57,12 @@ float heater_PID_Conf_Param_Get(sPID_Ctrl_Conf * pConf, eHeater_PID_Conf offset)
             return pConf->Ki;
         case eHeater_PID_Conf_Kd:
             return pConf->Kd;
+        case eHeater_PID_Conf_Set_Point:
+            return *(pConf->setpoint);
+        case eHeater_PID_Conf_Input:
+            return *(pConf->input);
+        case eHeater_PID_Conf_Output:
+            return *(pConf->output);
     }
     return 0;
 }
@@ -73,15 +79,27 @@ void heater_PID_Conf_Param_Set(sPID_Ctrl_Conf * pConf, eHeater_PID_Conf offset, 
     switch (offset) {
         case eHeater_PID_Conf_Kp:
             pConf->Kp = data;
+            break;
         case eHeater_PID_Conf_Ki:
             pConf->Ki = data;
+            break;
         case eHeater_PID_Conf_Kd:
             pConf->Kd = data;
+            break;
+        case eHeater_PID_Conf_Set_Point:
+            *(pConf->setpoint) = data;
+            break;
+        case eHeater_PID_Conf_Input:
+            *(pConf->input) = data;
+            break;
+        case eHeater_PID_Conf_Output:
+            *(pConf->output) = data;
+            break;
     }
 }
 
 /**
- * @brief  PID参数 读取 上加热体
+ * @brief  PID参数 读取 下加热体
  * @param  offset 参数项别
  * @retval 参数数值
  */
@@ -91,7 +109,7 @@ float heater_BTM_Conf_Get(eHeater_PID_Conf offset)
 }
 
 /**
- * @brief  PID参数 设置 上加热体
+ * @brief  PID参数 设置 下加热体
  * @param  offset 参数项别
  * @param  data   数据
  * @retval None
@@ -102,7 +120,7 @@ void heater_BTM_Conf_Set(eHeater_PID_Conf offset, float data)
 }
 
 /**
- * @brief  PID参数 读取 下加热体
+ * @brief  PID参数 读取 上加热体
  * @param  offset 参数项别
  * @retval 参数数值
  */
@@ -112,7 +130,7 @@ float heater_TOP_Conf_Get(eHeater_PID_Conf offset)
 }
 
 /**
- * @brief  PID参数 设置 下加热体
+ * @brief  PID参数 设置 上加热体
  * @param  offset 参数项别
  * @param  data   数据
  * @retval None
