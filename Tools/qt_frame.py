@@ -81,7 +81,7 @@ TEMP_RAW_SYMBOL_CONFIG = (("o", 4, "b"), ("s", 4, "g"), ("t", 4, "r"), ("d", 4, 
 METHOD_NAMES = ("无项目", "速率法", "终点法", "两点终点法")
 WAVE_NAMES = ("610", "550", "405")
 SampleConf = namedtuple("SampleConf", "method wave point_num")
-HEATER_PID_PS = [1, 100, 0.01]
+HEATER_PID_PS = [1, 100, 0.01, 1, 1, 1]
 
 logger = loguru.logger
 
@@ -173,8 +173,8 @@ class MainWindow(QMainWindow):
 
     def _getHeater(self):
         self._serialSendPack(0xD3)
-        self._serialSendPack(0xD3, (0, 0, 3))
-        self._serialSendPack(0xD3, (1, 0, 3))
+        self._serialSendPack(0xD3, (0, 0, 4))
+        self._serialSendPack(0xD3, (1, 0, 4))
 
     def _getDebuFlag(self):
         self._serialSendPack(0xD4)
@@ -285,12 +285,17 @@ class MainWindow(QMainWindow):
         temperature_heater_ctl_ly = QVBoxLayout()
         temperature_heater_ctl_btm_ly = QHBoxLayout()
         self.temperature_heater_btm_ks_bts = [QPushButton(i) for i in ("读", "写")]
-        self.temperature_heater_btm_ks_sps = [QDoubleSpinBox() for _ in range(3)]
+        self.temperature_heater_btm_ks_sps = [QDoubleSpinBox() for _ in range(4)]
         for i, sp in enumerate(self.temperature_heater_btm_ks_sps):
-            sp.setRange(0, 99999999)
             sp.setDecimals(2)
-            sp.setMaximumWidth(90)
-            temperature_heater_ctl_btm_ly.addWidget(QLabel(("Kp", "Ki", "Kd")[i]))
+            if i < 3:
+                sp.setRange(0, 99999999)
+                sp.setMaximumWidth(90)
+            else:
+                sp.setRange(0, 75)
+                sp.setMaximumWidth(60)
+                sp.setSuffix("℃")
+            temperature_heater_ctl_btm_ly.addWidget(QLabel(("Kp", "Ki", "Kd", "目标")[i]))
             temperature_heater_ctl_btm_ly.addWidget(sp)
         for bt in self.temperature_heater_btm_ks_bts:
             bt.setMaximumWidth(45)
@@ -300,12 +305,17 @@ class MainWindow(QMainWindow):
         temperature_heater_ctl_btm_ly.addWidget(self.temperature_heater_btm_cb)
         temperature_heater_ctl_top_ly = QHBoxLayout()
         self.temperature_heater_top_ks_bts = [QPushButton(i) for i in ("读", "写")]
-        self.temperature_heater_top_ks_sps = [QDoubleSpinBox() for _ in range(3)]
+        self.temperature_heater_top_ks_sps = [QDoubleSpinBox() for _ in range(4)]
         for i, sp in enumerate(self.temperature_heater_top_ks_sps):
-            sp.setRange(0, 99999999)
             sp.setDecimals(2)
-            sp.setMaximumWidth(90)
-            temperature_heater_ctl_top_ly.addWidget(QLabel(("Kp", "Ki", "Kd")[i]))
+            if i < 3:
+                sp.setRange(0, 99999999)
+                sp.setMaximumWidth(90)
+            else:
+                sp.setRange(0, 75)
+                sp.setMaximumWidth(60)
+                sp.setSuffix("℃")
+            temperature_heater_ctl_top_ly.addWidget(QLabel(("Kp", "Ki", "Kd", "目标")[i]))
             temperature_heater_ctl_top_ly.addWidget(sp)
         for bt in self.temperature_heater_top_ks_bts:
             bt.setMaximumWidth(45)
@@ -391,25 +401,25 @@ class MainWindow(QMainWindow):
         if pbt in self.temperature_heater_btm_ks_bts:
             idx = self.temperature_heater_btm_ks_bts.index(pbt)
             if idx == 0:
-                self._serialSendPack(0xD3, (0, 0, 3))
+                self._serialSendPack(0xD3, (0, 0, 4))
             else:
                 data = b""
                 for i, sp in enumerate(self.temperature_heater_btm_ks_sps):
                     data += struct.pack("f", sp.value() / HEATER_PID_PS[i])
                     self._setColor(sp, nfg="red")
-                self._serialSendPack(0xD3, (0, 0, 3, *data))
-                QTimer.singleShot(1000, lambda: self._serialSendPack(0xD3, (0, 0, 3)))
+                self._serialSendPack(0xD3, (0, 0, 4, *data))
+                QTimer.singleShot(1000, lambda: self._serialSendPack(0xD3, (0, 0, 4)))
         elif pbt in self.temperature_heater_top_ks_bts:
             idx = self.temperature_heater_top_ks_bts.index(pbt)
             if idx == 0:
-                self._serialSendPack(0xD3, (1, 0, 3))
+                self._serialSendPack(0xD3, (1, 0, 4))
             else:
                 data = b""
                 for i, sp in enumerate(self.temperature_heater_top_ks_sps):
                     data += struct.pack("f", sp.value() / HEATER_PID_PS[i])
                     self._setColor(sp, nfg="red")
-                self._serialSendPack(0xD3, (1, 0, 3, *data))
-                QTimer.singleShot(1000, lambda: self._serialSendPack(0xD3, (1, 0, 3)))
+                self._serialSendPack(0xD3, (1, 0, 4, *data))
+                QTimer.singleShot(1000, lambda: self._serialSendPack(0xD3, (1, 0, 4)))
         else:
             return
 
@@ -425,10 +435,10 @@ class MainWindow(QMainWindow):
                 self.temperature_heater_top_cb.setChecked(True)
             else:
                 self.temperature_heater_top_cb.setChecked(False)
-        if len(raw_bytes) == 22:
+        if len(raw_bytes) == 26:
             bt = raw_bytes[6]
             logger.debug(f"get heater conf value | bt {bt}")
-            for i in range(3):
+            for i in range(4):
                 value = struct.unpack("f", raw_bytes[9 + i * 4 : 13 + i * 4])[0]
                 value = value * HEATER_PID_PS[i]
                 if bt == 0:

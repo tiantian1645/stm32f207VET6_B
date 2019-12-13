@@ -86,11 +86,15 @@ void pid_ctrl_compute(sPID_Ctrl_Conf * pPID_Info)
     // Compute error
     float error = (*(pPID_Info->setpoint)) - in;
     // Compute integral
-    pPID_Info->iterm += (pPID_Info->Ki * error);
-    if (pPID_Info->iterm > pPID_Info->omax)
-        pPID_Info->iterm = pPID_Info->omax;
-    else if (pPID_Info->iterm < pPID_Info->omin)
-        pPID_Info->iterm = pPID_Info->omin;
+    if (pPID_Info->Ki == 0)
+        pPID_Info->iterm = 0;
+    else {
+        pPID_Info->iterm += (pPID_Info->Ki * error);
+        if (pPID_Info->iterm > pPID_Info->omax)
+            pPID_Info->iterm = pPID_Info->omax;
+        else if (pPID_Info->iterm < pPID_Info->omin)
+            pPID_Info->iterm = pPID_Info->omin;
+    }
     // Compute differential on input
     float dinput = in - pPID_Info->lastin;
     // Compute PID output
