@@ -20,8 +20,6 @@
 /* Private macro -------------------------------------------------------------*/
 #define TRAY_MOTOR_IS_BUSY (dSPIN_Busy_SW()) /* 托盘电机忙碌位读取 */
 #define TRAY_MOTOR_IS_FLAG (dSPIN_Flag())    /* 托盘电机标志脚读取 */
-#define TRAY_MOTOR_MAX_DISP 6400             /* 出仓步数 (1/8) 物理限制步数 */
-#define TRAY_MOTOR_SCAN_DISP 1400            /* 扫码步数 (1/8) */
 #define TRAY_MOTOR_GO_HOME_SPEED 80000
 
 /* Private variables ---------------------------------------------------------*/
@@ -363,7 +361,7 @@ eTrayState tray_Move_By_Index(eTrayIndex index, uint32_t timeout)
             motor_CMD_Info_Set_PF_Leave(&gTray_Motor_Run_CMD_Info, tray_Motor_Leave_On_Busy_Bit); /* 等待驱动状态位空闲 */
             break;
         case eTrayIndex_3:
-        	tray_Motor_Calculate(0);                                              				/* 计算运动距离 及方向 32细分转8细分 */
+            tray_Motor_Calculate(0);                                                           /* 计算运动距离 及方向 32细分转8细分 */
             motor_CMD_Info_Set_PF_Leave(&gTray_Motor_Run_CMD_Info, tray_Motor_Leave_On_OPT_2); /* 等待驱动状态位空闲 */
             break;
         default:

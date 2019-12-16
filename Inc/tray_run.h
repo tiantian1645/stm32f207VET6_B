@@ -15,7 +15,7 @@
 typedef enum {
     eTrayIndex_0 = 0,     /* 原点位置 */
     eTrayIndex_1 = 5692,  /* 扫码位置 步数定位 */
-    eTrayIndex_2 = 25600, /* 加样位置 */
+    eTrayIndex_2 = 26400, /* 加样位置 */
     eTrayIndex_3 = 5600,  /* 扫码位置 光耦定位 */
 } eTrayIndex;
 
