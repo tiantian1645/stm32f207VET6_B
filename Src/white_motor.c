@@ -23,12 +23,12 @@ typedef enum {
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
-#define WHITE_MOTOR_PCS_MAX 30000
-#define WHITE_MOTOR_PCS_MIN 24000
+#define WHITE_MOTOR_PCS_MAX 40000
+#define WHITE_MOTOR_PCS_MIN 36000
 #define WHITE_MOTOR_PCS_UNT 8
 #define WHITE_MOTOR_PCS_SUM 297
 #define WHITE_MOTOR_PCS_PATCH 12
-#define WHITE_MOTOR_PCS_GAP 0 //((WHITE_MOTOR_PCS_MAX - WHITE_MOTOR_PCS_MIN) / WHITE_MOTOR_PCS_SUM)
+#define WHITE_MOTOR_PCS_GAP ((WHITE_MOTOR_PCS_MAX - WHITE_MOTOR_PCS_MIN) / WHITE_MOTOR_PCS_SUM)
 
 /* Private variables ---------------------------------------------------------*/
 static eMotorDir gWhite_Motor_Dir = eMotorDir_FWD;
