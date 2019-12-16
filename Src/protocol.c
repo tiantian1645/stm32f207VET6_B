@@ -1237,6 +1237,8 @@ void protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
  */
 void protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
 {
+    static uint8_t last_ack = 0;
+
     if (pInBuff[4] == PROTOCOL_DEVICE_ID_CTRL) { /* 回声现象 */
         return;
     }
@@ -1246,7 +1248,12 @@ void protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
         return;                                       /* 直接返回 */
     }
 
-    protocol_Parse_AnswerACK(eComm_Data, pInBuff[3]);                          /* 发送回应包 */
+    protocol_Parse_AnswerACK(eComm_Data, pInBuff[3]); /* 发送回应包 */
+    if (last_ack == pInBuff[3]) {                     /* 收到与上一帧号相同帧 */
+        return;                                       /* 不做处理 */
+    }
+    last_ack = pInBuff[3]; /* 记录上一帧号 */
+
     switch (pInBuff[5]) {                                                      /* 进一步处理 功能码 */
         case eComm_Data_Inbound_CMD_DATA:                                      /* 采集数据帧 */
             if (pInBuff[7] >= 1 && pInBuff[7] <= 6) {                          /* 检查通道编码 */
