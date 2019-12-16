@@ -514,6 +514,7 @@ static void motor_Task(void * argument)
     if (comm_Data_Start_Stary_Test() != pdPASS) { /* 开始杂散光测试 */
         cnt = 1;
     } else {
+        xTick = xTaskGetTickCount();                                                   /* 起始计时 */
         led_Mode_Set(eLED_Mode_Kirakira_Red);                                          /* LED 红灯闪烁 */
         xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(15000)); /* 等待杂散光完成通知 */
         if (xResult != pdPASS) {                                                       /* 杂散光测试超时 */
@@ -522,6 +523,7 @@ static void motor_Task(void * argument)
             cnt = 0;
         } else { /* 异常通知量 */
             cnt = 3;
+            vTaskDelayUntil(&xTick, pdMS_TO_TICKS(15000));
         }
         comm_Data_Stary_Test_Clear();       /* finally 清除杂散光测试标记 */
         led_Mode_Set(eLED_Mode_Keep_Green); /* LED 绿灯常亮 */
