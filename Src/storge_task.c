@@ -50,8 +50,7 @@ static sStorgeParamInfo gStorgeParamInfo;
 static void storgeTask(void * argument);
 static void storge_ParamInit(void);
 static uint8_t storge_ParamDump(void);
-static uint8_t storge_ParamApply(uint8_t * pBuff, uint16_t length);
-static uint8_t storge_ParamLoad(uint8_t * pBuff);
+static uint8_t storge_ParamLoadAll(void);
 
 static void storge_Test_Flash(uint8_t * pBuffer);
 static void storge_Test_EEPROM(uint8_t * pBuffer);
@@ -213,11 +212,11 @@ static void storgeTask(void * argument)
     uint32_t i, readCnt, wroteCnt;
     uint32_t ulNotifyValue;
     uint16_t length;
-    uint8_t buff[700], result;
+    uint8_t buff[256], result;
 
     bsp_spi_FlashInit();
     storge_ParamInit();
-    result = storge_ParamLoad(buff);
+    result = storge_ParamLoadAll();
     if (result == 1) {
         error_Emit(eError_Out_Flash_Storge_Param_Out_Of_Range); /* 参数越限 */
     } else if (result == 2) {
@@ -376,7 +375,7 @@ static void storgeTask(void * argument)
                 }
                 break;
             case eStorgeNotifyConf_Load_Parmas:
-                result = storge_ParamLoad(buff);
+                result = storge_ParamLoadAll();
                 if (result == 1) {
                     error_Emit(eError_Out_Flash_Storge_Param_Out_Of_Range); /* 参数越限 */
                 } else if (result == 2) {
@@ -442,67 +441,27 @@ static uint8_t storge_ParamDump(void)
 }
 
 /**
- * @brief  参数写入Flash
- * @param  pBuff 数据指针
- * @param  length 数据长度
- * @retval 0 不需要回写 1 参数越限 2 数据异常
+ * @brief  参数从Flash读出 到 全局变量 gStorgeParamInfo
+ * @param  None
+ * @retval 0 成功 1 参数越限 2 读取失败
  */
-static uint8_t storge_ParamApply(uint8_t * pBuff, uint16_t length)
+static uint8_t storge_ParamLoadAll(void)
 {
-    uint8_t error = 0;
-    eStorgeParamIndex i;
-    uint32_t * pData_u32;
-    float * pData_f;
-    union {
-        float f;
-        uint32_t u32;
-        uint8_t u8s[4];
-    } read_data;
+    uint8_t temp, error = 0;
+    uint16_t length, i;
+    uStorgeParamItem read_data;
 
-    if (length != sizeof(gStorgeParamInfo) || pBuff == NULL) {
-        return 2;
-    }
-
-    for (i = eStorgeParamIndex_Temp_CC_top_1; i < eStorgeParamIndex_Num; ++i) {
-        if (i <= eStorgeParamIndex_Temp_CC_env) {
-            pData_f = &(gStorgeParamInfo.temperature_cc_top_1) + (i - eStorgeParamIndex_Temp_CC_top_1);
-            memcpy(read_data.u8s, &pBuff[4 * i], 4);
-            if (read_data.f <= 5 && read_data.f >= -5) { /* 温度校正范围限制在±5℃ */
-                *pData_f = read_data.f;
-            } else {
-                error = 1;
-            }
-        } else {
-            pData_u32 = &(gStorgeParamInfo.illumine_CC_t1_610_i0) + (i - eStorgeParamIndex_Illumine_CC_t1_610_i0);
-            memcpy(read_data.u8s, &pBuff[4 * i], 4);
-            if (read_data.u32 != 0xFFFFFFFF) {
-                *pData_u32 = read_data.u32;
-            } else {
-                error = 1;
-            }
+    for (i = 0; i < eStorgeParamIndex_Num; ++i) {
+        length = spi_FlashReadBuffer(STORGE_APP_PARAMS_ADDR + 4 * i, read_data.u8s, 4);
+        if (length != 4) {
+            return 2;
+        }
+        temp = storge_ParamWriteSingle(i, read_data.u8s, 4);
+        if (temp != 0) {
+            error = temp;
         }
     }
     return error;
-}
-
-/**
- * @brief  参数从Flash读出
- * @param  pBuff 数据缓冲
- * @retval 0 成功 1 参数越限 2 读取失败
- */
-static uint8_t storge_ParamLoad(uint8_t * pBuff)
-{
-    uint16_t readCnt, length;
-
-    readCnt = sizeof(gStorgeParamInfo);
-    length = spi_FlashReadBuffer(STORGE_APP_PARAMS_ADDR, pBuff, readCnt);
-    if (length == readCnt) {
-        if (storge_ParamApply(pBuff, length) == 0) {
-            return 0;
-        }
-        return 1;
-    }
-    return 2;
 }
 
 /**
@@ -522,23 +481,30 @@ uint8_t storge_ParamWriteSingle(eStorgeParamIndex idx, uint8_t * pBuff, uint8_t 
         return 3;
     }
 
-    if (idx >= eStorgeParamIndex_Temp_CC_top_1 && idx <= eStorgeParamIndex_Temp_CC_env) {
+    if (idx >= eStorgeParamIndex_Temp_CC_top_1 && idx <= eStorgeParamIndex_Heater_Offset_TOP) {
         if (length != 4) {
             return 3;
         }
         memcpy(read_data.u8s, pBuff, length);
-        pData_f = &(gStorgeParamInfo.temperature_cc_top_1) + 4 * (idx - eStorgeParamIndex_Temp_CC_top_1);
-        *pData_f = read_data.f32;
-        return 0;
-
+        pData_f = &(gStorgeParamInfo.temperature_cc_top_1) + (idx - eStorgeParamIndex_Temp_CC_top_1);
+        if (read_data.f32 <= 5 && read_data.f32 >= -5) { /* 温度校正范围限制在±5℃ */
+            *pData_f = read_data.f32;
+            return 0;
+        } else {
+            return 1;
+        }
     } else if (idx >= eStorgeParamIndex_Illumine_CC_t1_610_i0 && idx <= eStorgeParamIndex_Illumine_CC_t6_550_o5) {
         if (length != 4) {
             return 3;
         }
         memcpy(read_data.u8s, pBuff, length);
-        pData_u32 = &(gStorgeParamInfo.illumine_CC_t1_610_i0) + 4 * (idx - eStorgeParamIndex_Illumine_CC_t1_610_i0);
-        *pData_u32 = read_data.u32;
-        return 0;
+        pData_u32 = &(gStorgeParamInfo.illumine_CC_t1_610_i0) + (idx - eStorgeParamIndex_Illumine_CC_t1_610_i0);
+        if (read_data.u32 != 0xFFFFFFFF) {
+            *pData_u32 = read_data.u32;
+            return 0;
+        } else {
+            return 1;
+        }
     }
     return 2;
 }
