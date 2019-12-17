@@ -432,14 +432,16 @@ void protocol_Temp_Upload_Error_Deal(TickType_t now, float temp_btm, float temp_
 {
     static TickType_t xTick_btm_Keep_low = 0, xTick_btm_Keep_Hight = 0, xTick_top_Keep_low = 0, xTick_top_Keep_Hight = 0;
     static TickType_t xTick_btm_Nai = 0, xTick_top_Nai = 0;
+    float setpoint = 37;
 
-    if (temp_btm < 36.5) {                                                           /* 温度值低于36.5 */
+    setpoint = heater_BTM_Conf_Get(eHeater_PID_Conf_Set_Point);                      /* 获取目标温度 */
+    if (temp_btm < setpoint - 0.5) {                                                 /* 温度值低于36.5 */
         xTick_btm_Keep_Hight = now;                                                  /* 温度过高计数清零 */
         if (xTick_btm_Keep_Hight - xTick_btm_Keep_low > 600 * pdMS_TO_TICKS(1000)) { /* 过低持续次数大于 10 Min */
             error_Emit(eError_Temperature_Btm_TooLow);                               /* 报错 */
             xTick_btm_Keep_low = xTick_btm_Keep_Hight;                               /* 重复报错间隔 */
         }
-    } else if (temp_btm > 37.5) {            /* 温度值高于37.5 */
+    } else if (temp_btm > setpoint + 0.5) {  /* 温度值高于37.5 */
         if (temp_btm == TEMP_INVALID_DATA) { /* 温度值为无效值 */
             if (now - xTick_btm_Nai > 60 * pdMS_TO_TICKS(1000) || now < 100) {
                 error_Emit(eError_Temperature_Btm_Abnormal); /* 报错 */
@@ -458,13 +460,14 @@ void protocol_Temp_Upload_Error_Deal(TickType_t now, float temp_btm, float temp_
         xTick_btm_Nai = now;                       /* 温度无效计数清零 */
     }
 
-    if (temp_top < 36.5) {                                                           /* 温度值低于36.5 */
+    setpoint = heater_TOP_Conf_Get(eHeater_PID_Conf_Set_Point);                      /* 获取目标温度 */
+    if (temp_top < setpoint - 0.5) {                                                 /* 温度值低于36.5 */
         xTick_top_Keep_Hight = now;                                                  /* 温度过高计数清零 */
         if (xTick_top_Keep_Hight - xTick_top_Keep_low > 600 * pdMS_TO_TICKS(1000)) { /* 过低持续时间 10 Min */
             error_Emit(eError_Temperature_Top_TooLow);                               /* 报错 */
             xTick_top_Keep_low = xTick_top_Keep_Hight;                               /* 重复报错间隔 */
         }
-    } else if (temp_top > 37.5) {            /* 温度值高于37.5 */
+    } else if (temp_top > setpoint + 0.5) {  /* 温度值高于37.5 */
         if (temp_top == TEMP_INVALID_DATA) { /* 温度值为无效值 */
             if (now - xTick_top_Nai > 60 * pdMS_TO_TICKS(1000) || now < 100) {
                 error_Emit(eError_Temperature_Top_Abnormal); /* 报错 */
