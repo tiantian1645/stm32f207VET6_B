@@ -509,7 +509,7 @@ static uint8_t storge_ParamLoad(uint8_t * pBuff)
  * @param  length 数据长度
  * @retval 0 成功 1 参数越限 2 索引越限 3 数据描述异常
  */
-uint8_t storge_ParamSet(eStorgeParamIndex idx, uint8_t * pBuff, uint8_t length)
+uint8_t storge_ParamWriteSingle(eStorgeParamIndex idx, uint8_t * pBuff, uint8_t length)
 {
     uStorgeParamItem read_data;
     float * pData_f;
@@ -546,7 +546,7 @@ uint8_t storge_ParamSet(eStorgeParamIndex idx, uint8_t * pBuff, uint8_t length)
  * @param  pBuff 输出数据
  * @retval 输出数据长度
  */
-uint8_t storge_ParamGet(eStorgeParamIndex idx, uint8_t * pBuff)
+uint8_t storge_ParamReadSingle(eStorgeParamIndex idx, uint8_t * pBuff)
 {
     uint8_t * p;
     if (idx >= eStorgeParamIndex_Num) {
@@ -559,7 +559,8 @@ uint8_t storge_ParamGet(eStorgeParamIndex idx, uint8_t * pBuff)
 }
 
 /**
- * @brief  参数读取
+ * @brief  参数写入
+ * @note   缓存 -> 全局变量 gStorgeParamInfo
  * @param  idx 参数类型
  * @param  num 读取个数
  * @param  pBuff 输出数据
@@ -582,6 +583,7 @@ uint16_t storge_ParamWrite(eStorgeParamIndex idx, uint16_t num, uint8_t * pBuff)
 
 /**
  * @brief  参数读取
+ * @note   全局变量 gStorgeParamInfo -> 缓存
  * @param  idx 参数类型
  * @param  num 读取个数
  * @param  pBuff 输出数据

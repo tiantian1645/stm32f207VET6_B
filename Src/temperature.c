@@ -232,7 +232,7 @@ float temp_Get_Temp_Data(eTemp_NTC_Index idx)
 
     temp = temp_ADC_2_Temp(gTempADC_Results[idx]);
     up.f32 = 0;
-    if (storge_ParamGet(eStorgeParamIndex_Temp_CC_top_1 + idx, up.u8s) == 4) {
+    if (storge_ParamReadSingle(eStorgeParamIndex_Temp_CC_top_1 + idx, up.u8s) == 4) {
         if (up.f32 > 5 || up.f32 < -5) {
             up.f32 = 0;
         }

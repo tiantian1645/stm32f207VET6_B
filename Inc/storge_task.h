@@ -431,8 +431,8 @@ uint8_t storgeReadConfInfo(uint32_t addr, uint32_t num, uint32_t timeout);
 uint8_t storgeWriteConfInfo(uint32_t addr, uint8_t * pIn, uint32_t num, uint32_t timeout);
 void storgeTaskNotification(eStorgeNotifyConf type, eProtocol_COMM_Index index);
 
-uint8_t storge_ParamSet(eStorgeParamIndex idx, uint8_t * pBuff, uint8_t length);
-uint8_t storge_ParamGet(eStorgeParamIndex idx, uint8_t * pBuff);
+uint8_t storge_ParamWriteSingle(eStorgeParamIndex idx, uint8_t * pBuff, uint8_t length);
+uint8_t storge_ParamReadSingle(eStorgeParamIndex idx, uint8_t * pBuff);
 
 uint16_t storge_ParamWrite(eStorgeParamIndex idx, uint16_t num, uint8_t * pBuff);
 uint16_t storge_ParamRead(eStorgeParamIndex idx, uint16_t num, uint8_t * pBuff);
