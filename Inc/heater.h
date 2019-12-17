@@ -14,6 +14,9 @@
 #define HEATER_TOP_ARR (10000 - 1)
 #define HEATER_TOP_CCR (10000 - 1)
 
+#define HEATER_BTM_DEFAULT_SETPOINT (37)
+#define HEATER_TOP_DEFAULT_SETPOINT (37)
+
 /* Exported types ------------------------------------------------------------*/
 typedef enum {
     eHeater_PID_Conf_Kp,

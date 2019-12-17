@@ -9,6 +9,7 @@
 #include "temperature.h"
 #include "heater.h"
 #include "pid_ctrl.h"
+#include "storge_task.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim4;
@@ -33,8 +34,8 @@ static sPID_Ctrl_Conf gHeater_BTM_PID_Conf;
 static sPID_Ctrl_Conf gHeater_TOP_PID_Conf;
 
 // Control loop input,output and setpoint variables
-static float btm_input = 0, btm_output = 0, btm_setpoint = 37;
-static float top_input = 0, top_output = 0, top_setpoint = 37;
+static float btm_input = 0, btm_output = 0, btm_setpoint = HEATER_BTM_DEFAULT_SETPOINT;
+static float top_input = 0, top_output = 0, top_setpoint = HEATER_TOP_DEFAULT_SETPOINT;
 
 /* Private constants ---------------------------------------------------------*/
 
@@ -207,10 +208,14 @@ void heater_BTM_Output_Init(void)
  */
 void heater_BTM_Output_Keep_Deal(void)
 {
+    uStorgeParamItem read_data;
+
     // Check if need to compute PID
     if (pid_ctrl_need_compute(&gHeater_BTM_PID_Conf)) {
         // Read process feedback
         btm_input = temp_Get_Temp_Data_BTM();
+        storge_ParamReadSingle(eStorgeParamIndex_Heater_Offset_BTM, read_data.u8s);
+        btm_input -= read_data.f32;
         // Compute new PID output value
         pid_ctrl_compute(&gHeater_BTM_PID_Conf);
         // Change actuator value
@@ -290,10 +295,14 @@ void heater_TOP_Output_Init(void)
  */
 void heater_TOP_Output_Keep_Deal(void)
 {
+    uStorgeParamItem read_data;
+
     // Check if need to compute PID
     if (pid_ctrl_need_compute(&gHeater_TOP_PID_Conf)) {
         // Read process feedback
         top_input = temp_Get_Temp_Data_TOP();
+        storge_ParamReadSingle(eStorgeParamIndex_Heater_Offset_TOP, read_data.u8s);
+        top_input -= read_data.f32;
         // Compute new PID output value
         pid_ctrl_compute(&gHeater_TOP_PID_Conf);
         // Change actuator value
