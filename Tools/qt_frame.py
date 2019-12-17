@@ -1802,7 +1802,7 @@ class MainWindow(QMainWindow):
         self.out_flash_data_num = QSpinBox()
         self.out_flash_data_num.setRange(0, 8 * 2 ** 20)
         self.out_flash_data_num.setMaximumWidth(90)
-        self.out_flash_data_num.setValue(660)
+        self.out_flash_data_num.setValue(668)
         self.out_flash_data_read_bt = QPushButton("读取")
         out_flash_temp_ly.addWidget(QLabel("地址"))
         out_flash_temp_ly.addWidget(self.out_flash_data_addr)
@@ -1813,7 +1813,7 @@ class MainWindow(QMainWindow):
         out_flash_param_gb = QGroupBox("系统参数")
         out_flash_param_ly = QVBoxLayout(out_flash_param_gb)
         out_flash_param_ly.setSpacing(5)
-        self.out_flash_param_temp_sps = [QDoubleSpinBox(self) for _ in range(9)]
+        self.out_flash_param_temp_sps = [QDoubleSpinBox(self) for _ in range(11)]
         self.out_flash_param_read_bt = QPushButton("读取")
         self.out_flash_param_write_bt = QPushButton("写入")
 
@@ -1833,8 +1833,10 @@ class MainWindow(QMainWindow):
                 temp_ly.addWidget(QLabel(f"#{i + 1} 上加热体-{i + 1}"))
             elif i < 8:
                 temp_ly.addWidget(QLabel(f"#{i + 1} 下加热体-{i - 5}"))
-            else:
+            elif i == 8:
                 temp_ly.addWidget(QLabel(f"#{i + 1} 环境-{i - 7}"))
+            else:
+                temp_ly.addWidget(QLabel(f"目标点偏差-{('下', '上')[i-9]}"))
             temp_ly.addWidget(sp)
             out_flash_param_temp_cc_ly.addLayout(temp_ly, i // 6, i % 6)
         out_flash_param_ly.addWidget(out_flash_param_temp_cc_wg)
@@ -1884,9 +1886,16 @@ class MainWindow(QMainWindow):
         self.out_flash_param_read_bt.clicked.connect(self.onOutFlashParamRead)
         self.out_flash_param_write_bt.clicked.connect(self.onOutFlashParamWrite)
         self.out_flash_data_dg = ModernDialog(self.out_flash_data_dg, self)
+        self.out_flash_data_dg.mouseDoubleClickEvent = self.onOutFlashDoubleClicked
+
+    def onOutFlashDoubleClicked(self, event):
+        for sp in self.out_flash_param_temp_sps:
+            sp.setValue(0)
+        for sp in self.out_flash_param_cc_sps:
+            sp.setValue(0)
 
     def onOutFlashParamRead(self, event):
-        data = (*(struct.pack("H", 0)), *(struct.pack("H", 165)))
+        data = (*(struct.pack("H", 0)), *(struct.pack("H", 167)))
         self._serialSendPack(0xDD, data)
 
     def onOutFlashParamWrite(self, event):
@@ -1916,12 +1925,12 @@ class MainWindow(QMainWindow):
             idx = start + i
             if idx < len(self.out_flash_param_temp_sps):
                 value = struct.unpack("f", raw_pack[10 + i * 4 : 14 + i * 4])[0]
-                self.out_flash_param_temp_sps[idx].setValue(value)
-                self._setColor(self.out_flash_param_temp_sps[idx])
+                sp = self.out_flash_param_temp_sps[idx]
             else:
                 value = struct.unpack("I", raw_pack[10 + i * 4 : 14 + i * 4])[0]
-                self.out_flash_param_cc_sps[idx - len(self.out_flash_param_temp_sps)].setValue(value)
-                self._setColor(self.out_flash_param_cc_sps[idx - len(self.out_flash_param_temp_sps)])
+                sp = self.out_flash_param_cc_sps[idx - len(self.out_flash_param_temp_sps)]
+            sp.setValue(value)
+            self._setColor(sp)
 
     def genBinaryData(self, data, unit=32, offset=0):
         result = []
@@ -2008,7 +2017,7 @@ class MainWindow(QMainWindow):
         result = self.genBinaryData(self.out_flash_data[: start + length], offset=self.out_flash_start)
         raw_text = "\n".join(result)
         logger.debug(f"Out Flash Raw Data | {start} | {length}\n{raw_text}")
-        if self.out_flash_start == 0x1000 and self.out_flash_length == 660:
+        if self.out_flash_start == 0x1000 and self.out_flash_length == 668:
             info = DC201_ParamInfo(self.out_flash_data[: start + length])
             plain_text = f"{info}\n{'=' * 100}\nraw bytes:\n{raw_text}"
             self.out_flash_data_te.setPlainText(plain_text)

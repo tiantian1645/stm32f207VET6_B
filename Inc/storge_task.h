@@ -41,6 +41,9 @@ typedef enum {
     eStorgeParamIndex_Temp_CC_btm_2,
     eStorgeParamIndex_Temp_CC_env,
 
+    eStorgeParamIndex_Heater_Offset_BTM,
+    eStorgeParamIndex_Heater_Offset_TOP,
+
     eStorgeParamIndex_Illumine_CC_t1_610_i0,
     eStorgeParamIndex_Illumine_CC_t1_610_i1,
     eStorgeParamIndex_Illumine_CC_t1_610_i2,
@@ -237,187 +240,190 @@ typedef struct {
     float temperature_cc_btm_2; /* 028 */
     float temperature_cc_env;   /* 032 */
 
-    uint32_t illumine_CC_t1_610_i0; /* 036 */
-    uint32_t illumine_CC_t1_610_i1; /* 040 */
-    uint32_t illumine_CC_t1_610_i2; /* 044 */
-    uint32_t illumine_CC_t1_610_i3; /* 048 */
-    uint32_t illumine_CC_t1_610_i4; /* 052 */
-    uint32_t illumine_CC_t1_610_i5; /* 056 */
+    float heater_offset_btm; /* 036 */
+    float heater_offset_top; /* 040 */
 
-    uint32_t illumine_CC_t1_610_o0; /* 060 */
-    uint32_t illumine_CC_t1_610_o1; /* 064 */
-    uint32_t illumine_CC_t1_610_o2; /* 068 */
-    uint32_t illumine_CC_t1_610_o3; /* 072 */
-    uint32_t illumine_CC_t1_610_o4; /* 076 */
-    uint32_t illumine_CC_t1_610_o5; /* 080 */
+    uint32_t illumine_CC_t1_610_i0; /* 044 */
+    uint32_t illumine_CC_t1_610_i1; /* 048 */
+    uint32_t illumine_CC_t1_610_i2; /* 052 */
+    uint32_t illumine_CC_t1_610_i3; /* 056 */
+    uint32_t illumine_CC_t1_610_i4; /* 060 */
+    uint32_t illumine_CC_t1_610_i5; /* 064 */
 
-    uint32_t illumine_CC_t1_550_i0; /* 084 */
-    uint32_t illumine_CC_t1_550_i1; /* 088 */
-    uint32_t illumine_CC_t1_550_i2; /* 092 */
-    uint32_t illumine_CC_t1_550_i3; /* 096 */
-    uint32_t illumine_CC_t1_550_i4; /* 100 */
-    uint32_t illumine_CC_t1_550_i5; /* 104 */
+    uint32_t illumine_CC_t1_610_o0; /* 068 */
+    uint32_t illumine_CC_t1_610_o1; /* 072 */
+    uint32_t illumine_CC_t1_610_o2; /* 076 */
+    uint32_t illumine_CC_t1_610_o3; /* 080 */
+    uint32_t illumine_CC_t1_610_o4; /* 084 */
+    uint32_t illumine_CC_t1_610_o5; /* 088 */
 
-    uint32_t illumine_CC_t1_550_o0; /* 108 */
-    uint32_t illumine_CC_t1_550_o1; /* 112 */
-    uint32_t illumine_CC_t1_550_o2; /* 116 */
-    uint32_t illumine_CC_t1_550_o3; /* 120 */
-    uint32_t illumine_CC_t1_550_o4; /* 124 */
-    uint32_t illumine_CC_t1_550_o5; /* 128 */
+    uint32_t illumine_CC_t1_550_i0; /* 092 */
+    uint32_t illumine_CC_t1_550_i1; /* 096 */
+    uint32_t illumine_CC_t1_550_i2; /* 100 */
+    uint32_t illumine_CC_t1_550_i3; /* 104 */
+    uint32_t illumine_CC_t1_550_i4; /* 108 */
+    uint32_t illumine_CC_t1_550_i5; /* 112 */
 
-    uint32_t illumine_CC_t1_405_i0; /* 132 */
-    uint32_t illumine_CC_t1_405_i1; /* 136 */
-    uint32_t illumine_CC_t1_405_i2; /* 140 */
-    uint32_t illumine_CC_t1_405_i3; /* 144 */
-    uint32_t illumine_CC_t1_405_i4; /* 148 */
-    uint32_t illumine_CC_t1_405_i5; /* 152 */
+    uint32_t illumine_CC_t1_550_o0; /* 116 */
+    uint32_t illumine_CC_t1_550_o1; /* 120 */
+    uint32_t illumine_CC_t1_550_o2; /* 124 */
+    uint32_t illumine_CC_t1_550_o3; /* 128 */
+    uint32_t illumine_CC_t1_550_o4; /* 132 */
+    uint32_t illumine_CC_t1_550_o5; /* 136 */
 
-    uint32_t illumine_CC_t1_405_o0; /* 156 */
-    uint32_t illumine_CC_t1_405_o1; /* 160 */
-    uint32_t illumine_CC_t1_405_o2; /* 164 */
-    uint32_t illumine_CC_t1_405_o3; /* 168 */
-    uint32_t illumine_CC_t1_405_o4; /* 172 */
-    uint32_t illumine_CC_t1_405_o5; /* 176 */
+    uint32_t illumine_CC_t1_405_i0; /* 140 */
+    uint32_t illumine_CC_t1_405_i1; /* 144 */
+    uint32_t illumine_CC_t1_405_i2; /* 148 */
+    uint32_t illumine_CC_t1_405_i3; /* 152 */
+    uint32_t illumine_CC_t1_405_i4; /* 156 */
+    uint32_t illumine_CC_t1_405_i5; /* 160 */
 
-    uint32_t illumine_CC_t2_610_i0; /* 180 */
-    uint32_t illumine_CC_t2_610_i1; /* 184 */
-    uint32_t illumine_CC_t2_610_i2; /* 188 */
-    uint32_t illumine_CC_t2_610_i3; /* 192 */
-    uint32_t illumine_CC_t2_610_i4; /* 196 */
-    uint32_t illumine_CC_t2_610_i5; /* 200 */
+    uint32_t illumine_CC_t1_405_o0; /* 164 */
+    uint32_t illumine_CC_t1_405_o1; /* 168 */
+    uint32_t illumine_CC_t1_405_o2; /* 172 */
+    uint32_t illumine_CC_t1_405_o3; /* 176 */
+    uint32_t illumine_CC_t1_405_o4; /* 180 */
+    uint32_t illumine_CC_t1_405_o5; /* 184 */
 
-    uint32_t illumine_CC_t2_610_o0; /* 204 */
-    uint32_t illumine_CC_t2_610_o1; /* 208 */
-    uint32_t illumine_CC_t2_610_o2; /* 212 */
-    uint32_t illumine_CC_t2_610_o3; /* 216 */
-    uint32_t illumine_CC_t2_610_o4; /* 220 */
-    uint32_t illumine_CC_t2_610_o5; /* 224 */
+    uint32_t illumine_CC_t2_610_i0; /* 188 */
+    uint32_t illumine_CC_t2_610_i1; /* 192 */
+    uint32_t illumine_CC_t2_610_i2; /* 196 */
+    uint32_t illumine_CC_t2_610_i3; /* 200 */
+    uint32_t illumine_CC_t2_610_i4; /* 204 */
+    uint32_t illumine_CC_t2_610_i5; /* 208 */
 
-    uint32_t illumine_CC_t2_550_i0; /* 228 */
-    uint32_t illumine_CC_t2_550_i1; /* 232 */
-    uint32_t illumine_CC_t2_550_i2; /* 236 */
-    uint32_t illumine_CC_t2_550_i3; /* 240 */
-    uint32_t illumine_CC_t2_550_i4; /* 244 */
-    uint32_t illumine_CC_t2_550_i5; /* 248 */
+    uint32_t illumine_CC_t2_610_o0; /* 212 */
+    uint32_t illumine_CC_t2_610_o1; /* 216 */
+    uint32_t illumine_CC_t2_610_o2; /* 220 */
+    uint32_t illumine_CC_t2_610_o3; /* 224 */
+    uint32_t illumine_CC_t2_610_o4; /* 228 */
+    uint32_t illumine_CC_t2_610_o5; /* 232 */
 
-    uint32_t illumine_CC_t2_550_o0; /* 252 */
-    uint32_t illumine_CC_t2_550_o1; /* 256 */
-    uint32_t illumine_CC_t2_550_o2; /* 260 */
-    uint32_t illumine_CC_t2_550_o3; /* 264 */
-    uint32_t illumine_CC_t2_550_o4; /* 268 */
-    uint32_t illumine_CC_t2_550_o5; /* 272 */
+    uint32_t illumine_CC_t2_550_i0; /* 236 */
+    uint32_t illumine_CC_t2_550_i1; /* 240 */
+    uint32_t illumine_CC_t2_550_i2; /* 244 */
+    uint32_t illumine_CC_t2_550_i3; /* 248 */
+    uint32_t illumine_CC_t2_550_i4; /* 252 */
+    uint32_t illumine_CC_t2_550_i5; /* 256 */
 
-    uint32_t illumine_CC_t3_610_i0; /* 276 */
-    uint32_t illumine_CC_t3_610_i1; /* 280 */
-    uint32_t illumine_CC_t3_610_i2; /* 284 */
-    uint32_t illumine_CC_t3_610_i3; /* 288 */
-    uint32_t illumine_CC_t3_610_i4; /* 292 */
-    uint32_t illumine_CC_t3_610_i5; /* 296 */
+    uint32_t illumine_CC_t2_550_o0; /* 260 */
+    uint32_t illumine_CC_t2_550_o1; /* 264 */
+    uint32_t illumine_CC_t2_550_o2; /* 268 */
+    uint32_t illumine_CC_t2_550_o3; /* 272 */
+    uint32_t illumine_CC_t2_550_o4; /* 276 */
+    uint32_t illumine_CC_t2_550_o5; /* 280 */
 
-    uint32_t illumine_CC_t3_610_o0; /* 300 */
-    uint32_t illumine_CC_t3_610_o1; /* 304 */
-    uint32_t illumine_CC_t3_610_o2; /* 308 */
-    uint32_t illumine_CC_t3_610_o3; /* 312 */
-    uint32_t illumine_CC_t3_610_o4; /* 316 */
-    uint32_t illumine_CC_t3_610_o5; /* 320 */
+    uint32_t illumine_CC_t3_610_i0; /* 284 */
+    uint32_t illumine_CC_t3_610_i1; /* 288 */
+    uint32_t illumine_CC_t3_610_i2; /* 292 */
+    uint32_t illumine_CC_t3_610_i3; /* 296 */
+    uint32_t illumine_CC_t3_610_i4; /* 300 */
+    uint32_t illumine_CC_t3_610_i5; /* 304 */
 
-    uint32_t illumine_CC_t3_550_i0; /* 324 */
-    uint32_t illumine_CC_t3_550_i1; /* 328 */
-    uint32_t illumine_CC_t3_550_i2; /* 332 */
-    uint32_t illumine_CC_t3_550_i3; /* 336 */
-    uint32_t illumine_CC_t3_550_i4; /* 340 */
-    uint32_t illumine_CC_t3_550_i5; /* 344 */
+    uint32_t illumine_CC_t3_610_o0; /* 308 */
+    uint32_t illumine_CC_t3_610_o1; /* 312 */
+    uint32_t illumine_CC_t3_610_o2; /* 316 */
+    uint32_t illumine_CC_t3_610_o3; /* 320 */
+    uint32_t illumine_CC_t3_610_o4; /* 324 */
+    uint32_t illumine_CC_t3_610_o5; /* 328 */
 
-    uint32_t illumine_CC_t3_550_o0; /* 348 */
-    uint32_t illumine_CC_t3_550_o1; /* 352 */
-    uint32_t illumine_CC_t3_550_o2; /* 356 */
-    uint32_t illumine_CC_t3_550_o3; /* 360 */
-    uint32_t illumine_CC_t3_550_o4; /* 364 */
-    uint32_t illumine_CC_t3_550_o5; /* 368 */
+    uint32_t illumine_CC_t3_550_i0; /* 332 */
+    uint32_t illumine_CC_t3_550_i1; /* 336 */
+    uint32_t illumine_CC_t3_550_i2; /* 340 */
+    uint32_t illumine_CC_t3_550_i3; /* 344 */
+    uint32_t illumine_CC_t3_550_i4; /* 348 */
+    uint32_t illumine_CC_t3_550_i5; /* 352 */
 
-    uint32_t illumine_CC_t4_610_i0; /* 372 */
-    uint32_t illumine_CC_t4_610_i1; /* 376 */
-    uint32_t illumine_CC_t4_610_i2; /* 380 */
-    uint32_t illumine_CC_t4_610_i3; /* 384 */
-    uint32_t illumine_CC_t4_610_i4; /* 388 */
-    uint32_t illumine_CC_t4_610_i5; /* 392 */
+    uint32_t illumine_CC_t3_550_o0; /* 356 */
+    uint32_t illumine_CC_t3_550_o1; /* 360 */
+    uint32_t illumine_CC_t3_550_o2; /* 364 */
+    uint32_t illumine_CC_t3_550_o3; /* 368 */
+    uint32_t illumine_CC_t3_550_o4; /* 372 */
+    uint32_t illumine_CC_t3_550_o5; /* 376 */
 
-    uint32_t illumine_CC_t4_610_o0; /* 396 */
-    uint32_t illumine_CC_t4_610_o1; /* 400 */
-    uint32_t illumine_CC_t4_610_o2; /* 404 */
-    uint32_t illumine_CC_t4_610_o3; /* 408 */
-    uint32_t illumine_CC_t4_610_o4; /* 412 */
-    uint32_t illumine_CC_t4_610_o5; /* 416 */
+    uint32_t illumine_CC_t4_610_i0; /* 380 */
+    uint32_t illumine_CC_t4_610_i1; /* 384 */
+    uint32_t illumine_CC_t4_610_i2; /* 388 */
+    uint32_t illumine_CC_t4_610_i3; /* 392 */
+    uint32_t illumine_CC_t4_610_i4; /* 396 */
+    uint32_t illumine_CC_t4_610_i5; /* 400 */
 
-    uint32_t illumine_CC_t4_550_i0; /* 420 */
-    uint32_t illumine_CC_t4_550_i1; /* 424 */
-    uint32_t illumine_CC_t4_550_i2; /* 428 */
-    uint32_t illumine_CC_t4_550_i3; /* 432 */
-    uint32_t illumine_CC_t4_550_i4; /* 436 */
-    uint32_t illumine_CC_t4_550_i5; /* 440 */
+    uint32_t illumine_CC_t4_610_o0; /* 404 */
+    uint32_t illumine_CC_t4_610_o1; /* 408 */
+    uint32_t illumine_CC_t4_610_o2; /* 412 */
+    uint32_t illumine_CC_t4_610_o3; /* 416 */
+    uint32_t illumine_CC_t4_610_o4; /* 420 */
+    uint32_t illumine_CC_t4_610_o5; /* 424 */
 
-    uint32_t illumine_CC_t4_550_o0; /* 444 */
-    uint32_t illumine_CC_t4_550_o1; /* 448 */
-    uint32_t illumine_CC_t4_550_o2; /* 452 */
-    uint32_t illumine_CC_t4_550_o3; /* 456 */
-    uint32_t illumine_CC_t4_550_o4; /* 460 */
-    uint32_t illumine_CC_t4_550_o5; /* 464 */
+    uint32_t illumine_CC_t4_550_i0; /* 428 */
+    uint32_t illumine_CC_t4_550_i1; /* 432 */
+    uint32_t illumine_CC_t4_550_i2; /* 436 */
+    uint32_t illumine_CC_t4_550_i3; /* 440 */
+    uint32_t illumine_CC_t4_550_i4; /* 444 */
+    uint32_t illumine_CC_t4_550_i5; /* 448 */
 
-    uint32_t illumine_CC_t5_610_i0; /* 468 */
-    uint32_t illumine_CC_t5_610_i1; /* 472 */
-    uint32_t illumine_CC_t5_610_i2; /* 476 */
-    uint32_t illumine_CC_t5_610_i3; /* 480 */
-    uint32_t illumine_CC_t5_610_i4; /* 484 */
-    uint32_t illumine_CC_t5_610_i5; /* 488 */
+    uint32_t illumine_CC_t4_550_o0; /* 452 */
+    uint32_t illumine_CC_t4_550_o1; /* 456 */
+    uint32_t illumine_CC_t4_550_o2; /* 460 */
+    uint32_t illumine_CC_t4_550_o3; /* 464 */
+    uint32_t illumine_CC_t4_550_o4; /* 468 */
+    uint32_t illumine_CC_t4_550_o5; /* 472 */
 
-    uint32_t illumine_CC_t5_610_o0; /* 492 */
-    uint32_t illumine_CC_t5_610_o1; /* 496 */
-    uint32_t illumine_CC_t5_610_o2; /* 500 */
-    uint32_t illumine_CC_t5_610_o3; /* 504 */
-    uint32_t illumine_CC_t5_610_o4; /* 508 */
-    uint32_t illumine_CC_t5_610_o5; /* 512 */
+    uint32_t illumine_CC_t5_610_i0; /* 476 */
+    uint32_t illumine_CC_t5_610_i1; /* 480 */
+    uint32_t illumine_CC_t5_610_i2; /* 484 */
+    uint32_t illumine_CC_t5_610_i3; /* 488 */
+    uint32_t illumine_CC_t5_610_i4; /* 492 */
+    uint32_t illumine_CC_t5_610_i5; /* 496 */
 
-    uint32_t illumine_CC_t5_550_i0; /* 516 */
-    uint32_t illumine_CC_t5_550_i1; /* 520 */
-    uint32_t illumine_CC_t5_550_i2; /* 524 */
-    uint32_t illumine_CC_t5_550_i3; /* 528 */
-    uint32_t illumine_CC_t5_550_i4; /* 532 */
-    uint32_t illumine_CC_t5_550_i5; /* 536 */
+    uint32_t illumine_CC_t5_610_o0; /* 500 */
+    uint32_t illumine_CC_t5_610_o1; /* 504 */
+    uint32_t illumine_CC_t5_610_o2; /* 508 */
+    uint32_t illumine_CC_t5_610_o3; /* 512 */
+    uint32_t illumine_CC_t5_610_o4; /* 516 */
+    uint32_t illumine_CC_t5_610_o5; /* 520 */
 
-    uint32_t illumine_CC_t5_550_o0; /* 540 */
-    uint32_t illumine_CC_t5_550_o1; /* 544 */
-    uint32_t illumine_CC_t5_550_o2; /* 548 */
-    uint32_t illumine_CC_t5_550_o3; /* 552 */
-    uint32_t illumine_CC_t5_550_o4; /* 556 */
-    uint32_t illumine_CC_t5_550_o5; /* 560 */
+    uint32_t illumine_CC_t5_550_i0; /* 524 */
+    uint32_t illumine_CC_t5_550_i1; /* 528 */
+    uint32_t illumine_CC_t5_550_i2; /* 532 */
+    uint32_t illumine_CC_t5_550_i3; /* 536 */
+    uint32_t illumine_CC_t5_550_i4; /* 540 */
+    uint32_t illumine_CC_t5_550_i5; /* 544 */
 
-    uint32_t illumine_CC_t6_610_i0; /* 564 */
-    uint32_t illumine_CC_t6_610_i1; /* 568 */
-    uint32_t illumine_CC_t6_610_i2; /* 572 */
-    uint32_t illumine_CC_t6_610_i3; /* 576 */
-    uint32_t illumine_CC_t6_610_i4; /* 580 */
-    uint32_t illumine_CC_t6_610_i5; /* 584 */
+    uint32_t illumine_CC_t5_550_o0; /* 548 */
+    uint32_t illumine_CC_t5_550_o1; /* 552 */
+    uint32_t illumine_CC_t5_550_o2; /* 556 */
+    uint32_t illumine_CC_t5_550_o3; /* 560 */
+    uint32_t illumine_CC_t5_550_o4; /* 564 */
+    uint32_t illumine_CC_t5_550_o5; /* 568 */
 
-    uint32_t illumine_CC_t6_610_o0; /* 588 */
-    uint32_t illumine_CC_t6_610_o1; /* 592 */
-    uint32_t illumine_CC_t6_610_o2; /* 596 */
-    uint32_t illumine_CC_t6_610_o3; /* 600 */
-    uint32_t illumine_CC_t6_610_o4; /* 604 */
-    uint32_t illumine_CC_t6_610_o5; /* 608 */
+    uint32_t illumine_CC_t6_610_i0; /* 572 */
+    uint32_t illumine_CC_t6_610_i1; /* 576 */
+    uint32_t illumine_CC_t6_610_i2; /* 580 */
+    uint32_t illumine_CC_t6_610_i3; /* 584 */
+    uint32_t illumine_CC_t6_610_i4; /* 588 */
+    uint32_t illumine_CC_t6_610_i5; /* 592 */
 
-    uint32_t illumine_CC_t6_550_i0; /* 612 */
-    uint32_t illumine_CC_t6_550_i1; /* 616 */
-    uint32_t illumine_CC_t6_550_i2; /* 620 */
-    uint32_t illumine_CC_t6_550_i3; /* 624 */
-    uint32_t illumine_CC_t6_550_i4; /* 628 */
-    uint32_t illumine_CC_t6_550_i5; /* 632 */
+    uint32_t illumine_CC_t6_610_o0; /* 596 */
+    uint32_t illumine_CC_t6_610_o1; /* 600 */
+    uint32_t illumine_CC_t6_610_o2; /* 604 */
+    uint32_t illumine_CC_t6_610_o3; /* 608 */
+    uint32_t illumine_CC_t6_610_o4; /* 612 */
+    uint32_t illumine_CC_t6_610_o5; /* 616 */
 
-    uint32_t illumine_CC_t6_550_o0; /* 636 */
-    uint32_t illumine_CC_t6_550_o1; /* 640 */
-    uint32_t illumine_CC_t6_550_o2; /* 644 */
-    uint32_t illumine_CC_t6_550_o3; /* 648 */
-    uint32_t illumine_CC_t6_550_o4; /* 652 */
-    uint32_t illumine_CC_t6_550_o5; /* 656 */
+    uint32_t illumine_CC_t6_550_i0; /* 620 */
+    uint32_t illumine_CC_t6_550_i1; /* 624 */
+    uint32_t illumine_CC_t6_550_i2; /* 628 */
+    uint32_t illumine_CC_t6_550_i3; /* 632 */
+    uint32_t illumine_CC_t6_550_i4; /* 636 */
+    uint32_t illumine_CC_t6_550_i5; /* 640 */
+
+    uint32_t illumine_CC_t6_550_o0; /* 644 */
+    uint32_t illumine_CC_t6_550_o1; /* 648 */
+    uint32_t illumine_CC_t6_550_o2; /* 652 */
+    uint32_t illumine_CC_t6_550_o3; /* 656 */
+    uint32_t illumine_CC_t6_550_o4; /* 660 */
+    uint32_t illumine_CC_t6_550_o5; /* 664 */
 
 } sStorgeParamInfo;
 

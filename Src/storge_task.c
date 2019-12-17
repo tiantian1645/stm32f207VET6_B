@@ -423,6 +423,9 @@ static void storge_ParamInit(void)
     gStorgeParamInfo.temperature_cc_btm_1 = 0;
     gStorgeParamInfo.temperature_cc_btm_2 = 0;
     gStorgeParamInfo.temperature_cc_env = 0;
+
+    gStorgeParamInfo.heater_offset_btm = 0;
+    gStorgeParamInfo.heater_offset_top = 0;
 }
 
 /**

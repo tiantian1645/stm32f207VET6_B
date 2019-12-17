@@ -16,7 +16,7 @@ IDCardInfo = namedtuple("IDCardInfo", "ver_len ver_inf branch sample_type channe
 ChanelConfInfo = namedtuple("ChanelConfInfo", "name wave houhou unit precision sample_time sample_point start_point stop_point calc_point min max valid_date")
 BaseInfo = namedtuple("BaseInfo", "imi raw")
 
-ParamInfo = namedtuple("ParamInfo", "cc_temp_tops cc_temp_btms cc_temp_env cc_ts")
+ParamInfo = namedtuple("ParamInfo", "cc_temp_tops cc_temp_btms cc_temp_env cc_heaters cc_ts")
 IlluminateInfo = namedtuple("IlluminateInfo", "channel wave pairs")
 
 TEST_BIN_PATH = r"C:\Users\Administrator\STM32CubeIDE\workspace_1.0.2\stm32F207VET6_Bootloader_APP\Debug\stm32F207VET6_Bootloader_APP.bin"
@@ -137,12 +137,12 @@ class DC201ErrorCode(Enum):
     eError_Comm_Data_Busy = (228, "采样板串口发送忙")
     eError_Comm_Data_Send_Failed = (229, "采样板串口发送失败")
     eError_Comm_Data_Not_ACK = (230, "采样板串口没有收到ACK")
-    eError_Comm_Data_Not_Conf = (231,  "采样板配置信息未到")
-    eError_Comm_Out_Busy = (232,  "外串口发送忙")
-    eError_Comm_Out_Send_Failed = (233,  "外串口发送失败")
-    eError_Comm_Out_Not_ACK = (234,  "外串口没有收到ACK")
-    eError_Sample_Incomlete = (235,  "采样未完成")
-    eError_Stary_Incomlete = (236,  "杂散光测试未完成")
+    eError_Comm_Data_Not_Conf = (231, "采样板配置信息未到")
+    eError_Comm_Out_Busy = (232, "外串口发送忙")
+    eError_Comm_Out_Send_Failed = (233, "外串口发送失败")
+    eError_Comm_Out_Not_ACK = (234, "外串口没有收到ACK")
+    eError_Sample_Incomlete = (235, "采样未完成")
+    eError_Stary_Incomlete = (236, "杂散光测试未完成")
     eError_Temperature_Top_Abnormal = (300, "上加热体温度异常")
     eError_Temperature_Top_TooHigh = (301, "上加热体温度过高")
     eError_Temperature_Top_TooLow = (302, "上加热体温度过低")
@@ -251,6 +251,7 @@ class DC201_ParamInfo:
         self.cc_temp_tops = []
         self.cc_temp_btms = []
         self.cc_temp_env = []
+        self.cc_heaters = []
         self.cc_ts = []
         self.info = None
         self.decode()
@@ -259,6 +260,7 @@ class DC201_ParamInfo:
         self.cc_temp_tops = [bytes2Float(self.data[i : i + 4]) for i in range(0, 24, 4)]
         self.cc_temp_btms = [bytes2Float(self.data[i : i + 4]) for i in range(24, 32, 4)]
         self.cc_temp_env = [bytes2Float(self.data[32 : 32 + 4])]
+        self.cc_heaters = [bytes2Float(self.data[i : i + 4]) for i in range(36, 44, 4)]
         for i in range(6):
             ts_list = []
             channel = i + 1
@@ -272,16 +274,18 @@ class DC201_ParamInfo:
                 pairs = []
                 wave = ("610", "550", "405")[j]
                 for k in range(6):
-                    theo_start = 36 + k * 4 + j * 48 + i * 96 + offset
+                    theo_start = 44 + k * 4 + j * 48 + i * 96 + offset
                     theo = struct.unpack("I", self.data[theo_start : theo_start + 4])[0]
-                    test_start = 60 + k * 4 + j * 48 + i * 96 + offset
+                    test_start = 68 + k * 4 + j * 48 + i * 96 + offset
                     test = struct.unpack("I", self.data[test_start : test_start + 4])[0]
                     pairs.append((theo, test))
                 illum = IlluminateInfo(channel=channel, wave=wave, pairs=pairs)
                 logger.debug(f"get illum | {illum}")
                 ts_list.append(illum)
             self.cc_ts.append(ts_list)
-        self.info = ParamInfo(cc_temp_tops=self.cc_temp_tops, cc_temp_btms=self.cc_temp_btms, cc_temp_env=self.cc_temp_env, cc_ts=self.cc_ts)
+        self.info = ParamInfo(
+            cc_temp_tops=self.cc_temp_tops, cc_temp_btms=self.cc_temp_btms, cc_temp_env=self.cc_temp_env, cc_heaters=self.cc_heaters, cc_ts=self.cc_ts
+        )
 
     def cc_temps_format(self, cc_temps):
         return [f"{t:.3f} ℃" for t in cc_temps]
@@ -302,6 +306,7 @@ class DC201_ParamInfo:
             f"上加热体校正系数 {self.cc_temps_format(self.cc_temp_tops)}\n"
             f"下加热体校正系数 {self.cc_temps_format(self.cc_temp_btms)}\n"
             f"环境温度校正系数 {self.cc_temps_format(self.cc_temp_env)}\n"
+            f"目标温度偏差 {self.cc_temps_format(self.cc_heaters)}\n"
             f"OD校正配置\n{self.cc_illuminate_format()}"
         )
 
