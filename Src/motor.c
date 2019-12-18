@@ -479,8 +479,8 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
 
 void motor_Sample_Owari(void)
 {
-    heat_Motor_Up();                             /* 采样结束 抬起加热体电机 */
     white_Motor_WH();                            /* 运动白板电机 白板位置 */
+    heat_Motor_Up();                             /* 采样结束 抬起加热体电机 */
     motor_Tray_Move_By_Index(eTrayIndex_2);      /* 出仓 */
     barcode_Motor_Run_By_Index(eBarcodeIndex_0); /* 复位 */
     barcode_Motor_Run_By_Index(eBarcodeIndex_6); /* 二维码位置就位 */
@@ -510,6 +510,7 @@ static void motor_Task(void * argument)
     motor_OPT_Status_Init_Wait_Complete(); /* 等待光耦结果完成 */
     motor_Resource_Init();                 /* 电机驱动、位置初始化 */
     barcode_Init();                        /* 扫码枪初始化 */
+    white_Motor_PD();                      /* 白板电机 PD位置 */
 
     if (comm_Data_Start_Stary_Test() != pdPASS) { /* 开始杂散光测试 */
         cnt = 1;
