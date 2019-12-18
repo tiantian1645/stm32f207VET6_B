@@ -2032,12 +2032,17 @@ class MainWindow(QMainWindow):
             self._serialSendPack(0xD4, ((1 << idx), 0))
 
     def updateDebugFlag(self, info):
-        data = info.content[6]
-        for i, cb in enumerate(self.debug_flag_cbs):
-            if data & (1 << i):
-                cb.setChecked(True)
-            else:
-                cb.setChecked(False)
+        if len(info.content) == 8:
+            data = info.content[6]
+            for i, cb in enumerate(self.debug_flag_cbs):
+                if data & (1 << i):
+                    cb.setChecked(True)
+                else:
+                    cb.setChecked(False)
+        else:
+            data = [struct.unpack("H", info.content[8 + 2 * i : 10 + 2 * i])[0] for i in range(info.content[6])]
+            logger.debug(f"DebugTest Data channel {self.debugtest_cnt} | {data}")
+            self.debugtest_bt.setToolTip(f"{data}")
 
     def createSysConf(self):
         self.sys_conf_gb = QGroupBox("系统")
@@ -2048,10 +2053,16 @@ class MainWindow(QMainWindow):
         storge_ly = QHBoxLayout()
         storge_ly.setContentsMargins(3, 3, 3, 3)
         storge_ly.setSpacing(3)
-        self.storge_id_card_dialog_bt = QPushButton("ID卡信息")
+        self.storge_gb = QGroupBox("存储")
+        self.storge_gb.setLayout(QGridLayout())
+        self.storge_gb.layout().setContentsMargins(3, 3, 3, 3)
+        self.storge_gb.layout().setSpacing(3)
+        self.storge_id_card_dialog_bt = QPushButton("ID Code 卡")
         self.storge_id_card_dialog_bt.setMaximumWidth(80)
-        self.storge_flash_read_bt = QPushButton("外部Flash信息")
+        self.storge_flash_read_bt = QPushButton("外部 Flash")
         self.storge_flash_read_bt.setMaximumWidth(100)
+        self.storge_gb.layout().addWidget(self.storge_id_card_dialog_bt, 0, 0)
+        self.storge_gb.layout().addWidget(self.storge_flash_read_bt, 0, 1)
         self.debug_flag_gb = QGroupBox("调试")
         debug_flag_ly = QHBoxLayout(self.debug_flag_gb)
         debug_flag_ly.setSpacing(3)
@@ -2060,9 +2071,7 @@ class MainWindow(QMainWindow):
         for cb in self.debug_flag_cbs:
             debug_flag_ly.addWidget(cb)
         storge_ly.addStretch(1)
-        storge_ly.addWidget(self.storge_id_card_dialog_bt)
-        storge_ly.addStretch(1)
-        storge_ly.addWidget(self.storge_flash_read_bt)
+        storge_ly.addWidget(self.storge_gb)
         storge_ly.addStretch(1)
         storge_ly.addWidget(self.debug_flag_gb)
         storge_ly.addStretch(1)
@@ -2084,16 +2093,27 @@ class MainWindow(QMainWindow):
         self.reboot_bt.setMaximumWidth(75)
         self.selftest_bt = QPushButton("自检")
         self.selftest_bt.setMaximumWidth(75)
+        self.debugtest_bt = QPushButton("Test")
+        self.debugtest_bt.setMaximumWidth(75)
+        self.debugtest_cnt = 0
         boot_ly.addWidget(self.upgrade_bt)
         boot_ly.addWidget(self.bootload_bt)
         boot_ly.addWidget(self.reboot_bt)
         boot_ly.addWidget(self.selftest_bt)
+        boot_ly.addWidget(self.debugtest_bt)
         sys_conf_ly.addLayout(boot_ly)
 
         self.upgrade_bt.clicked.connect(self.onUpgrade)
         self.bootload_bt.clicked.connect(self.onBootload)
         self.reboot_bt.clicked.connect(self.onReboot)
+        self.debugtest_bt.clicked.connect(self.onDebugTest)
         self.selftest_bt.mousePressEvent = self.onSelfCheck
+
+    def onDebugTest(self, event):
+        self.debugtest_cnt += 1
+        if self.debugtest_cnt > 6:
+            self.debugtest_cnt = 1
+        self._serialSendPack(0xD4, (self.debugtest_cnt, 1, 6))
 
     def getErrorContent(self, error_code):
         for i in DC201ErrorCode:

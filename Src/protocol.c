@@ -54,7 +54,6 @@ static const unsigned char CRC8Table[256] = {
 };
 
 static sProtocol_ACK_Record gProtocol_ACK_Record = {1, 1, 1};
-static eComm_Data_Sample gComm_Data_Sample_Buffer[6];
 
 static uint8_t gProtocol_Temp_Upload_Comm_Ctl = 0;
 static uint8_t gProtocol_Temp_Upload_Comm_Suspend = 0;
@@ -939,15 +938,18 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             }
             break;
         case eProtocolEmitPack_Client_CMD_Debug_Flag: /* 调试开关 */
-            if (length == 9) {
+            if (length == 7) {
+                pInBuff[0] = protocol_Debug_Get();
+                comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Flag, pInBuff, 1);
+            } else if (length == 9) {
                 if (pInBuff[7] == 0) {
                     protocol_Debug_Clear(pInBuff[6]);
                 } else {
                     protocol_Debug_Mark(pInBuff[6]);
                 }
             } else {
-                pInBuff[0] = protocol_Debug_Get();
-                comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Flag, pInBuff, 1);
+                comm_Data_Sample_Data_Correct((pInBuff[6] < 1 || pInBuff[6] > 6) ? (1) : (pInBuff[6]), pInBuff + 1, pInBuff);
+                comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Flag, pInBuff + 1, pInBuff[0]);
             }
             break;
         case eProtocolEmitPack_Client_CMD_Debug_Beep: /* 蜂鸣器控制 */
@@ -1241,6 +1243,7 @@ void protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
 void protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
 {
     static uint8_t last_ack = 0;
+    uint8_t data_length;
 
     if (pInBuff[4] == PROTOCOL_DEVICE_ID_CTRL) { /* 回声现象 */
         return;
@@ -1257,27 +1260,17 @@ void protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
     }
     last_ack = pInBuff[3]; /* 记录上一帧号 */
 
-    switch (pInBuff[5]) {                                                      /* 进一步处理 功能码 */
-        case eComm_Data_Inbound_CMD_DATA:                                      /* 采集数据帧 */
-            if (pInBuff[7] >= 1 && pInBuff[7] <= 6) {                          /* 检查通道编码 */
-                gComm_Data_Sample_Buffer[pInBuff[7] - 1].num = pInBuff[6];     /* 数据个数 u16 / u32 */
-                gComm_Data_Sample_Buffer[pInBuff[7] - 1].channel = pInBuff[7]; /* 通道编码 */
-                if (length - 9 == pInBuff[6] * 2) {                            /* u16 */
-                    gComm_Data_Sample_Buffer[pInBuff[7] - 1].data_type = 2;    /* 数据类型标识 */
-                } else if (length - 9 == pInBuff[6] * 4) {                     /* u32 */
-                    gComm_Data_Sample_Buffer[pInBuff[7] - 1].data_type = 4;    /* 数据类型标识 */
-                } else {                                                       /* 异常长度 */
-                    gComm_Data_Sample_Buffer[pInBuff[7] - 1].data_type = 1;    /* 数据类型标识 */
-                }
-                memcpy(gComm_Data_Sample_Buffer[pInBuff[7] - 1].raw_datas, pInBuff + 8, length - 9); /* 原封不动复制 */
-            }
-            comm_Main_SendTask_QueueEmitWithBuild(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7, 20);
-            comm_Out_SendTask_QueueEmitWithModify(pInBuff + 6, length, 0);
+    switch (pInBuff[5]) {                                                                                        /* 进一步处理 功能码 */
+        case eComm_Data_Inbound_CMD_DATA:                                                                        /* 采集数据帧 */
+            comm_Data_Sample_Data_Commit(pInBuff[7], pInBuff, length);                                           /* 采样数据记录 */
+            comm_Data_Sample_Data_Correct(pInBuff[7], pInBuff, &data_length);                                    /* 投影校正 */
+            comm_Main_SendTask_QueueEmitWithBuild(eProtocolRespPack_Client_SAMP_DATA, pInBuff, data_length, 20); /* 构造数据包 */
+            comm_Out_SendTask_QueueEmitWithModify(pInBuff, data_length + 7, 0);                                  /* 修改帧号ID后转发 */
             break;
-        case eComm_Data_Inbound_CMD_OVER: /* 采集数据完成帧 */
-            if (comm_Data_Stary_Test_Is_Running()) {
+        case eComm_Data_Inbound_CMD_OVER:                /* 采集数据完成帧 */
+            if (comm_Data_Stary_Test_Is_Running()) {     /* 判断是否处于杂散光测试中 */
                 motor_Sample_Info(eMotorNotifyValue_SP); /* 通知电机任务杂散光测试完成 */
-            } else {
+            } else {                                     /* 非杂散光测试 */
                 motor_Sample_Info(eMotorNotifyValue_TG); /* 通知电机任务采样完成 */
             }
             break;

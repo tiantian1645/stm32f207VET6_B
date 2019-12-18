@@ -55,6 +55,14 @@ typedef struct {
     uint8_t points_num;
 } sComm_Data_Sample_Conf_Unit;
 
+typedef struct {
+    sComm_Data_Sample_Conf_Unit conf;
+    uint8_t num;
+    uint8_t wave;
+    uint8_t data_type;
+    uint8_t raw_datas[240];
+} sComm_Data_Sample;
+
 typedef enum {
     eComm_Data_Outbound_CMD_CONF = 0x26,  /* 测试项信息帧 */
     eComm_Data_Outbound_CMD_START = 0x27, /* 采样开始控制帧 */
@@ -67,13 +75,6 @@ typedef enum {
     eComm_Data_Inbound_CMD_OVER = 0x34,  /* 采集数据完成帧 */
     eComm_Data_Inbound_CMD_ERROR = 0xB5, /* 错误信息帧 */
 } eComm_Data_Inbound_CMD;
-
-typedef struct {
-    uint8_t num;
-    uint8_t channel;
-    uint8_t data_type;
-    uint8_t raw_datas[240];
-} eComm_Data_Sample;
 
 /* Exported constants --------------------------------------------------------*/
 
@@ -122,6 +123,9 @@ uint8_t comm_Data_Stary_Test_Is_Running(void);
 void gComm_Data_Sample_Period_Set(uint8_t se);
 void gComm_Data_Sample_Next_Idle_Set(uint16_t idle);
 void gComm_Data_Sample_Next_Idle_Clr(void);
+
+uint8_t comm_Data_Sample_Data_Commit(uint8_t channel, uint8_t * pBuffer, uint8_t length);
+uint8_t comm_Data_Sample_Data_Correct(uint8_t channel, uint8_t * pBuffer, uint8_t * pLength);
 /* Private defines -----------------------------------------------------------*/
 
 #endif

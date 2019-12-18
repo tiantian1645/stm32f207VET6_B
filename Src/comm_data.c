@@ -16,6 +16,7 @@
 #include "motor.h"
 #include "temperature.h"
 #include "white_motor.h"
+#include "sample.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern UART_HandleTypeDef huart2;
@@ -67,7 +68,9 @@ static sComm_Data_SendInfo gComm_Data_SendInfo;
 static uint8_t gComm_Data_SendInfoFlag = 1; /* 加入发送队列缓存修改重入标志 */
 static uint8_t gComm_Data_TIM_StartFlag = 0;
 static uint8_t gComm_Data_Sample_Max_Point = 0;
-static sComm_Data_Sample_Conf_Unit gComm_Data_Sample_Confs[6];
+
+/* 采样数据记录 */
+static sComm_Data_Sample gComm_Data_Samples[6];
 
 static uint32_t gComm_Data_Sample_ISR_Cnt = 0;
 static uint8_t gComm_Data_Sample_PD_WH_Idx = 0xFF;
@@ -476,17 +479,17 @@ static BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData)
     uint8_t i, result = 0;
 
     gComm_Data_Sample_Max_Point_Clear(); /* 清除最大点数 */
-    for (i = 0; i < ARRAY_LEN(gComm_Data_Sample_Confs); ++i) {
-        gComm_Data_Sample_Confs[i].assay = pData[3 * i + 0];                   /* 测试方法 */
-        gComm_Data_Sample_Confs[i].radiant = pData[3 * i + 1];                 /* 测试波长 */
-        if (gComm_Data_Sample_Confs[i].assay < eComm_Data_Sample_Assay_None || /* 测试方法越限 */
-            gComm_Data_Sample_Confs[i].assay > eComm_Data_Sample_Assay_Fixed ||
-            gComm_Data_Sample_Confs[i].radiant < eComm_Data_Sample_Radiant_610 || /* 测试波长越限 */
-            gComm_Data_Sample_Confs[i].radiant > eComm_Data_Sample_Radiant_405) {
-            gComm_Data_Sample_Confs[i].points_num = 0; /* 点数清零 */
+    for (i = 0; i < ARRAY_LEN(gComm_Data_Samples); ++i) {
+        gComm_Data_Samples[i].conf.assay = pData[3 * i + 0];                   /* 测试方法 */
+        gComm_Data_Samples[i].conf.radiant = pData[3 * i + 1];                 /* 测试波长 */
+        if (gComm_Data_Samples[i].conf.assay < eComm_Data_Sample_Assay_None || /* 测试方法越限 */
+            gComm_Data_Samples[i].conf.assay > eComm_Data_Sample_Assay_Fixed ||
+            gComm_Data_Samples[i].conf.radiant < eComm_Data_Sample_Radiant_610 || /* 测试波长越限 */
+            gComm_Data_Samples[i].conf.radiant > eComm_Data_Sample_Radiant_405) {
+            gComm_Data_Samples[i].conf.points_num = 0; /* 点数清零 */
         } else {
-            gComm_Data_Sample_Confs[i].points_num = (pData[3 * i + 2] > 120) ? (0) : (pData[3 * i + 2]); /* 测试点数 */
-            gComm_Data_Sample_Max_Point_Update(gComm_Data_Sample_Confs[i].points_num);                   /* 更新最大点数 */
+            gComm_Data_Samples[i].conf.points_num = (pData[3 * i + 2] > 120) ? (0) : (pData[3 * i + 2]); /* 测试点数 */
+            gComm_Data_Sample_Max_Point_Update(gComm_Data_Samples[i].conf.points_num);                   /* 更新最大点数 */
             ++result;
         }
     }
@@ -534,9 +537,9 @@ static BaseType_t comm_Data_Sample_Send_Clear_Conf(void)
 {
     uint8_t i, sendLength, pData[30];
 
-    for (i = 0; i < ARRAY_LEN(gComm_Data_Sample_Confs); ++i) {
+    for (i = 0; i < ARRAY_LEN(gComm_Data_Samples); ++i) {
         pData[3 * i + 0] = eComm_Data_Sample_Assay_None;       /* 测试方法 */
-        pData[3 * i + 1] = gComm_Data_Sample_Confs[i].radiant; /* 测试波长 */
+        pData[3 * i + 1] = gComm_Data_Samples[i].conf.radiant; /* 测试波长 */
         pData[3 * i + 2] = 0;                                  /* 测试点数 */
     }
 
@@ -546,7 +549,7 @@ static BaseType_t comm_Data_Sample_Send_Clear_Conf(void)
 
 /**
  * @brief  发送杂散光测试包
- * @note   开始杂散光测试 耗时5～6秒
+ * @note   开始杂散光测试 耗时15秒
  * @retval pdPASS 提交成功 pdFALSE 提交失败
  */
 BaseType_t comm_Data_Start_Stary_Test(void)
@@ -561,7 +564,7 @@ BaseType_t comm_Data_Start_Stary_Test(void)
 }
 
 /**
- * @brief 测试配置项信号量 等待
+ * @brief  测试配置项信号量 等待
  * @param  timeout 超时时间
  * @retval 等待结果
  */
@@ -571,13 +574,87 @@ BaseType_t comm_Data_Conf_Sem_Wait(uint32_t timeout)
 }
 
 /**
- * @brief 测试配置项信号量 释放
+ * @brief  测试配置项信号量 释放
  * @param  None
  * @retval 释放结果
  */
 BaseType_t comm_Data_Conf_Sem_Give(void)
 {
     return xSemaphoreGive(comm_Data_Conf_Sem);
+}
+
+/**
+ * @brief  采样数据记录
+ * @param  channel 通道索引 1～6 pBuffer 数据输入指针 length 数据输入长度
+ * @retval 变换结果 0 正常 1 通道索引异常
+ */
+uint8_t comm_Data_Sample_Data_Commit(uint8_t channel, uint8_t * pBuffer, uint8_t length)
+{
+
+    if (channel < 1 || channel > 6) { /* 检查通道编码 */
+        return 1;
+    }
+
+    gComm_Data_Samples[channel - 1].num = pBuffer[6]; /* 数据个数 u16 | u32 */
+
+    if (length - 9 == pBuffer[6] * 2) {                /* u16 */
+        gComm_Data_Samples[channel - 1].data_type = 2; /* 数据类型标识 */
+    } else if (length - 9 == pBuffer[6] * 4) {         /* u32 */
+        gComm_Data_Samples[channel - 1].data_type = 4; /* 数据类型标识 */
+    } else {                                           /* 异常长度 */
+        gComm_Data_Samples[channel - 1].data_type = 1; /* 数据类型标识 */
+    }
+    memcpy(gComm_Data_Samples[channel - 1].raw_datas, pBuffer + 8, length - 9); /* 原封不动复制 */
+    return 0;
+}
+
+/**
+ * @brief  采样数据校正变换
+ * @param  channel 通道索引 1～6 pBuffer 数据输出指针 pLength 数据输出长度
+ * @note   uint16_t 型数据执行校正 uin32_t 型原样返回
+ * @retval 变换结果 0 正常 1 通道索引异常 2 数据类型不匹配 3 线性投影失败
+ */
+uint8_t comm_Data_Sample_Data_Correct(uint8_t channel, uint8_t * pBuffer, uint8_t * pLength)
+{
+    uint8_t error = 0, i;
+    uint16_t output_16;
+    uint32_t input, output_32;
+    sComm_Data_Sample * pSampleData;
+
+    *pLength = 0; /* 初始化输出数据长度 */
+
+    if (channel < 1 || channel > 6) { /* 通道索引异常 */
+        return 1;                     /* 提前返回 */
+    }
+
+    pSampleData = gComm_Data_Samples + channel - 1;
+
+    if (pSampleData->data_type == 4) {                                     /* uint32_t型 */
+        pBuffer[0] = pSampleData->num;                                     /* 数据个数 */
+        pBuffer[1] = channel;                                              /* 通道编码 */
+        memcpy(pBuffer + 2, pSampleData->raw_datas, pSampleData->num * 4); /* 原样复制 */
+        *pLength = pSampleData->num * 4 + 2;                               /* 数据长度 */
+        return 0;                                                          /* 提前返回 */
+    }
+
+    if (pSampleData->data_type != 2) { /* 数据类型不匹配 */
+        return 2;                      /* 提前返回 */
+    }
+
+    pBuffer[0] = pSampleData->num;                                                              /* 数据个数 */
+    pBuffer[1] = channel;                                                                       /* 通道编码 */
+    *pLength = 2;                                                                               /* 数据包长度 */
+    for (i = 0; i < pSampleData->num; ++i) {                                                    /* 各个数据投影校正 */
+        input = *((uint16_t *)(pSampleData->raw_datas + (2 * i)));                              /* 实际采样值 */
+        error = sample_first_degree_cal(channel, pSampleData->conf.radiant, input, &output_32); /* 线性投影 */
+        if (error > 0) {                                                                        /* 线性投影失败 */
+            return 3;                                                                           /* 提前返回 */
+        }
+        output_16 = output_32;                        /* 范围判断 */
+        memcpy(pBuffer + 2 + (2 * i), &output_16, 2); /* 拷贝 */
+        *pLength += 2;                                /* 输出数据长度+2 (16 / 8) */
+    }
+    return error;
 }
 
 /**
