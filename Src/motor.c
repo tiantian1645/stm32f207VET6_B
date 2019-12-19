@@ -562,6 +562,7 @@ static void motor_Task(void * argument)
                 white_Motor_WH();                       /* 运动白板电机 */
                 break;
             case eMotor_Fun_Sample_Start:                            /* 准备测试 */
+                xTick = xTaskGetTickCount();                         /* 记录总体准备起始时间 */
                 xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0);    /* 清空通知 */
                 comm_Data_Conf_Sem_Wait(0);                          /* 清除配置信息信号量 */
                 led_Mode_Set(eLED_Mode_Kirakira_Green);              /* LED 绿灯闪烁 */
@@ -582,27 +583,31 @@ static void motor_Task(void * argument)
                 }
 
                 if (protocol_Debug_SampleBarcode() == 0) {           /* 非调试模式 */
-                    barcode_result = barcode_Scan_Bar();             /* 扫描一维条码 */
-                    if (barcode_result == eBarcodeState_Interrupt) { /* 中途打断 */
-                        motor_Sample_Owari();                        /* 清理 */
-                        break;                                       /* 提前结束 */
+                    if (barcode_result == eBarcodeState_OK) {        /* 二维条码扫描成功 */
+                        barcode_Motor_Run_By_Index(eBarcodeIndex_0); /* 回归原点 */
+                    } else {
+                        barcode_result = barcode_Scan_Bar();             /* 扫描一维条码 */
+                        if (barcode_result == eBarcodeState_Interrupt) { /* 中途打断 */
+                            motor_Sample_Owari();                        /* 清理 */
+                            break;                                       /* 提前结束 */
+                        }
                     }
                 }
 
-                xTick = xTaskGetTickCount();                                                   /* 记录起始时间 */
-                white_Motor_PD();                                                              /* 运动白板电机 PD位置 清零位置 */
-                white_Motor_WH();                                                              /* 运动白板电机 白物质位置 */
-                if (comm_Data_Conf_Sem_Wait(5000 - (xTaskGetTickCount() - xTick)) != pdPASS) { /* 等待配置信息 */
-                    error_Emit(eError_Comm_Data_Not_Conf);                                     /* 提交错误信息 */
-                    motor_Sample_Owari();                                                      /* 清理 */
-                    break;                                                                     /* 提前结束 */
+                white_Motor_PD();                                                 /* 运动白板电机 PD位置 清零位置 */
+                white_Motor_WH();                                                 /* 运动白板电机 白物质位置 */
+                if (comm_Data_Conf_Sem_Wait(pdMS_TO_TICKS(4 * 1000)) != pdPASS) { /* 等待配置信息 */
+                    error_Emit(eError_Comm_Data_Not_Conf);                        /* 提交错误信息 */
+                    motor_Sample_Owari();                                         /* 清理 */
+                    break;                                                        /* 提前结束 */
                 }
                 if (barcode_Interrupt_Flag_Get()) { /* 中途打断 */
                     motor_Sample_Owari();           /* 清理 */
                     break;                          /* 提前结束 */
                 }
-                comm_Data_Sample_Start();    /* 启动定时器同步发包 开始采样 */
-                xTick = xTaskGetTickCount(); /* 记录起始时间 */
+                vTaskDelayUntil(&xTick, pdMS_TO_TICKS(20 * 1000)); /* 等待补全20秒 */
+                comm_Data_Sample_Start();                          /* 启动定时器同步发包 开始采样 */
+                xTick = xTaskGetTickCount();                       /* 记录起始时间 */
                 for (;;) {
                     xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(9850)); /* 等待任务通知 */
                     if (xResult != pdPASS ||                                                      /* 超时 */
