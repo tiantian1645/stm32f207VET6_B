@@ -120,6 +120,13 @@ uint8_t sample_first_degree_cal(uint8_t channel, uint8_t wave, uint32_t input, u
         default:
             return 1; /* 通道索引越限 */
     }
+    for (i = 0; i < 6; ++i) {
+        storge_ParamReadSingle(norm_start + 6 + i, read_data.u8s); /* 遍历每个测试点 */
+        if (read_data.u32 == 0) {                                  /* 存在零值测试点 */
+            *pOutput = input;                                      /* 不经投影 */
+            return 0;                                              /* 提前返回 */
+        }
+    }
 
     /* below point 0 or point 1 */                                    /* x <- P0 or x <- P1*/
     storge_ParamReadSingle(norm_start + 6 + 1, read_data.u8s);        /* 校正时第二测试点 */
@@ -129,7 +136,7 @@ uint8_t sample_first_degree_cal(uint8_t channel, uint8_t wave, uint32_t input, u
     }
     /* overtake point 4 or point 5 */                                     /* P4 -> x or P5 -> x*/
     storge_ParamReadSingle(norm_start + 6 + 4, read_data.u8s);            /* 校正时第五测试点 */
-    if (input > read_data.u32) {                                          /* 测试值大于最大校准点测试值 */
+    if (input >= read_data.u32) {                                         /* 测试值大于最大校准点测试值 */
         sample_first_degree_cal_by_index(norm_start + 4, input, pOutput); /* 使用第五段 */
         return 0;
     }
@@ -141,5 +148,6 @@ uint8_t sample_first_degree_cal(uint8_t channel, uint8_t wave, uint32_t input, u
             return 0;
         }
     }
+    *pOutput = input;
     return 2;
 }

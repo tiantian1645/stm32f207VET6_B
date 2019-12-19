@@ -641,14 +641,13 @@ uint8_t comm_Data_Sample_Data_Correct(uint8_t channel, uint8_t * pBuffer, uint8_
         return 2;                      /* 提前返回 */
     }
 
-    pBuffer[0] = pSampleData->num;                                                              /* 数据个数 */
-    pBuffer[1] = channel;                                                                       /* 通道编码 */
-    *pLength = 2;                                                                               /* 数据包长度 */
-    for (i = 0; i < pSampleData->num; ++i) {                                                    /* 各个数据投影校正 */
-        input = *((uint16_t *)(pSampleData->raw_datas + (2 * i)));                              /* 实际采样值 */
-        error = sample_first_degree_cal(channel, pSampleData->conf.radiant, input, &output_32); /* 线性投影 */
-        if (error > 0) {                                                                        /* 线性投影失败 */
-            return 3;                                                                           /* 提前返回 */
+    pBuffer[0] = pSampleData->num;                                                                /* 数据个数 */
+    pBuffer[1] = channel;                                                                         /* 通道编码 */
+    *pLength = 2;                                                                                 /* 数据包长度 */
+    for (i = 0; i < pSampleData->num; ++i) {                                                      /* 各个数据投影校正 */
+        input = *((uint16_t *)(pSampleData->raw_datas + (2 * i)));                                /* 实际采样值 */
+        if (sample_first_degree_cal(channel, pSampleData->conf.radiant, input, &output_32) > 0) { /* 线性投影 */
+            error = 3;                                                                            /* 线性投影失败 */
         }
         output_16 = output_32;                        /* 范围判断 */
         memcpy(pBuffer + 2 + (2 * i), &output_16, 2); /* 拷贝 */
