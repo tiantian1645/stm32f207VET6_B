@@ -78,6 +78,7 @@ sBarcodeStatistic gBarcodeStatistics[7];
 
 TaskHandle_t barcodeTaskHandle = NULL;
 
+static uint8_t gBarcodeInterrupt = 0;           /* 打断标志 */
 static sBarcodeCorrectInfo gBarcodeCorrectInfo; /* 条码中抽取的校正点信息 */
 
 /* Private constants ---------------------------------------------------------*/
@@ -655,44 +656,6 @@ eBarcodeState barcode_Scan_Bar(void)
         }
     }
     return eBarcodeState_OK;
-}
-
-/**
- * @brief  扫码枪通讯测试
- * @param  None
- * @retval 0 能通信 1 通信故障
- */
-uint8_t barcode_serial_Test(void)
-{
-    uint8_t buffer[15];
-    HAL_StatusTypeDef status;
-
-    //扫描模组通信报文
-    const unsigned char Close_Scan[] = {
-        //  0x08,0xC6,0x04,0x00,0xFF,0xF0,0x2A,0x00,0xFD,0x15   //关闭大灯
-        0x08, 0xC6, 0x04, 0x00, 0xFF, 0xF0, 0x32, 0x00, 0xFD, 0x0D //关闭瞄准器
-    };
-    //    const unsigned char Open_Scan[] = {
-    //        //  0x08,0xC6,0x04,0x00,0xFF,0xF0,0x2A,0x01,0xFD,0x14   //打开大灯
-    //        0x08, 0xC6, 0x04, 0x00, 0xFF, 0xF0, 0x32, 0x02, 0xFD, 0x0B //打开瞄准器
-    //    };
-
-    if (HAL_UART_Transmit(&BARCODE_UART, (uint8_t *)Close_Scan, ARRAY_LEN(Close_Scan), pdMS_TO_TICKS(10)) != HAL_OK) {
-        return 1;
-    }
-    status = HAL_UART_Receive(&BARCODE_UART, buffer, ARRAY_LEN(buffer), pdMS_TO_TICKS(100));
-    switch (status) {
-        case HAL_TIMEOUT: /* 接收超时 */
-            if (ARRAY_LEN(buffer) - BARCODE_UART.RxXferCount > 1) {
-                return 0;
-            }
-            return 3;
-        case HAL_OK: /* 接收到足够字符串 */
-            return 0;
-        default: /* 故障 HAL_ERROR HAL_BUSY */
-            return 2;
-    }
-    return 2;
 }
 
 /**

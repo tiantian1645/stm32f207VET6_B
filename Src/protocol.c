@@ -864,16 +864,17 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             }
             break;
         case eProtocolEmitPack_Client_CMD_Debug_Scan:
-            if (length == 9) {
-                barcode_serial_Test();
-                break;
+            if (length == 7) {
+                barcode_Read_From_Serial(&result, pInBuff, 100, 2000);
+                if (result > 0) {
+                    comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Scan, pInBuff, result);
+                }
             } else if (length == 8) {
                 barcode_Test(pInBuff[6]);
-            }
-
-            barcode_Read_From_Serial(&result, pInBuff, 100, 2000);
-            if (result > 0) {
-                comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Scan, pInBuff, result);
+            } else if (length == 73) {
+                barcode_Scan_Decode_Correct_Info(pInBuff + 6, length - 7);
+            } else if (length == 26) {
+                stroge_Conf_CC_O_Data(pInBuff + 6);
             }
             break;
         case eProtocolEmitPack_Client_CMD_Debug_Heater:

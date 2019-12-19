@@ -655,3 +655,49 @@ static void storge_Test_EEPROM(uint8_t * pBuffer)
     pBuffer[1] = 0;
     comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
 }
+
+uint8_t stroge_Conf_CC_O_Data(uint8_t * pBuffer)
+{
+    uint8_t i;
+    uint32_t *pData_u32, *pData_u32_start;
+    uint16_t data16;
+
+    if (pBuffer[0] < 1 || pBuffer[0] > 6) { /* 定标段索引不正确 */
+        return 2;
+    }
+
+    switch (pBuffer[0]) { /* 定标段 */
+        case 1:
+            pData_u32_start = &(gStorgeParamInfo.illumine_CC_t1_610_o0);
+            break;
+        case 2:
+            pData_u32_start = &(gStorgeParamInfo.illumine_CC_t1_610_o1);
+            break;
+        case 3:
+            pData_u32_start = &(gStorgeParamInfo.illumine_CC_t1_610_o2);
+            break;
+        case 4:
+            pData_u32_start = &(gStorgeParamInfo.illumine_CC_t1_610_o3);
+            break;
+        case 5:
+            pData_u32_start = &(gStorgeParamInfo.illumine_CC_t1_610_o4);
+            break;
+        case 6:
+            pData_u32_start = &(gStorgeParamInfo.illumine_CC_t1_610_o5);
+            break;
+        default:
+            return 2;
+    }
+
+    for (i = 0; i < 6; ++i) {
+        if (i == 0) { /* 第一通道 三盏灯 */
+            pData_u32 = pData_u32_start + (pBuffer[1 + 3 * i] - 1) * 12;
+        } else { /* 其余通道两盏灯 */
+            pData_u32 = pData_u32_start + 36 + (24 * (i - 1)) + (pBuffer[1 + 3 * i] - 1) * 12;
+        }
+        memcpy(&data16, pBuffer + 2 + 3 * i, 2); /* 数据 */
+        *pData_u32 = data16;
+    }
+
+    return storge_ParamDump();
+}

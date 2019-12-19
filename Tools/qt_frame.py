@@ -3,6 +3,7 @@
 import json
 import os
 import queue
+import random
 import struct
 import sys
 import time
@@ -18,6 +19,7 @@ import pyperclip
 import serial
 import serial.tools.list_ports
 import stackprinter
+import statistics
 from PyQt5.QtCore import Qt, QThreadPool, QTimer
 from PyQt5.QtGui import QFont, QIcon, QPalette
 from PyQt5.QtWidgets import (
@@ -156,7 +158,11 @@ class MainWindow(QMainWindow):
         self.center()
 
     def _serialSendPack(self, *args, **kwargs):
-        pack = self.dd.buildPack(0x13, self.getPackIndex(), *args, **kwargs)
+        try:
+            pack = self.dd.buildPack(0x13, self.getPackIndex(), *args, **kwargs)
+        except Exception:
+            logger.error(f"build pack exception \n{stackprinter.format()}")
+            raise
         self.task_queue.put(pack)
         if not self.serial.isOpen():
             logger.debug(f"try send | {bytesPuttyPrint(pack)}")
@@ -1010,6 +1016,7 @@ class MainWindow(QMainWindow):
         for sd in label.sample_datas:
             channel_idx = sd.channel - 1
             data = self.sample_record_parse_raw_data(sd.raw_data)
+            self.temp_saple_data[channel_idx] = data
             self.matplot_plots[channel_idx].setData(data)
             self.matplot_conf_houhou_cs[channel_idx].setCurrentIndex(sd.method.value)
             self.matplot_conf_wavelength_cs[channel_idx].setCurrentIndex(sd.wave.value - 1)
@@ -1291,6 +1298,7 @@ class MainWindow(QMainWindow):
         self.plot_wg.showGrid(x=True, y=True, alpha=1.0)
         self.plot_proxy = SignalProxy(self.plot_wg.scene().sigMouseMoved, rateLimit=60, slot=self.onPlotMouseMove)
         matplot_ly.addWidget(self.plot_win)
+        self.temp_saple_data = [None] * 6
         self.matplot_plots = []
         for k in range(6):
             color = LINE_COLORS[k % len(LINE_COLORS)]
@@ -2094,13 +2102,17 @@ class MainWindow(QMainWindow):
         self.selftest_bt = QPushButton("自检")
         self.selftest_bt.setMaximumWidth(75)
         self.debugtest_bt = QPushButton("Test")
-        self.debugtest_bt.setMaximumWidth(75)
+        self.debugtest_bt.setMaximumWidth(35)
+        self.debugtest_sp = QSpinBox()
+        self.debugtest_sp.setMaximumWidth(35)
+        self.debugtest_sp.setRange(0, 7)
         self.debugtest_cnt = 0
         boot_ly.addWidget(self.upgrade_bt)
         boot_ly.addWidget(self.bootload_bt)
         boot_ly.addWidget(self.reboot_bt)
         boot_ly.addWidget(self.selftest_bt)
         boot_ly.addWidget(self.debugtest_bt)
+        boot_ly.addWidget(self.debugtest_sp)
         sys_conf_ly.addLayout(boot_ly)
 
         self.upgrade_bt.clicked.connect(self.onUpgrade)
@@ -2110,10 +2122,31 @@ class MainWindow(QMainWindow):
         self.selftest_bt.mousePressEvent = self.onSelfCheck
 
     def onDebugTest(self, event):
-        self.debugtest_cnt += 1
-        if self.debugtest_cnt > 6:
-            self.debugtest_cnt = 1
-        self._serialSendPack(0xD4, (self.debugtest_cnt, 1, 6))
+        value = self.debugtest_sp.value()
+        if value == 0:
+            self.debugtest_cnt += 1
+            if self.debugtest_cnt > 6:
+                self.debugtest_cnt = 1
+            self._serialSendPack(0xD4, (self.debugtest_cnt, 1, 6))
+        elif value == 7:
+            points = [random.randint(0, 65535) for _ in range(13)]
+            logger.debug(f"points is [{', '.join(f'{i:04x}' for i in points)}]")
+            points_str = "".join(f"{i:04x}" for i in points)
+            data = f'6632{datetime.now().strftime("%y%m%d")}{value:02d}{points_str}{random.randint(0, 255):02X}'
+            self._serialSendPack(0xD2, (*data.encode('ascii'), ))
+        else:
+            data = [value]
+            for i in range(6):
+                data.append(self.matplot_conf_wavelength_cs[i].currentIndex() + 1)
+                logger.debug(f"get temp sample index | {i} | data {self.temp_saple_data[i]}")
+                if (len(self.temp_saple_data[i]) >= 3):
+                    p = int(statistics.mean(self.temp_saple_data[i][-3:]))
+                else:
+                    p = 0
+                data.append(struct.pack("H", p)[0])
+                data.append(struct.pack("H", p)[1])
+            logger.debug(f"test debug send data | {data}")
+            self._serialSendPack(0xD2, (*data, ))
 
     def getErrorContent(self, error_code):
         for i in DC201ErrorCode:
