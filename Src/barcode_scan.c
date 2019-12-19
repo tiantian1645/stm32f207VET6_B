@@ -78,7 +78,7 @@ sBarcodeStatistic gBarcodeStatistics[7];
 
 TaskHandle_t barcodeTaskHandle = NULL;
 
-static uint8_t gBarcodeInterrupt = 0;
+static sBarcodeCorrectInfo gBarcodeCorrectInfo; /* 条码中抽取的校正点信息 */
 
 /* Private constants ---------------------------------------------------------*/
 const char BAR_SAM_LDH_[] = "1419190801";
@@ -833,4 +833,74 @@ void barcode_Scan_Bantch(uint8_t pos_mark, uint8_t scan_mark)
             }
         }
     }
+}
+
+static uint32_t barcode_Str_2_Int_Base_10(uint8_t * pBuffer, uint8_t length)
+{
+    uint8_t i;
+    uint32_t result = 0;
+
+    if (pBuffer == NULL || length == 0) {
+        return 0;
+    }
+
+    for (i = 0; i < length; ++i) {
+        result *= 10;
+        if (pBuffer[i] >= '0' && pBuffer[i] <= '9') {
+            result += pBuffer[i] - '0';
+        } else {
+            return 0;
+        }
+    }
+    return result;
+}
+
+static uint32_t barcode_Str_2_Int_Base_16(uint8_t * pBuffer, uint8_t length)
+{
+    uint8_t i;
+    uint32_t result = 0;
+
+    if (pBuffer == NULL || length == 0) {
+        return 0;
+    }
+
+    for (i = 0; i < length; ++i) {
+        result *= 16;
+        if (pBuffer[i] >= '0' && pBuffer[i] <= '9') {
+            result += pBuffer[i] - '0';
+        } else if (pBuffer[i] >= 'a' && pBuffer[i] <= 'f') {
+            result += pBuffer[i] - 'a' + 10;
+        } else if (pBuffer[i] >= 'A' && pBuffer[i] <= 'F') {
+            result += pBuffer[i] - 'A' + 10;
+        } else {
+            return 0;
+        }
+    }
+    return result;
+}
+
+uint8_t barcode_Scan_Decode_Correct_Info(uint8_t * pBuffer, uint8_t length)
+{
+    uint8_t i;
+
+    if (pBuffer == NULL || length != 66) {
+        return 1;
+    }
+
+    gBarcodeCorrectInfo.branch = barcode_Str_2_Int_Base_10(pBuffer, 4);                     /* 4位批号 */
+    gBarcodeCorrectInfo.date = barcode_Str_2_Int_Base_10(pBuffer + 4, 6);                   /* 6位日期 */
+    gBarcodeCorrectInfo.stage = barcode_Str_2_Int_Base_10(pBuffer + 10, 2);                 /* 2位定标段索引 */
+    for (i = 0; i < 13; ++i) {                                                              /* 13个定标点 */
+        gBarcodeCorrectInfo.values[i] = barcode_Str_2_Int_Base_16(pBuffer + 12 + 4 * i, 4); /* 每个4位 */
+    }
+    gBarcodeCorrectInfo.check = barcode_Str_2_Int_Base_16(pBuffer + 64, 2); /* 2位校验位 */
+    return 0;
+}
+
+uint8_t barcode_Scan_Decode_Correct_Info_From_Result(void)
+{
+    if (gBarcodeDecodeResult[0].state != eBarcodeState_OK) { /* 扫码结果失败 */
+        return 2;
+    }
+    return barcode_Scan_Decode_Correct_Info(gBarcodeDecodeResult[0].pData, gBarcodeDecodeResult[0].length);
 }

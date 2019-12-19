@@ -44,10 +44,18 @@ typedef struct {
     uint8_t * pData;
 } sBarcoderesult;
 
+/* 定标校正信息结构体 */
+typedef struct {
+    uint32_t branch;     /* 批次 */
+    uint32_t date;       /* 日期 */
+    uint8_t stage;       /* 标点序号 0 ～ 5 */
+    uint16_t values[13]; /* 标段数据 13个灯 */
+    uint32_t check;      /* 校验数据 */
+} sBarcodeCorrectInfo;
+
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/
-uint8_t barcode_serial_Test(void);
 void barcode_Test(uint32_t cnt);
 
 void barcode_Init(void);
@@ -71,6 +79,8 @@ void barcode_Interrupt_Flag_Clear(void);
 void barcode_Scan_Bantch(uint8_t pos_mark, uint8_t scan_mark);
 int32_t barcode_Motor_Read_Position(void);
 
+uint8_t barcode_Scan_Decode_Correct_Info(uint8_t * pBuffer, uint8_t length);
+uint8_t barcode_Scan_Decode_Correct_Info_From_Result(void);
 /* Private defines -----------------------------------------------------------*/
 
 #endif
