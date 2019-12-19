@@ -458,9 +458,8 @@ void barcode_sn2707_Init(void)
     if (result != 0) {
         error_flag = 1;
     }
-    if (error_flag != 0) {                                /* 存在错误 */
-        error_Emit(eError_Scan_Config_Failed);            /* 报错 */
-        beep_Start_With_Conf(eBeep_Freq_re, 100, 150, 1); /* RE 一声 */
+    if (error_flag != 0) {                     /* 存在错误 */
+        error_Emit(eError_Scan_Config_Failed); /* 报错 */
         return;
     }
 
@@ -474,11 +473,8 @@ void barcode_sn2707_Init(void)
         error_flag = 1;
     }
 
-    if (error_flag != 0) {                                /* 存在错误 */
-        error_Emit(eError_Scan_Config_Failed);            /* 报错 */
-        beep_Start_With_Conf(eBeep_Freq_re, 100, 150, 1); /* RE 一声 */
-    } else {                                              /* 参数项匹配 或 设置成功 */
-        beep_Start_With_Conf(eBeep_Freq_mi, 100, 150, 2); /* MI 两声 */
+    if (error_flag != 0) {                     /* 存在错误 */
+        error_Emit(eError_Scan_Config_Failed); /* 报错 */
     }
 }
 

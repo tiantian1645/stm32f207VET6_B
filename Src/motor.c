@@ -429,7 +429,6 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
         buffer[0] = 0x00;               /* 抬起上加热体失败 */
         comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
         comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                  /* 转发至外串口但不允许阻塞 */
-        beep_Start_With_Conf(eBeep_Freq_do, 300, 0, 1);
         return;
     }
     /* 托盘保持力矩不足 托盘容易位置会发生变化 实际位置与驱动记录位置不匹配 每次移动托盘电机必须重置 */
@@ -440,7 +439,6 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
             buffer[0] = 0x00;                                                                     /* 托盘电机运动失败 */
             comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
             comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                  /* 转发至外串口但不允许阻塞 */
-            beep_Start_With_Conf(eBeep_Freq_fa, 300, 0, 1);
         }
         return;
     } else {                                                                                      /* 其他情况需要回到原点 */
@@ -450,7 +448,6 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
             buffer[0] = 0x00;                                                                     /* 托盘电机运动失败 */
             comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
             comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                  /* 转发至外串口但不允许阻塞 */
-            beep_Start_With_Conf(eBeep_Freq_fa, 300, 0, 1);
             return;
         }
         vTaskDelay(100); /* 延时 */
@@ -460,19 +457,16 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
             buffer[0] = 0x01;
             comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, buffer, 1);
             comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0); /* 转发至外串口但不允许阻塞 */
-            beep_Start_With_Conf(eBeep_Freq_re, 300, 0, 1);
-        } else if (index == eTrayIndex_2) { /* 托盘在加样位置 */
+        } else if (index == eTrayIndex_2) {                      /* 托盘在加样位置 */
             buffer[0] = 0x02;
             comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, buffer, 1);
             comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0); /* 转发至外串口但不允许阻塞 */
-            beep_Start_With_Conf(eBeep_Freq_mi, 300, 0, 1);
         }
         return;
     } else {
         buffer[0] = 0x00;                                                                     /* 托盘电机运动失败 */
         comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
         comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                  /* 转发至外串口但不允许阻塞 */
-        beep_Start_With_Conf(eBeep_Freq_fa, 300, 0, 1);
         return;
     }
 }
@@ -615,20 +609,11 @@ static void motor_Task(void * argument)
                         xNotifyValue == eMotorNotifyValue_BR_ERR ||                               /* 收到中终止命令(异常) */
                         xNotifyValue == eMotorNotifyValue_BR) {                                   /* 收到中终止命令 */
                         if (xResult != pdPASS || xNotifyValue == eMotorNotifyValue_BR_ERR) {      /* 超时  */
-                            beep_Start_With_Conf(eBeep_Freq_mi, 1000, 500, 5);                    /* 蜂鸣器输出调试 */
                             error_Emit(eError_Sample_Incomlete);                                  /* 提交错误信息 */
-                        } else {                                                                  /* 打断指令 */
-                            beep_Start_With_Conf(eBeep_Freq_mi, 500, 500, 3);                     /* 蜂鸣器输出调试 */
                         }
                         break;
                     }
-                    if (xNotifyValue == eMotorNotifyValue_TG) {               /* 本次采集完成 */
-                        if (gComm_Data_Sample_PD_WH_Idx_Get() != 0xFF) {      /* 不是最后一次采样 */
-                            beep_Conf_Set_Period_Cnt(1);                      /* 蜂鸣器配置 */
-                            beep_Start_With_Loop();                           /* 蜂鸣器输出调试 */
-                        } else {                                              /* 最后一次采样 */
-                            beep_Start_With_Conf(eBeep_Freq_re, 100, 100, 5); /* 蜂鸣器输出调试 */
-                        }
+                    if (xNotifyValue == eMotorNotifyValue_TG) {                                          /* 本次采集完成 */
                         if (gComm_Data_Sample_PD_WH_Idx_Get() == 1) {                                    /* 当前检测白物质 */
                             white_Motor_PD();                                                            /* 运动白板电机 PD位置 */
                             if (xTick != 0) {                                                            /* 只设置一次 */
