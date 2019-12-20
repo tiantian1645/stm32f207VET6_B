@@ -1331,13 +1331,14 @@ class MainWindow(QMainWindow):
         self.sample_label = self.sample_db.build_label(
             name=self.sample_record_lable_name, version=f"{self.version}.{datetime.strftime(self.device_datetime, '%Y%m%d.%H%M%S')}", device_id=self.device_id
         )
-        self._serialSendPack(0xDC, (self.matplot_period_sp.value(),))
-        self._serialSendPack(0x01)
-        if self.matplot_period_tv_cb.isChecked():
-            conf.append(self.matplot_period_tv_cb.checkState())
-            self._serialSendPack(0x08, conf)
-        else:
-            self._serialSendPack(0x03, conf)
+        if event != 1:
+            self._serialSendPack(0xDC, (self.matplot_period_sp.value(),))
+            self._serialSendPack(0x01)
+            if self.matplot_period_tv_cb.isChecked():
+                conf.append(self.matplot_period_tv_cb.checkState())
+                self._serialSendPack(0x08, conf)
+            else:
+                self._serialSendPack(0x03, conf)
         for plot in self.matplot_plots:
             plot.clear()
 
@@ -1824,6 +1825,9 @@ class MainWindow(QMainWindow):
         self.out_flash_param_temp_sps = [QDoubleSpinBox(self) for _ in range(11)]
         self.out_flash_param_read_bt = QPushButton("读取")
         self.out_flash_param_write_bt = QPushButton("写入")
+        self.out_flash_param_clear_o_bt = QPushButton("清除测试点")
+        self.out_flash_param_clear_s_bt = QPushButton("清除标准点")
+        self.out_flash_param_clear_s_d_bt = QPushButton("预设标准点")
 
         out_flash_param_temp_cc_wg = QGroupBox("温度校正参数")
         out_flash_param_temp_cc_ly = QGridLayout(out_flash_param_temp_cc_wg)
@@ -1888,6 +1892,9 @@ class MainWindow(QMainWindow):
         temp_ly.setSpacing(5)
         temp_ly.addWidget(self.out_flash_param_read_bt)
         temp_ly.addWidget(self.out_flash_param_write_bt)
+        temp_ly.addWidget(self.out_flash_param_clear_o_bt)
+        temp_ly.addWidget(self.out_flash_param_clear_s_bt)
+        temp_ly.addWidget(self.out_flash_param_clear_s_d_bt)
         out_flash_data_ly.addLayout(temp_ly)
 
         self.out_flash_data_read_bt.clicked.connect(self.onOutFlashRead)
@@ -1895,10 +1902,29 @@ class MainWindow(QMainWindow):
         self.out_flash_param_write_bt.clicked.connect(self.onOutFlashParamWrite)
         self.out_flash_data_dg = ModernDialog(self.out_flash_data_dg, self)
         self.out_flash_data_dg.mouseDoubleClickEvent = self.onOutFlashDoubleClicked
+        self.out_flash_param_clear_o_bt.clicked.connect(self.onOutFlashParamCC_O)
+        self.out_flash_param_clear_s_bt.clicked.connect(self.onOutFlashParamCC_S)
+        self.out_flash_param_clear_s_d_bt.clicked.connect(self.onOutFlashParamCC_S_D)
+
+    def onOutFlashParamCC_O(self, event):
+        for idx, sp in enumerate(self.out_flash_param_cc_sps):
+            if idx % 12 >= 6:
+                sp.setValue(0)
+
+    def onOutFlashParamCC_S(self, event):
+        for idx, sp in enumerate(self.out_flash_param_cc_sps):
+            if idx % 12 < 6:
+                sp.setValue(0)
+
+    def onOutFlashParamCC_S_D(self, event):
+        for idx, sp in enumerate(self.out_flash_param_cc_sps):
+            if idx % 12 < 6:
+                if idx // 12 == 2:
+                    sp.setValue(0)
+                else:
+                    sp.setValue(50 + (idx % 12) * 2000)
 
     def onOutFlashDoubleClicked(self, event):
-        for sp in self.out_flash_param_temp_sps:
-            sp.setValue(0)
         for sp in self.out_flash_param_cc_sps:
             sp.setValue(0)
 
@@ -2135,18 +2161,33 @@ class MainWindow(QMainWindow):
             data = f'6632{datetime.now().strftime("%y%m%d")}{value:02d}{points_str}{random.randint(0, 255):02X}'
             self._serialSendPack(0xD2, (*data.encode('ascii'), ))
         else:
-            data = [value]
-            for i in range(6):
-                data.append(self.matplot_conf_wavelength_cs[i].currentIndex() + 1)
-                logger.debug(f"get temp sample index | {i} | data {self.temp_saple_data[i]}")
-                if (len(self.temp_saple_data[i]) >= 3):
-                    p = int(statistics.mean(self.temp_saple_data[i][-3:]))
-                else:
-                    p = 0
-                data.append(struct.pack("H", p)[0])
-                data.append(struct.pack("H", p)[1])
-            logger.debug(f"test debug send data | {data}")
-            self._serialSendPack(0xD2, (*data, ))
+            self.onMatplotStart(1)
+            self._serialSendPack(0xD2, (0,))
+            # 
+            # data = [value]
+            # for i in range(6):
+            #     data.append(self.matplot_conf_wavelength_cs[i].currentIndex() + 1)
+            #     logger.debug(f"get temp sample index | {i} | data {self.temp_saple_data[i]}")
+            #     if (len(self.temp_saple_data[i]) >= 3):
+            #         p = int(statistics.mean(self.temp_saple_data[i][-3:]))
+            #     else:
+            #         p = 0
+            #     data.append(struct.pack("H", p)[0])
+            #     data.append(struct.pack("H", p)[1])
+            # logger.debug(f"test debug send data | {data}")
+            # self._serialSendPack(0xD2, (*data, ))
+            # 
+            # data = [12, value]
+            # tt = []
+            # for i in range(12):
+            #     m = 50 + (value - 1) * 2000
+            #     p = random.randint(m - 50, m + 100)
+            #     data.append(struct.pack("H", p)[0])
+            #     data.append(struct.pack("H", p)[1])
+            #     tt.append(p)
+            # tt = sorted(tt[-7:])
+            # logger.debug(f"test sample data | {tt} | avg {statistics.mean(tt[1:-1]):.2f}")
+            # self._serialSendPack(0xD2, (*data, ))
 
     def getErrorContent(self, error_code):
         for i in DC201ErrorCode:

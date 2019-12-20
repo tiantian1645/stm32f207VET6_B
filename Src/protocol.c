@@ -870,11 +870,18 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                     comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Scan, pInBuff, result);
                 }
             } else if (length == 8) {
-                barcode_Test(pInBuff[6]);
+                motor_fun.fun_type = eMotor_Fun_Correct;
+                if (motor_Emit(&motor_fun, 3000) == 0) { /* 提交成功 */
+                    gComm_Data_Correct_Flag_Mark();      /* 标记进入定标状态 */
+                }
+            } else if (length == 9) {
+                barcode_Test(pInBuff[6] + pInBuff[7] * 256);
             } else if (length == 73) {
                 barcode_Scan_Decode_Correct_Info(pInBuff + 6, length - 7);
             } else if (length == 26) {
                 stroge_Conf_CC_O_Data(pInBuff + 6);
+            } else {
+                stroge_Conf_CC_O_Data_From_B3(pInBuff + 6); /* 修改测量点 */
             }
             break;
         case eProtocolEmitPack_Client_CMD_Debug_Heater:
@@ -1261,12 +1268,17 @@ void protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
     }
     last_ack = pInBuff[3]; /* 记录上一帧号 */
 
-    switch (pInBuff[5]) {                                                                                        /* 进一步处理 功能码 */
-        case eComm_Data_Inbound_CMD_DATA:                                                                        /* 采集数据帧 */
-            comm_Data_Sample_Data_Commit(pInBuff[7], pInBuff, length);                                           /* 采样数据记录 */
-            comm_Data_Sample_Data_Correct(pInBuff[7], pInBuff, &data_length);                                    /* 投影校正 */
-            comm_Main_SendTask_QueueEmitWithBuild(eProtocolRespPack_Client_SAMP_DATA, pInBuff, data_length, 20); /* 构造数据包 */
-            comm_Out_SendTask_QueueEmitWithModify(pInBuff, data_length + 7, 0);                                  /* 修改帧号ID后转发 */
+    switch (pInBuff[5]) {                                                                                              /* 进一步处理 功能码 */
+        case eComm_Data_Inbound_CMD_DATA:                                                                              /* 采集数据帧 */
+            if (gComm_Data_Correct_Flag_Check()) {                                                                     /* 处于定标状态 */
+                stroge_Conf_CC_O_Data_From_B3(pInBuff + 6);                                                            /* 修改测量点 */
+                comm_Out_SendTask_QueueEmitWithBuild(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7, 20); /* 转发至外串口 */
+            } else {                                                                                                   /* 未出于定标状态 */
+                comm_Data_Sample_Data_Commit(pInBuff[7], pInBuff, length);                                             /* 采样数据记录 */
+                comm_Data_Sample_Data_Correct(pInBuff[7], pInBuff, &data_length);                                      /* 投影校正 */
+                comm_Main_SendTask_QueueEmitWithBuild(eProtocolRespPack_Client_SAMP_DATA, pInBuff, data_length, 20);   /* 构造数据包 */
+                comm_Out_SendTask_QueueEmitWithModify(pInBuff, data_length + 7, 0);                                    /* 修改帧号ID后转发 */
+            }
             break;
         case eComm_Data_Inbound_CMD_OVER:                /* 采集数据完成帧 */
             if (comm_Data_Stary_Test_Is_Running()) {     /* 判断是否处于杂散光测试中 */

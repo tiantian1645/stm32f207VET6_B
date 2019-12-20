@@ -444,6 +444,7 @@ uint16_t storge_ParamWrite(eStorgeParamIndex idx, uint16_t num, uint8_t * pBuff)
 uint16_t storge_ParamRead(eStorgeParamIndex idx, uint16_t num, uint8_t * pBuff);
 
 uint8_t stroge_Conf_CC_O_Data(uint8_t * pBuffer);
+uint8_t stroge_Conf_CC_O_Data_From_B3(uint8_t * pBuffer);
 /* Private defines -----------------------------------------------------------*/
 
 #endif

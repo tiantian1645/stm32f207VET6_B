@@ -126,6 +126,12 @@ void gComm_Data_Sample_Next_Idle_Clr(void);
 
 uint8_t comm_Data_Sample_Data_Commit(uint8_t channel, uint8_t * pBuffer, uint8_t length);
 uint8_t comm_Data_Sample_Data_Correct(uint8_t channel, uint8_t * pBuffer, uint8_t * pLength);
+
+void gComm_Data_Correct_Flag_Mark(void);
+void gComm_Data_Correct_Flag_Clr(void);
+uint8_t gComm_Data_Correct_Flag_Check(void);
+BaseType_t comm_Data_Sample_Send_Conf_Correct(uint8_t * pData, eComm_Data_Sample_Radiant wave);
+eComm_Data_Sample_Radiant comm_Data_Get_Correct_Wave(void);
 /* Private defines -----------------------------------------------------------*/
 
 #endif

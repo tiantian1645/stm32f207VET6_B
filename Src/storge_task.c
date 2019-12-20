@@ -2,6 +2,7 @@
 #include "main.h"
 #include "comm_out.h"
 #include "comm_main.h"
+#include "comm_data.h"
 #include "i2c_eeprom.h"
 #include "spi_flash.h"
 #include "protocol.h"
@@ -515,6 +516,43 @@ uint8_t storge_ParamWriteSingle(eStorgeParamIndex idx, uint8_t * pBuff, uint8_t 
  * @param  pBuff 输出数据
  * @retval 输出数据长度
  */
+uint32_t storge_Param_Illumine_CC_Get_Single(eStorgeParamIndex idx)
+{
+    uint32_t * p;
+
+    if (idx >= eStorgeParamIndex_Num || idx < eStorgeParamIndex_Illumine_CC_t1_610_i0) {
+        return 0;
+    }
+    p = &gStorgeParamInfo.illumine_CC_t1_610_i0;
+    p += idx - eStorgeParamIndex_Illumine_CC_t1_610_i0;
+    return *p;
+}
+
+/**
+ * @brief  参数读取
+ * @param  idx 参数类型
+ * @param  pBuff 输出数据
+ * @retval 输出数据长度
+ */
+void storge_Param_Illumine_CC_Set_Single(eStorgeParamIndex idx, uint32_t data)
+{
+    uint32_t * p;
+
+    if (idx >= eStorgeParamIndex_Num || idx < eStorgeParamIndex_Illumine_CC_t1_610_i0) {
+        return;
+    }
+    p = &gStorgeParamInfo.illumine_CC_t1_610_i0;
+    p += idx - eStorgeParamIndex_Illumine_CC_t1_610_i0;
+    *p = data;
+    return;
+}
+
+/**
+ * @brief  参数读取
+ * @param  idx 参数类型
+ * @param  pBuff 输出数据
+ * @retval 输出数据长度
+ */
 uint8_t storge_ParamReadSingle(eStorgeParamIndex idx, uint8_t * pBuff)
 {
     uint8_t * p;
@@ -700,4 +738,89 @@ uint8_t stroge_Conf_CC_O_Data(uint8_t * pBuffer)
     }
 
     return storge_ParamDump();
+}
+
+void storge_Param_CC_Illumine_CC_Sort(uint32_t * pBuffer, uint8_t length)
+{
+    uint32_t temp;
+    uint8_t i, j;
+
+    for (i = 0; i < length; ++i) {
+        for (j = 0; j < length - 1 - i; ++j) {
+            if (pBuffer[j] > pBuffer[j + 1]) {
+                temp = pBuffer[j + 1];
+                pBuffer[j + 1] = pBuffer[j];
+                pBuffer[j] = temp;
+            }
+        }
+    }
+}
+
+float storge_Param_CC_Illumine_CC_Filter(uint8_t * pBuffer)
+{
+    uint8_t i;
+    uint16_t temp;
+    uint32_t sum = 0, max = 0, min = 0xFFFFFFFF;
+
+    if (pBuffer[0] < 12) { /* 数据不足 */
+        return 0;          /* 返回默认值 */
+    }
+
+    for (i = pBuffer[0] - 7; i < pBuffer[0]; ++i) {
+        memcpy(&temp, pBuffer + 2 * i + 2, 2); /* 采样点数据 */
+        if (temp > max) {
+            max = temp;
+        }
+        if (temp < min) {
+            min = temp;
+        }
+        sum += temp;
+    }
+    return (sum - max - min) / (float)(7 - 2) + 0.5;
+}
+
+eStorgeParamIndex storge_Param_Illumine_CC_Get_Index(uint8_t channel, eComm_Data_Sample_Radiant wave)
+{
+    switch (channel) {
+        case 1:
+        default:
+            return eStorgeParamIndex_Illumine_CC_t1_610_o0 + (wave - eComm_Data_Sample_Radiant_610) * 12;
+        case 2:
+        case 3:
+        case 4:
+        case 5:
+        case 6:
+            return eStorgeParamIndex_Illumine_CC_t2_610_o0 + (channel - 2) * 24 + (wave - eComm_Data_Sample_Radiant_610) * 12;
+    }
+}
+
+uint8_t storge_Conf_CC_Insert(uint8_t channel, eComm_Data_Sample_Radiant wave, uint32_t avg_data)
+{
+    uint32_t ccs[6] = {0, 0, 0, 0, 0, 0};
+    uint8_t i;
+    eStorgeParamIndex idx;
+
+    idx = storge_Param_Illumine_CC_Get_Index(channel, wave);
+    for (i = 0; i < 6; ++i) {
+        ccs[i] = storge_Param_Illumine_CC_Get_Single(idx + i);
+    }
+    for (i = 0; i < 6; ++i) {
+        if (ccs[i] == 0) {
+            ccs[i] = avg_data;
+            storge_Param_CC_Illumine_CC_Sort(ccs, 6);
+            for (i = 0; i < 6; ++i) {
+                storge_Param_Illumine_CC_Set_Single(idx + i, ccs[i]);
+            }
+            return 0;
+        }
+    }
+    return 1;
+}
+
+uint8_t stroge_Conf_CC_O_Data_From_B3(uint8_t * pBuffer)
+{
+    if (storge_Conf_CC_Insert(pBuffer[1], comm_Data_Get_Correct_Wave(), (uint32_t)storge_Param_CC_Illumine_CC_Filter(pBuffer)) == 0) {
+        return storge_ParamDump();
+    }
+    return 2;
 }

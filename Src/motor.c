@@ -322,6 +322,50 @@ eMotor_OPT_Status motor_OPT_Status_Get(eMotor_OPT_Index idx)
 }
 
 /**
+ * @brief  启动采样并控制白板电机
+ * @param  None
+ * @retval None
+ */
+void motor_Sample_Deal(void)
+{
+    TickType_t xTick;
+    uint32_t xNotifyValue = 0;
+    BaseType_t xResult = pdFALSE;
+
+    comm_Data_Sample_Start();    /* 启动定时器同步发包 开始采样 */
+    xTick = xTaskGetTickCount(); /* 记录起始时间 */
+    for (;;) {
+        xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(9850)); /* 等待任务通知 */
+        if (xResult != pdPASS ||                                                      /* 超时 */
+            xNotifyValue == eMotorNotifyValue_BR_ERR ||                               /* 收到中终止命令(异常) */
+            xNotifyValue == eMotorNotifyValue_BR) {                                   /* 收到中终止命令 */
+            if (xResult != pdPASS || xNotifyValue == eMotorNotifyValue_BR_ERR) {      /* 超时  */
+                error_Emit(eError_Sample_Incomlete);                                  /* 提交错误信息 */
+            }
+            break;
+        }
+        if (xNotifyValue == eMotorNotifyValue_TG) {                                          /* 本次采集完成 */
+            if (gComm_Data_Sample_PD_WH_Idx_Get() == 1) {                                    /* 当前检测白物质 */
+                white_Motor_PD();                                                            /* 运动白板电机 PD位置 */
+                if (xTick != 0) {                                                            /* 只设置一次 */
+                    xTick = xTaskGetTickCount() - xTick;                                     /* 间隔时间 */
+                    xTick += (COMM_DATA_PD_TIMER_TIME - xTick % COMM_DATA_PD_TIMER_TIME);    /* 补整 */
+                    xTick += COMM_DATA_PD_TIMER_TIME;                                        /* 任务切换补偿 */
+                    if (xTick > WHITE_MOTOR_RUN_TIMEOUT && xTick < WHITE_MOTOR_RUN_PERIOD) { /* 范围检查 */
+                        gComm_Data_Sample_Next_Idle_Set(xTick);                              /* 标记白板测试完成时间 */
+                    }
+                    xTick = 0; /* 清零 */
+                }
+            } else if (gComm_Data_Sample_PD_WH_Idx_Get() == 2) {    /* 当前检测PD */
+                white_Motor_WH();                                   /* 运动白板电机 白物质位置 */
+            } else if (gComm_Data_Sample_PD_WH_Idx_Get() == 0xFF) { /* 最后一次采样 */
+                break;
+            }
+        }
+    }
+}
+
+/**
  * @brief  电机资源初始化
  * @param  None
  * @retval None
@@ -471,6 +515,17 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
     }
 }
 
+void motor_Sample_Owari_Correct(void)
+{
+    white_Motor_WH();                            /* 运动白板电机 白板位置 */
+    barcode_Motor_Run_By_Index(eBarcodeIndex_0); /* 复位 */
+    barcode_Motor_Run_By_Index(eBarcodeIndex_6); /* 二维码位置就位 */
+    gComm_Data_Sample_Max_Point_Clear();         /* 清除需要测试点数 */
+    led_Mode_Set(eLED_Mode_Kirakira_Green);      /* LED 绿灯闪烁 */
+    barcode_Interrupt_Flag_Clear();              /* 清除打断标志位 */
+    gComm_Data_Sample_Next_Idle_Clr();           /* 重新初始化白板测试时间 */
+}
+
 void motor_Sample_Owari(void)
 {
     white_Motor_WH();                            /* 运动白板电机 白板位置 */
@@ -496,7 +551,7 @@ static void motor_Task(void * argument)
     BaseType_t xResult = pdFALSE;
     uint32_t xNotifyValue, cnt = 0;
     sMotor_Fun mf;
-    uint8_t buffer[15];
+    uint8_t buffer[30];
     TickType_t xTick;
     eBarcodeState barcode_result;
 
@@ -606,38 +661,8 @@ static void motor_Task(void * argument)
                     break;                          /* 提前结束 */
                 }
                 vTaskDelayUntil(&xTick, pdMS_TO_TICKS(20 * 1000)); /* 等待补全20秒 */
-                comm_Data_Sample_Start();                          /* 启动定时器同步发包 开始采样 */
-                xTick = xTaskGetTickCount();                       /* 记录起始时间 */
-                for (;;) {
-                    xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(9850)); /* 等待任务通知 */
-                    if (xResult != pdPASS ||                                                      /* 超时 */
-                        xNotifyValue == eMotorNotifyValue_BR_ERR ||                               /* 收到中终止命令(异常) */
-                        xNotifyValue == eMotorNotifyValue_BR) {                                   /* 收到中终止命令 */
-                        if (xResult != pdPASS || xNotifyValue == eMotorNotifyValue_BR_ERR) {      /* 超时  */
-                            error_Emit(eError_Sample_Incomlete);                                  /* 提交错误信息 */
-                        }
-                        break;
-                    }
-                    if (xNotifyValue == eMotorNotifyValue_TG) {                                          /* 本次采集完成 */
-                        if (gComm_Data_Sample_PD_WH_Idx_Get() == 1) {                                    /* 当前检测白物质 */
-                            white_Motor_PD();                                                            /* 运动白板电机 PD位置 */
-                            if (xTick != 0) {                                                            /* 只设置一次 */
-                                xTick = xTaskGetTickCount() - xTick;                                     /* 间隔时间 */
-                                xTick += (COMM_DATA_PD_TIMER_TIME - xTick % COMM_DATA_PD_TIMER_TIME);    /* 补整 */
-                                xTick += COMM_DATA_PD_TIMER_TIME;                                        /* 任务切换补偿 */
-                                if (xTick > WHITE_MOTOR_RUN_TIMEOUT && xTick < WHITE_MOTOR_RUN_PERIOD) { /* 范围检查 */
-                                    gComm_Data_Sample_Next_Idle_Set(xTick);                              /* 标记白板测试完成时间 */
-                                }
-                                xTick = 0; /* 清零 */
-                            }
-                        } else if (gComm_Data_Sample_PD_WH_Idx_Get() == 2) {    /* 当前检测PD */
-                            white_Motor_WH();                                   /* 运动白板电机 白物质位置 */
-                        } else if (gComm_Data_Sample_PD_WH_Idx_Get() == 0xFF) { /* 最后一次采样 */
-                            break;
-                        }
-                    }
-                }
-                motor_Sample_Owari(); /* 清理 */
+                motor_Sample_Deal();                               /* 启动采样并控制白板电机 */
+                motor_Sample_Owari();                              /* 清理 */
                 break;
             case eMotor_Fun_SYK:            /* 交错 */
                 if (heat_Motor_Up() != 0) { /* 抬起上加热体电机 失败 */
@@ -770,6 +795,33 @@ static void motor_Task(void * argument)
                 motor_Self_Check_Scan(buffer);
                 break;
             case eMotor_Fun_Self_Check_PD: /* 自检测试 单项 PD */
+                break;
+            case eMotor_Fun_Correct:                                                           /* 定标 */
+                for (cnt = 0; cnt < 6; ++cnt) {                                                /* 6段 */
+                    motor_Tray_Move_By_Index(eTrayIndex_2);                                    /* 出仓 */
+                    vTaskDelay(5000);                                                          /* 延时 */
+                    xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0);                          /* 清空通知 */
+                    led_Mode_Set(eLED_Mode_Kirakira_Red);                                      /* LED 红灯闪烁 */
+                    motor_Tray_Move_By_Index(eTrayIndex_1);                                    /* 扫码位置 */
+                    barcode_result = barcode_Scan_QR();                                        /* 扫描二维条码 */
+                    motor_Tray_Move_By_Index(eTrayIndex_0);                                    /* 入仓 */
+                    heat_Motor_Down();                                                         /* 砸下上加热体电机 */
+                    white_Motor_PD();                                                          /* 运动白板电机 PD位置 清零位置 */
+                    comm_Data_Sample_Send_Conf_Correct(buffer, eComm_Data_Sample_Radiant_610); /* 配置 610 波长 */
+                    white_Motor_WH();                                                          /* 运动白板电机 白物质位置 */
+                    motor_Sample_Deal();                                                       /* 启动采样并控制白板电机 */
+                    vTaskDelay(1000);                                                          /* 延时 写入数据 */
+                    white_Motor_PD();                                                          /* 运动白板电机 PD位置 清零位置 */
+                    white_Motor_WH();                                                          /* 运动白板电机 白物质位置 */
+                    comm_Data_Sample_Send_Conf_Correct(buffer, eComm_Data_Sample_Radiant_550); /* 配置 550 波长 */
+                    white_Motor_WH();                                                          /* 运动白板电机 白物质位置 */
+                    motor_Sample_Deal();                                                       /* 启动采样并控制白板电机 */
+                    vTaskDelay(3000);                                                          /* 延时 写入数据 */
+                    motor_Sample_Owari_Correct();                                              /* 清理 */
+                }
+                comm_Data_Sample_Owari();               /* 上送采样结束报文 */
+                motor_Tray_Move_By_Index(eTrayIndex_2); /* 出仓 */
+                gComm_Data_Correct_Flag_Clr();          /* 退出定标状态 */
                 break;
             default:
                 break;

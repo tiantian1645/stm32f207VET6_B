@@ -80,6 +80,9 @@ static uint8_t gComm_Data_Stary_test_Falg = 0;
 
 static uint16_t gComm_Data_Sample_Period = 500;
 static uint16_t gComm_Data_Sample_Next_Idle = WHITE_MOTOR_RUN_PERIOD;
+
+static uint8_t gComm_Data_Correct_Flag = 0; /* 定标状态标志 */
+static eComm_Data_Sample_Radiant gComm_Data_Correct_wave = eComm_Data_Sample_Radiant_550;
 /* Private constants ---------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -173,6 +176,36 @@ void gComm_Data_Sample_PD_WH_Idx_Set(uint8_t idx)
 void gComm_Data_Sample_PD_WH_Idx_Clear(void)
 {
     gComm_Data_Sample_PD_WH_Idx_Set(0xFF);
+}
+
+/**
+ * @brief  定标状态 标记
+ * @param  stage 定标段索引
+ * @retval None
+ */
+void gComm_Data_Correct_Flag_Mark(void)
+{
+    gComm_Data_Correct_Flag = 1;
+}
+
+/**
+ * @brief  定标状态 清零
+ * @param  None
+ * @retval None
+ */
+void gComm_Data_Correct_Flag_Clr(void)
+{
+    gComm_Data_Correct_Flag = 0;
+}
+
+/**
+ * @brief  定标状态 检查
+ * @param  None
+ * @retval 1 处于定标状态 0 未处于定标
+ */
+uint8_t gComm_Data_Correct_Flag_Check(void)
+{
+    return (gComm_Data_Correct_Flag > 0) ? (1) : (0);
 }
 
 /**
@@ -501,7 +534,7 @@ static BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData)
 
 /**
  * @brief  发送采样配置
- * @param  None
+ * @param  pData 缓存指针
  * @retval pdPASS 提交成功 pdFALSE 提交失败
  */
 BaseType_t comm_Data_Sample_Send_Conf(uint8_t * pData)
@@ -515,7 +548,7 @@ BaseType_t comm_Data_Sample_Send_Conf(uint8_t * pData)
 
 /**
  * @brief  发送采样配置 工装测试
- * @param  None
+ * @param  pData 缓存指针
  * @retval pdPASS 提交成功 pdFALSE 提交失败
  */
 BaseType_t comm_Data_Sample_Send_Conf_TV(uint8_t * pData)
@@ -525,6 +558,38 @@ BaseType_t comm_Data_Sample_Send_Conf_TV(uint8_t * pData)
     comm_Data_Sample_Apply_Conf(pData);
     sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_TEST, pData, 19); /* 构造工装测试配置包 */
     return comm_Data_SendTask_QueueEmit(pData, sendLength, 50);
+}
+
+/**
+ * @brief  发送采样配置 定标
+ * @param  wave 波长配置  405不做定标
+ * @param  pData 缓存指针
+ * @retval pdPASS 提交成功 pdFALSE 提交失败
+ */
+BaseType_t comm_Data_Sample_Send_Conf_Correct(uint8_t * pData, eComm_Data_Sample_Radiant wave)
+{
+    uint8_t i, sendLength;
+
+    gComm_Data_Sample_Max_Point_Clear();    /* 清除最大点数 */
+    gComm_Data_Sample_Max_Point_Update(12); /* 更新最大点数 12 点 */
+    for (i = 0; i < 6; ++i) {
+        pData[0 + 3 * i] = eComm_Data_Sample_Assay_Continuous; /* 测试方法 */
+        pData[1 + 3 * i] = wave;                               /* 测试波长 */
+        pData[2 + 3 * i] = 12;                                 /* 测试点数 */
+    }
+    gComm_Data_Correct_wave = wave;
+    sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 18); /* 构造工装测试配置包 */
+    return comm_Data_SendTask_QueueEmit(pData, sendLength, 50);
+}
+
+/**
+ * @brief  校正波长配置获取
+ * @param  None
+ * @retval gComm_Data_Correct_wave
+ */
+eComm_Data_Sample_Radiant comm_Data_Get_Correct_Wave(void)
+{
+    return gComm_Data_Correct_wave;
 }
 
 /**
