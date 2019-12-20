@@ -23,6 +23,7 @@
 #include "soft_timer.h"
 #include "beep.h"
 #include "led.h"
+#include "storge_task.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim6;
@@ -515,6 +516,20 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
     }
 }
 
+uint8_t motor_Wait_Stroge_Correct(uint32_t timeout)
+{
+    TickType_t xTick;
+
+    xTick = xTaskGetTickCount();
+    do {
+        vTaskDelay(100);
+        if (gStorgeIllumineCnt_Check(6) == 1) {
+            return 1;
+        }
+    } while (xTaskGetTickCount() - xTick < timeout);
+    return 0;
+}
+
 void motor_Sample_Owari_Correct(void)
 {
     white_Motor_WH();                            /* 运动白板电机 白板位置 */
@@ -809,14 +824,18 @@ static void motor_Task(void * argument)
                     white_Motor_PD();                                                          /* 运动白板电机 PD位置 清零位置 */
                     comm_Data_Sample_Send_Conf_Correct(buffer, eComm_Data_Sample_Radiant_610); /* 配置 610 波长 */
                     white_Motor_WH();                                                          /* 运动白板电机 白物质位置 */
+                    gStorgeIllumineCnt_Clr();                                                  /* 清除标记 */
                     motor_Sample_Deal();                                                       /* 启动采样并控制白板电机 */
-                    vTaskDelay(1000);                                                          /* 延时 写入数据 */
-                    white_Motor_PD();                                                          /* 运动白板电机 PD位置 清零位置 */
-                    white_Motor_WH();                                                          /* 运动白板电机 白物质位置 */
+                    motor_Wait_Stroge_Correct(3000);                                           /* 等待设置存储完成 */
+                    storgeTaskNotification(eStorgeNotifyConf_Dump_Params, eComm_Out);          /* 通知存储任务 保存参数 */
+                    gStorgeTaskInfoLockWait(3000);                                             /* 等待参数保存完毕 */
                     comm_Data_Sample_Send_Conf_Correct(buffer, eComm_Data_Sample_Radiant_550); /* 配置 550 波长 */
                     white_Motor_WH();                                                          /* 运动白板电机 白物质位置 */
+                    gStorgeIllumineCnt_Clr();                                                  /* 清除标记 */
                     motor_Sample_Deal();                                                       /* 启动采样并控制白板电机 */
-                    vTaskDelay(3000);                                                          /* 延时 写入数据 */
+                    motor_Wait_Stroge_Correct(3000);                                           /* 等待设置存储完成 */
+                    storgeTaskNotification(eStorgeNotifyConf_Dump_Params, eComm_Out);          /* 通知存储任务 保存参数 */
+                    gStorgeTaskInfoLockWait(3000);                                             /* 等待参数保存完毕 */
                     motor_Sample_Owari_Correct();                                              /* 清理 */
                 }
                 comm_Data_Sample_Owari();               /* 上送采样结束报文 */

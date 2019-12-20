@@ -46,7 +46,7 @@ static sStorgeTaskQueueInfo gStorgeTaskInfo;
 static TaskHandle_t storgeTaskHandle = NULL;
 static uint8_t gStorgeTaskInfoLock = 0;
 static sStorgeParamInfo gStorgeParamInfo;
-
+static uint8_t gStorgeIllumineCnt = 0;
 /* Private function prototypes -----------------------------------------------*/
 static void storgeTask(void * argument);
 static void storge_ParamInit(void);
@@ -79,6 +79,25 @@ uint8_t gStorgeTaskInfoLockAcquire(void)
         return 0;
     }
     return 1; /* 未解锁 */
+}
+
+/**
+ * @brief  存储任务运行参数 修改锁 等待释放
+ * @param  None
+ * @retval 0 等待释放成功 1 失败
+ */
+uint8_t gStorgeTaskInfoLockWait(uint32_t timeout)
+{
+    uint32_t cnt;
+
+    cnt = timeout / 100;
+    do {
+        vTaskDelay(100);
+        if (gStorgeTaskInfoLock == 0) {
+            return 1;
+        }
+    } while (--cnt > 0);
+    return 1;
 }
 
 /**
@@ -125,7 +144,7 @@ uint8_t storgeReadConfInfo(uint32_t addr, uint32_t num, uint32_t timeout)
             gStorgeTaskInfo.num = num;
             return 0;
         }
-        vTaskDelay(10);
+        vTaskDelay(1);
     } while (--timeout);
     error_Emit(eError_Storge_Task_Busy);
     return 2; /* 错误码2 超时 */
@@ -229,6 +248,7 @@ static void storgeTask(void * argument)
         if (xResult != pdPASS) {
             continue;
         }
+        gStorgeTaskInfoLockAcquire(); /* 上锁 */
         protocol_Temp_Upload_Pause(); /* 暂停温度上送 */
         switch (ulNotifyValue & STORGE_DEAL_MASK) {
             case eStorgeNotifyConf_Read_Flash:
@@ -762,8 +782,8 @@ float storge_Param_CC_Illumine_CC_Filter(uint8_t * pBuffer)
     uint16_t temp;
     uint32_t sum = 0, max = 0, min = 0xFFFFFFFF;
 
-    if (pBuffer[0] < 12) { /* 数据不足 */
-        return 0;          /* 返回默认值 */
+    if (pBuffer[0] < 7) { /* 数据不足 */
+        return 0;         /* 返回默认值 */
     }
 
     for (i = pBuffer[0] - 7; i < pBuffer[0]; ++i) {
@@ -794,6 +814,21 @@ eStorgeParamIndex storge_Param_Illumine_CC_Get_Index(uint8_t channel, eComm_Data
     }
 }
 
+void gStorgeIllumineCnt_Inc(void)
+{
+    ++gStorgeIllumineCnt;
+}
+
+void gStorgeIllumineCnt_Clr(void)
+{
+    gStorgeIllumineCnt = 0;
+}
+
+uint8_t gStorgeIllumineCnt_Check(uint8_t target)
+{
+    return (gStorgeIllumineCnt == target) ? (1) : (0);
+}
+
 uint8_t storge_Conf_CC_Insert(uint8_t channel, eComm_Data_Sample_Radiant wave, uint32_t avg_data)
 {
     uint32_t ccs[6] = {0, 0, 0, 0, 0, 0};
@@ -811,6 +846,7 @@ uint8_t storge_Conf_CC_Insert(uint8_t channel, eComm_Data_Sample_Radiant wave, u
             for (i = 0; i < 6; ++i) {
                 storge_Param_Illumine_CC_Set_Single(idx + i, ccs[i]);
             }
+            gStorgeIllumineCnt_Inc();
             return 0;
         }
     }
@@ -819,8 +855,5 @@ uint8_t storge_Conf_CC_Insert(uint8_t channel, eComm_Data_Sample_Radiant wave, u
 
 uint8_t stroge_Conf_CC_O_Data_From_B3(uint8_t * pBuffer)
 {
-    if (storge_Conf_CC_Insert(pBuffer[1], comm_Data_Get_Correct_Wave(), (uint32_t)storge_Param_CC_Illumine_CC_Filter(pBuffer)) == 0) {
-        return storge_ParamDump();
-    }
-    return 2;
+    return storge_Conf_CC_Insert(pBuffer[1], comm_Data_Get_Correct_Wave(), (uint32_t)storge_Param_CC_Illumine_CC_Filter(pBuffer));
 }

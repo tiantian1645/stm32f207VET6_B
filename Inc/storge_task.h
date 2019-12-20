@@ -432,6 +432,8 @@ typedef struct {
 /* Exported macro ------------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/
+uint8_t gStorgeTaskInfoLockWait(uint32_t timeout);
+
 void storgeTaskInit(void);
 uint8_t storgeReadConfInfo(uint32_t addr, uint32_t num, uint32_t timeout);
 uint8_t storgeWriteConfInfo(uint32_t addr, uint8_t * pIn, uint32_t num, uint32_t timeout);
@@ -445,6 +447,9 @@ uint16_t storge_ParamRead(eStorgeParamIndex idx, uint16_t num, uint8_t * pBuff);
 
 uint8_t stroge_Conf_CC_O_Data(uint8_t * pBuffer);
 uint8_t stroge_Conf_CC_O_Data_From_B3(uint8_t * pBuffer);
+
+void gStorgeIllumineCnt_Clr(void);
+uint8_t gStorgeIllumineCnt_Check(uint8_t target);
 /* Private defines -----------------------------------------------------------*/
 
 #endif
