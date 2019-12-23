@@ -72,6 +72,7 @@ typedef enum {
     eError_Comm_Out_Not_ACK = 234,                    /* 外串口没有收到ACK */
     eError_Sample_Incomlete = 235,                    /* 采样未完成 */
     eError_Stary_Incomlete = 236,                     /* 杂散光测试未完成 */
+    eError_Temp_BTM_Stable_Timeout = 237,             /* 等待下加热体温度稳定超时 */
 
     /* 周期性上送异常 */
     eError_Temperature_Top_Abnormal = 300, /* 上加热体温度异常 */

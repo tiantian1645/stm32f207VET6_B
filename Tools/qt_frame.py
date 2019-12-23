@@ -1331,14 +1331,32 @@ class MainWindow(QMainWindow):
         self.sample_label = self.sample_db.build_label(
             name=self.sample_record_lable_name, version=f"{self.version}.{datetime.strftime(self.device_datetime, '%Y%m%d.%H%M%S')}", device_id=self.device_id
         )
-        if event != 1:
-            self._serialSendPack(0xDC, (self.matplot_period_sp.value(),))
-            self._serialSendPack(0x01)
-            if self.matplot_period_tv_cb.isChecked():
-                conf.append(self.matplot_period_tv_cb.checkState())
-                self._serialSendPack(0x08, conf)
-            else:
-                self._serialSendPack(0x03, conf)
+        self._serialSendPack(0xDC, (self.matplot_period_sp.value(),))
+        self._serialSendPack(0x01)
+        if self.matplot_period_tv_cb.isChecked():
+            conf.append(self.matplot_period_tv_cb.checkState())
+            self._serialSendPack(0x08, conf)
+        else:
+            self._serialSendPack(0x03, conf)
+        for plot in self.matplot_plots:
+            plot.clear()
+
+    def onCorrectMatplotStart(self):
+        self.initBarcodeScan()
+        self.sample_record_lable_name = f"Correct {datetime.now().strftime('%Y%m%d%H%M%S')}"
+        logger.debug(f"set correct label name | {self.sample_record_lable_name}")
+        conf = []
+        self.sample_confs = []
+        self.sample_datas = []
+        for i in range(6):
+            conf.append(1)
+            conf.append(1)
+            conf.append(12)
+            self.sample_confs.append(SampleConf(conf[-3], conf[-2], conf[-1]))
+        logger.debug(f"get matplot cnf | {conf}")
+        self.sample_label = self.sample_db.build_label(
+            name=self.sample_record_lable_name, version=f"{self.version}.{datetime.strftime(self.device_datetime, '%Y%m%d.%H%M%S')}", device_id=self.device_id
+        )
         for plot in self.matplot_plots:
             plot.clear()
 
@@ -1736,6 +1754,28 @@ class MainWindow(QMainWindow):
         self.sample_datas.append(sample_data)
         logger.debug(f"get data in channel | {channel} | {data}")
         self.sample_db.bind_label_sample_data(self.sample_label, sample_data)
+        if len(self.sample_datas) == 6:
+            cnt = self.sample_db.get_label_cnt()
+            if cnt > 1:
+                self.sample_record_idx_sp.setRange(0, cnt - 1)
+                self.sample_record_idx_sp.setValue(cnt - 1)
+            else:
+                self.sample_record_plot_by_index(0)
+            logger.debug(f"put to new label | update label cnt {cnt}")
+            idx = len(self.sample_datas) // 6 + 1
+            conf = []
+            self.sample_confs = []
+            self.sample_datas = []
+            for i in range(6):
+                conf.append(1)
+                conf.append(idx)
+                conf.append(12)
+                self.sample_confs.append(SampleConf(conf[-3], conf[-2], conf[-1]))
+            self.sample_label = self.sample_db.build_label(
+                name=f"{self.sample_record_lable_name}-{idx}",
+                version=f"{self.version}.{datetime.strftime(self.device_datetime, '%Y%m%d.%H%M%S')}",
+                device_id=self.device_id,
+            )
 
     def createStorgeDialog(self):
         self.id_card_data_dg = QDialog(self)
@@ -2098,12 +2138,12 @@ class MainWindow(QMainWindow):
         self.storge_gb.layout().addWidget(self.storge_id_card_dialog_bt, 0, 0)
         self.storge_gb.layout().addWidget(self.storge_flash_read_bt, 0, 1)
         self.debug_flag_gb = QGroupBox("调试")
-        debug_flag_ly = QHBoxLayout(self.debug_flag_gb)
+        debug_flag_ly = QGridLayout(self.debug_flag_gb)
         debug_flag_ly.setSpacing(3)
         debug_flag_ly.setContentsMargins(3, 3, 3, 3)
-        self.debug_flag_cbs = (QCheckBox("温度"), QCheckBox("告警"), QCheckBox("扫码"), QCheckBox("托盘"))
-        for cb in self.debug_flag_cbs:
-            debug_flag_ly.addWidget(cb)
+        self.debug_flag_cbs = (QCheckBox("温度"), QCheckBox("告警"), QCheckBox("扫码"), QCheckBox("托盘"), QCheckBox("校正"))
+        for i, cb in enumerate(self.debug_flag_cbs):
+            debug_flag_ly.addWidget(cb, i // 3, i % 3)
         storge_ly.addStretch(1)
         storge_ly.addWidget(self.storge_gb)
         storge_ly.addStretch(1)
@@ -2131,7 +2171,7 @@ class MainWindow(QMainWindow):
         self.debugtest_bt.setMaximumWidth(35)
         self.debugtest_sp = QSpinBox()
         self.debugtest_sp.setMaximumWidth(35)
-        self.debugtest_sp.setRange(0, 7)
+        self.debugtest_sp.setRange(0, 30)
         self.debugtest_cnt = 0
         boot_ly.addWidget(self.upgrade_bt)
         boot_ly.addWidget(self.bootload_bt)
@@ -2159,35 +2199,35 @@ class MainWindow(QMainWindow):
             logger.debug(f"points is [{', '.join(f'{i:04x}' for i in points)}]")
             points_str = "".join(f"{i:04x}" for i in points)
             data = f'6632{datetime.now().strftime("%y%m%d")}{value:02d}{points_str}{random.randint(0, 255):02X}'
-            self._serialSendPack(0xD2, (*data.encode('ascii'), ))
-        else:
-            self.onMatplotStart(1)
+            self._serialSendPack(0xD2, (*data.encode("ascii"),))
+        elif 1 <= value <= 6:
+            self.onCorrectMatplotStart()
             self._serialSendPack(0xD2, (0,))
-            # 
-            # data = [value]
-            # for i in range(6):
-            #     data.append(self.matplot_conf_wavelength_cs[i].currentIndex() + 1)
-            #     logger.debug(f"get temp sample index | {i} | data {self.temp_saple_data[i]}")
-            #     if (len(self.temp_saple_data[i]) >= 3):
-            #         p = int(statistics.mean(self.temp_saple_data[i][-3:]))
-            #     else:
-            #         p = 0
-            #     data.append(struct.pack("H", p)[0])
-            #     data.append(struct.pack("H", p)[1])
-            # logger.debug(f"test debug send data | {data}")
-            # self._serialSendPack(0xD2, (*data, ))
-            # 
-            # data = [12, value]
-            # tt = []
-            # for i in range(12):
-            #     m = 50 + (value - 1) * 2000
-            #     p = random.randint(m - 50, m + 100)
-            #     data.append(struct.pack("H", p)[0])
-            #     data.append(struct.pack("H", p)[1])
-            #     tt.append(p)
-            # tt = sorted(tt[-7:])
-            # logger.debug(f"test sample data | {tt} | avg {statistics.mean(tt[1:-1]):.2f}")
-            # self._serialSendPack(0xD2, (*data, ))
+        elif 21 <= value <= 26:
+            data = [value]
+            for i in range(6):
+                data.append(self.matplot_conf_wavelength_cs[i].currentIndex() + 1)
+                logger.debug(f"get temp sample index | {i} | data {self.temp_saple_data[i]}")
+                if len(self.temp_saple_data[i]) >= 3:
+                    p = int(statistics.mean(self.temp_saple_data[i][-3:]))
+                else:
+                    p = 0
+                data.append(struct.pack("H", p)[0])
+                data.append(struct.pack("H", p)[1])
+            logger.debug(f"test debug send data | {data}")
+            self._serialSendPack(0xD2, (*data,))
+        elif 11 <= value <= 16:
+            data = [12, value]
+            tt = []
+            for i in range(12):
+                m = 50 + (value - 1) * 2000
+                p = random.randint(m - 50, m + 100)
+                data.append(struct.pack("H", p)[0])
+                data.append(struct.pack("H", p)[1])
+                tt.append(p)
+            tt = sorted(tt[-7:])
+            logger.debug(f"test sample data | {tt} | avg {statistics.mean(tt[1:-1]):.2f}")
+            self._serialSendPack(0xD2, (*data,))
 
     def getErrorContent(self, error_code):
         for i in DC201ErrorCode:

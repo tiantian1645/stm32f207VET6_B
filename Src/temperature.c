@@ -376,3 +376,34 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef * hadc)
         }
     }
 }
+
+/**
+ * @brief  下加热体温度稳定等待
+ * @param  timeout 超时时间 单位秒
+ * @retval 0 稳定 1 未稳
+ */
+uint8_t temp_Wait_Stable_BTM(uint16_t duration)
+{
+    TickType_t xTick;
+    float temp;
+    static float records[4] = {0, 0, 0, 0};
+    uint8_t i = 0, j;
+
+    xTick = xTaskGetTickCount();
+
+    do {
+        vTaskDelay(400);
+        temp = temp_Get_Temp_Data_BTM();
+        records[i % 4] = temp;
+        ++i;
+        for (j = 0; j < ARRAY_LEN(records); ++j) {
+            if (records[j] < 36.8 || records[j] > 37.2) { /* 存在超范围数据 */
+                break;
+            }
+        }
+        if (j == ARRAY_LEN(records)) { /* 全部在 范围内 */
+            return 0;
+        }
+    } while ((xTaskGetTickCount() - xTick) / (pdMS_TO_TICKS(1000)) < duration);
+    return 1;
+}

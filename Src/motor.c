@@ -24,6 +24,7 @@
 #include "beep.h"
 #include "led.h"
 #include "storge_task.h"
+#include "temperature.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim6;
@@ -539,6 +540,8 @@ void motor_Sample_Owari_Correct(void)
     led_Mode_Set(eLED_Mode_Kirakira_Green);      /* LED 绿灯闪烁 */
     barcode_Interrupt_Flag_Clear();              /* 清除打断标志位 */
     gComm_Data_Sample_Next_Idle_Clr();           /* 重新初始化白板测试时间 */
+    protocol_Temp_Upload_Resume();               /* 恢复温度上送 */
+    led_Mode_Set(eLED_Mode_Keep_Green);          /* LED 绿灯常亮 */
 }
 
 void motor_Sample_Owari(void)
@@ -579,18 +582,24 @@ static void motor_Task(void * argument)
     if (comm_Data_Start_Stary_Test() != pdPASS) { /* 开始杂散光测试 */
         cnt = 1;
     } else {
-        xTick = xTaskGetTickCount();                                                   /* 起始计时 */
-        led_Mode_Set(eLED_Mode_Kirakira_Red);                                          /* LED 红灯闪烁 */
-        xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(15000)); /* 等待杂散光完成通知 */
-        if (xResult != pdPASS) {                                                       /* 杂散光测试超时 */
-            cnt = 2;
-        } else if (xNotifyValue == eMotorNotifyValue_SP) { /* 正常通知量 */
-            cnt = 0;
-        } else { /* 异常通知量 */
-            cnt = 3;
-            vTaskDelayUntil(&xTick, pdMS_TO_TICKS(15000));
+        led_Mode_Set(eLED_Mode_Kirakira_Red);                                              /* LED 红灯闪烁 */
+        buffer[0] = temp_Wait_Stable_BTM(300);                                             /* 等待下加热体温度稳定 */
+        if (buffer[0] == 1) {                                                              /* 等待温度稳定超时 */
+            error_Emit(eError_Temp_BTM_Stable_Timeout);                                    /* 发送异常 */
+            cnt = 4;                                                                       /* 标记 4 */
+        } else {                                                                           /* 下加热体温度稳定 */
+            xTick = xTaskGetTickCount();                                                   /* 起始计时 */
+            xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(15000)); /* 等待杂散光完成通知 */
+            if (xResult != pdPASS) {                                                       /* 杂散光测试超时 */
+                cnt = 2;                                                                   /* 标记 2 */
+            } else if (xNotifyValue == eMotorNotifyValue_SP) {                             /* 正常通知量 */
+                cnt = 0;                                                                   /* 标记 0 */
+            } else {                                                                       /* 异常通知量 */
+                cnt = 3;                                                                   /* 标记 3 */
+                vTaskDelayUntil(&xTick, pdMS_TO_TICKS(15000));                             /* 补全等待时间 */
+            }
+            comm_Data_Stary_Test_Clear(); /* finally 清除杂散光测试标记 */
         }
-        comm_Data_Stary_Test_Clear();       /* finally 清除杂散光测试标记 */
         led_Mode_Set(eLED_Mode_Keep_Green); /* LED 绿灯常亮 */
     }
     if (cnt > 0) {
@@ -813,15 +822,17 @@ static void motor_Task(void * argument)
                 break;
             case eMotor_Fun_Correct:                                                           /* 定标 */
                 for (cnt = 0; cnt < 6; ++cnt) {                                                /* 6段 */
-                    motor_Tray_Move_By_Index(eTrayIndex_2);                                    /* 出仓 */
-                    vTaskDelay(5000);                                                          /* 延时 */
                     xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0);                          /* 清空通知 */
+                    motor_Tray_Move_By_Index(eTrayIndex_2);                                    /* 出仓 */
+                    xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 60000);                      /* 等待通知 */
                     led_Mode_Set(eLED_Mode_Kirakira_Red);                                      /* LED 红灯闪烁 */
                     motor_Tray_Move_By_Index(eTrayIndex_1);                                    /* 扫码位置 */
                     barcode_result = barcode_Scan_QR();                                        /* 扫描二维条码 */
                     motor_Tray_Move_By_Index(eTrayIndex_0);                                    /* 入仓 */
                     heat_Motor_Down();                                                         /* 砸下上加热体电机 */
                     white_Motor_PD();                                                          /* 运动白板电机 PD位置 清零位置 */
+                    vTaskDelay(30000);                                                         /* 延时 */
+                    temp_Wait_Stable_BTM(35);                                                  /* 等待温度稳定 */
                     comm_Data_Sample_Send_Conf_Correct(buffer, eComm_Data_Sample_Radiant_610); /* 配置 610 波长 */
                     white_Motor_WH();                                                          /* 运动白板电机 白物质位置 */
                     gStorgeIllumineCnt_Clr();                                                  /* 清除标记 */

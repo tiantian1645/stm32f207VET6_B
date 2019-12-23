@@ -124,6 +124,7 @@ void gComm_Data_Sample_Period_Set(uint8_t se);
 void gComm_Data_Sample_Next_Idle_Set(uint16_t idle);
 void gComm_Data_Sample_Next_Idle_Clr(void);
 
+uint8_t comm_Data_Sample_Data_Fetch(uint8_t channel, uint8_t * pBuffer, uint8_t * pLength);
 uint8_t comm_Data_Sample_Data_Commit(uint8_t channel, uint8_t * pBuffer, uint8_t length);
 uint8_t comm_Data_Sample_Data_Correct(uint8_t channel, uint8_t * pBuffer, uint8_t * pLength);
 

@@ -78,6 +78,7 @@ typedef enum {
     eMotorNotifyValue_BR_ERR = (1 << 2), /* 终止采样 */
     eMotorNotifyValue_SP = (1 << 3),     /* 杂散光采样完成 */
     eMotorNotifyValue_SP_ERR = (1 << 4), /* 杂散光采样命令发送无回应 */
+    eMotorNotifyValue_CRRCT = (1 << 5),  /* 定标进仓命令 */
 } eMotorNotifyValue;
 
 typedef enum {

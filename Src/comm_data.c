@@ -649,6 +649,26 @@ BaseType_t comm_Data_Conf_Sem_Give(void)
 }
 
 /**
+ * @brief  采样数据记录 获取 原始数据
+ * @param  channel 通道索引 1～6 pBuffer 数据输入指针 pLength 数据输入长度
+ * @retval 获取结果 0 正常 1 通道索引异常
+ */
+uint8_t comm_Data_Sample_Data_Fetch(uint8_t channel, uint8_t * pBuffer, uint8_t * pLength)
+{
+
+    if (channel < 1 || channel > 6) { /* 检查通道编码 */
+        *pLength = 0;
+        return 1;
+    }
+
+    pBuffer[0] = gComm_Data_Samples[channel - 1].num;
+    pBuffer[1] = channel;
+    *pLength = gComm_Data_Samples[channel - 1].num * gComm_Data_Samples[channel - 1].data_type + 2;
+    memcpy(pBuffer + 2, gComm_Data_Samples[channel - 1].raw_datas, *pLength - 2);
+    return 0;
+}
+
+/**
  * @brief  采样数据记录
  * @param  channel 通道索引 1～6 pBuffer 数据输入指针 length 数据输入长度
  * @retval 变换结果 0 正常 1 通道索引异常

@@ -93,6 +93,7 @@ uint8_t protocol_Debug_Temperature(void)
 {
     return protocol_Is_Debug(eProtocol_Debug_Temperature);
 }
+
 /**
  * @brief  调试标志 错误上送
  * @param  None
@@ -102,6 +103,7 @@ uint8_t protocol_Debug_ErrorReport(void)
 {
     return protocol_Is_Debug(eProtocol_Debug_ErrorReport);
 }
+
 /**
  * @brief  调试标志 采样时扫码
  * @param  None
@@ -111,6 +113,7 @@ uint8_t protocol_Debug_SampleBarcode(void)
 {
     return protocol_Is_Debug(eProtocol_Debug_SampleBarcode);
 }
+
 /**
  * @brief  调试标志 采样时托盘动作
  * @param  None
@@ -119,6 +122,16 @@ uint8_t protocol_Debug_SampleBarcode(void)
 uint8_t protocol_Debug_SampleMotorTray(void)
 {
     return protocol_Is_Debug(eProtocol_Debug_SampleMotorTray);
+}
+
+/**
+ * @brief  调试标志 采样数据校正映射选择
+ * @param  None
+ * @retval 1 使能 0 失能
+ */
+uint8_t protocol_Debug_SampleRawData(void)
+{
+    return protocol_Is_Debug(eProtocol_Debug_SampleRawData);
 }
 
 /**
@@ -870,9 +883,13 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                     comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Scan, pInBuff, result);
                 }
             } else if (length == 8) {
-                motor_fun.fun_type = eMotor_Fun_Correct;
-                if (motor_Emit(&motor_fun, 3000) == 0) { /* 提交成功 */
-                    gComm_Data_Correct_Flag_Mark();      /* 标记进入定标状态 */
+                if (gComm_Data_Correct_Flag_Check()) {          /* 处于定标状态 */
+                    motor_Sample_Info(eMotorNotifyValue_CRRCT); /* 通知电机任务定标进仓 */
+                } else {                                        /* 未处于定标状态 */
+                    motor_fun.fun_type = eMotor_Fun_Correct;    /* 启动定标 */
+                    if (motor_Emit(&motor_fun, 3000) == 0) {    /* 提交成功 */
+                        gComm_Data_Correct_Flag_Mark();         /* 标记进入定标状态 */
+                    }
                 }
             } else if (length == 9) {
                 barcode_Test(pInBuff[6] + pInBuff[7] * 256);
@@ -956,7 +973,9 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                     protocol_Debug_Mark(pInBuff[6]);
                 }
             } else {
-                comm_Data_Sample_Data_Correct((pInBuff[6] < 1 || pInBuff[6] > 6) ? (1) : (pInBuff[6]), pInBuff + 1, pInBuff);
+                // comm_Data_Sample_Data_Correct((pInBuff[6] < 1 || pInBuff[6] > 6) ? (1) : (pInBuff[6]), pInBuff + 1, pInBuff);
+                // comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Flag, pInBuff + 1, pInBuff[0]);
+                result = comm_Data_Sample_Data_Fetch(pInBuff[6], pInBuff + 1, pInBuff);
                 comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Flag, pInBuff + 1, pInBuff[0]);
             }
             break;
@@ -1268,16 +1287,21 @@ void protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
     }
     last_ack = pInBuff[3]; /* 记录上一帧号 */
 
-    switch (pInBuff[5]) {                                                                                              /* 进一步处理 功能码 */
-        case eComm_Data_Inbound_CMD_DATA:                                                                              /* 采集数据帧 */
-            if (gComm_Data_Correct_Flag_Check()) {                                                                     /* 处于定标状态 */
-                stroge_Conf_CC_O_Data_From_B3(pInBuff + 6);                                                            /* 修改测量点 */
-                comm_Out_SendTask_QueueEmitWithBuild(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7, 20); /* 转发至外串口 */
-            } else {                                                                                                   /* 未出于定标状态 */
-                comm_Data_Sample_Data_Commit(pInBuff[7], pInBuff, length);                                             /* 采样数据记录 */
-                comm_Data_Sample_Data_Correct(pInBuff[7], pInBuff, &data_length);                                      /* 投影校正 */
-                comm_Main_SendTask_QueueEmitWithBuild(eProtocolRespPack_Client_SAMP_DATA, pInBuff, data_length, 20);   /* 构造数据包 */
-                comm_Out_SendTask_QueueEmitWithModify(pInBuff, data_length + 7, 0);                                    /* 修改帧号ID后转发 */
+    switch (pInBuff[5]) {                                                                                                   /* 进一步处理 功能码 */
+        case eComm_Data_Inbound_CMD_DATA:                                                                                   /* 采集数据帧 */
+            if (gComm_Data_Correct_Flag_Check()) {                                                                          /* 处于定标状态 */
+                stroge_Conf_CC_O_Data_From_B3(pInBuff + 6);                                                                 /* 修改测量点 */
+                comm_Out_SendTask_QueueEmitWithBuild(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7, 20);      /* 转发至外串口 */
+            } else {                                                                                                        /* 未出于定标状态 */
+                if (protocol_Debug_SampleRawData()) {                                                                       /* 选择原始数据 */
+                    comm_Main_SendTask_QueueEmitWithBuild(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7, 20); /* 构造数据包 */
+                    comm_Out_SendTask_QueueEmitWithModify(pInBuff + 6, length, 0);                                          /* 修改帧号ID后转发 */
+                } else {                                                                                                    /* 经过校正映射 */
+                    comm_Data_Sample_Data_Commit(pInBuff[7], pInBuff, length);                                              /* 采样数据记录 */
+                    comm_Data_Sample_Data_Correct(pInBuff[7], pInBuff, &data_length);                                       /* 投影校正 */
+                    comm_Main_SendTask_QueueEmitWithBuild(eProtocolRespPack_Client_SAMP_DATA, pInBuff, data_length, 20);    /* 构造数据包 */
+                    comm_Out_SendTask_QueueEmitWithModify(pInBuff, data_length + 7, 0);                                     /* 修改帧号ID后转发 */
+                }
             }
             break;
         case eComm_Data_Inbound_CMD_OVER:                /* 采集数据完成帧 */
