@@ -7,6 +7,7 @@ import struct
 from functools import lru_cache
 from collections import namedtuple
 from enum import Enum
+import numpy as np
 
 logger = loguru.logger.bind(name=__name__)
 PackInfo = namedtuple("PackInfo", "type is_head is_crc content text")
@@ -297,7 +298,23 @@ class DC201_ParamInfo:
             for t in ts:
                 ps = [f"({p[0]},{p[1]})" for i, p in enumerate(t.pairs)]
                 ps = f"[{' '.join(ps)}]"
-                rr.append(f"通道 {t.channel} | 波长 {t.wave} | 数据对 {ps}")
+                ks = []
+                bs = []
+                try:
+                    for ikb, ida in enumerate(t.pairs[:-1]):
+                        x = [ida[0], t.pairs[ikb + 1][0]]
+                        if sum(x) == 0:
+                            continue
+                        y = [ida[1], t.pairs[ikb + 1][1]]
+                        k, b = np.polyfit(x, y, 1)  # https://stackoverflow.com/a/21566184
+                        ks.append(k)
+                        bs.append(b)
+                        logger.debug(f"line for {self.cc_ts.index(ts)} - {ts.index(t)} - {ikb} | y = {k:.4f} * x + {b:.4f}")
+                except Exception:
+                    logger.error(f"except in line fit\n{stackprinter.format()}")
+                ks_text = f"[{', '.join(f'{k:.4f}' for k in ks)}]"
+                bs_text = f"[{', '.join(f'{b:.4f}' for b in bs)}]"
+                rr.append(f"通道 {t.channel} | 波长 {t.wave} | 数据对 {ps} | ks {ks_text} | bs {bs_text}")
             result.append("\n".join(rr))
         return f"\n{'=' * 96}\n".join(result)
 
