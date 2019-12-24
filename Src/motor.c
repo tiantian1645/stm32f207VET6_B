@@ -577,17 +577,18 @@ static void motor_Task(void * argument)
     motor_OPT_Status_Init_Wait_Complete(); /* 等待光耦结果完成 */
     motor_Resource_Init();                 /* 电机驱动、位置初始化 */
     barcode_Init();                        /* 扫码枪初始化 */
-    white_Motor_PD();                      /* 白板电机 PD位置 */
 
-    if (comm_Data_Start_Stary_Test() != pdPASS) { /* 开始杂散光测试 */
-        cnt = 1;
-    } else {
-        led_Mode_Set(eLED_Mode_Kirakira_Red);                                              /* LED 红灯闪烁 */
-        buffer[0] = temp_Wait_Stable_BTM(300);                                             /* 等待下加热体温度稳定 */
-        if (buffer[0] == 1) {                                                              /* 等待温度稳定超时 */
-            error_Emit(eError_Temp_BTM_Stable_Timeout);                                    /* 发送异常 */
-            cnt = 4;                                                                       /* 标记 4 */
-        } else {                                                                           /* 下加热体温度稳定 */
+    led_Mode_Set(eLED_Mode_Kirakira_Red);             /* LED 红灯闪烁 */
+    buffer[0] = temp_Wait_Stable_BTM(600);            /* 等待下加热体温度稳定 */
+    if (buffer[0] == 1) {                             /* 等待温度稳定超时 */
+        error_Emit(eError_Temp_BTM_Stable_Timeout);   /* 发送异常 下加热体温度稳定等待超时 */
+        error_Emit(eError_Stary_Incomlete);           /* 发送异常 杂散光测试未完成 */
+    } else {                                          /* 下加热体温度未稳定 */
+        white_Motor_PD();                             /* 白板电机 PD位置 */
+        if (comm_Data_Start_Stary_Test() != pdPASS) { /* 开始杂散光测试 */
+            cnt = 1;
+        } else {
+            led_Mode_Set(eLED_Mode_Kirakira_Green);                                        /* LED 绿灯闪烁 */
             xTick = xTaskGetTickCount();                                                   /* 起始计时 */
             xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(15000)); /* 等待杂散光完成通知 */
             if (xResult != pdPASS) {                                                       /* 杂散光测试超时 */
@@ -600,12 +601,12 @@ static void motor_Task(void * argument)
             }
             comm_Data_Stary_Test_Clear(); /* finally 清除杂散光测试标记 */
         }
-        led_Mode_Set(eLED_Mode_Keep_Green); /* LED 绿灯常亮 */
+        if (cnt > 0) {
+            error_Emit(eError_Stary_Incomlete); /* 发送异常 杂散光测试未完成 */
+        }
+        white_Motor_WH(); /* 运动白板电机 白板位置 */
     }
-    if (cnt > 0) {
-        error_Emit(eError_Stary_Incomlete);
-    }
-    white_Motor_WH(); /* 运动白板电机 白板位置 */
+    led_Mode_Set(eLED_Mode_Keep_Green); /* LED 绿灯常亮 */
     for (;;) {
         xResult = xQueuePeek(motor_Fun_Queue_Handle, &mf, portMAX_DELAY);
         if (xResult != pdPASS) {
