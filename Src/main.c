@@ -72,6 +72,7 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim6;
+TIM_HandleTypeDef htim7;
 TIM_HandleTypeDef htim8;
 TIM_HandleTypeDef htim9;
 TIM_HandleTypeDef htim10;
@@ -113,6 +114,7 @@ static void MX_SPI1_Init(void);
 static void MX_TIM6_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM10_Init(void);
+static void MX_TIM7_Init(void);
 void StartDefaultTask(void * argument);
 
 /* USER CODE BEGIN PFP */
@@ -172,6 +174,7 @@ int main(void)
     MX_TIM6_Init();
     MX_TIM2_Init();
     MX_TIM10_Init();
+    MX_TIM7_Init();
     /* USER CODE BEGIN 2 */
 
     /* soft timer task */
@@ -711,7 +714,7 @@ static void MX_TIM6_Init(void)
 
     /* USER CODE END TIM6_Init 1 */
     htim6.Instance = TIM6;
-    htim6.Init.Prescaler = COMM_DATA_PD_TIMER_PRESCALER;
+    htim6.Init.Prescaler = COMM_DATA_WH_TIMER_PRESCALER;
     htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
     htim6.Init.Period = COMM_DATA_PD_TIMER_PERIOD;
     htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -726,6 +729,41 @@ static void MX_TIM6_Init(void)
     /* USER CODE BEGIN TIM6_Init 2 */
 
     /* USER CODE END TIM6_Init 2 */
+}
+
+/**
+ * @brief TIM7 Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_TIM7_Init(void)
+{
+
+    /* USER CODE BEGIN TIM7_Init 0 */
+
+    /* USER CODE END TIM7_Init 0 */
+
+    TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+    /* USER CODE BEGIN TIM7_Init 1 */
+
+    /* USER CODE END TIM7_Init 1 */
+    htim7.Instance = TIM7;
+    htim7.Init.Prescaler = COMM_DATA_PD_TIMER_PRESCALER;
+    htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
+    htim7.Init.Period = COMM_DATA_PD_TIMER_PERIOD;
+    htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+    if (HAL_TIM_Base_Init(&htim7) != HAL_OK) {
+        Error_Handler();
+    }
+    sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+    sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+    if (HAL_TIMEx_MasterConfigSynchronization(&htim7, &sMasterConfig) != HAL_OK) {
+        Error_Handler();
+    }
+    /* USER CODE BEGIN TIM7_Init 2 */
+
+    /* USER CODE END TIM7_Init 2 */
 }
 
 /**
@@ -1210,7 +1248,7 @@ void temp_Log(void)
 }
 
 /**
- * @brief  杂项任务
+ * @brief  ????
  * @param  argument: Not used
  * @retval None
  */
@@ -1219,21 +1257,21 @@ static void Miscellaneous_Task(void * argument)
     TickType_t xTick;
     uint32_t cnt = 0;
 
-    temp_Start_ADC_DMA();                         /* 启动ADC转换 */
-    fan_Start();                                  /* 启动风扇PWM输出 */
-    fan_Adjust(0.1);                              /* 调整PWM占空比 */
-    protocol_Temp_Upload_Comm_Set(eComm_Out, 0);  /* 关闭外串口发送 */
-    protocol_Temp_Upload_Comm_Set(eComm_Main, 0); /* 关闭主板发送 */
-    xTick = xTaskGetTickCount();                  /* 获取系统时刻 */
-    vTaskDelay(30);                               /* ADC 转换完成 */
+    temp_Start_ADC_DMA();                         /* ??ADC?? */
+    fan_Start();                                  /* ????PWM?? */
+    fan_Adjust(0.1);                              /* ??PWM??? */
+    protocol_Temp_Upload_Comm_Set(eComm_Out, 0);  /* ??????? */
+    protocol_Temp_Upload_Comm_Set(eComm_Main, 0); /* ?????? */
+    xTick = xTaskGetTickCount();                  /* ?????? */
+    vTaskDelay(30);                               /* ADC ???? */
 
     for (;;) {
-        fan_Ctrl_Deal(temp_Get_Temp_Data_ENV()); /* 根据环境温度调整风扇输出 */
-        led_Out_Deal(xTick);                     /* 外接LED板处理 */
-        protocol_Temp_Upload_Deal();             /* 温度信息上送处理 */
+        fan_Ctrl_Deal(temp_Get_Temp_Data_ENV()); /* ???????????? */
+        led_Out_Deal(xTick);                     /* ??LED??? */
+        protocol_Temp_Upload_Deal();             /* ???????? */
 
         if (cnt % 5 == 0) {           /* 500mS */
-            led_Board_Green_Toggle(); /* 板上运行灯闪烁 */
+            led_Board_Green_Toggle(); /* ??????? */
         }
 
         vTaskDelayUntil(&xTick, 100);
@@ -1282,8 +1320,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef * htim)
 {
     /* USER CODE BEGIN Callback 0 */
     if (htim->Instance == TIM1) {
-        if (PWM_AW_IRQ_CallBcak() == 0) { /* 运动完成 */
-            m_drv8824_release_ISR();      /* 释放PWM资源 */
+        if (PWM_AW_IRQ_CallBcak() == 0) { /* ???? */
+            m_drv8824_release_ISR();      /* ??PWM?? */
         }
     }
     /* USER CODE END Callback 0 */
