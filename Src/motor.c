@@ -51,7 +51,7 @@ xQueueHandle motor_Fun_Queue_Handle = NULL; /* 电机功能队列 */
 xTaskHandle motor_Task_Handle = NULL;       /* 电机任务句柄 */
 
 static sMotor_OPT_Record gMotor_OPT_Records[eMotor_OPT_Index_NUM]; /* 光耦记录 */
-static uint8_t gMotorPRessureStopBits = 0xFF;                      /* 压力测试停止标志位 */
+static uint8_t gMotorPressureStopBits = 0xFF;                      /* 压力测试停止标志位 */
 
 /* Private function prototypes -----------------------------------------------*/
 static void motor_Task(void * argument);
@@ -157,19 +157,19 @@ static eMotor_OPT_Status motor_OPT_Status_Get_QR(void)
  * @param  fun 压力测试项目
  * @retval 1 停止 0 继续
  */
-uint8_t gMotorPRessureStopBits_Get(eMotor_Fun fun)
+uint8_t gMotorPressureStopBits_Get(eMotor_Fun fun)
 {
     switch (fun) {
         case eMotor_Fun_PRE_TRAY:
-            return gMotorPRessureStopBits & (1 << 0);
+            return gMotorPressureStopBits & (1 << 0);
         case eMotor_Fun_PRE_BARCODE:
-            return gMotorPRessureStopBits & (1 << 1);
+            return gMotorPressureStopBits & (1 << 1);
         case eMotor_Fun_PRE_HEATER:
-            return gMotorPRessureStopBits & (1 << 2);
+            return gMotorPressureStopBits & (1 << 2);
         case eMotor_Fun_PRE_WHITE:
-            return gMotorPRessureStopBits & (1 << 3);
+            return gMotorPressureStopBits & (1 << 3);
         case eMotor_Fun_PRE_ALL:
-            return gMotorPRessureStopBits & (1 << 4);
+            return gMotorPressureStopBits & (1 << 4);
         default:
             return 0;
     }
@@ -182,42 +182,42 @@ uint8_t gMotorPRessureStopBits_Get(eMotor_Fun fun)
  * @param  b 1 停止 0 继续
  * @retval None
  */
-void gMotorPRessureStopBits_Set(eMotor_Fun fun, uint8_t b)
+void gMotorPressureStopBits_Set(eMotor_Fun fun, uint8_t b)
 {
     switch (fun) {
         case eMotor_Fun_PRE_TRAY:
             if (b > 0) {
-                gMotorPRessureStopBits |= (1 << 0);
+                gMotorPressureStopBits |= (1 << 0);
             } else {
-                gMotorPRessureStopBits &= (0xFF - (1 << 0));
+                gMotorPressureStopBits &= (0xFF - (1 << 0));
             }
             break;
         case eMotor_Fun_PRE_BARCODE:
             if (b > 0) {
-                gMotorPRessureStopBits |= (1 << 1);
+                gMotorPressureStopBits |= (1 << 1);
             } else {
-                gMotorPRessureStopBits &= (0xFF - (1 << 1));
+                gMotorPressureStopBits &= (0xFF - (1 << 1));
             }
             break;
         case eMotor_Fun_PRE_HEATER:
             if (b > 0) {
-                gMotorPRessureStopBits |= (1 << 2);
+                gMotorPressureStopBits |= (1 << 2);
             } else {
-                gMotorPRessureStopBits &= (0xFF - (1 << 2));
+                gMotorPressureStopBits &= (0xFF - (1 << 2));
             }
             break;
         case eMotor_Fun_PRE_WHITE:
             if (b > 0) {
-                gMotorPRessureStopBits |= (1 << 3);
+                gMotorPressureStopBits |= (1 << 3);
             } else {
-                gMotorPRessureStopBits &= (0xFF - (1 << 3));
+                gMotorPressureStopBits &= (0xFF - (1 << 3));
             }
             break;
         case eMotor_Fun_PRE_ALL:
             if (b > 0) {
-                gMotorPRessureStopBits |= (1 << 4);
+                gMotorPressureStopBits |= (1 << 4);
             } else {
-                gMotorPRessureStopBits &= (0xFF - (1 << 4));
+                gMotorPressureStopBits &= (0xFF - (1 << 4));
             }
             break;
         default:
@@ -230,7 +230,11 @@ void gMotorPRessureStopBits_Set(eMotor_Fun fun, uint8_t b)
  * @param  None
  * @retval None
  */
-void gMotorPRessureStopBits_Clear(void)
+void gMotorPressureStopBits_Clear(void)
+{
+    gMotorPressureStopBits = 0xFF;
+}
+
 {
     gMotorPRessureStopBits = 0xFF;
 }
@@ -721,7 +725,7 @@ static void motor_Task(void * argument)
                     ++cnt;
                     memcpy(buffer + 1, (uint8_t *)(&cnt), 4);
                     comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, buffer, 6);
-                } while (gMotorPRessureStopBits_Get(mf.fun_type) == 0);
+                } while (gMotorPressureStopBits_Get(mf.fun_type) == 0);
                 break;
             case eMotor_Fun_PRE_BARCODE: /* 压力测试 扫码 */
                 motor_Tray_Move_By_Index(eTrayIndex_1);
@@ -753,7 +757,7 @@ static void motor_Task(void * argument)
                     ++cnt;
                     memcpy(buffer + 1, (uint8_t *)(&cnt), 4);
                     comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, buffer, 6);
-                } while (gMotorPRessureStopBits_Get(mf.fun_type) == 0);
+                } while (gMotorPressureStopBits_Get(mf.fun_type) == 0);
                 break;
             case eMotor_Fun_PRE_HEATER: /* 压力测试 上加热体 */
                 do {
@@ -766,7 +770,7 @@ static void motor_Task(void * argument)
                     ++cnt;
                     memcpy(buffer + 1, (uint8_t *)(&cnt), 4);
                     comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, buffer, 6);
-                } while (gMotorPRessureStopBits_Get(mf.fun_type) == 0);
+                } while (gMotorPressureStopBits_Get(mf.fun_type) == 0);
                 break;
             case eMotor_Fun_PRE_WHITE: /* 压力测试 白板 */
                 do {
@@ -776,7 +780,7 @@ static void motor_Task(void * argument)
                     memcpy(buffer + 1, (uint8_t *)(&cnt), 4);
                     comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, buffer, 6);
                     vTaskDelay(1000);
-                } while (gMotorPRessureStopBits_Get(mf.fun_type) == 0);
+                } while (gMotorPressureStopBits_Get(mf.fun_type) == 0);
                 break;
             case eMotor_Fun_PRE_ALL: /* 压力测试 */
                 do {
@@ -797,7 +801,7 @@ static void motor_Task(void * argument)
                     ++cnt;
                     memcpy(buffer + 1, (uint8_t *)(&cnt), 4);
                     comm_Out_SendTask_QueueEmitWithBuildCover(0xD0, buffer, 6);
-                } while (gMotorPRessureStopBits_Get(mf.fun_type) == 0);
+                } while (gMotorPressureStopBits_Get(mf.fun_type) == 0);
                 break;
             case eMotor_Fun_Self_Check: /* 自检测试 */
                 motor_Self_Check_Motor_White(buffer);

@@ -755,12 +755,12 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                     } else if (length == 9) {
                         switch (pInBuff[7]) {
                             case 0xFE:
-                                gMotorPRessureStopBits_Set(eMotor_Fun_PRE_BARCODE, 0);
+                                gMotorPressureStopBits_Set(eMotor_Fun_PRE_BARCODE, 0);
                                 motor_fun.fun_type = eMotor_Fun_PRE_BARCODE;
                                 motor_Emit(&motor_fun, 3000);
                                 break;
                             case 0xFF:
-                                gMotorPRessureStopBits_Set(eMotor_Fun_PRE_BARCODE, 1);
+                                gMotorPressureStopBits_Set(eMotor_Fun_PRE_BARCODE, 1);
                                 break;
                         }
                     }
@@ -797,12 +797,12 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                                 tray_Move_By_Index(eTrayIndex_2, 2000);
                                 break;
                             case 0xFE:
-                                gMotorPRessureStopBits_Set(eMotor_Fun_PRE_TRAY, 0);
+                                gMotorPressureStopBits_Set(eMotor_Fun_PRE_TRAY, 0);
                                 motor_fun.fun_type = eMotor_Fun_PRE_TRAY;
                                 motor_Emit(&motor_fun, 3000);
                                 break;
                             case 0xFF:
-                                gMotorPRessureStopBits_Set(eMotor_Fun_PRE_TRAY, 1);
+                                gMotorPressureStopBits_Set(eMotor_Fun_PRE_TRAY, 1);
                                 break;
                             default:
                                 break;
@@ -819,12 +819,12 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                                 heat_Motor_Down();
                                 break;
                             case 0xFE:
-                                gMotorPRessureStopBits_Set(eMotor_Fun_PRE_HEATER, 0);
+                                gMotorPressureStopBits_Set(eMotor_Fun_PRE_HEATER, 0);
                                 motor_fun.fun_type = eMotor_Fun_PRE_HEATER;
                                 motor_Emit(&motor_fun, 3000);
                                 break;
                             case 0xFF:
-                                gMotorPRessureStopBits_Set(eMotor_Fun_PRE_HEATER, 1);
+                                gMotorPressureStopBits_Set(eMotor_Fun_PRE_HEATER, 1);
                                 break;
                             default:
                                 break;
@@ -841,12 +841,12 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                                 white_Motor_WH();
                                 break;
                             case 0xFE:
-                                gMotorPRessureStopBits_Set(eMotor_Fun_PRE_WHITE, 0);
+                                gMotorPressureStopBits_Set(eMotor_Fun_PRE_WHITE, 0);
                                 motor_fun.fun_type = eMotor_Fun_PRE_WHITE;
                                 motor_Emit(&motor_fun, 3000);
                                 break;
                             case 0xFF:
-                                gMotorPRessureStopBits_Set(eMotor_Fun_PRE_WHITE, 1);
+                                gMotorPressureStopBits_Set(eMotor_Fun_PRE_WHITE, 1);
                                 break;
                             default:
                                 break;
@@ -857,12 +857,12 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                     if (length == 9) {
                         switch (pInBuff[7]) {
                             case 0xFE:
-                                gMotorPRessureStopBits_Set(eMotor_Fun_PRE_ALL, 0);
+                                gMotorPressureStopBits_Set(eMotor_Fun_PRE_ALL, 0);
                                 motor_fun.fun_type = eMotor_Fun_PRE_ALL;
                                 motor_Emit(&motor_fun, 3000);
                                 break;
                             case 0xFF:
-                                gMotorPRessureStopBits_Set(eMotor_Fun_PRE_ALL, 1);
+                                gMotorPressureStopBits_Set(eMotor_Fun_PRE_ALL, 1);
                                 break;
                             default:
                                 break;
@@ -870,7 +870,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                     }
                     break;
                 case 0xFF:
-                    gMotorPRessureStopBits_Clear();
+                    gMotorPressureStopBits_Clear();
                     break;
                 default:
                     break;

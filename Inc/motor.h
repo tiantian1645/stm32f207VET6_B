@@ -129,8 +129,8 @@ eMotor_OPT_Status motor_OPT_Status_Get(eMotor_OPT_Index idx);
 
 eMotor_OPT_Status motor_OPT_Status_Get_White(void);
 
-void gMotorPRessureStopBits_Set(eMotor_Fun fun, uint8_t b);
-void gMotorPRessureStopBits_Clear(void);
+void gMotorPressureStopBits_Set(eMotor_Fun fun, uint8_t b);
+void gMotorPressureStopBits_Clear(void);
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/
