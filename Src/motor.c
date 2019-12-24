@@ -52,6 +52,7 @@ xTaskHandle motor_Task_Handle = NULL;       /* 电机任务句柄 */
 
 static sMotor_OPT_Record gMotor_OPT_Records[eMotor_OPT_Index_NUM]; /* 光耦记录 */
 static uint8_t gMotorPressureStopBits = 0xFF;                      /* 压力测试停止标志位 */
+static uint8_t gMotorTempStableWaiting = 1;                        /* 启动时等待温度稳定标志位 */
 
 /* Private function prototypes -----------------------------------------------*/
 static void motor_Task(void * argument);
@@ -235,8 +236,34 @@ void gMotorPressureStopBits_Clear(void)
     gMotorPressureStopBits = 0xFF;
 }
 
+/**
+ * @brief  温度稳定等待标志位 标记
+ * @param  None
+ * @retval None
+ */
+void gMotorTempStableWaiting_Mark(void)
 {
-    gMotorPRessureStopBits = 0xFF;
+    gMotorTempStableWaiting = 1;
+}
+
+/**
+ * @brief  温度稳定等待标志位 清零
+ * @param  None
+ * @retval None
+ */
+void gMotorTempStableWaiting_Clear(void)
+{
+    gMotorTempStableWaiting = 0;
+}
+
+/**
+ * @brief  温度稳定等待标志位 检查
+ * @param  None
+ * @retval 1 等待中 0 已结束
+ */
+uint8_t gMotorTempStableWaiting_Check(void)
+{
+    return (gMotorTempStableWaiting > 0) ? (1) : (0);
 }
 
 /**
@@ -350,15 +377,15 @@ void motor_Sample_Deal(void)
             }
             break;
         }
-        if (xNotifyValue == eMotorNotifyValue_TG) {                                          /* 本次采集完成 */
-            if (gComm_Data_Sample_PD_WH_Idx_Get() == 1) {                                    /* 当前检测白物质 */
-                white_Motor_PD();                                                            /* 运动白板电机 PD位置 */
-                if (xTick != 0) {                                                            /* 只设置一次 */
-                    xTick = xTaskGetTickCount() - xTick;                                     /* 间隔时间 */
-                    xTick += (COMM_DATA_PD_TIMER_TIME - xTick % COMM_DATA_PD_TIMER_TIME);    /* 补整 */
-                    xTick += COMM_DATA_PD_TIMER_TIME;                                        /* 任务切换补偿 */
+        if (xNotifyValue == eMotorNotifyValue_TG) {                                             /* 本次采集完成 */
+            if (gComm_Data_Sample_PD_WH_Idx_Get() == 1) {                                       /* 当前检测白物质 */
+                white_Motor_PD();                                                               /* 运动白板电机 PD位置 */
+                if (xTick != 0) {                                                               /* 只设置一次 */
+                    xTick = xTaskGetTickCount() - xTick;                                        /* 间隔时间 */
+                    xTick += (COMM_DATA_PD_TIMER_TIME - xTick % COMM_DATA_PD_TIMER_TIME);       /* 补整 */
+                    xTick += COMM_DATA_PD_TIMER_TIME;                                           /* 任务切换补偿 */
                     if (xTick > WHITE_MOTOR_RUN_WH_TIMEOUT && xTick < WHITE_MOTOR_RUN_PERIOD) { /* 范围检查 */
-                        gComm_Data_Sample_Next_Idle_Set(xTick);                              /* 标记白板测试完成时间 */
+                        gComm_Data_Sample_Next_Idle_Set(xTick);                                 /* 标记白板测试完成时间 */
                     }
                     xTick = 0; /* 清零 */
                 }
@@ -406,6 +433,7 @@ void motor_Resource_Init(void)
  */
 void motor_Init(void)
 {
+    gMotorTempStableWaiting_Mark(); /* 初始化温度稳定等待标记 */
     motor_Fun_Queue_Handle = xQueueCreate(1, sizeof(sMotor_Fun));
     if (motor_Fun_Queue_Handle == NULL) {
         Error_Handler();
@@ -445,11 +473,16 @@ BaseType_t motor_Sample_Info(eMotorNotifyValue info)
  * @brief  电机任务 提交
  * @param  pFun_type 任务详情指针
  * @param  timeout  最长等待时间
- * @retval 0 提交成功 1 提交失败 2 杂散光测试未结束
+ * @retval 0 提交成功 1 提交失败 2 杂散光测试未结束 3 等待温度稳定中
  */
 uint8_t motor_Emit(sMotor_Fun * pFun_type, uint32_t timeout)
 {
-    if (comm_Data_Stary_Test_Is_Running()) {
+    if (gMotorTempStableWaiting_Check()) { /* 等待温度稳定中 */
+        error_Emit(eError_Temp_BTM_Stable_Waiting);
+        return 3;
+    }
+
+    if (comm_Data_Stary_Test_Is_Running()) { /* 杂散光测试中 */
         error_Emit(eError_Motor_Task_Busy);
         return 2;
     }
@@ -586,6 +619,7 @@ static void motor_Task(void * argument)
 
     led_Mode_Set(eLED_Mode_Kirakira_Red);             /* LED 红灯闪烁 */
     buffer[0] = temp_Wait_Stable_BTM(600);            /* 等待下加热体温度稳定 */
+    gMotorTempStableWaiting_Clear();                  /* 等待温度稳定结束 */
     if (buffer[0] == 1) {                             /* 等待温度稳定超时 */
         error_Emit(eError_Temp_BTM_Stable_Timeout);   /* 发送异常 下加热体温度稳定等待超时 */
         error_Emit(eError_Stary_Incomlete);           /* 发送异常 杂散光测试未完成 */
