@@ -303,7 +303,7 @@ void UART5_IRQHandler(void)
 void TIM6_DAC_IRQHandler(void)
 {
     /* USER CODE BEGIN TIM6_DAC_IRQn 0 */
-    comm_Data_PD_Time_Deal_FromISR();
+    comm_Data_WH_Time_Deal_FromISR();
     /* USER CODE END TIM6_DAC_IRQn 0 */
     HAL_TIM_IRQHandler(&htim6);
     /* USER CODE BEGIN TIM6_DAC_IRQn 1 */

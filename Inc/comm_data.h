@@ -100,9 +100,10 @@ uint8_t gComm_Data_Sample_Max_Point_Get(void);
 void gComm_Data_Sample_Max_Point_Clear(void);
 
 uint8_t comm_Data_Sample_Start(void);
+uint8_t comm_Data_sample_Start_PD(void);
 uint8_t comm_Data_Sample_Force_Stop(void);
 
-void comm_Data_PD_Time_Deal_FromISR(void);
+void comm_Data_WH_Time_Deal_FromISR(void);
 
 void gComm_Data_TIM_StartFlag_Clear(void);
 
