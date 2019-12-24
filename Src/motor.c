@@ -496,7 +496,9 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
             comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                  /* 转发至外串口但不允许阻塞 */
             return;
         }
-        vTaskDelay(100); /* 延时 */
+        if (index == eTrayIndex_0) {
+        	return;
+        }
     }
     if (tray_Move_By_Index(index, 5000) == eTrayState_OK) { /* 运动托盘电机 */
         if (index == eTrayIndex_0) {                        /* 托盘在检测位置 */

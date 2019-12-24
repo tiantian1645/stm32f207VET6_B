@@ -222,14 +222,19 @@ eTrayState tray_Motor_Run(void)
                 break;
         }
     } else {
-        xTick = xTaskGetTickCount();
         if (TRAY_MOTOR_IS_OPT_1) {
-            dSPIN_Move(REV, 350); /* 脱离光耦 */
-            do {
+            dSPIN_Move(REV, 350);
+            xTick = xTaskGetTickCount();
+            while (TRAY_MOTOR_IS_OPT_1 && xTaskGetTickCount() - xTick < 5000) {
                 vTaskDelay(100);
-            } while (TRAY_MOTOR_IS_BUSY && (xTaskGetTickCount() - xTick < 500) && TRAY_MOTOR_IS_OPT_1);
+            }
+            tray_Motor_Brake(); /* 刹车 */
         }
-        dSPIN_Go_Until(ACTION_RESET, FWD, TRAY_MOTOR_GO_HOME_SPEED);
+        if (TRAY_MOTOR_IS_FLAG) {
+            tray_Motor_Deal_Status();
+        }
+        // dSPIN_Go_Until(ACTION_RESET, FWD, TRAY_MOTOR_GO_HOME_SPEED);
+        dSPIN_Move(FWD, (eTrayIndex_2 >> 5) << 3);
         xTick = xTaskGetTickCount();
         do {
             vTaskDelay(100);
@@ -311,7 +316,8 @@ eTrayState tray_Motor_Init(void)
         tray_Motor_Deal_Status();
     }
 
-    dSPIN_Go_Until(ACTION_RESET, FWD, TRAY_MOTOR_GO_HOME_SPEED);
+    // dSPIN_Go_Until(ACTION_RESET, FWD, TRAY_MOTOR_GO_HOME_SPEED);
+    dSPIN_Move(FWD, (eTrayIndex_2 >> 5) << 3);
     m_l6470_release(); /* 释放SPI总线资源*/
     return eTrayState_OK;
 }
