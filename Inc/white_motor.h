@@ -10,9 +10,11 @@
 /* Exported macro ------------------------------------------------------------*/
 #define WHITE_MOTOR_RUN_PERIOD 4000
 
-#define WHITE_MOTOR_RUN_TIMEOUT 1000
-#define white_Motor_PD() white_Motor_Run(eMotorDir_REV, WHITE_MOTOR_RUN_TIMEOUT)
-#define white_Motor_WH() white_Motor_Run(eMotorDir_FWD, WHITE_MOTOR_RUN_TIMEOUT)
+#define WHITE_MOTOR_RUN_PD_TIMEOUT 1000
+#define WHITE_MOTOR_RUN_WH_TIMEOUT 1000
+
+#define white_Motor_PD() white_Motor_Run(eMotorDir_REV, WHITE_MOTOR_RUN_PD_TIMEOUT)
+#define white_Motor_WH() white_Motor_Run(eMotorDir_FWD, WHITE_MOTOR_RUN_WH_TIMEOUT)
 
 /* Exported types ------------------------------------------------------------*/
 

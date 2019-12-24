@@ -23,12 +23,18 @@ typedef enum {
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
-#define WHITE_MOTOR_PCS_MAX 40000
-#define WHITE_MOTOR_PCS_MIN 36000
-#define WHITE_MOTOR_PCS_UNT 8
-#define WHITE_MOTOR_PCS_SUM 297
-#define WHITE_MOTOR_PCS_PATCH 12
-#define WHITE_MOTOR_PCS_GAP ((WHITE_MOTOR_PCS_MAX - WHITE_MOTOR_PCS_MIN) / WHITE_MOTOR_PCS_SUM)
+#define WHITE_MOTOR_PD_PCS_MAX 40000
+#define WHITE_MOTOR_PD_PCS_MIN 36000
+#define WHITE_MOTOR_PD_PCS_UNT 8
+#define WHITE_MOTOR_PD_PCS_SUM 297
+#define WHITE_MOTOR_PD_PCS_PATCH 3
+#define WHITE_MOTOR_PD_PCS_GAP ((WHITE_MOTOR_PD_PCS_MAX - WHITE_MOTOR_PD_PCS_MIN) / WHITE_MOTOR_PD_PCS_SUM)
+
+#define WHITE_MOTOR_WH_PCS_MAX 40000
+#define WHITE_MOTOR_WH_PCS_MIN 36000
+#define WHITE_MOTOR_WH_PCS_UNT 8
+#define WHITE_MOTOR_WH_PCS_SUM 297
+#define WHITE_MOTOR_WH_PCS_GAP ((WHITE_MOTOR_WH_PCS_MAX - WHITE_MOTOR_WH_PCS_MIN) / WHITE_MOTOR_WH_PCS_SUM)
 
 /* Private variables ---------------------------------------------------------*/
 static eMotorDir gWhite_Motor_Dir = eMotorDir_FWD;
@@ -291,18 +297,19 @@ uint8_t white_Motor_PWM_Gen_In(void)
         patch = 0;
     }
 
-    if (patch >= WHITE_MOTOR_PCS_PATCH) {
+    if (patch >= WHITE_MOTOR_PD_PCS_PATCH) {
         PWM_AW_Stop();
         gWhite_Motor_Status_Set(eWhite_Motor_In_Finish);
         return 0;
     }
 
     cnt = gPWM_TEST_AW_CNT_Get(); /* 获取当前脉冲计数 */
-    gWhite_Motor_SRC_Buffer[0] = (WHITE_MOTOR_PCS_MAX - WHITE_MOTOR_PCS_MIN > WHITE_MOTOR_PCS_GAP * cnt) ? (WHITE_MOTOR_PCS_MAX - WHITE_MOTOR_PCS_GAP * cnt)
-                                                                                                         : (WHITE_MOTOR_PCS_MIN); /* 周期长度 */
-    gWhite_Motor_SRC_Buffer[0] = (gWhite_Motor_SRC_Buffer[0] * STEP_REAL_FREQ) / STEP_BASIC_FREQ;                                 /* 标准频率切换 */
-    gWhite_Motor_SRC_Buffer[1] = WHITE_MOTOR_PCS_UNT;                                                                             /* 重复次数 */
-    gWhite_Motor_SRC_Buffer[2] = (gWhite_Motor_SRC_Buffer[0] + 1) / 2;                                                            /* 占空比 默认50% */
+    gWhite_Motor_SRC_Buffer[0] = (WHITE_MOTOR_PD_PCS_MAX - WHITE_MOTOR_PD_PCS_MIN > WHITE_MOTOR_PD_PCS_GAP * cnt)
+                                     ? (WHITE_MOTOR_PD_PCS_MAX - WHITE_MOTOR_PD_PCS_GAP * cnt)
+                                     : (WHITE_MOTOR_PD_PCS_MIN);                                  /* 周期长度 */
+    gWhite_Motor_SRC_Buffer[0] = (gWhite_Motor_SRC_Buffer[0] * STEP_REAL_FREQ) / STEP_BASIC_FREQ; /* 标准频率切换 */
+    gWhite_Motor_SRC_Buffer[1] = WHITE_MOTOR_PD_PCS_UNT;                                          /* 重复次数 */
+    gWhite_Motor_SRC_Buffer[2] = (gWhite_Motor_SRC_Buffer[0] + 1) / 2;                            /* 占空比 默认50% */
     /* burst模式修改时基单元 */
     HAL_TIM_DMABurst_WriteStart(&htim1, TIM_DMABASE_ARR, TIM_DMA_UPDATE, (uint32_t *)gWhite_Motor_SRC_Buffer, TIM_DMABURSTLENGTH_3TRANSFERS);
     gWhite_Motor_Position_Dec(gWhite_Motor_SRC_Buffer[1]); /* 自减位置记录 */
@@ -323,16 +330,17 @@ uint8_t white_Motor_PWM_Gen_Out(void)
     cnt = gPWM_TEST_AW_CNT_Get(); /* 获取当前脉冲计数 */
     status = motor_OPT_Status_Get_White();
 
-    if (cnt > WHITE_MOTOR_PCS_SUM) { /* 停止输出 */
+    if (cnt > WHITE_MOTOR_WH_PCS_SUM) { /* 停止输出 */
         PWM_AW_Stop();
         gWhite_Motor_Status_Set(eWhite_Motor_Out_Finish);
         return 0;
     } else {
-        gWhite_Motor_SRC_Buffer[0] = (WHITE_MOTOR_PCS_MAX - WHITE_MOTOR_PCS_MIN > WHITE_MOTOR_PCS_GAP * cnt) ? (WHITE_MOTOR_PCS_MAX - WHITE_MOTOR_PCS_GAP * cnt)
-                                                                                                             : (WHITE_MOTOR_PCS_MIN); /* 周期长度 */
-        gWhite_Motor_SRC_Buffer[0] = (gWhite_Motor_SRC_Buffer[0] * STEP_REAL_FREQ) / STEP_BASIC_FREQ;                                 /* 标准频率切换 */
-        gWhite_Motor_SRC_Buffer[1] = WHITE_MOTOR_PCS_UNT;                                                                             /* 重复次数 */
-        gWhite_Motor_SRC_Buffer[2] = (gWhite_Motor_SRC_Buffer[0] + 1) / 2;                                                            /* 占空比 默认50% */
+        gWhite_Motor_SRC_Buffer[0] = (WHITE_MOTOR_WH_PCS_MAX - WHITE_MOTOR_WH_PCS_MIN > WHITE_MOTOR_WH_PCS_GAP * cnt)
+                                         ? (WHITE_MOTOR_WH_PCS_MAX - WHITE_MOTOR_WH_PCS_GAP * cnt)
+                                         : (WHITE_MOTOR_WH_PCS_MIN);                                  /* 周期长度 */
+        gWhite_Motor_SRC_Buffer[0] = (gWhite_Motor_SRC_Buffer[0] * STEP_REAL_FREQ) / STEP_BASIC_FREQ; /* 标准频率切换 */
+        gWhite_Motor_SRC_Buffer[1] = WHITE_MOTOR_WH_PCS_UNT;                                          /* 重复次数 */
+        gWhite_Motor_SRC_Buffer[2] = (gWhite_Motor_SRC_Buffer[0] + 1) / 2;                            /* 占空比 默认50% */
         /* burst模式修改时基单元 */
         HAL_TIM_DMABurst_WriteStart(&htim1, TIM_DMABASE_ARR, TIM_DMA_UPDATE, (uint32_t *)gWhite_Motor_SRC_Buffer, TIM_DMABURSTLENGTH_3TRANSFERS);
         if (status == eMotor_OPT_Status_ON) {

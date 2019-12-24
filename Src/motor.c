@@ -353,7 +353,7 @@ void motor_Sample_Deal(void)
                     xTick = xTaskGetTickCount() - xTick;                                     /* 间隔时间 */
                     xTick += (COMM_DATA_PD_TIMER_TIME - xTick % COMM_DATA_PD_TIMER_TIME);    /* 补整 */
                     xTick += COMM_DATA_PD_TIMER_TIME;                                        /* 任务切换补偿 */
-                    if (xTick > WHITE_MOTOR_RUN_TIMEOUT && xTick < WHITE_MOTOR_RUN_PERIOD) { /* 范围检查 */
+                    if (xTick > WHITE_MOTOR_RUN_WH_TIMEOUT && xTick < WHITE_MOTOR_RUN_PERIOD) { /* 范围检查 */
                         gComm_Data_Sample_Next_Idle_Set(xTick);                              /* 标记白板测试完成时间 */
                     }
                     xTick = 0; /* 清零 */
@@ -497,7 +497,7 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
             return;
         }
         if (index == eTrayIndex_0) {
-        	return;
+            return;
         }
     }
     if (tray_Move_By_Index(index, 5000) == eTrayState_OK) { /* 运动托盘电机 */
@@ -697,7 +697,7 @@ static void motor_Task(void * argument)
                 };
                 tray_Move_By_Index(eTrayIndex_2, 5000); /* 运动托盘电机 */
                 heat_Motor_Down();                      /* 砸下上加热体电机 */
-                white_Motor_Run(eMotorDir_FWD, 3000);   /* 运动白板电机 */
+                white_Motor_WH();                       /* 运动白板电机 */
                 barcode_Scan_By_Index(eBarcodeIndex_0);
                 break;
             case eMotor_Fun_RLB: /* 回滚 */
