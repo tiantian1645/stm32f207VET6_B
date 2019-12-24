@@ -483,7 +483,7 @@ uint8_t motor_Emit(sMotor_Fun * pFun_type, uint32_t timeout)
     }
 
     if (comm_Data_Stary_Test_Is_Running()) { /* 杂散光测试中 */
-        error_Emit(eError_Motor_Task_Busy);
+        error_Emit(eError_Stary_Doing);
         return 2;
     }
     if (xQueueSendToBack(motor_Fun_Queue_Handle, pFun_type, timeout) != pdPASS) {
