@@ -317,7 +317,7 @@ void TIM6_DAC_IRQHandler(void)
 void TIM7_IRQHandler(void)
 {
     /* USER CODE BEGIN TIM7_IRQn 0 */
-
+    comm_Data_PD_Time_Deal_FromISR();
     /* USER CODE END TIM7_IRQn 0 */
     HAL_TIM_IRQHandler(&htim7);
     /* USER CODE BEGIN TIM7_IRQn 1 */
