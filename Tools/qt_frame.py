@@ -641,7 +641,7 @@ class MainWindow(QMainWindow):
         barcode_ly.addLayout(matplot_record_ly, 7, 0, 1, 3)
         self.stary_test_bt = QPushButton("杂散光")
         self.stary_test_bt.setMaximumWidth(75)
-        self.stary_test_bt.clicked.connect(lambda x: self._serialSendPack(0xDC, (0, )))
+        self.stary_test_bt.clicked.connect(lambda x: self._serialSendPack(0xDC, (0,)))
         barcode_ly.addWidget(self.stary_test_bt, 7, 3, 1, 1)
         self.barcode_scan_bt.clicked.connect(self.onBarcodeScan)
         self.matplot_start_bt.clicked.connect(self.onMatplotStart)
@@ -984,14 +984,17 @@ class MainWindow(QMainWindow):
         self.barcode_lbs[idx].setText("*" * 10)
         self._serialSendPack(0xD0, (0, (1 << idx), (1 << idx)))
 
-    def sample_record_parse_raw_data(self, raw_data):
+    def sample_record_parse_raw_data(self, total, raw_data):
         data = []
         data_len = len(raw_data)
-        if data_len % 2 != 0:
+        if data_len / total == 2:
+            for i in range(0, data_len, 2):
+                data.append(struct.unpack("H", raw_data[i : i + 2])[0])
+        elif data_len / total == 4:
+            for i in range(0, data_len, 4):
+                data.append(struct.unpack("I", raw_data[i : i + 4])[0])
+        else:
             logger.error(f"sample data length error | {data_len}")
-            return data
-        for i in range(0, data_len, 2):
-            data.append(struct.unpack("H", raw_data[i : i + 2])[0])
         return data
 
     def sample_record_plot_by_index(self, idx):
@@ -1014,7 +1017,7 @@ class MainWindow(QMainWindow):
             self.matplot_conf_point_sps[i].setValue(0)
         for sd in label.sample_datas:
             channel_idx = sd.channel - 1
-            data = self.sample_record_parse_raw_data(sd.raw_data)
+            data = self.sample_record_parse_raw_data(sd.total, sd.raw_data)
             self.temp_saple_data[channel_idx] = data
             self.matplot_plots[channel_idx].setData(data)
             self.matplot_conf_houhou_cs[channel_idx].setCurrentIndex(sd.method.value)
@@ -1038,7 +1041,7 @@ class MainWindow(QMainWindow):
         msg.setWindowTitle(f"采样数据 | {label.datetime} | {label.name}")
         data_infos = []
         for sd in sds:
-            real_data = self.sample_record_parse_raw_data(sd.raw_data)
+            real_data = self.sample_record_parse_raw_data(sd.total, sd.raw_data)
             if len(real_data) == 0:
                 continue
             xs = np.array([10 * i for i in range(len(real_data))], dtype=np.int32)
@@ -1056,7 +1059,7 @@ class MainWindow(QMainWindow):
         detail_text = f"\n{'=' * 24}\n".join(
             (
                 f"通道 {sd.channel} | {sd.datetime} | {METHOD_NAMES[sd.method.value]} | {WAVE_NAMES[sd.wave.value - 1]} | 点数 {sd.total}\n"
-                f"{self.sample_record_parse_raw_data(sd.raw_data)}\n{bytesPuttyPrint(sd.raw_data)}"
+                f"{self.sample_record_parse_raw_data(sd.total, sd.raw_data)}\n{bytesPuttyPrint(sd.raw_data)}"
             )
             for sd in sds
         )
@@ -1737,10 +1740,13 @@ class MainWindow(QMainWindow):
     def updateMatplotData(self, info):
         length = info.content[6]
         channel = info.content[7]
-        if len(info.content) != 2 * length + 9:
+        if len(info.content) - 9 == 2 * length:  # 普通采样 unsigned int
+            data = tuple((struct.unpack("H", info.content[8 + i * 2 : 10 + i * 2])[0] for i in range(length)))
+        elif len(info.content) - 9 == 4 * length:  # PD OD unsigned long
+            data = tuple((struct.unpack("I", info.content[8 + i * 4 : 12 + i * 4])[0] for i in range(length)))
+        else:
             logger.error(f"error data length | {len(info.content)} --> {length} | {info.text}")
             return
-        data = tuple((struct.unpack("H", info.content[8 + i * 2 : 10 + i * 2])[0] for i in range(length)))
         self.matplot_plots[channel - 1].setData(data)
         self.matplot_data[channel] = data
         method = self.sample_confs[channel - 1].method
