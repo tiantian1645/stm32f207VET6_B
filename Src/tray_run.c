@@ -214,11 +214,13 @@ eTrayState tray_Motor_Run(void)
     if (gTray_Motor_Run_CMD_Info.step < 0xFFFFFF) {
         switch (gTray_Motor_Run_CMD_Info.dir) {
             case eMotorDir_REV:
-                dSPIN_Move(FWD, gTray_Motor_Run_CMD_Info.step); /* 向驱动发送指令 */
+            	dSPIN_Set_Param(dSPIN_MAX_SPEED, Index_1_dSPIN_CONF_PARAM_MAX_SPEED); /* 进仓恢复最大速度 */
+                dSPIN_Move(FWD, gTray_Motor_Run_CMD_Info.step);                       /* 向驱动发送指令 */
                 break;
             case eMotorDir_FWD:
             default:
-                dSPIN_Move(REV, gTray_Motor_Run_CMD_Info.step); /* 向驱动发送指令 */
+                dSPIN_Set_Param(dSPIN_MAX_SPEED, Index_1_dSPIN_CONF_PARAM_MAX_SPEED / 2); /* 出仓速度减半 */
+                dSPIN_Move(REV, gTray_Motor_Run_CMD_Info.step);                           /* 向驱动发送指令 */
                 break;
         }
     } else {
@@ -233,6 +235,7 @@ eTrayState tray_Motor_Run(void)
         if (TRAY_MOTOR_IS_FLAG) {
             tray_Motor_Deal_Status();
         }
+        dSPIN_Set_Param(dSPIN_MAX_SPEED, Index_1_dSPIN_CONF_PARAM_MAX_SPEED); /* 进仓恢复最大速度 */
 
         dSPIN_Move(FWD, (eTrayIndex_2 >> 5) << 3);
         xTick = xTaskGetTickCount();
