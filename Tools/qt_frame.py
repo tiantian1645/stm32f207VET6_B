@@ -61,6 +61,7 @@ import qtmodern.windows
 from qt_modern_dialog import ModernDialog, ModernMessageBox
 from qt_serial import SerialRecvWorker, SerialSendWorker
 from sample_data import MethodEnum, SampleDB, WaveEnum
+from sample_graph import SampleGraph, DataConf
 
 BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
 TEMPERAUTRE_NAMES = ("下加热体:", "上加热体:")
@@ -1009,8 +1010,7 @@ class MainWindow(QMainWindow):
         # logger.debug(f"get sample datas | {label.sample_datas}")
         self.sample_record_label.setText(f"{label.name}")
         self.sample_record_label.setToolTip(f"{label.datetime}")
-        for plot in self.matplot_plots:
-            plot.clear()
+        self.plot_graph.clear_plot()
         for i in range(6):
             self.matplot_conf_houhou_cs[i].setCurrentIndex(0)
             self.matplot_conf_wavelength_cs[i].setCurrentIndex(0)
@@ -1019,7 +1019,7 @@ class MainWindow(QMainWindow):
             channel_idx = sd.channel - 1
             data = self.sample_record_parse_raw_data(sd.total, sd.raw_data)
             self.temp_saple_data[channel_idx] = data
-            self.matplot_plots[channel_idx].setData(data)
+            self.plot_graph.plot_data(data=data, name=f"CH-{channel_idx + 1}")
             self.matplot_conf_houhou_cs[channel_idx].setCurrentIndex(sd.method.value)
             self.matplot_conf_wavelength_cs[channel_idx].setCurrentIndex(sd.wave.value - 1)
             self.matplot_conf_point_sps[channel_idx].setValue(sd.total)
@@ -1290,28 +1290,9 @@ class MainWindow(QMainWindow):
         matplot_ly = QVBoxLayout(self.matplot_wg)
         matplot_ly.setSpacing(1)
         matplot_ly.setContentsMargins(2, 2, 2, 2)
-
-        self.plot_win = GraphicsLayoutWidget()
-        self.plot_win.setBackground((0, 0, 0, 255))
-        self.plot_lb = LabelItem(justify="right")
-        self.plot_win.addItem(self.plot_lb, 0, 0)
-        self.plot_wg = self.plot_win.addPlot(row=0, col=0)
-        self.plot_wg.addLegend()
-        self.plot_wg.showGrid(x=True, y=True, alpha=1.0)
-        self.plot_proxy = SignalProxy(self.plot_wg.scene().sigMouseMoved, rateLimit=60, slot=self.onPlotMouseMove)
-        matplot_ly.addWidget(self.plot_win)
+        self.plot_graph = SampleGraph(parent=self)
+        matplot_ly.addWidget(self.plot_graph.win)
         self.temp_saple_data = [None] * 6
-        self.matplot_plots = []
-        for k in range(6):
-            color = LINE_COLORS[k % len(LINE_COLORS)]
-            symbol = LINE_SYMBOLS[k % len(LINE_SYMBOLS)]
-            self.matplot_plots.append(self.plot_wg.plot([], name=f"B{k+1}", pen=mkPen(color=color), symbol=symbol, symbolSize=5, symbolBrush=(color)))
-
-    def onPlotMouseMove(self, event):
-        mouse_point = self.plot_wg.vb.mapSceneToView(event[0])
-        self.plot_lb.setText(
-            "<span style='font-size: 14pt; color: white'> x = %0.2f, <span style='color: white'> y = %0.2f</span>" % (mouse_point.x(), mouse_point.y())
-        )
 
     def onMatplotStart(self, event):
         self.initBarcodeScan()
@@ -1339,8 +1320,7 @@ class MainWindow(QMainWindow):
             self._serialSendPack(0x08, conf)
         else:
             self._serialSendPack(0x03, conf)
-        for plot in self.matplot_plots:
-            plot.clear()
+        self.plot_graph.clear_plot()
 
     def onCorrectMatplotStart(self):
         self.initBarcodeScan()
@@ -1358,8 +1338,7 @@ class MainWindow(QMainWindow):
         self.sample_label = self.sample_db.build_label(
             name=self.sample_record_lable_name, version=f"{self.version}.{datetime.strftime(self.device_datetime, '%Y%m%d.%H%M%S')}", device_id=self.device_id
         )
-        for plot in self.matplot_plots:
-            plot.clear()
+        self.plot_graph.clear_plot()
 
     def onMatplotCancel(self, event):
         self._serialSendPack(0x02)
@@ -1747,7 +1726,7 @@ class MainWindow(QMainWindow):
         else:
             logger.error(f"error data length | {len(info.content)} --> {length} | {info.text}")
             return
-        self.matplot_plots[channel - 1].setData(data)
+        self.plot_graph.plot_data(data=data, name=f"CH-{channel}")
         self.matplot_data[channel] = data
         method = self.sample_confs[channel - 1].method
         wave = self.sample_confs[channel - 1].wave
