@@ -63,8 +63,8 @@ Label.sample_datas = relationship("SampleData", order_by=SampleData.id, back_pop
 
 
 class SampleDB:
-    def __init__(self, db_url="sqlite:///data/db.sqlite3", echo=True):
-        self.engine = create_engine(db_url, echo=True)
+    def __init__(self, db_url="sqlite:///data/db.sqlite3", echo=False):
+        self.engine = create_engine(db_url, echo=echo)
         Base.metadata.create_all(self.engine)
         Session = sessionmaker(bind=self.engine)
         self.session = Session()
