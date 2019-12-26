@@ -479,14 +479,17 @@ void comm_Data_PD_Time_Deal_FromISR(void)
                 gComm_Data_Sample_ISR_Cnt = 0;                                                         /* 定时器中断计数清零 */
                 gComm_Data_Sample_Pair_Cnt = 0;                                                        /* 测试对数清零 */
                 gComm_Data_Sample_PD_WH_Idx_Clear();                                                   /* 清除项目记录 */
-                motor_Sample_Info_ISR(eMotorNotifyValue_BR);                                           /* 结束采样 */
             }
             return;
         } else {
-            error_Emit_FromISR(eError_Comm_Out_Lost_0 + (gComm_Data_Sample_ISR_Cnt_PD)-40 / 10);
+            error_Emit_FromISR(eError_Comm_Out_Lost_0 + (gComm_Data_Sample_ISR_Cnt_PD - 40) / 10);
             if ((gComm_Data_Sample_ISR_Cnt_PD - 40) / 10 >= COMM_DATA_SER_TX_RETRY_NUM) { /* 重发数目达到3次 放弃采样测试 */
                 HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_PD);                                  /* 停止定时器 */
                 gComm_Data_Sample_ISR_Cnt_PD = 0;                                         /* 定时器中断计数清零 */
+                gComm_Data_TIM_StartFlag_Clear();                                         /* 标记定时器停止 */
+                gComm_Data_Sample_ISR_Cnt = 0;                                            /* 定时器中断计数清零 */
+                gComm_Data_Sample_Pair_Cnt = 0;                                           /* 测试对数清零 */
+                gComm_Data_Sample_PD_WH_Idx_Clear();                                      /* 清除项目记录 */
                 motor_Sample_Info_ISR(eMotorNotifyValue_BR_ERR);
                 return;
             } else {
@@ -613,12 +616,16 @@ BaseType_t comm_Data_Sample_Send_Conf_Correct(uint8_t * pData, eComm_Data_Sample
 {
     uint8_t i, sendLength;
 
-    gComm_Data_Sample_Max_Point_Clear();    /* 清除最大点数 */
-    gComm_Data_Sample_Max_Point_Update(12); /* 更新最大点数 12 点 */
+    gComm_Data_Sample_Max_Point_Clear(); /* 清除最大点数 */
     for (i = 0; i < 6; ++i) {
         pData[0 + 3 * i] = eComm_Data_Sample_Assay_Continuous; /* 测试方法 */
         pData[1 + 3 * i] = wave;                               /* 测试波长 */
-        pData[2 + 3 * i] = 12;                                 /* 测试点数 */
+        if (wave == eComm_Data_Sample_Radiant_610) {
+            pData[2 + 3 * i] = 12; /* 测试点数 12 */
+        } else {
+            pData[2 + 3 * i] = 12; /* 测试点数 12 */
+        }
+        gComm_Data_Sample_Max_Point_Update(pData[2 + 3 * i]); /* 更新最大点数 */
     }
     gComm_Data_Correct_wave = wave;
     sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 18); /* 构造工装测试配置包 */

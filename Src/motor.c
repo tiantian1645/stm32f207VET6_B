@@ -427,7 +427,7 @@ void motor_Init(void)
     if (motor_Fun_Queue_Handle == NULL) {
         Error_Handler();
     }
-    if (xTaskCreate(motor_Task, "Motor Task", 256, NULL, TASK_PRIORITY_MOTOR, &motor_Task_Handle) != pdPASS) {
+    if (xTaskCreate(motor_Task, "Motor Task", 264, NULL, TASK_PRIORITY_MOTOR, &motor_Task_Handle) != pdPASS) {
         Error_Handler();
     }
 }
@@ -854,19 +854,27 @@ static void motor_Task(void * argument)
                 break;
             case eMotor_Fun_Self_Check_PD: /* 自检测试 单项 PD */
                 break;
-            case eMotor_Fun_Correct:                                                           /* 定标 */
-                for (cnt = 0; cnt < 6; ++cnt) {                                                /* 6段 */
-                    xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0);                          /* 清空通知 */
-                    motor_Tray_Move_By_Index(eTrayIndex_2);                                    /* 出仓 */
-                    xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 60000);                      /* 等待通知 */
-                    led_Mode_Set(eLED_Mode_Kirakira_Red);                                      /* LED 红灯闪烁 */
-                    motor_Tray_Move_By_Index(eTrayIndex_1);                                    /* 扫码位置 */
-                    barcode_result = barcode_Scan_QR();                                        /* 扫描二维条码 */
-                    motor_Tray_Move_By_Index(eTrayIndex_0);                                    /* 入仓 */
+            case eMotor_Fun_Correct:                                       /* 定标 */
+                for (cnt = 0; cnt < 6; ++cnt) {                            /* 6段 */
+                    xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0);      /* 清空通知 */
+                    if (cnt == 0 || protocol_Debug_SampleBarcode() == 0) { /* 第一次或非调试模式 */
+                        motor_Tray_Move_By_Index(eTrayIndex_2);            /* 出仓 */
+                    }
+                    if (xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 10000) != pdPASS) { /* 等待通知 3 min */
+                        break;                                                            /* 超时直接退出 */
+                    }
+                    led_Mode_Set(eLED_Mode_Kirakira_Red);       /* LED 红灯闪烁 */
+                    if (protocol_Debug_SampleBarcode() == 0) {  /* 非调试模式 */
+                        motor_Tray_Move_By_Index(eTrayIndex_1); /* 扫码位置 */
+                        barcode_result = barcode_Scan_QR();     /* 扫描二维条码 */
+                    }
+                    if (protocol_Debug_SampleMotorTray() == 0) {      /* 非调试模式 */
+                        motor_Tray_Move_By_Index(eTrayIndex_0);       /* 入仓 */
+                    } else if (protocol_Debug_SampleBarcode() == 0) { /* 非调试模式 */
+                        motor_Tray_Move_By_Index(eTrayIndex_2);       /* 出仓 */
+                    }
                     heat_Motor_Down();                                                         /* 砸下上加热体电机 */
                     white_Motor_PD();                                                          /* 运动白板电机 PD位置 清零位置 */
-                    vTaskDelay(30000);                                                         /* 延时 */
-                    temp_Wait_Stable_BTM(35);                                                  /* 等待温度稳定 */
                     comm_Data_Sample_Send_Conf_Correct(buffer, eComm_Data_Sample_Radiant_610); /* 配置 610 波长 */
                     white_Motor_WH();                                                          /* 运动白板电机 白物质位置 */
                     gStorgeIllumineCnt_Clr();                                                  /* 清除标记 */
@@ -883,9 +891,11 @@ static void motor_Task(void * argument)
                     gStorgeTaskInfoLockWait(3000);                                             /* 等待参数保存完毕 */
                     motor_Sample_Owari_Correct();                                              /* 清理 */
                 }
-                comm_Data_Sample_Owari();               /* 上送采样结束报文 */
-                motor_Tray_Move_By_Index(eTrayIndex_2); /* 出仓 */
-                gComm_Data_Correct_Flag_Clr();          /* 退出定标状态 */
+                comm_Data_Sample_Owari();                   /* 上送采样结束报文 */
+                if (protocol_Debug_SampleBarcode() == 0) {  /* 非调试模式 */
+                    motor_Tray_Move_By_Index(eTrayIndex_2); /* 出仓 */
+                }
+                gComm_Data_Correct_Flag_Clr(); /* 退出定标状态 */
                 break;
             default:
                 break;

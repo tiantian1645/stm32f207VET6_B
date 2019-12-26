@@ -835,6 +835,10 @@ uint8_t storge_Conf_CC_Insert(uint8_t channel, eComm_Data_Sample_Radiant wave, u
     uint8_t i;
     eStorgeParamIndex idx;
 
+    if (wave == eComm_Data_Sample_Radiant_405) {
+        return 0;
+    }
+
     idx = storge_Param_Illumine_CC_Get_Index(channel, wave);
     for (i = 0; i < 6; ++i) {
         ccs[i] = storge_Param_Illumine_CC_Get_Single(idx + i);

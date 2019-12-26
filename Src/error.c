@@ -72,7 +72,7 @@ void error_Emit(eError_Code code)
         return; /* 直接返回 */
     }
 
-    errorCode = code; /*  uint32_t --> uint16_t */
+    errorCode = code;
 
     if (out_mark & 0b10) {                                    /* 主串口标志 */
         comm_Main_SendTask_ErrorInfoQueueEmit(&errorCode, 0); /* 发送给主板串口 */
@@ -126,7 +126,7 @@ void error_Emit_FromISR(eError_Code code)
         return; /* 直接返回 */
     }
 
-    errorCode = code; /*  uint32_t --> uint16_t */
+    errorCode = code;
 
     if (out_mark & 0b10) {                                        /* 主串口标志 */
         comm_Main_SendTask_ErrorInfoQueueEmitFromISR(&errorCode); /* 发送给主板串口 */
