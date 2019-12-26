@@ -1050,10 +1050,11 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             }
             break;
         case eProtocolEmitPack_Client_CMD_Debug_System: /* 系统控制 */
-            if (length == 7) {
-                HAL_NVIC_SystemReset(); /* 重新启动 */
-            } else if (length == 8) {
-                gComm_Data_Sample_Period_Set(pInBuff[6] % 20);
+            if (length == 7) {                          /* 无参数 重启 */
+                HAL_NVIC_SystemReset();                 /* 重新启动 */
+            } else if (length == 8) {                   /* 单一参数 杂散光测试 */
+                motor_fun.fun_type = eMotor_Fun_Stary_Test;
+                motor_Emit(&motor_fun, 3000);
             } else {
                 error_Emit(eError_Comm_Out_Param_Error);
             }

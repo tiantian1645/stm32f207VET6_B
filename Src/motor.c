@@ -52,7 +52,7 @@ xTaskHandle motor_Task_Handle = NULL;       /* 电机任务句柄 */
 
 static sMotor_OPT_Record gMotor_OPT_Records[eMotor_OPT_Index_NUM]; /* 光耦记录 */
 static uint8_t gMotorPressureStopBits = 0xFF;                      /* 压力测试停止标志位 */
-static uint8_t gMotorTempStableWaiting = 1;                        /* 启动时等待温度稳定标志位 */
+static uint8_t gMotorTempStableWaiting = 0;                        /* 启动时等待温度稳定标志位 */
 
 /* Private function prototypes -----------------------------------------------*/
 static void motor_Task(void * argument);
@@ -69,6 +69,9 @@ static void motor_Self_Check_Motor_Heater(uint8_t * pBuffer);
 static void motor_Self_Check_Motor_Tray(uint8_t * pBuffer);
 static void motor_Self_Check_Motor_Scan(uint8_t * pBuffer);
 static void motor_Self_Check_Scan(uint8_t * pBuffer);
+
+static void motor_Stary_Test(void);
+
 /* Private constants ---------------------------------------------------------*/
 const eMotor_OPT_Status (*gOPT_Status_Get_Funs[])(void) = {motor_OPT_Status_Get_Scan,   motor_OPT_Status_Get_Tray,  motor_OPT_Status_Get_Tray_Scan,
                                                            motor_OPT_Status_Get_Heater, motor_OPT_Status_Get_White, motor_OPT_Status_Get_QR};
@@ -411,7 +414,7 @@ void motor_Resource_Init(void)
     barcode_Motor_Init();                        /* 扫码电机初始化 */
     barcode_Motor_Reset_Pos();                   /* 重置扫码电机位置 */
     tray_Motor_Reset_Pos();                      /* 重置托盘电机位置 */
-    heat_Motor_Down();                           /* 砸下上加热体电机 */
+    heat_Motor_Down();                           /* 砸下上加热体 */
     barcode_Motor_Run_By_Index(eBarcodeIndex_6); /* 二位码位置就位 */
 }
 
@@ -422,7 +425,6 @@ void motor_Resource_Init(void)
  */
 void motor_Init(void)
 {
-    gMotorTempStableWaiting_Mark(); /* 初始化温度稳定等待标记 */
     motor_Fun_Queue_Handle = xQueueCreate(1, sizeof(sMotor_Fun));
     if (motor_Fun_Queue_Handle == NULL) {
         Error_Handler();
@@ -547,6 +549,11 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
     }
 }
 
+/**
+ * @brief  定标 等待参数存储完毕
+ * @param  None
+ * @retval None
+ */
 uint8_t motor_Wait_Stroge_Correct(uint32_t timeout)
 {
     TickType_t xTick;
@@ -561,6 +568,11 @@ uint8_t motor_Wait_Stroge_Correct(uint32_t timeout)
     return 0;
 }
 
+/**
+ * @brief  定标 采样完成清理
+ * @param  None
+ * @retval None
+ */
 void motor_Sample_Owari_Correct(void)
 {
     white_Motor_WH();                            /* 运动白板电机 白板位置 */
@@ -574,6 +586,11 @@ void motor_Sample_Owari_Correct(void)
     led_Mode_Set(eLED_Mode_Keep_Green);          /* LED 绿灯常亮 */
 }
 
+/**
+ * @brief  采样完成清理
+ * @param  None
+ * @retval None
+ */
 void motor_Sample_Owari(void)
 {
     white_Motor_WH();                            /* 运动白板电机 白板位置 */
@@ -590,28 +607,24 @@ void motor_Sample_Owari(void)
 }
 
 /**
- * @brief  电机任务
- * @param  argument: Not used
+ * @brief  杂散光测试
+ * @param  None
  * @retval None
  */
-static void motor_Task(void * argument)
+static void motor_Stary_Test(void)
 {
+    uint8_t result, cnt = 0;
     BaseType_t xResult = pdFALSE;
-    uint32_t xNotifyValue, cnt = 0;
-    sMotor_Fun mf;
-    uint8_t buffer[30];
+    uint32_t xNotifyValue = 0;
     TickType_t xTick;
-    eBarcodeState barcode_result;
 
-    led_Mode_Set(eLED_Mode_Keep_Green);    /* LED 绿灯常亮 */
-    motor_OPT_Status_Init_Wait_Complete(); /* 等待光耦结果完成 */
-    motor_Resource_Init();                 /* 电机驱动、位置初始化 */
-    barcode_Init();                        /* 扫码枪初始化 */
-
+    motor_Tray_Move_By_Index(eTrayIndex_0);           /* 测试位置 */
+    heat_Motor_Down();                                /* 砸下加热体 */
     led_Mode_Set(eLED_Mode_Kirakira_Red);             /* LED 红灯闪烁 */
-    buffer[0] = temp_Wait_Stable_BTM(600, 36, 38);    /* 等待下加热体温度稳定 */
+    gMotorTempStableWaiting_Mark();                   /* 初始化温度稳定等待标记 */
+    result = temp_Wait_Stable_BTM(600, 36, 38);       /* 等待下加热体温度稳定 */
     gMotorTempStableWaiting_Clear();                  /* 等待温度稳定结束 */
-    if (buffer[0] == 1) {                             /* 等待温度稳定超时 */
+    if (result == 1) {                                /* 等待温度稳定超时 */
         error_Emit(eError_Temp_BTM_Stable_Timeout);   /* 发送异常 下加热体温度稳定等待超时 */
         error_Emit(eError_Stary_Incomlete);           /* 发送异常 杂散光测试未完成 */
     } else {                                          /* 下加热体温度未稳定 */
@@ -638,6 +651,27 @@ static void motor_Task(void * argument)
         white_Motor_WH(); /* 运动白板电机 白板位置 */
     }
     led_Mode_Set(eLED_Mode_Keep_Green); /* LED 绿灯常亮 */
+}
+
+/**
+ * @brief  电机任务
+ * @param  argument: Not used
+ * @retval None
+ */
+static void motor_Task(void * argument)
+{
+    BaseType_t xResult = pdFALSE;
+    uint32_t xNotifyValue, cnt = 0;
+    sMotor_Fun mf;
+    uint8_t buffer[30];
+    TickType_t xTick;
+    eBarcodeState barcode_result;
+
+    led_Mode_Set(eLED_Mode_Keep_Green);    /* LED 绿灯常亮 */
+    motor_OPT_Status_Init_Wait_Complete(); /* 等待光耦结果完成 */
+    motor_Resource_Init();                 /* 电机驱动、位置初始化 */
+    barcode_Init();                        /* 扫码枪初始化 */
+
     for (;;) {
         xResult = xQueuePeek(motor_Fun_Queue_Handle, &mf, portMAX_DELAY);
         if (xResult != pdPASS) {
@@ -650,7 +684,7 @@ static void motor_Task(void * argument)
                     break;
                 };
                 motor_Tray_Move_By_Index(eTrayIndex_0); /* 测试位置 */
-                heat_Motor_Down();                      /* 砸下上加热体电机 */
+                heat_Motor_Down();                      /* 砸下上加热体 */
                 break;
             case eMotor_Fun_Out: /* 出仓 */
                 motor_Tray_Move_By_Index(eTrayIndex_2);
@@ -664,12 +698,12 @@ static void motor_Task(void * argument)
                 break;
             case eMotor_Fun_PD:                         /* PD值测试 */
                 motor_Tray_Move_By_Index(eTrayIndex_0); /* 运动托盘电机 */
-                heat_Motor_Down();                      /* 砸下上加热体电机 */
+                heat_Motor_Down();                      /* 砸下上加热体 */
                 white_Motor_PD();                       /* 运动白板电机 */
                 break;
             case eMotor_Fun_WH:                         /* 白底值测试 */
                 motor_Tray_Move_By_Index(eTrayIndex_0); /* 运动托盘电机 */
-                heat_Motor_Down();                      /* 砸下上加热体电机 */
+                heat_Motor_Down();                      /* 砸下上加热体 */
                 white_Motor_WH();                       /* 运动白板电机 */
                 break;
             case eMotor_Fun_Sample_Start:                            /* 准备测试 */
@@ -688,7 +722,7 @@ static void motor_Task(void * argument)
 
                 if (protocol_Debug_SampleMotorTray() == 0) { /* 非调试模式 */
                     motor_Tray_Move_By_Index(eTrayIndex_0);  /* 入仓 */
-                    heat_Motor_Down();                       /* 砸下上加热体电机 */
+                    heat_Motor_Down();                       /* 砸下上加热体 */
                 } else {                                     /* 调试模式 */
                     motor_Tray_Move_By_Index(eTrayIndex_2);  /*  出仓 */
                 }
@@ -727,7 +761,7 @@ static void motor_Task(void * argument)
                     break;
                 };
                 tray_Move_By_Index(eTrayIndex_2, 5000); /* 运动托盘电机 */
-                heat_Motor_Down();                      /* 砸下上加热体电机 */
+                heat_Motor_Down();                      /* 砸下上加热体 */
                 white_Motor_WH();                       /* 运动白板电机 */
                 barcode_Scan_By_Index(eBarcodeIndex_0);
                 break;
@@ -790,7 +824,7 @@ static void motor_Task(void * argument)
                 do {
                     buffer[0] = 2;
                     if (cnt % 2 == 0) {
-                        buffer[5] = heat_Motor_Down(); /* 砸下上加热体电机 */
+                        buffer[5] = heat_Motor_Down(); /* 砸下上加热体 */
                     } else {
                         buffer[5] = heat_Motor_Up(); /* 抬起加热体电机 */
                     }
@@ -817,7 +851,7 @@ static void motor_Task(void * argument)
                         case 0:
                             motor_Tray_Move_By_Index(eTrayIndex_0);
                             barcode_Scan_By_Index(eBarcodeIndex_0);
-                            heat_Motor_Down(); /* 砸下上加热体电机 */
+                            heat_Motor_Down(); /* 砸下上加热体 */
                             break;
                         case 1:
                             motor_Tray_Move_By_Index(eTrayIndex_2);
@@ -854,6 +888,9 @@ static void motor_Task(void * argument)
                 break;
             case eMotor_Fun_Self_Check_PD: /* 自检测试 单项 PD */
                 break;
+            case eMotor_Fun_Stary_Test: /* 杂散光测试 */
+                motor_Stary_Test();     /* 杂散光测试 */
+                break;
             case eMotor_Fun_Correct:                                       /* 定标 */
                 for (cnt = 0; cnt < 6; ++cnt) {                            /* 6段 */
                     xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0);      /* 清空通知 */
@@ -873,7 +910,7 @@ static void motor_Task(void * argument)
                     } else if (protocol_Debug_SampleBarcode() == 0) { /* 非调试模式 */
                         motor_Tray_Move_By_Index(eTrayIndex_2);       /* 出仓 */
                     }
-                    heat_Motor_Down();                                                         /* 砸下上加热体电机 */
+                    heat_Motor_Down();                                                         /* 砸下上加热体 */
                     white_Motor_PD();                                                          /* 运动白板电机 PD位置 清零位置 */
                     comm_Data_Sample_Send_Conf_Correct(buffer, eComm_Data_Sample_Radiant_610); /* 配置 610 波长 */
                     white_Motor_WH();                                                          /* 运动白板电机 白物质位置 */

@@ -64,6 +64,7 @@ typedef enum {
     eMotor_Fun_Self_Check_Motor_Scan,   /* 自检测试 单项 扫码电机*/
     eMotor_Fun_Self_Check_Scan,         /* 自检测试 单项 扫码头 */
     eMotor_Fun_Self_Check_PD,           /* 自检测试 单项 PD */
+    eMotor_Fun_Stary_Test,              /* 杂散光测试 */
     eMotor_Fun_Correct,                 /* 定标 */
 } eMotor_Fun;
 
