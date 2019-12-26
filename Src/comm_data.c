@@ -82,7 +82,6 @@ static uint8_t gCoMM_Data_Sample_ISR_Buffer[16];
 
 static uint8_t gComm_Data_Stary_test_Falg = 0;
 
-static uint16_t gComm_Data_Sample_Period = 500;
 static uint16_t gComm_Data_Sample_Next_Idle = WHITE_MOTOR_RUN_PERIOD;
 
 static uint8_t gComm_Data_Correct_Flag = 0; /* 定标状态标志 */
@@ -99,27 +98,6 @@ static BaseType_t comm_Data_Send_ACK_Check(uint8_t packIndex);
 static BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData);
 static BaseType_t comm_Data_Sample_Send_Clear_Conf(void);
 /* Private user code ---------------------------------------------------------*/
-
-/**
- * @brief  采样周期 获取
- * @param  None
- * @note   单位 定时器次数
- * @retval 采样周期 gComm_Data_Sample_Period
- */
-uint16_t gComm_Data_Sample_Period_Get(void)
-{
-    return gComm_Data_Sample_Period;
-}
-
-/**
- * @brief  采样周期 设置
- * @param  se 采样周期单位 秒
- * @retval None
- */
-void gComm_Data_Sample_Period_Set(uint8_t se)
-{
-    gComm_Data_Sample_Period = se * 50;
-}
 
 /**
  * @brief  白板电机切换时间 获取

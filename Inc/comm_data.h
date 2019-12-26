@@ -125,7 +125,6 @@ void comm_Data_Stary_Test_Mark(void);
 void comm_Data_Stary_Test_Clear(void);
 uint8_t comm_Data_Stary_Test_Is_Running(void);
 
-void gComm_Data_Sample_Period_Set(uint8_t se);
 void gComm_Data_Sample_Next_Idle_Set(uint16_t idle);
 void gComm_Data_Sample_Next_Idle_Clr(void);
 

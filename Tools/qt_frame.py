@@ -592,12 +592,7 @@ class MainWindow(QMainWindow):
         self.matplot_start_bt = QPushButton("测试")
         self.matplot_start_bt.setMaximumWidth(60)
         self.matplot_cancel_bt = QPushButton("取消")
-        self.matplot_cancel_bt.setMaximumWidth(60)
-        self.matplot_period_sp = QSpinBox()
-        self.matplot_period_sp.setMaximumWidth(45)
-        self.matplot_period_sp.setRange(3, 20)
-        self.matplot_period_sp.setValue(10)
-        self.matplot_period_sp.setSuffix("S")
+        self.matplot_cancel_bt.setMaximumWidth(50)
         self.matplot_period_tv_lb = QLabel("NL")
         self.matplot_period_tv_cb = QCheckBox()
         self.matplot_period_tv_cb.setTristate(True)
@@ -626,7 +621,6 @@ class MainWindow(QMainWindow):
                 temp_ly.addWidget(self.barcode_scan_bt)
                 temp_ly.addWidget(self.matplot_start_bt)
                 temp_ly.addWidget(self.matplot_cancel_bt)
-                temp_ly.addWidget(self.matplot_period_sp)
                 temp_ly.addWidget(self.matplot_period_tv_lb)
                 temp_ly.addWidget(self.matplot_period_tv_cb)
                 barcode_ly.addLayout(temp_ly, i, 2, 1, 3)
@@ -1331,7 +1325,6 @@ class MainWindow(QMainWindow):
         self.sample_label = self.sample_db.build_label(
             name=self.sample_record_lable_name, version=f"{self.version}.{datetime.strftime(self.device_datetime, '%Y%m%d.%H%M%S')}", device_id=self.device_id
         )
-        self._serialSendPack(0xDC, (self.matplot_period_sp.value(),))
         self._serialSendPack(0x01)
         if self.matplot_period_tv_cb.isChecked():
             conf.append(self.matplot_period_tv_cb.checkState())
