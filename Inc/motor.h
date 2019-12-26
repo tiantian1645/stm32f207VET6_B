@@ -127,6 +127,7 @@ uint8_t motor_OPT_Status_Init_Wait_Complete(void);
 void motor_OPT_Status_Update(void);
 eMotor_OPT_Status motor_OPT_Status_Get(eMotor_OPT_Index idx);
 
+eMotor_OPT_Status motor_OPT_Status_Get_Tray(void);
 eMotor_OPT_Status motor_OPT_Status_Get_White(void);
 
 void gMotorPressureStopBits_Set(eMotor_Fun fun, uint8_t b);

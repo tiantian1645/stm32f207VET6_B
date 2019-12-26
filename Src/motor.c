@@ -59,7 +59,6 @@ static void motor_Task(void * argument);
 static void motor_Tray_Move_By_Index(eTrayIndex index);
 
 static eMotor_OPT_Status motor_OPT_Status_Get_Scan(void);
-static eMotor_OPT_Status motor_OPT_Status_Get_Tray(void);
 static eMotor_OPT_Status motor_OPT_Status_Get_Tray_Scan(void);
 static eMotor_OPT_Status motor_OPT_Status_Get_Heater(void);
 //
@@ -93,7 +92,7 @@ static eMotor_OPT_Status motor_OPT_Status_Get_Scan(void)
  * @param  None
  * @retval 光耦状态
  */
-static eMotor_OPT_Status motor_OPT_Status_Get_Tray(void)
+eMotor_OPT_Status motor_OPT_Status_Get_Tray(void)
 {
     if (HAL_GPIO_ReadPin(OPTSW_OUT1_GPIO_Port, OPTSW_OUT1_Pin) == GPIO_PIN_RESET) {
         return eMotor_OPT_Status_OFF;
@@ -516,7 +515,6 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
         return;
     } else {                                                                                      /* 其他情况需要回到原点 */
         tray_Motor_Init();                                                                        /* 托盘电机初始化 */
-        vTaskDelay(100);                                                                          /* 延时 */
         if (tray_Motor_Reset_Pos() != 0) {                                                        /* 重置托盘电机位置 */
             buffer[0] = 0x00;                                                                     /* 托盘电机运动失败 */
             comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
@@ -524,6 +522,9 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
             return;
         }
         if (index == eTrayIndex_0) {
+            buffer[0] = 0x01;
+            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, buffer, 1);
+            comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0); /* 转发至外串口但不允许阻塞 */
             return;
         }
     }

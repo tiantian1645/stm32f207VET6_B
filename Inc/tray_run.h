@@ -6,7 +6,7 @@
 /* Private includes ----------------------------------------------------------*/
 
 /* Exported macro ------------------------------------------------------------*/
-#define TRAY_MOTOR_IS_OPT_1 (motor_OPT_Status_Get(eMotor_OPT_Index_Tray) == eMotor_OPT_Status_OFF)      /* 光耦输入 */
+#define TRAY_MOTOR_IS_OPT_1 (motor_OPT_Status_Get_Tray() == eMotor_OPT_Status_OFF)                      /* 光耦输入 */
 #define TRAY_MOTOR_IS_OPT_2 (motor_OPT_Status_Get(eMotor_OPT_Index_Tray_Scan) == eMotor_OPT_Status_OFF) /* 光耦输入 */
 
 /* Exported types ------------------------------------------------------------*/
