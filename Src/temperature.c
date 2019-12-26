@@ -379,10 +379,11 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef * hadc)
 
 /**
  * @brief  下加热体温度稳定等待
+ * @param  temp1 temp2 温度范围
  * @param  timeout 超时时间 单位秒
  * @retval 0 稳定 1 未稳
  */
-uint8_t temp_Wait_Stable_BTM(uint16_t duration)
+uint8_t temp_Wait_Stable_BTM(float temp1, float temp2, uint16_t duration)
 {
     TickType_t xTick;
     float temp;
@@ -391,13 +392,19 @@ uint8_t temp_Wait_Stable_BTM(uint16_t duration)
 
     xTick = xTaskGetTickCount();
 
+    if (temp1 > temp2) {
+        temp = temp2;
+        temp2 = temp1;
+        temp1 = temp;
+    }
+
     do {
         vTaskDelay(400);
         temp = temp_Get_Temp_Data_BTM();
         records[i % 4] = temp;
         ++i;
         for (j = 0; j < ARRAY_LEN(records); ++j) {
-            if (records[j] < 36.8 || records[j] > 37.2) { /* 存在超范围数据 */
+            if (records[j] < temp1 || records[j] > temp2) { /* 存在超范围数据 */
                 break;
             }
         }

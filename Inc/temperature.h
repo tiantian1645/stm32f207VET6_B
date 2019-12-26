@@ -38,7 +38,7 @@ float temp_Get_Temp_Data_TOP(void);
 float temp_Get_Temp_Data_BTM(void);
 float temp_Get_Temp_Data_ENV(void);
 
-uint8_t temp_Wait_Stable_BTM(uint16_t duration);
+uint8_t temp_Wait_Stable_BTM(float temp1, float temp2, uint16_t duration);
 /* Private defines -----------------------------------------------------------*/
 
 #endif
