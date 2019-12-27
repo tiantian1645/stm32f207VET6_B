@@ -1019,7 +1019,7 @@ class MainWindow(QMainWindow):
             channel_idx = sd.channel - 1
             data = self.sample_record_parse_raw_data(sd.total, sd.raw_data)
             self.temp_saple_data[channel_idx] = data
-            self.plot_graph.plot_data(data=data, name=f"CH-{channel_idx + 1}")
+            self.plot_graph.plot_data(data=data, name=f"B-{channel_idx + 1}")
             self.matplot_conf_houhou_cs[channel_idx].setCurrentIndex(sd.method.value)
             self.matplot_conf_wavelength_cs[channel_idx].setCurrentIndex(sd.wave.value - 1)
             self.matplot_conf_point_sps[channel_idx].setValue(sd.total)
@@ -1321,6 +1321,7 @@ class MainWindow(QMainWindow):
         else:
             self._serialSendPack(0x03, conf)
         self.plot_graph.clear_plot()
+        self.matplot_data.clear()
 
     def onCorrectMatplotStart(self):
         self.initBarcodeScan()
@@ -1339,6 +1340,7 @@ class MainWindow(QMainWindow):
             name=self.sample_record_lable_name, version=f"{self.version}.{datetime.strftime(self.device_datetime, '%Y%m%d.%H%M%S')}", device_id=self.device_id
         )
         self.plot_graph.clear_plot()
+        self.matplot_data.clear()
 
     def onMatplotCancel(self, event):
         self._serialSendPack(0x02)
@@ -1726,7 +1728,7 @@ class MainWindow(QMainWindow):
         else:
             logger.error(f"error data length | {len(info.content)} --> {length} | {info.text}")
             return
-        self.plot_graph.plot_data(data=data, name=f"CH-{channel}")
+        self.plot_graph.plot_data(data=data, name=f"B-{channel}")
         self.matplot_data[channel] = data
         method = self.sample_confs[channel - 1].method
         wave = self.sample_confs[channel - 1].wave
@@ -1737,28 +1739,6 @@ class MainWindow(QMainWindow):
         self.sample_datas.append(sample_data)
         logger.debug(f"get data in channel | {channel} | {data}")
         self.sample_db.bind_label_sample_data(self.sample_label, sample_data)
-        if len(self.sample_datas) == 6:
-            cnt = self.sample_db.get_label_cnt()
-            if cnt > 1:
-                self.sample_record_idx_sp.setRange(0, cnt - 1)
-                self.sample_record_idx_sp.setValue(cnt - 1)
-            else:
-                self.sample_record_plot_by_index(0)
-            logger.debug(f"put to new label | update label cnt {cnt}")
-            idx = len(self.sample_datas) // 6 + 1
-            conf = []
-            self.sample_confs = []
-            self.sample_datas = []
-            for i in range(6):
-                conf.append(1)
-                conf.append(idx)
-                conf.append(12)
-                self.sample_confs.append(SampleConf(conf[-3], conf[-2], conf[-1]))
-            self.sample_label = self.sample_db.build_label(
-                name=f"{self.sample_record_lable_name}-{idx}",
-                version=f"{self.version}.{datetime.strftime(self.device_datetime, '%Y%m%d.%H%M%S')}",
-                device_id=self.device_id,
-            )
 
     def createStorgeDialog(self):
         self.id_card_data_dg = QDialog(self)

@@ -69,16 +69,19 @@ class SampleGraph:
             x = mousePoint.x()
             y = mousePoint.y()
             index = round(x)
-            logger.debug(f"hit index {index} by x {x}")
-            label_text_x = f"[<span style='font-size: 12pt'>x={x:0.1f}, <span style='font-size: 12pt'>y={y:0.1f}]"
-            tys = []
+            label_point = f"<span style='font-size: 12pt'>{x:0.1f}, <span style='font-size: 12pt'>{y:0.1f}"
+            lds = []
             for data_conf in self.plot_data_confs:
                 if data_conf.data is not None and index >= 0 and index < len(data_conf.data):
-                    tys.append(f"<span style='color: #{data_conf.color}'>{data_conf.name}={data_conf.data[index]:d}</span>")
+                    value = data_conf.data[index]
+                    if isinstance(value, int):
+                        lds.append(f"<span style='font-size: 12pt; color: #{data_conf.color}'>{data_conf.name}={value:d}</span>")
+                    elif isinstance(value, float):
+                        lds.append(f"<span style='font-size: 12pt; color: #{data_conf.color}'>{data_conf.name}={value:.2f}</span>")
                 else:
-                    tys.append(f"<span style='color: #{data_conf.color}'>{data_conf.name}=overflow</span>")
-            label_text_y = ",   ".join(tys)
-            label_text = f"{label_text_x} {label_text_y}"
+                    lds.append(f"<span style='font-size: 12pt; color: #{data_conf.color}'>{data_conf.name}=null</span>")
+            label_data = ",   ".join(lds)
+            label_text = f"{label_data}  ({label_point})"
             self.label.setText(label_text)
             # logger.debug(f"label text | {label_text}")
             self.vLine.setPos(x)
