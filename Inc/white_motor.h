@@ -10,7 +10,7 @@
 /* Exported macro ------------------------------------------------------------*/
 #define WHITE_MOTOR_RUN_PERIOD 4000
 
-#define WHITE_MOTOR_RUN_PD_TIMEOUT 600
+#define WHITE_MOTOR_RUN_PD_TIMEOUT 500
 #define WHITE_MOTOR_RUN_WH_TIMEOUT 1000
 
 #define white_Motor_PD() white_Motor_Run(eMotorDir_REV, WHITE_MOTOR_RUN_PD_TIMEOUT)
