@@ -149,11 +149,20 @@ eTrayState tray_Motor_Leave_On_OPT(void)
  */
 eTrayState tray_Motor_Leave_On_OPT_2(void)
 {
+    TickType_t xTick;
+
     while (xTaskGetTickCount() - motor_Status_Get_TickInit(&gTray_Motor_Run_Status) < motor_CMD_Info_Get_Tiemout(&gTray_Motor_Run_CMD_Info)) { /* 超时等待 */
-        if (TRAY_MOTOR_IS_BUSY == 0 || TRAY_MOTOR_IS_OPT_2) {      /* 已配置硬件检测停车 电机驱动空闲状态 */
-            tray_Motor_Brake();                                    /* 刹车 */
-            tray_Motor_Deal_Status();                              /* 状态脚处理 */
-            motor_Status_Set_Position(&gTray_Motor_Run_Status, 0); /* 重置电机状态步数记录 */
+        if (TRAY_MOTOR_IS_BUSY == 0 || TRAY_MOTOR_IS_OPT_2) {                               /* 已配置硬件检测停车 电机驱动空闲状态 */
+            tray_Motor_Brake();                                                             /* 刹车 */
+            tray_Motor_Deal_Status();                                                       /* 状态脚处理 */
+            motor_Status_Set_Position(&gTray_Motor_Run_Status, tray_Motor_Read_Position()); /* 更新电机状态步数记录 */
+            tray_Motor_Brake();                                                             /* 刹车 */
+            dSPIN_Move(FWD, 1200);                                                          /* 扫码光耦补偿 */
+            xTick = xTaskGetTickCount();                                                    /* 计时起点 */
+            do {
+                vTaskDelay(100);
+            } while (TRAY_MOTOR_IS_BUSY && (xTaskGetTickCount() - xTick < 500));
+            tray_Motor_Brake(); /* 刹车 */
             return eTrayState_OK;
         }
         vTaskDelay(5); /* 延时 */
@@ -214,7 +223,7 @@ eTrayState tray_Motor_Run(void)
     if (gTray_Motor_Run_CMD_Info.step < 0xFFFFFF) {
         switch (gTray_Motor_Run_CMD_Info.dir) {
             case eMotorDir_REV:
-            	dSPIN_Set_Param(dSPIN_MAX_SPEED, Index_1_dSPIN_CONF_PARAM_MAX_SPEED); /* 进仓恢复最大速度 */
+                dSPIN_Set_Param(dSPIN_MAX_SPEED, Index_1_dSPIN_CONF_PARAM_MAX_SPEED); /* 进仓恢复最大速度 */
                 dSPIN_Move(FWD, gTray_Motor_Run_CMD_Info.step);                       /* 向驱动发送指令 */
                 break;
             case eMotorDir_FWD:
