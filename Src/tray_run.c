@@ -20,7 +20,7 @@
 /* Private macro -------------------------------------------------------------*/
 #define TRAY_MOTOR_IS_BUSY (dSPIN_Busy_SW()) /* 托盘电机忙碌位读取 */
 #define TRAY_MOTOR_IS_FLAG (dSPIN_Flag())    /* 托盘电机标志脚读取 */
-#define TRAY_PATCH (20)
+#define TRAY_PATCH (24)
 
 /* Private variables ---------------------------------------------------------*/
 static sMotorRunStatus gTray_Motor_Run_Status;
