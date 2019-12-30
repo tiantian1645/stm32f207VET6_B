@@ -109,8 +109,13 @@ void m_drv8824_Init(void)
     if (m_drv8824_spi_sem == NULL || xSemaphoreGive(m_drv8824_spi_sem) != pdPASS) {
         Error_Handler();
     }
+    white_Motor_PD();
+    if (motor_OPT_Status_Get_White() == eMotor_OPT_Status_ON) {
+        white_Motor_PD();
+    }
+    white_Motor_WH();
     if (motor_OPT_Status_Get_White() == eMotor_OPT_Status_OFF) {
-        white_Motor_WH();
+        white_Motor_PD();
     }
     heat_Motor_Up();
 }

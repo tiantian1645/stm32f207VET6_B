@@ -13,9 +13,6 @@
 #define STEP_TIM_RCR (1 - 1)
 #define STEP_TIM_PUL (0xFFF)
 
-#define STEP_BASIC_FREQ (12000)
-#define STEP_REAL_FREQ (10800)
-
 /* Exported types ------------------------------------------------------------*/
 typedef enum {
     eM_DRV8824_Index_0 = 0,
