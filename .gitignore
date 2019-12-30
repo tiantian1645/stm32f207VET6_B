@@ -98,6 +98,7 @@ __pycache__/
 build/
 develop-eggs/
 dist/
+dist32/
 downloads/
 eggs/
 .eggs/
@@ -188,6 +189,7 @@ celerybeat-schedule
 .venv
 env/
 venv/
+venv32/
 ENV/
 env.bak/
 venv.bak/
