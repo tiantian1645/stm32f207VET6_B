@@ -650,7 +650,8 @@ static void motor_Stary_Test(void)
         }
         white_Motor_WH(); /* 运动白板电机 白板位置 */
     }
-    led_Mode_Set(eLED_Mode_Keep_Green); /* LED 绿灯常亮 */
+    motor_Tray_Move_By_Index(eTrayIndex_2); /* 加样位置 */
+    led_Mode_Set(eLED_Mode_Keep_Green);     /* LED 绿灯常亮 */
 }
 
 /**
