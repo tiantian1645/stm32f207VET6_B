@@ -1,9 +1,8 @@
 # Qt Frameless Window resizing with QSizeGrip
 # https://gist.github.com/mgrady3/c04890e44e6c89ed38246d77d0d6e2f7
 
-from qtpy.QtCore import Qt, QMetaObject, Signal, Slot, QRect
+from qtpy.QtCore import Qt, QMetaObject, Signal, Slot
 from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QToolButton, QLabel, QSizePolicy, QDialog, QDesktopWidget, QPushButton, QTextEdit, QSizeGrip
-from qtpy.QtGui import QLayout
 
 from qtmodern._utils import QT_VERSION
 from qtmodern.windows import _FL_STYLESHEET

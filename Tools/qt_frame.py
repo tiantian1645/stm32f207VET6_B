@@ -52,8 +52,6 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from pyqtgraph import GraphicsLayoutWidget, LabelItem, SignalProxy, mkPen
-
 from bytes_helper import best_fit_slope_and_intercept, bytes2Float, bytesPuttyPrint
 from dc201_pack import DC201_PACK, DC201_ParamInfo, DC201ErrorCode, write_firmware_pack_BL, write_firmware_pack_FC
 import qtmodern.styles
@@ -61,7 +59,7 @@ import qtmodern.windows
 from qt_modern_dialog import ModernDialog, ModernMessageBox
 from qt_serial import SerialRecvWorker, SerialSendWorker
 from sample_data import MethodEnum, SampleDB, WaveEnum
-from sample_graph import SampleGraph, DataConf
+from sample_graph import SampleGraph, TemperatureGraph
 
 BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
 TEMPERAUTRE_NAMES = ("下加热体:", "上加热体:")
@@ -138,14 +136,8 @@ class MainWindow(QMainWindow):
         self.out_flash_start = 0
         self.out_flash_length = 0
         self.out_flash_data = bytearray()
-        self.temp_btm_record = []
-        self.temp_top_record = []
         self.temp_start_time = None
-        self.temp_time_record = []
-        self.temp_raw_records = [[] for _ in range(9)]
         self.temp_raw_start_time = None
-        self.temp_raw_time_record = []
-        self.temperature_raw_plots = []
         self.dd = DC201_PACK()
         self.pack_index = 1
         self.device_id = "no name"
@@ -243,7 +235,7 @@ class MainWindow(QMainWindow):
         image_path = "./icos/tt.ico"
         self.setWindowIcon(QIcon(image_path))
         self.setCentralWidget(widget)
-        self.resize(850, 492)
+        self.resize(1024, 587)
 
     def center(self):
         logger.debug(f"invoke center in ModernWidget")
@@ -286,8 +278,8 @@ class MainWindow(QMainWindow):
         self.temperature_plot_dg = QDialog(self)
         self.temperature_plot_dg.setWindowTitle("温度记录")
         temperature_plot_ly = QVBoxLayout(self.temperature_plot_dg)
-        self.temperature_plot_win = GraphicsLayoutWidget()
-        temperature_plot_ly.addWidget(self.temperature_plot_win)
+        self.temperature_plot_graph = TemperatureGraph(parent=self.temperature_plot_dg)
+        temperature_plot_ly.addWidget(self.temperature_plot_graph.win)
         self.temperature_plot_clear_bt = QPushButton("清零")
         temperature_heater_ctl_ly = QVBoxLayout()
         temperature_heater_ctl_btm_ly = QHBoxLayout()
@@ -341,16 +333,9 @@ class MainWindow(QMainWindow):
         temperature_plot_ly.addLayout(temp_ly)
         self.temperature_heater_btm_cb.clicked.connect(self.onTemperatureHeaterChanged)
         self.temperature_heater_top_cb.clicked.connect(self.onTemperatureHeaterChanged)
-
-        self.temperature_plot_lb = LabelItem(justify="right")
-        self.temperature_plot_win.addItem(self.temperature_plot_lb, 0, 0)
-        self.temperature_plot_wg = self.temperature_plot_win.addPlot(row=0, col=0)
-        self.temperature_plot_wg.addLegend()
-        self.temperature_plot_wg.showGrid(x=True, y=True, alpha=1.0)
-        self.temperature_plot_proxy = SignalProxy(self.temperature_plot_wg.scene().sigMouseMoved, rateLimit=60, slot=self.onTemperaturePlotMouseMove)
-        self.temperature_btm_plot = self.temperature_plot_wg.plot(self.temp_time_record, self.temp_btm_record, name="下加热体", pen=mkPen(color="r"))
-        self.temperature_top_plot = self.temperature_plot_wg.plot(self.temp_time_record, self.temp_top_record, name="上加热体", pen=mkPen(color="b"))
         self.temperature_plot_clear_bt.clicked.connect(self.onTemperautreDataClear)
+        self.temperature_plot_graph.plot_data_new(name="下加热体", color='FF0000')
+        self.temperature_plot_graph.plot_data_new(name="上加热体", color='0000FF')
 
         motor_tray_position_wg = QWidget()
         motor_tray_position_ly = QHBoxLayout(motor_tray_position_wg)
@@ -458,61 +443,30 @@ class MainWindow(QMainWindow):
                     self._setColor(sp)
 
     def onTemperautreDataClear(self, event):
-        self.temp_btm_record.clear()
-        self.temp_top_record.clear()
         self.temp_start_time = None
-        self.temp_time_record.clear()
-        self.temperature_plot_wg.clear()
-        self.temperature_btm_plot = self.temperature_plot_wg.plot(self.temp_time_record, self.temp_btm_record, name="下加热体", pen=mkPen(color="r"))
-        self.temperature_top_plot = self.temperature_plot_wg.plot(self.temp_time_record, self.temp_top_record, name="上加热体", pen=mkPen(color="b"))
-
-    def onTemperaturePlotMouseMove(self, event):
-        mouse_point = self.temperature_plot_wg.vb.mapSceneToView(event[0])
-        self.temperature_plot_lb.setText(
-            "<span style='font-size: 14pt; color: white'> x = %0.2f S, <span style='color: white'> y = %0.2f ℃</span>" % (mouse_point.x(), mouse_point.y())
-        )
+        self.temperature_plot_graph.clear_plot()
+        self.temperature_plot_graph.plot_data_new(name="下加热体", color='FF0000')
+        self.temperature_plot_graph.plot_data_new(name="上加热体", color='0000FF')
 
     def onTemperautreRawLabelClick(self, event):
         self.temperature_raw_plot_dg.show()
 
     def onTemperautreRawDataClear(self, event):
-        for i in self.temp_raw_records:
-            i.clear()
         self.temp_raw_start_time = None
-        self.temp_raw_time_record.clear()
-        self.temperature_raw_plot_wg.clear()
-        self.temperature_raw_plots.clear()
+        self.temperature_raw_graph.clear_plot()
         for i in range(9):
-            symbol = symbol, symbolSize, color = TEMP_RAW_SYMBOL_CONFIG[i]
-            plot = self.temperature_raw_plot_wg.plot(
-                self.temp_raw_time_record,
-                self.temp_raw_records[i],
-                name=f"#{i + 1}",
-                pen=mkPen(color=TEMP_RAW_COLORS[i]),
-                symbol=symbol,
-                symbolSize=symbolSize,
-                symbolBrush=(color),
-            )
-            self.temperature_raw_plots.append(plot)
-
-    def onTemperatureRawPlotMouseMove(self, event):
-        mouse_point = self.temperature_raw_plot_wg.vb.mapSceneToView(event[0])
-        self.temperature_raw_plot_lb.setText(
-            "<span style='font-size: 14pt; color: white'> x = %0.2f S, <span style='color: white'> y = %0.3f ℃</span>" % (mouse_point.x(), mouse_point.y())
-        )
+            self.temperature_raw_graph.plot_data_new(name=f"#{i + 1}")
 
     def updateTemperautre(self, info):
         if self.temp_start_time is None:
             self.temp_start_time = time.time()
-            self.temp_time_record = [0]
+            tiem_point = 0
         else:
-            self.temp_time_record.append(time.time() - self.temp_start_time)
+            tiem_point = time.time() - self.temp_start_time
         temp_btm = int.from_bytes(info.content[6:8], byteorder="little") / 100
         temp_top = int.from_bytes(info.content[8:10], byteorder="little") / 100
-        self.temp_btm_record.append(temp_btm)
-        self.temp_top_record.append(temp_top)
-        self.temperature_btm_plot.setData(self.temp_time_record, self.temp_btm_record)
-        self.temperature_top_plot.setData(self.temp_time_record, self.temp_top_record)
+        self.temperature_plot_graph.plot_data_update(0, tiem_point, temp_btm)
+        self.temperature_plot_graph.plot_data_update(1, tiem_point, temp_top)
         if temp_btm != 128:
             self.temperautre_lbs[0].setText(f"{temp_btm:03.2f}℃")
             self.temperautre_lbs[0].setStyleSheet("")
@@ -533,14 +487,13 @@ class MainWindow(QMainWindow):
             return
         if self.temp_raw_start_time is None:
             self.temp_raw_start_time = time.time()
-            self.temp_raw_time_record = [0]
+            time_point = 0
         else:
-            self.temp_raw_time_record.append(time.time() - self.temp_raw_start_time)
+            time_point = time.time() - self.temp_raw_start_time
         for idx in range(9):
             temp_value = struct.unpack("f", info.content[6 + 4 * idx : 10 + 4 * idx])[0]
             self.temperautre_raw_lbs[idx].setText(f"#{idx + 1} {temp_value:.3f}℃")
-            self.temp_raw_records[idx].append(temp_value)
-            self.temperature_raw_plots[idx].setData(self.temp_raw_time_record, self.temp_raw_records[idx])
+            self.temperature_raw_graph.plot_data_update(idx, time_point, temp_value)
 
     def updateMotorTrayPosition(self, info):
         position = info.content[6]
@@ -1019,7 +972,7 @@ class MainWindow(QMainWindow):
             channel_idx = sd.channel - 1
             data = self.sample_record_parse_raw_data(sd.total, sd.raw_data)
             self.temp_saple_data[channel_idx] = data
-            self.plot_graph.plot_data(data=data, name=f"B-{channel_idx + 1}")
+            self.plot_graph.plot_data_new(data=data, name=f"B-{channel_idx + 1}")
             self.matplot_conf_houhou_cs[channel_idx].setCurrentIndex(sd.method.value)
             self.matplot_conf_wavelength_cs[channel_idx].setCurrentIndex(sd.wave.value - 1)
             self.matplot_conf_point_sps[channel_idx].setValue(sd.total)
@@ -1728,7 +1681,7 @@ class MainWindow(QMainWindow):
         else:
             logger.error(f"error data length | {len(info.content)} --> {length} | {info.text}")
             return
-        self.plot_graph.plot_data(data=data, name=f"B-{channel}")
+        self.plot_graph.plot_data_new(data=data, name=f"B-{channel}")
         self.matplot_data[channel] = data
         method = self.sample_confs[channel - 1].method
         wave = self.sample_confs[channel - 1].wave
@@ -1774,29 +1727,12 @@ class MainWindow(QMainWindow):
         self.temperature_raw_plot_dg = QDialog(self)
         self.temperature_raw_plot_dg.setWindowTitle("温度ADC 采样原始数据")
         temperature_raw_plot_ly = QVBoxLayout(self.temperature_raw_plot_dg)
-        self.temperature_raw_plot_win = GraphicsLayoutWidget()
+        self.temperature_raw_graph = TemperatureGraph(parent=self.temperature_raw_plot_dg)
         self.temperature_raw_plot_clear_bt = QPushButton("清零")
-        temperature_raw_plot_ly.addWidget(self.temperature_raw_plot_win)
+        temperature_raw_plot_ly.addWidget(self.temperature_raw_graph.win)
         temperature_raw_plot_ly.addWidget(self.temperature_raw_plot_clear_bt)
-        self.temperature_raw_plot_lb = LabelItem(justify="right")
-        self.temperature_raw_plot_win.addItem(self.temperature_raw_plot_lb, 0, 0)
-        self.temperature_raw_plot_wg = self.temperature_raw_plot_win.addPlot(row=0, col=0)
-        self.temperature_raw_plot_wg.addLegend()
-        self.temperature_raw_plot_wg.showGrid(x=True, y=True, alpha=1.0)
-        self.temperature_raw_plot_proxy = SignalProxy(self.temperature_raw_plot_wg.scene().sigMouseMoved, rateLimit=60, slot=self.onTemperatureRawPlotMouseMove)
-        self.temperature_raw_plots.clear()
         for i in range(9):
-            symbol = symbol, symbolSize, color = TEMP_RAW_SYMBOL_CONFIG[i]
-            plot = self.temperature_raw_plot_wg.plot(
-                self.temp_raw_time_record,
-                self.temp_raw_records[i],
-                name=f"#{i + 1}",
-                pen=mkPen(color=TEMP_RAW_COLORS[i]),
-                symbol=symbol,
-                symbolSize=symbolSize,
-                symbolBrush=(color),
-            )
-            self.temperature_raw_plots.append(plot)
+            self.temperature_raw_graph.plot_data_new(name=f"#{i + 1}")
         self.temperature_raw_plot_clear_bt.clicked.connect(self.onTemperautreRawDataClear)
         self.temperature_raw_plot_dg.resize(600, 600)
         self.temperature_raw_plot_dg = ModernDialog(self.temperature_raw_plot_dg, self)
