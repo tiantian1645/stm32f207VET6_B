@@ -91,7 +91,7 @@ class SampleGraph:
             name = f"y{dl + 1}"
         # self.matplot_plots.append(self.plot_wg.plot([], name=f"B{k+1}", pen=mkPen(color=color), symbol=symbol, symbolSize=5, symbolBrush=(color)))
         p = self.plot.plot(data, name=name, pen=pg.mkPen(color=color), symbolSize=5, symbolBrush=(color))
-        data_conf = DataConf(name=name, data_y=data, color=color, plot=p)
+        data_conf = DataConf(name=name, data=data, color=color, plot=p)
         self.plot_data_confs.append(data_conf)
 
     def plot_data_update(self, idx, data):

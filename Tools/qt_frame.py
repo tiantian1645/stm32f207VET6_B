@@ -339,8 +339,8 @@ class MainWindow(QMainWindow):
         self.temperature_heater_top_cb.clicked.connect(self.onTemperatureHeaterChanged)
         self.temperature_plot_clear_bt.clicked.connect(self.onTemperautreDataClear)
         self.temperature_plot_reset_bt.clicked.connect(self.onTemperatureCtlResetPara)
-        self.temperature_plot_graph.plot_data_new(name="下加热体", color='FF0000')
-        self.temperature_plot_graph.plot_data_new(name="上加热体", color='0000FF')
+        self.temperature_plot_graph.plot_data_new(name="下加热体", color="FF0000")
+        self.temperature_plot_graph.plot_data_new(name="上加热体", color="0000FF")
 
         motor_tray_position_wg = QWidget()
         motor_tray_position_ly = QHBoxLayout(motor_tray_position_wg)
@@ -459,8 +459,8 @@ class MainWindow(QMainWindow):
     def onTemperautreDataClear(self, event):
         self.temp_start_time = None
         self.temperature_plot_graph.clear_plot()
-        self.temperature_plot_graph.plot_data_new(name="下加热体", color='FF0000')
-        self.temperature_plot_graph.plot_data_new(name="上加热体", color='0000FF')
+        self.temperature_plot_graph.plot_data_new(name="下加热体", color="FF0000")
+        self.temperature_plot_graph.plot_data_new(name="上加热体", color="0000FF")
 
     def onTemperautreRawLabelClick(self, event):
         self.temperature_raw_plot_dg.show()
@@ -1013,10 +1013,13 @@ class MainWindow(QMainWindow):
                 continue
             xs = np.array([10 * i for i in range(len(real_data))], dtype=np.int32)
             ys = np.array(real_data, dtype=np.int32)
-            yv = np.std(ys)
-            ym = np.mean(ys)
+            std = np.std(ys)
+            mean = np.mean(ys)
+            cv = std / mean
             m, b = best_fit_slope_and_intercept(xs, ys)
-            data_infos.append(f"通道 {sd.channel} | {data_format_list(real_data)} | (m = {m:.4f}, b = {b:.4f}) | (yv = {yv:.4f}, ym = {ym:.4f})")
+            data_infos.append(
+                f"通道 {sd.channel} | {data_format_list(real_data)} | (m = {m:.4f}, b = {b:.4f}) | (cv = {cv:.4f}, std = {std:.4f}, mean = {mean:.4f})"
+            )
         # https://stackoverflow.com/a/10977872
         font = QFont("Consolas")
         font.setFixedPitch(True)
@@ -1854,7 +1857,6 @@ class MainWindow(QMainWindow):
         self.out_flash_param_read_bt.clicked.connect(self.onOutFlashParamRead)
         self.out_flash_param_write_bt.clicked.connect(self.onOutFlashParamWrite)
         self.out_flash_data_dg = ModernDialog(self.out_flash_data_dg, self)
-        self.out_flash_data_dg.mouseDoubleClickEvent = self.onOutFlashDoubleClicked
         self.out_flash_param_clear_o_bt.clicked.connect(self.onOutFlashParamCC_O)
         self.out_flash_param_clear_s_bt.clicked.connect(self.onOutFlashParamCC_S)
         self.out_flash_param_clear_s_d_bt.clicked.connect(self.onOutFlashParamCC_S_D)
@@ -1876,10 +1878,6 @@ class MainWindow(QMainWindow):
                     sp.setValue(0)
                 else:
                     sp.setValue(50 + (idx % 12) * 2000)
-
-    def onOutFlashDoubleClicked(self, event):
-        for sp in self.out_flash_param_cc_sps:
-            sp.setValue(0)
 
     def onOutFlashParamRead(self, event):
         data = (*(struct.pack("H", 0)), *(struct.pack("H", 167)))
