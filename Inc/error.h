@@ -39,6 +39,8 @@ typedef enum {
     eError_Comm_Out_Wrong_ID = 111,     /* 外串口异常ID */
     eError_Comm_Out_Unknow_CMD = 112,   /* 外串口异常功能码 */
     eError_Comm_Out_Param_Error = 113,  /* 外串口报文参数异常 */
+    eError_Temp_BTM_Not_In_Range = 114, /* 下加热体温度不在范围内 */
+    eError_Temp_TOP_Not_In_Range = 115, /* 上加热体温度不在范围内 */
 
     /* 执行异常 */
     eError_Motor_Heater_Timeout_Up = 200,             /* 上加热体电机运动超时 上升方向 */
