@@ -183,10 +183,17 @@ void reset_Tim1(void);
 #define MCU_TXD_GPIO_Port GPIOC
 #define MCU_RXD_Pin GPIO_PIN_2
 #define MCU_RXD_GPIO_Port GPIOD
+#define FRONT_RESET_Pin GPIO_PIN_3
+#define FRONT_RESET_GPIO_Port GPIOD
+#define FRONT_TRIG_IN_Pin GPIO_PIN_4
+#define FRONT_TRIG_IN_GPIO_Port GPIOD
+#define FRONT_TRIG_IN_EXTI_IRQn EXTI4_IRQn
 #define FRONT_RXD_Pin GPIO_PIN_5
 #define FRONT_RXD_GPIO_Port GPIOD
 #define FRONT_TXD_Pin GPIO_PIN_6
 #define FRONT_TXD_GPIO_Port GPIOD
+#define FRONT_STATUS_Pin GPIO_PIN_7
+#define FRONT_STATUS_GPIO_Port GPIOD
 #define CARD_IN_Pin GPIO_PIN_5
 #define CARD_IN_GPIO_Port GPIOB
 #define CARD_I2C_SCL_Pin GPIO_PIN_6
