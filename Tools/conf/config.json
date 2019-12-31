@@ -2,5 +2,19 @@
     "log": {
         "rotation": "4 MB",
         "retention": 25
+    },
+    "temp_ctl": {
+        "btm": {
+            "target": 37,
+            "Kp": 92000,
+            "Ki": 1600,
+            "Kd": 1600
+        },
+        "top": {
+            "target": 37,
+            "Kp": 600000,
+            "Ki": 1000,
+            "Kd": 2000
+        }
     }
 }

@@ -280,6 +280,7 @@ class MainWindow(QMainWindow):
         temperature_plot_ly = QVBoxLayout(self.temperature_plot_dg)
         self.temperature_plot_graph = TemperatureGraph(parent=self.temperature_plot_dg)
         temperature_plot_ly.addWidget(self.temperature_plot_graph.win)
+        self.temperature_plot_reset_bt = QPushButton("默认参数")
         self.temperature_plot_clear_bt = QPushButton("清零")
         temperature_heater_ctl_ly = QVBoxLayout()
         temperature_heater_ctl_btm_ly = QHBoxLayout()
@@ -327,13 +328,17 @@ class MainWindow(QMainWindow):
         temp_ly = QHBoxLayout()
         temp_ly.setSpacing(3)
         temp_ly.setContentsMargins(3, 3, 3, 3)
-        temp_ly.addWidget(self.temperature_plot_clear_bt)
+        tempbt_ly = QVBoxLayout()
+        tempbt_ly.addWidget(self.temperature_plot_reset_bt)
+        tempbt_ly.addWidget(self.temperature_plot_clear_bt)
+        temp_ly.addLayout(tempbt_ly)
         temp_ly.addStretch(1)
         temp_ly.addLayout(temperature_heater_ctl_ly)
         temperature_plot_ly.addLayout(temp_ly)
         self.temperature_heater_btm_cb.clicked.connect(self.onTemperatureHeaterChanged)
         self.temperature_heater_top_cb.clicked.connect(self.onTemperatureHeaterChanged)
         self.temperature_plot_clear_bt.clicked.connect(self.onTemperautreDataClear)
+        self.temperature_plot_reset_bt.clicked.connect(self.onTemperatureCtlResetPara)
         self.temperature_plot_graph.plot_data_new(name="下加热体", color='FF0000')
         self.temperature_plot_graph.plot_data_new(name="上加热体", color='0000FF')
 
@@ -441,6 +446,15 @@ class MainWindow(QMainWindow):
                     sp = self.temperature_heater_top_ks_sps[i]
                     sp.setValue(value)
                     self._setColor(sp)
+
+    def onTemperatureCtlResetPara(self, event):
+        for i, k in enumerate(("Kp", "Ki", "Kd", "target")):
+            v = CONFIG.get("temp_ctl", {}).get("btm", {}).get(k)
+            if v is not None:
+                self.temperature_heater_btm_ks_sps[i].setValue(v)
+            v = CONFIG.get("temp_ctl", {}).get("top", {}).get(k)
+            if v is not None:
+                self.temperature_heater_top_ks_sps[i].setValue(v)
 
     def onTemperautreDataClear(self, event):
         self.temp_start_time = None
