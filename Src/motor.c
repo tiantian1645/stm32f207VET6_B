@@ -368,7 +368,7 @@ void motor_Sample_Deal(void)
 
     comm_Data_Sample_Start(); /* 启动定时器同步发包 开始采样 */
     for (;;) {
-        xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(19850)); /* 等待任务通知 */
+        xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(10000)); /* 等待任务通知 */
         if (xResult != pdPASS ||                                                       /* 超时 */
             xNotifyValue == eMotorNotifyValue_BR_ERR ||                                /* 收到中终止命令(异常) */
             xNotifyValue == eMotorNotifyValue_BR) {                                    /* 收到中终止命令 */
@@ -770,9 +770,15 @@ static void motor_Task(void * argument)
                 white_Motor_PD();                                                 /* 运动白板电机 PD位置 清零位置 */
                 white_Motor_WH();                                                 /* 运动白板电机 白物质位置 */
                 if (comm_Data_Conf_Sem_Wait(pdMS_TO_TICKS(4 * 1000)) != pdPASS) { /* 等待配置信息 */
-                    error_Emit(eError_Comm_Data_Not_Conf);                        /* 提交错误信息 */
+                    error_Emit(eError_Comm_Data_Not_Conf);                        /* 提交错误信息 采样配置信息未下达 */
                     motor_Sample_Owari();                                         /* 清理 */
                     break;                                                        /* 提前结束 */
+                } else {                                                          /* 配置信息下发完成 */
+                    if (gComm_Data_Sample_Max_Point_Get() == 0) {                 /* 无效配置信息 */
+                        error_Emit(eError_Comm_Data_Invalid_Conf);                /* 提交错误信息 采样配置信息无效 */
+                        motor_Sample_Owari();                                     /* 清理 */
+                        break;                                                    /* 提前结束 */
+                    }
                 }
                 if (barcode_Interrupt_Flag_Get()) { /* 中途打断 */
                     motor_Sample_Owari();           /* 清理 */

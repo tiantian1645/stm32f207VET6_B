@@ -149,6 +149,7 @@ class DC201ErrorCode(Enum):
     eError_Stary_Doing = (237, "杂散光测试中")
     eError_Temp_BTM_Stable_Timeout = (238, "等待下加热体温度稳定超时")
     eError_Temp_BTM_Stable_Waiting = (239, "等待下加热体温度稳定中")
+    eError_Comm_Data_Invalid_Conf = (240, "采样配置信息无效")
     eError_Temperature_Top_Abnormal = (300, "上加热体温度异常")
     eError_Temperature_Top_TooHigh = (301, "上加热体温度过高")
     eError_Temperature_Top_TooLow = (302, "上加热体温度过低")
