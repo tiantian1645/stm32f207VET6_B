@@ -955,6 +955,9 @@ class MainWindow(QMainWindow):
     def sample_record_parse_raw_data(self, total, raw_data):
         data = []
         data_len = len(raw_data)
+        if total == 0:
+            logger.error(f"sample data total error | {total}")
+            return data
         if data_len / total == 2:
             for i in range(0, data_len, 2):
                 data.append(struct.unpack("H", raw_data[i : i + 2])[0])
