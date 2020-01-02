@@ -555,10 +555,11 @@ static BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData)
             gComm_Data_Samples[i].conf.points_num = 0; /* 点数清零 */
         }
     }
+    comm_Data_Conf_Sem_Give(); /* 通知电机任务 配置项已下达 */
     if (result > 0) {
-        comm_Data_Conf_Sem_Give(); /* 通知电机任务 配置项已下达 */
+    	return pdPASS;
     }
-    return pdPASS;
+    return pdFALSE;
 }
 
 /**
