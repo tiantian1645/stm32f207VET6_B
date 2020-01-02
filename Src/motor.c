@@ -368,12 +368,12 @@ void motor_Sample_Deal(void)
 
     comm_Data_Sample_Start(); /* 启动定时器同步发包 开始采样 */
     for (;;) {
-        xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(9850)); /* 等待任务通知 */
-        if (xResult != pdPASS ||                                                      /* 超时 */
-            xNotifyValue == eMotorNotifyValue_BR_ERR ||                               /* 收到中终止命令(异常) */
-            xNotifyValue == eMotorNotifyValue_BR) {                                   /* 收到中终止命令 */
-            if (xResult != pdPASS || xNotifyValue == eMotorNotifyValue_BR_ERR) {      /* 超时  */
-                error_Emit(eError_Sample_Incomlete);                                  /* 提交错误信息 */
+        xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(19850)); /* 等待任务通知 */
+        if (xResult != pdPASS ||                                                       /* 超时 */
+            xNotifyValue == eMotorNotifyValue_BR_ERR ||                                /* 收到中终止命令(异常) */
+            xNotifyValue == eMotorNotifyValue_BR) {                                    /* 收到中终止命令 */
+            if (xResult != pdPASS || xNotifyValue == eMotorNotifyValue_BR_ERR) {       /* 超时  */
+                error_Emit(eError_Sample_Incomlete);                                   /* 提交错误信息 */
             }
             break;
         }
@@ -383,7 +383,7 @@ void motor_Sample_Deal(void)
                 white_Motor_PD();                                   /* 运动白板电机 PD位置 */
             } else if (gComm_Data_Sample_PD_WH_Idx_Get() == 2) {    /* 当前检测PD */
                 white_Motor_WH();                                   /* 运动白板电机 白物质位置 */
-            } else if (gComm_Data_Sample_PD_WH_Idx_Get() == 0xFF) { /* 最后一次采样 */
+            } else if (gComm_Data_Sample_PD_WH_Idx_Get() == 0xFF) { /* 最后一次采样完成 */
                 break;
             }
         }
@@ -455,6 +455,22 @@ BaseType_t motor_Sample_Info(eMotorNotifyValue info)
 {
     if (xTaskNotify(motor_Task_Handle, info, eSetValueWithoutOverwrite) != pdPASS) {
         error_Emit(eError_Motor_Notify_No_Read);
+        return pdFALSE;
+    }
+    return pdPASS;
+}
+
+/**
+ * @brief  电机任务 测量定时器通信
+ * @param  info 通信信息
+ * @retval pdTRUE 提交成功 pdFALSE 提交失败
+ */
+BaseType_t motor_Sample_Info_From_ISR(eMotorNotifyValue info)
+{
+    BaseType_t xk = pdFALSE;
+
+    if (xTaskNotifyFromISR(motor_Task_Handle, info, eSetValueWithoutOverwrite, &xk) != pdPASS) {
+        error_Emit_FromISR(eError_Motor_Notify_No_Read);
         return pdFALSE;
     }
     return pdPASS;
@@ -584,6 +600,7 @@ void motor_Sample_Owari_Correct(void)
     gComm_Data_Sample_Next_Idle_Clr();           /* 重新初始化白板测试时间 */
     protocol_Temp_Upload_Resume();               /* 恢复温度上送 */
     led_Mode_Set(eLED_Mode_Keep_Green);          /* LED 绿灯常亮 */
+    comm_Data_GPIO_Init();                       /* 初始化通讯管脚 */
 }
 
 /**
@@ -604,6 +621,7 @@ void motor_Sample_Owari(void)
     barcode_Interrupt_Flag_Clear();              /* 清除打断标志位 */
     comm_Data_Sample_Owari();                    /* 上送采样结束报文 */
     gComm_Data_Sample_Next_Idle_Clr();           /* 重新初始化白板测试时间 */
+    comm_Data_GPIO_Init();                       /* 初始化通讯管脚 */
 }
 
 /**

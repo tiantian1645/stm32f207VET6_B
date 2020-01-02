@@ -16,13 +16,12 @@
 #define COMM_DATA_SER_TX_RETRY_INT 200 /* 重发间隔 200mS 内应有响应包 */
 #define COMM_DATA_SER_TX_RETRY_SUM ((COMM_DATA_SER_TX_RETRY_NUM) * (COMM_DATA_SER_TX_RETRY_INT))
 
-#define COMM_DATA_WH_TIMER_PRESCALER (10800 - 1) /* TIMER 6 */
-#define COMM_DATA_WH_TIMER_PERIOD (100 - 1)      /* 100C 主频切半 20 mS */
-#define COMM_DATA_WH_TIMER_TIME (2 * 1000 / (COMM_DATA_PD_TIMER_PERIOD + 1))
+#define COMM_DATA_WH_TIMER_PRESCALER (54000 - 1) /* TIMER 6 主频切半 1 mS */
+#define COMM_DATA_WH_TIMER_PERIOD (10000 - 1)    /* 10000C 10 S */
 
-#define COMM_DATA_PD_TIMER_PRESCALER (10800 - 1) /* TIMER 7 */
-#define COMM_DATA_PD_TIMER_PERIOD (100 - 1)      /* 100C 主频切半 20 mS */
-#define COMM_DATA_PD_TIMER_TIME (2 * 1000 / (COMM_DATA_PD_TIMER_PERIOD + 1))
+#define COMM_DATA_PD_TIMER_PRESCALER (54000 - 1) /* TIMER 7 主频切半 1 mS */
+#define COMM_DATA_PD_TIMER_PERIOD (800 - 1)      /* 800C 800 mS */
+
 /* Exported types ------------------------------------------------------------*/
 /* 采集板串口 接收数据定义*/
 typedef struct {
@@ -137,6 +136,12 @@ void gComm_Data_Correct_Flag_Clr(void);
 uint8_t gComm_Data_Correct_Flag_Check(void);
 BaseType_t comm_Data_Sample_Send_Conf_Correct(uint8_t * pData, eComm_Data_Sample_Radiant wave);
 eComm_Data_Sample_Radiant comm_Data_Get_Correct_Wave(void);
+
+void comm_Data_GPIO_Init(void);
+void comm_Data_Board_Reset(void);
+void comm_Data_ISR_Deal(void);
+void comm_Data_ISR_Tran(uint8_t wp);
+
 /* Private defines -----------------------------------------------------------*/
 
 #endif

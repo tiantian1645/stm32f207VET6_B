@@ -1116,7 +1116,7 @@ static void MX_GPIO_Init(void)
     HAL_GPIO_WritePin(MOT_NRST_GPIO_Port, MOT_NRST_Pin, GPIO_PIN_SET);
 
     /*Configure GPIO pin Output Level */
-    HAL_GPIO_WritePin(GPIOD, MOT_NCS1_Pin | MOT_NCS2_Pin | FRONT_RESET_Pin | FRONT_STATUS_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOD, MOT_NCS1_Pin | MOT_NCS2_Pin | FRONT_STATUS_Pin, GPIO_PIN_SET);
 
     /*Configure GPIO pin Output Level */
     HAL_GPIO_WritePin(GPIOA, LAMP1_Pin | LAMP2_Pin | LAMP3_Pin, GPIO_PIN_RESET);
@@ -1175,16 +1175,16 @@ static void MX_GPIO_Init(void)
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-    /*Configure GPIO pins : MOT_NCS1_Pin MOT_NCS2_Pin FRONT_RESET_Pin */
-    GPIO_InitStruct.Pin = MOT_NCS1_Pin | MOT_NCS2_Pin | FRONT_RESET_Pin;
+    /*Configure GPIO pins : MOT_NCS1_Pin MOT_NCS2_Pin */
+    GPIO_InitStruct.Pin = MOT_NCS1_Pin | MOT_NCS2_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
     /*Configure GPIO pins : MOT_NBUSY1_Pin MOT_NFLG2_Pin MOT_NFLG1_Pin MOT_NBUSY2_Pin
-                             PD14 PD0 PD1 */
-    GPIO_InitStruct.Pin = MOT_NBUSY1_Pin | MOT_NFLG2_Pin | MOT_NFLG1_Pin | MOT_NBUSY2_Pin | GPIO_PIN_14 | GPIO_PIN_0 | GPIO_PIN_1;
+                             PD14 PD0 PD1 FRONT_RESET_Pin */
+    GPIO_InitStruct.Pin = MOT_NBUSY1_Pin | MOT_NFLG2_Pin | MOT_NFLG1_Pin | MOT_NBUSY2_Pin | GPIO_PIN_14 | GPIO_PIN_0 | GPIO_PIN_1 | FRONT_RESET_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);

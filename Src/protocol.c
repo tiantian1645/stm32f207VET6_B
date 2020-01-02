@@ -1049,12 +1049,14 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 }
             }
             break;
-        case eProtocolEmitPack_Client_CMD_Debug_System: /* 系统控制 */
-            if (length == 7) {                          /* 无参数 重启 */
-                HAL_NVIC_SystemReset();                 /* 重新启动 */
-            } else if (length == 8) {                   /* 单一参数 杂散光测试 */
-                motor_fun.fun_type = eMotor_Fun_Stary_Test;
-                motor_Emit(&motor_fun, 3000);
+        case eProtocolEmitPack_Client_CMD_Debug_System:     /* 系统控制 */
+            if (length == 7) {                              /* 无参数 重启 */
+                comm_Data_Board_Reset();                    /* 重置采样板 */
+                HAL_NVIC_SystemReset();                     /* 重新启动 */
+            } else if (length == 8) {                       /* 单一参数 杂散光测试 */
+                comm_Data_GPIO_Init();                      /* 初始化通讯管脚 */
+                motor_fun.fun_type = eMotor_Fun_Stary_Test; /* 杂散光测试 */
+                motor_Emit(&motor_fun, 3000);               /* 提交到任务队列 */
             } else {
                 error_Emit(eError_Comm_Out_Param_Error);
             }
@@ -1110,6 +1112,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
         case eProtocolEmitPack_Client_CMD_START:          /* 开始测量帧 0x01 */
             gComm_Data_Sample_Max_Point_Clear();          /* 清除最大点数 */
             protocol_Temp_Upload_Pause();                 /* 暂停温度上送 */
+            comm_Data_GPIO_Init();                        /* 初始化通讯管脚 */
             motor_fun.fun_type = eMotor_Fun_Sample_Start; /* 开始测试 */
             motor_Emit(&motor_fun, 0);                    /* 提交到电机队列 */
             break;
@@ -1203,6 +1206,7 @@ void protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
         case eProtocolEmitPack_Client_CMD_START:          /* 开始测量帧 0x01 */
             gComm_Data_Sample_Max_Point_Clear();          /* 清除最大点数 */
             protocol_Temp_Upload_Pause();                 /* 暂停温度上送 */
+            comm_Data_GPIO_Init();                        /* 初始化通讯管脚 */
             motor_fun.fun_type = eMotor_Fun_Sample_Start; /* 开始测试 */
             motor_Emit(&motor_fun, 0);                    /* 提交到电机队列 */
             break;
@@ -1305,12 +1309,12 @@ void protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
                 }
             }
             break;
-        case eComm_Data_Inbound_CMD_OVER:                /* 采集数据完成帧 */
-            if (comm_Data_Stary_Test_Is_Running()) {     /* 判断是否处于杂散光测试中 */
-                motor_Sample_Info(eMotorNotifyValue_SP); /* 通知电机任务杂散光测试完成 */
-            } else {                                     /* 非杂散光测试 */
-                motor_Sample_Info(eMotorNotifyValue_TG); /* 通知电机任务采样完成 */
-            }
+        case eComm_Data_Inbound_CMD_OVER: /* 采集数据完成帧 */
+            // if (comm_Data_Stary_Test_Is_Running()) {     /* 判断是否处于杂散光测试中 */
+            //     motor_Sample_Info(eMotorNotifyValue_SP); /* 通知电机任务杂散光测试完成 */
+            // } else {                                     /* 非杂散光测试 */
+            //     motor_Sample_Info(eMotorNotifyValue_TG); /* 通知电机任务采样完成 */
+            // }
             break;
         case eComm_Data_Inbound_CMD_ERROR: /* 采集板错误信息帧 */
             comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_ERR, &pInBuff[6], 2);

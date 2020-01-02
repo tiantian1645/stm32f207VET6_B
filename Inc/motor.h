@@ -122,6 +122,7 @@ uint8_t motor_Emit(sMotor_Fun * pFun_type, uint32_t timeout);
 
 BaseType_t motor_Sample_Info_ISR(eMotorNotifyValue info);
 BaseType_t motor_Sample_Info(eMotorNotifyValue info);
+BaseType_t motor_Sample_Info_From_ISR(eMotorNotifyValue info);
 
 void motor_OPT_Status_Init(void);
 uint8_t motor_OPT_Status_Init_Wait_Complete(void);

@@ -74,11 +74,10 @@ static uint8_t gComm_Data_Sample_Max_Point = 0;
 /* 采样数据记录 */
 static sComm_Data_Sample gComm_Data_Samples[6];
 
-static uint32_t gComm_Data_Sample_ISR_Cnt = 0;
-static uint32_t gComm_Data_Sample_ISR_Cnt_PD = 0;
+/* 采样对次数 */
 static uint8_t gComm_Data_Sample_Pair_Cnt = 0;
+
 static uint8_t gComm_Data_Sample_PD_WH_Idx = 0xFF;
-static uint8_t gCoMM_Data_Sample_ISR_Buffer[16];
 
 static uint8_t gComm_Data_Stary_test_Falg = 0;
 
@@ -93,7 +92,6 @@ static void comm_Data_Recv_Task(void * argument);
 static void comm_Data_Send_Task(void * argument);
 
 static BaseType_t comm_Data_RecvTask_QueueEmit_ISR(uint8_t * pData, uint16_t length);
-static BaseType_t comm_Data_Send_ACK_Check(uint8_t packIndex);
 
 static BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData);
 static BaseType_t comm_Data_Sample_Send_Clear_Conf(void);
@@ -128,6 +126,36 @@ void gComm_Data_Sample_Next_Idle_Set(uint16_t idle)
 void gComm_Data_Sample_Next_Idle_Clr(void)
 {
     gComm_Data_Sample_Next_Idle = WHITE_MOTOR_RUN_PERIOD;
+}
+
+/**
+ * @brief  当前采样对次数 获取
+ * @param  None
+ * @retval gComm_Data_Sample_Pair_Cnt
+ */
+uint8_t gComm_Data_Sample_Pair_Cnt_Get(void)
+{
+    return gComm_Data_Sample_Pair_Cnt;
+}
+
+/**
+ * @brief  当前采样对次数 +1
+ * @param  None
+ * @retval None
+ */
+void gComm_Data_Sample_Pair_Cnt_Inc(void)
+{
+    ++gComm_Data_Sample_Pair_Cnt;
+}
+
+/**
+ * @brief  当前采样对次数 清零
+ * @param  None
+ * @retval None
+ */
+void gComm_Data_Sample_Pair_Cnt_Clear(void)
+{
+    gComm_Data_Sample_Pair_Cnt = 0;
 }
 
 /**
@@ -385,103 +413,46 @@ uint8_t comm_Data_Stary_Test_Is_Running(void)
 }
 
 /**
+ * @brief  同步发送开始采集信号
+ * @param  None
+ * @retval None
+ */
+void comm_Data_WH_Time_Deal(void)
+{
+    gComm_Data_Sample_PD_WH_Idx_Set(1); /* 更新当前采样项目 白物质 */
+    comm_Data_ISR_Tran(0);              /* 采集白板 */
+}
+
+/**
  * @brief  串口定时器中断处理 用于同步发送开始采集信号
- * @note   20 mS 回调一次
+ * @note   每 10S 回调一次
  * @param  None
  * @retval None
  */
 void comm_Data_WH_Time_Deal_FromISR(void)
 {
-    static uint8_t length, last_idx = 0;
-    static uint32_t start_cnt_rs;
-
-    if (gComm_Data_Sample_ISR_Cnt % 500 == 0) {                                                               /* 每 500 次  10S */
-        gCoMM_Data_Sample_ISR_Buffer[0] = 1;                                                                  /* 采样类型 白物质 */
-        gComm_Data_Sample_PD_WH_Idx_Set(1);                                                                   /* 更新当前采样项目 白物质 */
-        length = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_START, gCoMM_Data_Sample_ISR_Buffer, 1); /* 构造下一个数据包 */
-        last_idx = gCoMM_Data_Sample_ISR_Buffer[3];                                                           /* 记录帧号 */
-
-        if (HAL_UART_Transmit_DMA(&COMM_DATA_UART_HANDLE, gCoMM_Data_Sample_ISR_Buffer, length) != HAL_OK) { /* 首次发送 */
-            error_Emit_FromISR(eError_Comm_Out_Lost_0);
-        }
-        start_cnt_rs = gComm_Data_Sample_ISR_Cnt;                                                          /* 记录当前中断次数 */
-    } else if ((gComm_Data_Sample_ISR_Cnt - start_cnt_rs) % 10 == 0 && gComm_Data_TIM_StartFlag_Check() && /* 其余时刻 每10次 200mS 处理是否需要重发 */
-               comm_Data_Send_ACK_Check(last_idx) != pdPASS) {                                             /* 收到的回应帧号不匹配 */
-
-        error_Emit_FromISR(eError_Comm_Out_Lost_0 + (gComm_Data_Sample_ISR_Cnt - start_cnt_rs) / 10);
-
-        if ((gComm_Data_Sample_ISR_Cnt - start_cnt_rs) / 10 >= COMM_DATA_SER_TX_RETRY_NUM) { /* 重发数目达到3次 放弃采样测试 */
-            HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_WH);                                         /* 停止定时器 */
-            gComm_Data_TIM_StartFlag_Clear();                                                /* 标记定时器停止 */
-            gComm_Data_Sample_ISR_Cnt = 0;                                                   /* 定时器中断计数清零 */
-            motor_Sample_Info_ISR(eMotorNotifyValue_BR_ERR);
-            return;
-        } else {
-            if (HAL_UART_Transmit_DMA(&COMM_DATA_UART_HANDLE, gCoMM_Data_Sample_ISR_Buffer, length) != HAL_OK) { /* 执行重发 */
-                error_Emit_FromISR(eError_Comm_Out_Lost_0);
-            }
-        }
-    }
-    ++gComm_Data_Sample_ISR_Cnt;
+    comm_Data_WH_Time_Deal();
 }
 
 /**
  * @brief  串口定时器中断处理 用于同步发送开始采集信号
- * @note   20 mS 回调一次
+ * @note   800 mS 回调一次
  * @param  None
  * @retval None
  */
 void comm_Data_PD_Time_Deal_FromISR(void)
 {
-    static uint8_t length, last_idx = 0;
-
-    if (gComm_Data_Sample_ISR_Cnt_PD == 40) {                                                                 /* 800 mS */
-        gCoMM_Data_Sample_ISR_Buffer[0] = 2;                                                                  /* 采样类型 PD */
-        gComm_Data_Sample_PD_WH_Idx_Set(2);                                                                   /* 更新当前采样项目 PD */
-        length = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_START, gCoMM_Data_Sample_ISR_Buffer, 1); /* 构造下一个数据包 */
-        last_idx = gCoMM_Data_Sample_ISR_Buffer[3];                                                           /* 记录帧号 */
-
-        if (HAL_UART_Transmit_DMA(&COMM_DATA_UART_HANDLE, gCoMM_Data_Sample_ISR_Buffer, length) != HAL_OK) { /* 首次发送 */
-            error_Emit_FromISR(eError_Comm_Out_Lost_0);
-        } else {
-            ++gComm_Data_Sample_Pair_Cnt;
-        }
-    } else if ((gComm_Data_Sample_ISR_Cnt_PD > 40) && (gComm_Data_Sample_ISR_Cnt_PD - 40) % 10 == 0 && /* 800 mS 后 每10次 200mS 处理重发*/
-               gComm_Data_TIM_StartFlag_Check()) {                                                     /* 处于采样中  */
-        if (comm_Data_Send_ACK_Check(last_idx) == pdPASS) {                                            /* 收到的回应帧号匹配 */
-            HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_PD);                                                   /* 停止定时器 */
-            gComm_Data_Sample_ISR_Cnt_PD = 0;                                                          /* 定时器中断计数清零 */
-            if (gComm_Data_Sample_Pair_Cnt >= gComm_Data_Sample_Max_Point_Get()) {                     /* 达到最大点数 */
-                HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_WH);                                               /* 停止定时器 */
-                gComm_Data_TIM_StartFlag_Clear();                                                      /* 标记定时器停止 */
-                gComm_Data_Sample_ISR_Cnt = 0;                                                         /* 定时器中断计数清零 */
-                gComm_Data_Sample_Pair_Cnt = 0;                                                        /* 测试对数清零 */
-                gComm_Data_Sample_PD_WH_Idx_Clear();                                                   /* 清除项目记录 */
-            }
-            return;
-        } else {
-            error_Emit_FromISR(eError_Comm_Out_Lost_0 + (gComm_Data_Sample_ISR_Cnt_PD - 40) / 10);
-            if ((gComm_Data_Sample_ISR_Cnt_PD - 40) / 10 >= COMM_DATA_SER_TX_RETRY_NUM) { /* 重发数目达到3次 放弃采样测试 */
-                HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_PD);                                  /* 停止定时器 */
-                gComm_Data_Sample_ISR_Cnt_PD = 0;                                         /* 定时器中断计数清零 */
-                gComm_Data_TIM_StartFlag_Clear();                                         /* 标记定时器停止 */
-                gComm_Data_Sample_ISR_Cnt = 0;                                            /* 定时器中断计数清零 */
-                gComm_Data_Sample_Pair_Cnt = 0;                                           /* 测试对数清零 */
-                gComm_Data_Sample_PD_WH_Idx_Clear();                                      /* 清除项目记录 */
-                motor_Sample_Info_ISR(eMotorNotifyValue_BR_ERR);
-                return;
-            } else {
-                if (HAL_UART_Transmit_DMA(&COMM_DATA_UART_HANDLE, gCoMM_Data_Sample_ISR_Buffer, length) != HAL_OK) { /* 执行重发 */
-                    error_Emit_FromISR(eError_Comm_Out_Lost_0);
-                }
-            }
-        }
-    }
-    ++gComm_Data_Sample_ISR_Cnt_PD;
+    gComm_Data_Sample_PD_WH_Idx_Set(2);                   /* 更新当前采样项目 PD */
+    comm_Data_ISR_Tran(1);                                /* 采集PD */
+    HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_PD);              /* 停止PD计时器 */
+    gComm_Data_Sample_Pair_Cnt_Inc();                     /* 采样对次数+1 */
+    __HAL_TIM_CLEAR_IT(&COMM_DATA_TIM_PD, TIM_IT_UPDATE); /* 清除更新事件标志位 */
+    __HAL_TIM_SET_COUNTER(&COMM_DATA_TIM_PD, 0);          /* 清零定时器计数寄存器 */
 }
 
 /**
- * @brief  向采样板周期性发送数据
+ * @brief  启动白板定时器
+ * @note   屏蔽0S时中断
  * @param  None
  * @retval 0 成功启动 1 采样进行中
  */
@@ -490,18 +461,52 @@ uint8_t comm_Data_Sample_Start(void)
     if (gComm_Data_TIM_StartFlag_Check()) { /* 定时器未停止 采样进行中 */
         return 1;
     }
-    xSemaphoreTake(comm_Data_Send_Sem, portMAX_DELAY); /* 等待发送队列为空 死等! */
-    gComm_Data_TIM_StartFlag_Set();                    /* 标记定时器启动 */
-    gComm_Data_Sample_ISR_Cnt = 0;                     /* 定时器中断计数清零 */
-    gComm_Data_Sample_ISR_Cnt_PD = 0;                  /* 定时器中断计数清零 */
-    gComm_Data_Sample_Pair_Cnt = 0;                    /* 测试对数清零 */
-    HAL_TIM_Base_Start_IT(&COMM_DATA_TIM_WH);          /* 启动白板定时器 开始测试 */
+    gComm_Data_TIM_StartFlag_Set();                       /* 标记定时器启动 */
+    gComm_Data_Sample_Pair_Cnt_Clear();                   /* 清零 采样对次数 */
+    __HAL_TIM_CLEAR_IT(&COMM_DATA_TIM_WH, TIM_IT_UPDATE); /* 清除更新事件标志位 */
+    __HAL_TIM_SET_COUNTER(&COMM_DATA_TIM_WH, 0);          /* 清零定时器计数寄存器 */
+    HAL_TIM_Base_Start_IT(&COMM_DATA_TIM_WH);             /* 启动白板定时器 开始测试 */
+    comm_Data_WH_Time_Deal();                             /* 首次发送 */
     return 0;
 }
 
+/**
+ * @brief  停止PD定时器
+ * @param  None
+ * @retval None
+ */
+uint8_t comm_Data_sample_Stop(void)
+{
+    HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_WH);              /* 停止定时器 终止测试 */
+    __HAL_TIM_CLEAR_IT(&COMM_DATA_TIM_WH, TIM_IT_UPDATE); /* 清除更新事件标志位 */
+    __HAL_TIM_SET_COUNTER(&COMM_DATA_TIM_WH, 0);          /* 清零定时器计数寄存器 */
+    return 0;
+}
+
+/**
+ * @brief  启动PD定时器
+ * @note   屏蔽0S时中断
+ * @param  None
+ * @retval None
+ */
 uint8_t comm_Data_sample_Start_PD(void)
 {
-    HAL_TIM_Base_Start_IT(&COMM_DATA_TIM_PD); /* 启动PD定时器 开始测试 */
+    __HAL_TIM_CLEAR_IT(&COMM_DATA_TIM_PD, TIM_IT_UPDATE); /* 清除更新事件标志位 */
+    __HAL_TIM_SET_COUNTER(&COMM_DATA_TIM_PD, 0);          /* 清零定时器计数寄存器 */
+    HAL_TIM_Base_Start_IT(&COMM_DATA_TIM_PD);             /* 启动PD定时器 开始测试 */
+    return 0;
+}
+
+/**
+ * @brief  停止白板定时器
+ * @param  None
+ * @retval None
+ */
+uint8_t comm_Data_sample_Stop_PD(void)
+{
+    HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_PD);              /* 停止定时器 终止测试 */
+    __HAL_TIM_CLEAR_IT(&COMM_DATA_TIM_PD, TIM_IT_UPDATE); /* 清除更新事件标志位 */
+    __HAL_TIM_SET_COUNTER(&COMM_DATA_TIM_PD, 0);          /* 清零定时器计数寄存器 */
     return 0;
 }
 
@@ -515,12 +520,11 @@ uint8_t comm_Data_Sample_Force_Stop(void)
     if (gComm_Data_TIM_StartFlag_Check() == 0) {
         return 1;
     }
-    HAL_TIM_Base_Stop_IT(&COMM_DATA_TIM_WH); /* 停止定时器 终止测试 */
-    gComm_Data_TIM_StartFlag_Clear();
-    gComm_Data_Sample_ISR_Cnt = 0;       /* 定时器中断计数清零 */
-    gComm_Data_Sample_ISR_Cnt_PD = 0;    /* 定时器中断计数清零 */
-    gComm_Data_Sample_Pair_Cnt = 0;      /* 测试对数清零 */
+    comm_Data_sample_Stop();             /* 停止白板定时器 终止测试 */
+    comm_Data_sample_Stop_PD();          /* 停止PD定时器 终止测试 */
+    gComm_Data_TIM_StartFlag_Clear();    /* 清除测试中标志位 */
     gComm_Data_Sample_Max_Point_Clear(); /* 清除最大点数 */
+    gComm_Data_Sample_Pair_Cnt_Clear();  /* 清零 采样对次数 */
     comm_Data_Sample_Send_Clear_Conf();  /* 通知采样板 */
     return 0;
 }
@@ -779,6 +783,7 @@ void comm_Data_Init(void)
     BaseType_t xResult;
 
     comm_Data_ConfInit();
+    comm_Data_GPIO_Init();
 
     /* 接收队列 */
     comm_Data_RecvQueue = xQueueCreate(3, sizeof(sComm_Data_RecvInfo));
@@ -916,23 +921,6 @@ BaseType_t comm_Data_Send_ACK_Wait(uint8_t packIndex, uint32_t timeout)
 }
 
 /**
- * @brief  串口接收回应包收到处理
- * @param  packIndex   回应包中帧号
- * @retval 加入发送队列结果
- */
-static BaseType_t comm_Data_Send_ACK_Check(uint8_t packIndex)
-{
-    uint8_t i;
-
-    for (i = 0; i < ARRAY_LEN(gComm_Data_ACK_Records); ++i) {
-        if (gComm_Data_ACK_Records[i].ack_idx == packIndex) {
-            return pdPASS;
-        }
-    }
-    return pdFALSE;
-}
-
-/**
  * @brief  采样全部结束 后续处理
  * @param  None
  * @retval
@@ -1018,5 +1006,79 @@ static void comm_Data_Send_Task(void * argument)
             }
         }
         xQueueReceive(comm_Data_SendQueue, &sendInfo, 0); /* 释放发送队列 */
+    }
+}
+
+/**
+ * @brief  采样板相关管脚初始化
+ * @param  argument    None
+ * @note   只针对输出功能的 PD3 PD7
+ * @retval None
+ **/
+void comm_Data_GPIO_Init(void)
+{
+    HAL_GPIO_WritePin(FRONT_STATUS_GPIO_Port, FRONT_STATUS_Pin, GPIO_PIN_SET); /* 采样输出脚拉高 准备下降沿采集白板 */
+}
+
+/**
+ * @brief  重启采样板
+ * @param  argument    None
+ * @note   临时将PD3配置成输出
+ * @retval BNone
+ **/
+void comm_Data_Board_Reset(void)
+{
+    GPIO_InitTypeDef GPIO_InitStruct;
+
+    GPIO_InitStruct.Pin = FRONT_RESET_Pin;
+    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP; /* 配置推挽输出 */
+    HAL_GPIO_Init(FRONT_RESET_GPIO_Port, &GPIO_InitStruct);
+
+    HAL_GPIO_WritePin(FRONT_RESET_GPIO_Port, FRONT_RESET_Pin, GPIO_PIN_SET);   /* 进入重置 */
+    HAL_Delay(100);                                                            /* 延时100毫秒 */
+    HAL_GPIO_WritePin(FRONT_RESET_GPIO_Port, FRONT_RESET_Pin, GPIO_PIN_RESET); /* 退出重置 */
+
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT; /* 恢复输入状态 */
+    HAL_GPIO_Init(FRONT_RESET_GPIO_Port, &GPIO_InitStruct);
+}
+
+/**
+ * @brief  采样过程中采样板中断信号PD4处理
+ * @note   上升沿 采样板开始采样 下降沿 采样板采样完成
+ * @retval None
+ **/
+void comm_Data_ISR_Deal(void)
+{
+    if (HAL_GPIO_ReadPin(FRONT_TRIG_IN_GPIO_Port, FRONT_TRIG_IN_Pin) == GPIO_PIN_SET) { /* 上升沿 采样板开始采样 */
+
+    } else {                                                                             /* 下降沿 采样板采样完成 */
+        if (comm_Data_Stary_Test_Is_Running()) {                                         /* 判断是否处于杂散光测试中 */
+            motor_Sample_Info_From_ISR(eMotorNotifyValue_SP);                            /* 通知电机任务杂散光测试完成 */
+        } else {                                                                         /* 非杂散光测试 */
+            if (gComm_Data_Sample_Pair_Cnt_Get() >= gComm_Data_Sample_Max_Point_Get()) { /* 采样对次数 大于等于 最大点数 */
+                gComm_Data_Sample_PD_WH_Idx_Clear();                                     /* 标记采样对完成 */
+                comm_Data_sample_Stop();                                                 /* 停止白板定时器 终止测试 */
+                comm_Data_sample_Stop_PD();                                              /* 停止PD定时器 终止测试 */
+                gComm_Data_TIM_StartFlag_Clear();                                        /* 清除测试中标志位 */
+            }
+            motor_Sample_Info_From_ISR(eMotorNotifyValue_TG); /* 通知电机任务采样完成 */
+        }
+    }
+}
+
+/**
+ * @brief  向采样板发送采样类型信号
+ * @param  wp 0 白板 下降沿 1 PD 上升沿
+ * @retval None
+ **/
+void comm_Data_ISR_Tran(uint8_t wp)
+{
+    if (wp == 0) {
+        HAL_GPIO_WritePin(FRONT_STATUS_GPIO_Port, FRONT_STATUS_Pin, GPIO_PIN_RESET); /* 采样输出脚拉低 下降沿 白板 */
+    } else {
+        HAL_GPIO_WritePin(FRONT_STATUS_GPIO_Port, FRONT_STATUS_Pin, GPIO_PIN_SET); /* 采样输出脚拉低 上升沿 PD */
     }
 }
