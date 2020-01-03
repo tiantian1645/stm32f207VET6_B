@@ -724,7 +724,11 @@ static void motor_Task(void * argument)
                 heat_Motor_Down();                      /* 砸下上加热体 */
                 white_Motor_WH();                       /* 运动白板电机 */
                 break;
-            case eMotor_Fun_Sample_Start:                       /* 准备测试 */
+            case eMotor_Fun_Sample_Start:               /* 准备测试 */
+                xTick = xTaskGetTickCount();            /* 记录总体准备起始时间 */
+                comm_Data_Conf_Sem_Wait(0);             /* 清除配置信息信号量 */
+                led_Mode_Set(eLED_Mode_Kirakira_Green); /* LED 绿灯闪烁 */
+
                 temperature = temp_Get_Temp_Data_BTM();         /* 读取下加热体温度 */
                 if (temperature < 36.7 || temperature > 37.3) { /* 不在范围内 */
                     error_Emit(eError_Temp_BTM_Not_In_Range);   /* 上报提示 */
@@ -733,10 +737,8 @@ static void motor_Task(void * argument)
                 if (temperature < 36.7 || temperature > 37.3) { /* 不在范围内 */
                     error_Emit(eError_Temp_TOP_Not_In_Range);   /* 上报提示 */
                 }
-                xTick = xTaskGetTickCount();                         /* 记录总体准备起始时间 */
+
                 xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0);    /* 清空通知 */
-                comm_Data_Conf_Sem_Wait(0);                          /* 清除配置信息信号量 */
-                led_Mode_Set(eLED_Mode_Kirakira_Green);              /* LED 绿灯闪烁 */
                 if (protocol_Debug_SampleBarcode() == 0) {           /* 非调试模式 */
                     motor_Tray_Move_By_Index(eTrayIndex_1);          /* 扫码位置 */
                     barcode_result = barcode_Scan_QR();              /* 扫描二维条码 */
