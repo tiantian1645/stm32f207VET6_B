@@ -63,7 +63,7 @@ def main():
     shutil.copyfile("../Debug/stm32f207VET6_B.hex", f"{TARGET_DIR}stm32f207VET6_B-{datetime_str}-v{version_str}.hex")
     #  归档
     if check_archive():
-        archive_dir = os.path.join(TARGET_DIR, f"V{version_str}", f"{now.strftime('%Y%m%d_%H%M%S')}-{REPO.head.object.hexsha}")
+        archive_dir = os.path.join(TARGET_DIR, f"V{version_str}", f"{now.strftime('%Y%m%d-%H%M%S')}-{REPO.head.object.hexsha}")
         name = f"stm32f207VET6_B-{datetime_str}-v{version_str}"
         pathlib.Path(archive_dir).mkdir(parents=True, exist_ok=True)
         shutil.copyfile("../Debug/stm32f207VET6_B.bin", os.path.join(archive_dir, f"{name}.bin"))
