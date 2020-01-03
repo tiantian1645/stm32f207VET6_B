@@ -8,7 +8,7 @@
 
 /* Exported macro ------------------------------------------------------------*/
 #define COMM_OUT_DMA_RX_SIZE 256
-#define COMM_OUT_SER_RX_SIZE ((COMM_OUT_DMA_RX_SIZE + 1) / 2 * 3)
+#define COMM_OUT_SER_RX_SIZE COMM_OUT_DMA_RX_SIZE
 
 #define COMM_OUT_SER_TX_SIZE 255
 
