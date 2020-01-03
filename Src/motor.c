@@ -597,7 +597,6 @@ void motor_Sample_Owari_Correct(void)
     gComm_Data_Sample_Max_Point_Clear();         /* 清除需要测试点数 */
     led_Mode_Set(eLED_Mode_Kirakira_Green);      /* LED 绿灯闪烁 */
     barcode_Interrupt_Flag_Clear();              /* 清除打断标志位 */
-    gComm_Data_Sample_Next_Idle_Clr();           /* 重新初始化白板测试时间 */
     protocol_Temp_Upload_Resume();               /* 恢复温度上送 */
     led_Mode_Set(eLED_Mode_Keep_Green);          /* LED 绿灯常亮 */
     comm_Data_GPIO_Init();                       /* 初始化通讯管脚 */
@@ -620,7 +619,6 @@ void motor_Sample_Owari(void)
     led_Mode_Set(eLED_Mode_Keep_Green);          /* LED 绿灯常亮 */
     barcode_Interrupt_Flag_Clear();              /* 清除打断标志位 */
     comm_Data_Sample_Owari();                    /* 上送采样结束报文 */
-    gComm_Data_Sample_Next_Idle_Clr();           /* 重新初始化白板测试时间 */
     comm_Data_GPIO_Init();                       /* 初始化通讯管脚 */
 }
 

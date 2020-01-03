@@ -81,8 +81,6 @@ static uint8_t gComm_Data_Sample_PD_WH_Idx = 0xFF;
 
 static uint8_t gComm_Data_Stary_test_Falg = 0;
 
-static uint16_t gComm_Data_Sample_Next_Idle = WHITE_MOTOR_RUN_PERIOD;
-
 static uint8_t gComm_Data_Correct_Flag = 0; /* 定标状态标志 */
 static eComm_Data_Sample_Radiant gComm_Data_Correct_wave = eComm_Data_Sample_Radiant_550;
 /* Private constants ---------------------------------------------------------*/
@@ -96,37 +94,6 @@ static BaseType_t comm_Data_RecvTask_QueueEmit_ISR(uint8_t * pData, uint16_t len
 static BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData);
 static BaseType_t comm_Data_Sample_Send_Clear_Conf(void);
 /* Private user code ---------------------------------------------------------*/
-
-/**
- * @brief  白板电机切换时间 获取
- * @param  None
- * @note   单位 毫秒
- * @retval 白板电机切换时间 gComm_Data_Sample_Next_Idle
- */
-uint16_t gComm_Data_Sample_Next_Idle_Get(void)
-{
-    return gComm_Data_Sample_Next_Idle;
-}
-
-/**
- * @brief  白板电机切换时间 设置
- * @param  idle 白板电机切换时间 单位 毫秒
- * @retval None
- */
-void gComm_Data_Sample_Next_Idle_Set(uint16_t idle)
-{
-    gComm_Data_Sample_Next_Idle = idle;
-}
-
-/**
- * @brief  白板电机切换时间 初始化
- * @param  None
- * @retval None
- */
-void gComm_Data_Sample_Next_Idle_Clr(void)
-{
-    gComm_Data_Sample_Next_Idle = WHITE_MOTOR_RUN_PERIOD;
-}
 
 /**
  * @brief  当前采样对次数 获取
@@ -557,7 +524,7 @@ static BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData)
     }
     comm_Data_Conf_Sem_Give(); /* 通知电机任务 配置项已下达 */
     if (result > 0) {
-    	return pdPASS;
+        return pdPASS;
     }
     return pdFALSE;
 }

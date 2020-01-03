@@ -19,10 +19,6 @@ typedef enum {
     eError_Scan_Debug = 5,         /* 扫码枪错误调试 */
     eError_Comm_Out_Resend_1 = 6,  /* 采样板串口第一次发送无回应 */
     eError_Comm_Out_Resend_2 = 7,  /* 采样板串口第二次发送无回应 */
-    eError_Comm_Out_Lost_0 = 8,    /* 采样板串口采样过程中发送失败 */
-    eError_Comm_Out_Lost_1 = 9,    /* 采样板串口采样过程中第一次发送无回应 */
-    eError_Comm_Out_Lost_2 = 10,   /* 采样板串口采样过程中第二次发送无回应 */
-    eError_Comm_Out_Lost_3 = 11,   /* 采样板串口采样过程中第三次发送无回应 */
 
     /* 提示类信息 */
     eError_Motor_Task_Busy = 100,       /* 电机任务忙 */
