@@ -209,12 +209,15 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef * huart)
 {
     switch ((uint32_t)(huart->Instance)) {
         case (uint32_t)USART1:
+            error_Emit_FromISR(eError_Comm_Main_UART);
             comm_Main_DMA_RX_Restore();
             break;
         case (uint32_t)USART2:
+            error_Emit_FromISR(eError_Comm_Data_UART);
             comm_Data_DMA_RX_Restore();
             break;
         case (uint32_t)UART5:
+            error_Emit_FromISR(eError_Comm_Out_UART);
             comm_Out_DMA_RX_Restore();
             break;
     }
