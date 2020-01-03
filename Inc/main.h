@@ -66,7 +66,7 @@ extern "C" {
 #define TASK_PRIORITY_MOTOR 11
 
 /* 应用程序版本 单精度浮点数 */
-#define APP_VERSION ((float)0.257)
+#define APP_VERSION ((float)0.258)
 
 /* USER CODE END EM */
 
