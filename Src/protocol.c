@@ -1309,12 +1309,10 @@ void protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
                 }
             }
             break;
-        case eComm_Data_Inbound_CMD_OVER: /* 采集数据完成帧 */
-            // if (comm_Data_Stary_Test_Is_Running()) {     /* 判断是否处于杂散光测试中 */
-            //     motor_Sample_Info(eMotorNotifyValue_SP); /* 通知电机任务杂散光测试完成 */
-            // } else {                                     /* 非杂散光测试 */
-            //     motor_Sample_Info(eMotorNotifyValue_TG); /* 通知电机任务采样完成 */
-            // }
+        case eComm_Data_Inbound_CMD_OVER:                /* 采集数据完成帧 */
+            if (comm_Data_Stary_Test_Is_Running()) {     /* 判断是否处于杂散光测试中 */
+                motor_Sample_Info(eMotorNotifyValue_SP); /* 通知电机任务杂散光测试完成 */
+            }
             break;
         case eComm_Data_Inbound_CMD_ERROR: /* 采集板错误信息帧 */
             comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_ERR, &pInBuff[6], 2);
