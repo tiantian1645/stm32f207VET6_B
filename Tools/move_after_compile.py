@@ -9,7 +9,7 @@ from git import Repo
 from loguru import logger
 
 
-TARGET_DIR = "E:\\WebServer\\DC201\\程序\\控制板\\"
+TARGET_DIR = "E:\\WebServer\\DC201\\程序\\控制板\\Application\\"
 REPO = Repo(search_parent_directories=True)
 
 
@@ -53,6 +53,8 @@ def main():
     version_str = get_version_str()
     now = datetime.now()
     datetime_str = now.strftime(r"%Y%m%d%H%M%S")
+    if not os.path.isdir(TARGET_DIR):
+        os.makedirs(TARGET_DIR)
     #  复制到根目录
     for fn in os.listdir(TARGET_DIR):
         if fn.startswith("stm32f207VET6_B-"):
