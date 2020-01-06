@@ -13,7 +13,7 @@
 #define COMM_OUT_SER_TX_SIZE 255
 
 #define COMM_OUT_SER_TX_RETRY_NUM 3
-#define COMM_OUT_SER_TX_RETRY_INT 5000
+#define COMM_OUT_SER_TX_RETRY_INT 200
 #define COMM_OUT_SER_TX_RETRY_SUM ((COMM_OUT_SER_TX_RETRY_NUM) * (COMM_OUT_SER_TX_RETRY_INT))
 
 /* Exported types ------------------------------------------------------------*/
