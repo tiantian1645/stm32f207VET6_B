@@ -52,7 +52,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from bytes_helper import best_fit_slope_and_intercept, bytes2Float, bytesPuttyPrint
+from bytes_helper import bytes2Float, bytesPuttyPrint
 from dc201_pack import DC201_PACK, DC201_ParamInfo, DC201ErrorCode, write_firmware_pack_BL, write_firmware_pack_FC
 import qtmodern.styles
 import qtmodern.windows
@@ -1014,14 +1014,12 @@ class MainWindow(QMainWindow):
             real_data = self.sample_record_parse_raw_data(sd.total, sd.raw_data)
             if len(real_data) == 0:
                 continue
-            xs = np.array([10 * i for i in range(len(real_data))], dtype=np.int32)
             ys = np.array(real_data, dtype=np.int32)
             std = np.std(ys)
             mean = np.mean(ys)
             cv = std / mean
-            m, b = best_fit_slope_and_intercept(xs, ys)
             data_infos.append(
-                f"通道 {sd.channel} | {data_format_list(real_data)} | (m = {m:.4f}, b = {b:.4f}) | (cv = {cv:.4f}, std = {std:.4f}, mean = {mean:.4f})"
+                f"通道 {sd.channel} | {data_format_list(real_data)} | (cv = {cv:.4f}, std = {std:.4f}, mean = {mean:.4f})"
             )
         # https://stackoverflow.com/a/10977872
         font = QFont("Consolas")
