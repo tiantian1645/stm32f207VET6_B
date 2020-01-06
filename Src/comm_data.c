@@ -392,7 +392,7 @@ void comm_Data_WH_Time_Deal(void)
 
 /**
  * @brief  串口定时器中断处理 用于同步发送开始采集信号
- * @note   每 10S 回调一次
+ * @note   每 10S 回调一次 优先级置于操作系统之上 不允许调用系统API
  * @param  None
  * @retval None
  */
@@ -403,7 +403,7 @@ void comm_Data_WH_Time_Deal_FromISR(void)
 
 /**
  * @brief  串口定时器中断处理 用于同步发送开始采集信号
- * @note   800 mS 回调一次
+ * @note   800 mS 回调一次 优先级置于操作系统之上 不允许调用系统API
  * @param  None
  * @retval None
  */
