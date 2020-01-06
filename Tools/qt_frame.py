@@ -1270,7 +1270,10 @@ class MainWindow(QMainWindow):
     def onMatplotStart(self, event):
         self.initBarcodeScan()
         name_text, press_result = QInputDialog.getText(self, "测试标签", "输入标签名称", QLineEdit.Normal, datetime.now().strftime("%Y%m%d%H%M%S"))
-        if press_result and len(name_text) > 0:
+        if not press_result:
+            logger.info("cancel sample test")
+            return
+        if len(name_text) > 0:
             self.sample_record_lable_name = name_text
         else:
             self.sample_record_lable_name = datetime.now().strftime("%Y%m%d%H%M%S")

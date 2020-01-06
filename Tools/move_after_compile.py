@@ -11,13 +11,14 @@ from loguru import logger
 
 TARGET_DIR = "E:\\WebServer\\DC201\\程序\\控制板\\Application\\"
 REPO = Repo(search_parent_directories=True)
+VERSION_RE = re.compile(r"#define APP_VERSION \(\(float\)([\d\.]+)\)")
 
 
 def get_version_str():
-    version_re = re.compile(r"#define APP_VERSION \(\(float\)([\d\.]+)\)")
+
     with open("../Inc/main.h", "r", encoding="utf-8") as f:
         for line in f.readlines():
-            version_match = version_re.match(line)
+            version_match = VERSION_RE.match(line)
             if version_match:
                 version_str = version_match.group(1)
                 logger.debug(f"hit line | {line[:-1]} | {version_str}")
@@ -28,7 +29,11 @@ def get_version_str():
 def check_by_git():
     if REPO.is_dirty():
         return False
-    return True
+    commit_now, commit_last = list(REPO.iter_commits(max_count=2))
+    dps = (d.a_path for d in commit_now.diff(commit_last))
+    if any((os.path.splitext(dp)[1].lower() not in (".py", ".json") for dp in dps)):
+        return True
+    return False
 
 
 def check_file_change():
