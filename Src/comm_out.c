@@ -431,6 +431,7 @@ static void comm_Out_Send_Task(void * argument)
     uint16_t errorCode;
     sComm_Out_SendInfo sendInfo;
     uint8_t i, ucResult;
+    static uint8_t last_result = 0;
 
     for (;;) {
         if (uxSemaphoreGetCount(comm_Out_Send_Sem) == 0) { /* DMA发送未完成 此时从接收队列提取数据覆盖发送指针会干扰DMA发送 */
@@ -460,13 +461,17 @@ static void comm_Out_Send_Task(void * argument)
                 ucResult = 1;                                                                    /* 置位发送成功 */
                 break;
             } else {
-                sendInfo.buff[3] += 1;
                 ucResult = 0;
             }
         }
         if (ucResult == 0) {                             /* 重发失败处理 */
             protocol_Temp_Upload_Comm_Set(eComm_Out, 0); /* 关闭本串口温度上送 */
-            error_Emit(eError_Comm_Out_Not_ACK);         /* 提交无ACK错误信息 */
+            if (last_result == 0) {                      /* 未提交过无ACk错误 */
+                error_Emit(eError_Comm_Out_Not_ACK);     /* 提交无ACK错误信息 */
+                last_result = 1;                         /* 标记提交过无ACK错误 */
+            }
+        } else if (ucResult == 1) { /* 本次发送成功 且有ACK */
+            last_result = 0;        /* 清空标记 */
         }
         vTaskDelay(pdMS_TO_TICKS(10));
     }

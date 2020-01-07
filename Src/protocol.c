@@ -1193,7 +1193,6 @@ void protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
         return;
     }
 
-    gComm_Main_Connected_Set_Enable();                /* 标记通信成功 */
     if (pInBuff[5] == eProtocolRespPack_Client_ACK) { /* 收到对方回应帧 */
         comm_Main_Send_ACK_Give(pInBuff[6]);          /* 通知串口发送任务 回应包收到 */
         return;                                       /* 直接返回 */

@@ -53,7 +53,6 @@ BaseType_t comm_Main_SendTask_QueueEmitWithBuild(uint8_t cmdType, uint8_t * pDat
     comm_Main_SendTask_QueueEmitWithBuild((cmdType), (pdata), (length), (COMM_MAIN_SER_TX_RETRY_SUM))
 
 BaseType_t comm_Main_Send_ACK_Give(uint8_t packIndex);
-void gComm_Main_Connected_Set_Enable(void);
 
 /* Private defines -----------------------------------------------------------*/
 

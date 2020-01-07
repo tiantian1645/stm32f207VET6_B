@@ -61,7 +61,6 @@ static sProcol_COMM_ACK_Record gComm_Main_ACK_Records[COMM_MAIN_SEND_QUEU_LENGTH
 
 static sComm_Main_SendInfo gComm_Main_SendInfo; /* 提交发送任务到队列用缓存 */
 static uint8_t gComm_Main_SendInfoFlag = 1;     /* 上述缓存使用锁 */
-static uint8_t gComm_Main_Connected = 0;        /* 通信正常标志 */
 
 /* Private constants ---------------------------------------------------------*/
 
@@ -324,24 +323,6 @@ BaseType_t comm_Main_SendTask_ErrorInfoQueueEmitFromISR(uint16_t * pErrorCode)
     return xResult;
 }
 
-uint8_t comm_MainSendTask_ErrorInfo_IsAble(void)
-{
-    if (gComm_Main_Connected > 0) {
-        return 1;
-    }
-    return 0;
-}
-
-void gComm_Main_Connected_Set_Disbale(void)
-{
-    gComm_Main_Connected = 0;
-}
-
-void gComm_Main_Connected_Set_Enable(void)
-{
-    gComm_Main_Connected = 1;
-}
-
 /**
  * @brief  串口接收回应包 帧号接收
  * @param  packIndex   回应包中帧号
@@ -410,16 +391,17 @@ static void comm_Main_Send_Task(void * argument)
     sComm_Main_SendInfo sendInfo;
     uint16_t errorCode;
     uint8_t i, ucResult;
+    static uint8_t last_result = 0;
 
     for (;;) {
         if (uxSemaphoreGetCount(comm_Main_Send_Sem) == 0) { /* DMA发送未完成 此时从接收队列提取数据覆盖发送指针会干扰DMA发送 */
             vTaskDelay(pdMS_TO_TICKS(10));
             continue;
         }
-        if (comm_MainSendTask_ErrorInfo_IsAble() && (xQueueReceive(comm_Main_Error_Info_SendQueue, &errorCode, 0) == pdPASS)) { /* 查看错误信息队列 */
-            memcpy(sendInfo.buff, (uint8_t *)(&errorCode), 2);                                                                  /* 错误代码 */
-            sendInfo.length = buildPackOrigin(eComm_Main, eProtocolRespPack_Client_ERR, sendInfo.buff, 2);                      /* 构造数据包 */
-        } else if (xQueueReceive(comm_Main_SendQueue, &sendInfo, pdMS_TO_TICKS(10)) != pdPASS) {                                /* 发送队列为空 */
+        if (xQueueReceive(comm_Main_Error_Info_SendQueue, &errorCode, 0) == pdPASS) {                      /* 查看错误信息队列 */
+            memcpy(sendInfo.buff, (uint8_t *)(&errorCode), 2);                                             /* 错误代码 */
+            sendInfo.length = buildPackOrigin(eComm_Main, eProtocolRespPack_Client_ERR, sendInfo.buff, 2); /* 构造数据包 */
+        } else if (xQueueReceive(comm_Main_SendQueue, &sendInfo, pdMS_TO_TICKS(10)) != pdPASS) {           /* 发送队列为空 */
             continue;
         }
         ucResult = 0; /* 发送结果初始化 */
@@ -441,12 +423,14 @@ static void comm_Main_Send_Task(void * argument)
                 ucResult = 0;
             }
         }
-        if (ucResult == 0) {                                         /* 重发失败处理 */
-            protocol_Temp_Upload_Comm_Set(eComm_Main, 0);            /* 关闭本串口温度上送 */
-            while (xQueueReceive(comm_Main_SendQueue, &sendInfo, 0)) /* 清空发送队列 */
-                ;
-            gComm_Main_Connected_Set_Disbale();   /* 标记通信失败 */
-            error_Emit(eError_Comm_Main_Not_ACK); /* 提交无ACK错误信息 */
+        if (ucResult == 0) {                              /* 重发失败处理 */
+            protocol_Temp_Upload_Comm_Set(eComm_Main, 0); /* 关闭本串口温度上送 */
+            if (last_result == 0) {                       /* 未提交过无ACk错误 */
+                error_Emit(eError_Comm_Main_Not_ACK);     /* 提交无ACK错误信息 */
+                last_result = 1;                          /* 标记提交过无ACK错误 */
+            }
+        } else if (ucResult == 1) { /* 本次发送成功 且有ACK */
+            last_result = 0;        /* 清空标记 */
         }
         vTaskDelay(pdMS_TO_TICKS(10));
     }
