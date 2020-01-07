@@ -47,7 +47,7 @@ def check_archive():
 
     slib_dirs = sorted(os.listdir(archive_parent_dir))
     if len(slib_dirs) == 0:
-        logger.info(f"new hash for no sub dir | {head_hash}")
+        logger.warning(f"new hash for no sub dir | {head_hash}")
         return True
 
     last_archive_commit = REPO.commit(SHA_RE.match(slib_dirs[-1]).group(1))
