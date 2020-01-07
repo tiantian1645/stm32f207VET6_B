@@ -12,6 +12,7 @@ from loguru import logger
 TARGET_DIR = "E:\\WebServer\\DC201\\程序\\控制板\\Application\\"
 REPO = Repo(search_parent_directories=True)
 VERSION_RE = re.compile(r"#define APP_VERSION \(\(float\)([\d\.]+)\)")
+SHA_RE = re.compile(r"\d{8}-\d{6}-(\w{40})")
 
 
 def get_version_str():
@@ -26,31 +27,32 @@ def get_version_str():
     return ""
 
 
-def check_by_git():
-    if REPO.is_dirty():
-        return False
-    commit_now, commit_last = list(REPO.iter_commits(max_count=2))
-    dps = (d.a_path for d in commit_now.diff(commit_last))
+def check_by_diff(diff):
+    dps = tuple(d.a_path for d in diff)
     if any((os.path.splitext(dp)[1].lower() not in (".py", ".json") for dp in dps)):
+        logger.debug(f"find valid change in dps {dps}")
         return True
+    logger.debug(f"do not find valid change in dps {dps}")
     return False
 
 
-def check_file_change():
-    archive_parent_dir = os.path.join(TARGET_DIR, f"V{get_version_str()}")
-    if not os.path.isdir(archive_parent_dir):
-        return True
-    head_hash = REPO.head.object.hexsha
-    for fn in os.listdir(archive_parent_dir):
-        if head_hash in fn:
-            logger.info(f"hit same hash | {fn}")
-            return False
-    logger.info(f"new hash | {head_hash}")
-    return True
-
-
 def check_archive():
-    return check_by_git() and check_file_change()
+    if REPO.is_dirty():
+        return False
+    archive_parent_dir = os.path.join(TARGET_DIR, f"V{get_version_str()}")
+    head_hash = REPO.head.object.hexsha
+    if not os.path.isdir(archive_parent_dir):
+        logger.info(f"new hash for new version | {head_hash}")
+        return True
+
+    slib_dirs = sorted(os.listdir(archive_parent_dir))
+    if len(slib_dirs) == 0:
+        logger.info(f"new hash for no sub dir | {head_hash}")
+        return True
+
+    last_archive_commit = REPO.commit(SHA_RE.match(slib_dirs[-1]).group(1))
+    diff = REPO.commit().diff(last_archive_commit)
+    return check_by_diff(diff)
 
 
 def main():
