@@ -32,6 +32,7 @@ uint8_t white_Motor_Wait_Stop(uint32_t timeout);
 uint8_t white_Motor_PWM_Gen_In(void);
 uint8_t white_Motor_PWM_Gen_Out(void);
 
+void whilte_Motor_Init(void);
 /* Private defines -----------------------------------------------------------*/
 
 #endif

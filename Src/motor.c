@@ -412,6 +412,7 @@ void motor_Resource_Init(void)
     m_drv8824_Init();                            /* 上加热体电机初始化 */
     tray_Motor_Init();                           /* 托盘电机初始化 */
     barcode_Motor_Init();                        /* 扫码电机初始化 */
+    whilte_Motor_Init();                         /* 白板电机初始化 */
     barcode_Motor_Reset_Pos();                   /* 重置扫码电机位置 */
     tray_Motor_Reset_Pos();                      /* 重置托盘电机位置 */
     heat_Motor_Down();                           /* 砸下上加热体 */

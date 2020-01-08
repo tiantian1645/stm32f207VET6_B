@@ -7,6 +7,7 @@
 #include "main.h"
 #include "motor.h"
 #include "m_drv8824.h"
+#include "white_motor.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim1;
@@ -351,4 +352,22 @@ uint8_t white_Motor_PWM_Gen_Out(void)
         gPWM_TEST_AW_CNT_Inc(); /* 自增脉冲计数 */
     }
     return 1;
+}
+
+/**
+ * @brief  白板电机初始化
+ * @note   尽量在入仓位置动作
+ * @param  None
+ * @retval None
+ */
+void whilte_Motor_Init(void)
+{
+    white_Motor_PD();
+    if (motor_OPT_Status_Get_White() == eMotor_OPT_Status_ON) {
+        white_Motor_PD();
+    }
+    white_Motor_WH();
+    if (motor_OPT_Status_Get_White() == eMotor_OPT_Status_OFF) {
+        white_Motor_WH();
+    }
 }
