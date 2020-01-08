@@ -523,9 +523,14 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
         return;
     }
     /* 托盘保持力矩不足 托盘容易位置会发生变化 实际位置与驱动记录位置不匹配 每次移动托盘电机必须重置 */
-    if ((index == eTrayIndex_0 && TRAY_MOTOR_IS_OPT_1 == 0)                                       /* 从光耦外回到原点 */
-        || (index == eTrayIndex_2 && TRAY_MOTOR_IS_OPT_1 && flag)) {                              /* 或者 起点时上加热体砸下 从光耦处离开 */
-    } else if ((index == eTrayIndex_1 && flag == 0 && TRAY_MOTOR_IS_OPT_1 == 0)) {                /* 从出仓位移动到扫码位置 */
+    if ((index == eTrayIndex_0 && TRAY_MOTOR_IS_OPT_1 == 0)                        /* 从光耦外回到原点 */
+        || (index == eTrayIndex_2 && TRAY_MOTOR_IS_OPT_1 && flag)) {               /* 或者 起点时上加热体砸下 从光耦处离开 */
+    } else if ((index == eTrayIndex_1 && flag == 0 && TRAY_MOTOR_IS_OPT_1 == 0)) { /* 从出仓位移动到扫码位置 */
+        if (tray_Motor_Scan_Reverse_Get()) {                                       /* 侦测到出仓后托盘位移 */
+            tray_Motor_Scan_Reverse_Clear();                                       /* 清除标志位 */
+            tray_Move_By_Index(eTrayIndex_0, 5000);                                /* 复归到原点 */
+            tray_Move_By_Index(eTrayIndex_2, 5000);                                /* 出仓 */
+        }
         if (tray_Move_By_Index(eTrayIndex_3, 5000) != eTrayState_OK) {                            /* 运动托盘电机 */
             buffer[0] = 0x00;                                                                     /* 托盘电机运动失败 */
             comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
@@ -690,6 +695,7 @@ static void motor_Task(void * argument)
     motor_OPT_Status_Init_Wait_Complete(); /* 等待光耦结果完成 */
     motor_Resource_Init();                 /* 电机驱动、位置初始化 */
     barcode_Init();                        /* 扫码枪初始化 */
+    tray_Motor_EE_Clear();                 /* 清除托盘丢步标志位 */
 
     for (;;) {
         xResult = xQueuePeek(motor_Fun_Queue_Handle, &mf, portMAX_DELAY);
@@ -699,6 +705,7 @@ static void motor_Task(void * argument)
         cnt = 0;
         switch (mf.fun_type) {
             case eMotor_Fun_In:             /* 入仓 */
+                tray_Motor_EE_Clear();      /* 清除托盘丢步标志位 */
                 if (heat_Motor_Up() != 0) { /* 抬起上加热体电机 失败 */
                     break;
                 };
@@ -707,8 +714,10 @@ static void motor_Task(void * argument)
                 break;
             case eMotor_Fun_Out: /* 出仓 */
                 motor_Tray_Move_By_Index(eTrayIndex_2);
+                tray_Motor_EE_Mark(); /* 标记托盘丢步标志位 */
                 break;
             case eMotor_Fun_Scan:           /* 扫码 */
+                tray_Motor_EE_Clear();      /* 清除托盘丢步标志位 */
                 if (heat_Motor_Up() != 0) { /* 抬起上加热体电机 失败 */
                     break;
                 };
@@ -729,6 +738,7 @@ static void motor_Task(void * argument)
                 xTick = xTaskGetTickCount();            /* 记录总体准备起始时间 */
                 comm_Data_Conf_Sem_Wait(0);             /* 清除配置信息信号量 */
                 led_Mode_Set(eLED_Mode_Kirakira_Green); /* LED 绿灯闪烁 */
+                tray_Motor_EE_Clear();                  /* 清除托盘丢步标志位 */
 
                 temperature = temp_Get_Temp_Data_BTM();         /* 读取下加热体温度 */
                 if (temperature < 36.7 || temperature > 37.3) { /* 不在范围内 */

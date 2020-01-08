@@ -83,6 +83,7 @@ void reset_Tim1(void);
 /* Private defines -----------------------------------------------------------*/
 #define OPTSW_OUT2_Pin GPIO_PIN_2
 #define OPTSW_OUT2_GPIO_Port GPIOE
+#define OPTSW_OUT2_EXTI_IRQn EXTI2_IRQn
 #define OPTSW_OUT3_Pin GPIO_PIN_3
 #define OPTSW_OUT3_GPIO_Port GPIOE
 #define OPTSW_OUT4_Pin GPIO_PIN_4

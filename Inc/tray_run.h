@@ -36,6 +36,13 @@ eTrayState tray_Motor_Init(void);
 eTrayState tray_Move_By_Index(eTrayIndex index, uint32_t timeout);
 
 int32_t tray_Motor_Read_Position(void);
+
+void tray_Motor_EE_Mark(void);
+void tray_Motor_EE_Clear(void);
+void tray_Motor_ISR_Deal(void);
+
+void tray_Motor_Scan_Reverse_Clear(void);
+uint8_t tray_Motor_Scan_Reverse_Get(void);
 /* Private defines -----------------------------------------------------------*/
 
 #endif

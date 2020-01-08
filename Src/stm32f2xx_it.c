@@ -29,6 +29,7 @@
 #include "comm_data.h"
 #include "comm_main.h"
 #include "m_drv8824.h"
+#include "tray_run.h"
 
 /* USER CODE END Includes */
 
@@ -174,6 +175,20 @@ void DebugMon_Handler(void)
 /* For the available peripheral interrupt handler names,                      */
 /* please refer to the startup file (startup_stm32f2xx.s).                    */
 /******************************************************************************/
+
+/**
+ * @brief This function handles EXTI line2 interrupt.
+ */
+void EXTI2_IRQHandler(void)
+{
+    /* USER CODE BEGIN EXTI2_IRQn 0 */
+    tray_Motor_ISR_Deal();
+    /* USER CODE END EXTI2_IRQn 0 */
+    HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_2);
+    /* USER CODE BEGIN EXTI2_IRQn 1 */
+
+    /* USER CODE END EXTI2_IRQn 1 */
+}
 
 /**
  * @brief This function handles EXTI line4 interrupt.

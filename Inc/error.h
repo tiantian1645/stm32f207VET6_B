@@ -40,6 +40,7 @@ typedef enum {
     eError_Comm_Main_UART = 116,        /* 主串口DMA中断处理发生串口异常 */
     eError_Comm_Data_UART = 117,        /* 采样板串口DMA中断处理发生串口异常 */
     eError_Comm_Out_UART = 118,         /* 外串口DMA中断处理发生串口异常 */
+    eError_Tray_Motor_Lose = 119,       /* 托盘出仓后无命令下托盘移动到扫码光耦处 */
 
     /* 执行异常 */
     eError_Motor_Heater_Timeout_Up = 200,             /* 上加热体电机运动超时 上升方向 */

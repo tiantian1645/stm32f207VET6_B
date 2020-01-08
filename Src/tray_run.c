@@ -26,9 +26,72 @@
 static sMotorRunStatus gTray_Motor_Run_Status;
 static sMoptorRunCmdInfo gTray_Motor_Run_CMD_Info;
 
+static uint8_t gTray_Motor_Scan_EE = 0;
+static uint8_t gTray_Motor_Scan_Reverse = 0;
 /* Private function prototypes -----------------------------------------------*/
 
 /* Private user code ---------------------------------------------------------*/
+
+/**
+ * @brief  托盘电机 丢步异常使能标记
+ * @param  None
+ * @retval None
+ */
+void tray_Motor_EE_Mark(void)
+{
+    gTray_Motor_Scan_EE = 1;
+}
+
+/**
+ * @brief  托盘电机 丢步异常使能清零
+ * @param  None
+ * @retval None
+ */
+void tray_Motor_EE_Clear(void)
+{
+    gTray_Motor_Scan_EE = 0;
+}
+
+/**
+ * @brief  托盘电机 丢步异常使能获取
+ * @param  None
+ * @retval gTray_Motor_Scan_EE 大于0 返回1 其余返回 0
+ */
+uint8_t tray_Motor_EE_Get(void)
+{
+    return (gTray_Motor_Scan_EE > 0) ? (1) : (0);
+}
+
+/**
+ * @brief  托盘电机 丢步发生后反向补偿标记标记
+ * @param  None
+ * @retval None
+ */
+void tray_Motor_Scan_Reverse_Mark(void)
+{
+    gTray_Motor_Scan_Reverse = 1;
+}
+
+/**
+ * @brief  托盘电机 丢步发生后反向补偿标记清零
+ * @param  None
+ * @retval None
+ */
+void tray_Motor_Scan_Reverse_Clear(void)
+{
+    gTray_Motor_Scan_Reverse = 0;
+}
+
+/**
+ * @brief  托盘电机 丢步发生后反向补偿标记获取
+ * @param  None
+ * @retval gTray_Motor_Scan_Reverse 大于0 返回1 其余返回 0
+ */
+uint8_t tray_Motor_Scan_Reverse_Get(void)
+{
+    return (gTray_Motor_Scan_Reverse > 0) ? (1) : (0);
+}
+
 /**
  * @brief  托盘电机 获取电机运动记录中位置
  * @param  None
@@ -392,4 +455,19 @@ eTrayState tray_Move_By_Index(eTrayIndex index, uint32_t timeout)
     }
     result = tray_Motor_Run(); /* 执行电机运动 */
     return result;
+}
+
+/**
+ * @brief  扫码光耦中断处理
+ * @param  None
+ * @retval None
+ */
+void tray_Motor_ISR_Deal(void)
+{
+    if (HAL_GPIO_ReadPin(OPTSW_OUT2_GPIO_Port, OPTSW_OUT2_Pin) == GPIO_PIN_RESET) { /* 光耦被遮挡 */
+        if (tray_Motor_EE_Get()) {
+            error_Emit_FromISR(eError_Tray_Motor_Lose);
+            tray_Motor_Scan_Reverse_Mark();
+        }
+    }
 }

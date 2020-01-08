@@ -1127,9 +1127,15 @@ static void MX_GPIO_Init(void)
     /*Configure GPIO pin Output Level */
     HAL_GPIO_WritePin(STEP_DIR1_GPIO_Port, STEP_DIR1_Pin, GPIO_PIN_RESET);
 
-    /*Configure GPIO pins : OPTSW_OUT2_Pin OPTSW_OUT3_Pin OPTSW_OUT4_Pin OPTSW_OUT5_Pin
-                             OPTSW_OUT0_Pin OPTSW_OUT1_Pin */
-    GPIO_InitStruct.Pin = OPTSW_OUT2_Pin | OPTSW_OUT3_Pin | OPTSW_OUT4_Pin | OPTSW_OUT5_Pin | OPTSW_OUT0_Pin | OPTSW_OUT1_Pin;
+    /*Configure GPIO pin : OPTSW_OUT2_Pin */
+    GPIO_InitStruct.Pin = OPTSW_OUT2_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(OPTSW_OUT2_GPIO_Port, &GPIO_InitStruct);
+
+    /*Configure GPIO pins : OPTSW_OUT3_Pin OPTSW_OUT4_Pin OPTSW_OUT5_Pin OPTSW_OUT0_Pin
+                             OPTSW_OUT1_Pin */
+    GPIO_InitStruct.Pin = OPTSW_OUT3_Pin | OPTSW_OUT4_Pin | OPTSW_OUT5_Pin | OPTSW_OUT0_Pin | OPTSW_OUT1_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
     GPIO_InitStruct.Pull = GPIO_PULLUP;
     HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
@@ -1210,6 +1216,9 @@ static void MX_GPIO_Init(void)
     HAL_GPIO_Init(FRONT_STATUS_GPIO_Port, &GPIO_InitStruct);
 
     /* EXTI interrupt init*/
+    HAL_NVIC_SetPriority(EXTI2_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(EXTI2_IRQn);
+
     HAL_NVIC_SetPriority(EXTI4_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(EXTI4_IRQn);
 }
@@ -1263,7 +1272,7 @@ void temp_Log(void)
 }
 
 /**
- * @brief  ????
+ * @brief  杂项任务
  * @param  argument: Not used
  * @retval None
  */
@@ -1272,21 +1281,21 @@ static void Miscellaneous_Task(void * argument)
     TickType_t xTick;
     uint32_t cnt = 0;
 
-    temp_Start_ADC_DMA();                         /* ??ADC?? */
-    fan_Start();                                  /* ????PWM?? */
-    fan_Adjust(0.1);                              /* ??PWM??? */
-    protocol_Temp_Upload_Comm_Set(eComm_Out, 0);  /* ??????? */
-    protocol_Temp_Upload_Comm_Set(eComm_Main, 0); /* ?????? */
-    xTick = xTaskGetTickCount();                  /* ?????? */
-    vTaskDelay(30);                               /* ADC ???? */
+    temp_Start_ADC_DMA();                         /* 启动ADC转换 */
+    fan_Start();                                  /* 启动风扇PWM输出 */
+    fan_Adjust(0.1);                              /* 调整PWM占空比 */
+    protocol_Temp_Upload_Comm_Set(eComm_Out, 0);  /* 关闭外串口发送 */
+    protocol_Temp_Upload_Comm_Set(eComm_Main, 0); /* 关闭主板发送 */
+    xTick = xTaskGetTickCount();                  /* 获取系统时刻 */
+    vTaskDelay(30);                               /* ADC 转换完成 */
 
     for (;;) {
-        fan_Ctrl_Deal(temp_Get_Temp_Data_ENV()); /* ???????????? */
-        led_Out_Deal(xTick);                     /* ??LED??? */
-        protocol_Temp_Upload_Deal();             /* ???????? */
+        fan_Ctrl_Deal(temp_Get_Temp_Data_ENV()); /* 根据环境温度调整风扇输出 */
+        led_Out_Deal(xTick);                     /* 外接LED板处理 */
+        protocol_Temp_Upload_Deal();             /* 温度信息上送处理 */
 
         if (cnt % 5 == 0) {           /* 500mS */
-            led_Board_Green_Toggle(); /* ??????? */
+            led_Board_Green_Toggle(); /* 板上运行灯闪烁 */
         }
 
         vTaskDelayUntil(&xTick, 100);
@@ -1335,8 +1344,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef * htim)
 {
     /* USER CODE BEGIN Callback 0 */
     if (htim->Instance == TIM1) {
-        if (PWM_AW_IRQ_CallBcak() == 0) { /* ???? */
-            m_drv8824_release_ISR();      /* ??PWM?? */
+        if (PWM_AW_IRQ_CallBcak() == 0) { /* 运动完成 */
+            m_drv8824_release_ISR();      /* 释放PWM资源 */
         }
     }
     /* USER CODE END Callback 0 */
