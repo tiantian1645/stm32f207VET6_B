@@ -92,7 +92,6 @@ static void comm_Data_Send_Task(void * argument);
 static BaseType_t comm_Data_RecvTask_QueueEmit_ISR(uint8_t * pData, uint16_t length);
 
 static BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData);
-static BaseType_t comm_Data_Sample_Send_Clear_Conf(void);
 /* Private user code ---------------------------------------------------------*/
 
 /**
@@ -599,7 +598,7 @@ eComm_Data_Sample_Radiant comm_Data_Get_Correct_Wave(void)
  * @param  None
  * @retval pdPASS 提交成功 pdFALSE 提交失败
  */
-static BaseType_t comm_Data_Sample_Send_Clear_Conf(void)
+BaseType_t comm_Data_Sample_Send_Clear_Conf(void)
 {
     uint8_t i, sendLength, pData[30];
 

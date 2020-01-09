@@ -1114,7 +1114,9 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
             protocol_Temp_Upload_Pause();                 /* 暂停温度上送 */
             comm_Data_GPIO_Init();                        /* 初始化通讯管脚 */
             motor_fun.fun_type = eMotor_Fun_Sample_Start; /* 开始测试 */
-            motor_Emit(&motor_fun, 0);                    /* 提交到电机队列 */
+            if (motor_Emit(&motor_fun, 0) == pdTRUE) {    /* 提交到电机队列 */
+                comm_Data_Sample_Send_Clear_Conf();       /* 清除采样板上配置信息 */
+            }
             break;
         case eProtocolEmitPack_Client_CMD_ABRUPT:    /* 仪器测量取消命令帧 0x02 */
             barcode_Interrupt_Flag_Mark();           /* 标记打断扫码 */
@@ -1207,7 +1209,9 @@ void protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
             protocol_Temp_Upload_Pause();                 /* 暂停温度上送 */
             comm_Data_GPIO_Init();                        /* 初始化通讯管脚 */
             motor_fun.fun_type = eMotor_Fun_Sample_Start; /* 开始测试 */
-            motor_Emit(&motor_fun, 0);                    /* 提交到电机队列 */
+            if (motor_Emit(&motor_fun, 0) == pdTRUE) {    /* 提交到电机队列 */
+                comm_Data_Sample_Send_Clear_Conf();       /* 清除采样板上配置信息 */
+            }
             break;
         case eProtocolEmitPack_Client_CMD_ABRUPT:    /* 仪器测量取消命令帧 0x02 */
             comm_Data_Sample_Force_Stop();           /* 强行停止采样定时器 */
