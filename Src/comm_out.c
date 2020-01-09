@@ -56,6 +56,9 @@ static xQueueHandle comm_Out_Error_Info_SendQueue = NULL;
 /* 串口DMA发送资源信号量 */
 static xSemaphoreHandle comm_Out_Send_Sem = NULL;
 
+/* 串口发送任务句柄 */
+static xTaskHandle comm_Out_Send_Task_Handle = NULL;
+
 /* 串口接收ACK记录 */
 static sProcol_COMM_ACK_Record gComm_Out_ACK_Records[COMM_OUT_SEND_QUEU_LENGTH];
 
@@ -223,7 +226,7 @@ void comm_Out_Init(void)
         FL_Error_Handler(__FILE__, __LINE__);
     }
     /* 创建串口发送任务 */
-    xResult = xTaskCreate(comm_Out_Send_Task, "CommOutTX", 160, NULL, TASK_PRIORITY_COMM_OUT_TX, NULL);
+    xResult = xTaskCreate(comm_Out_Send_Task, "CommOutTX", 160, NULL, TASK_PRIORITY_COMM_OUT_TX, &comm_Out_Send_Task_Handle);
     if (xResult != pdPASS) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
@@ -378,6 +381,7 @@ BaseType_t comm_Out_Send_ACK_Give(uint8_t packIndex)
     if (idx >= ARRAY_LEN(gComm_Out_ACK_Records)) {
         idx = 0;
     }
+    xTaskNotify(comm_Out_Send_Task_Handle, packIndex, eSetValueWithOverwrite); /* 允许覆盖 */
     return pdPASS;
 }
 
@@ -388,18 +392,19 @@ BaseType_t comm_Out_Send_ACK_Give(uint8_t packIndex)
  */
 BaseType_t comm_Out_Send_ACK_Wait(uint8_t packIndex, uint32_t timeout)
 {
-    uint8_t i;
-    TickType_t tick;
+    uint8_t i, j;
+    uint32_t ulNotifyValue = 0;
 
-    tick = xTaskGetTickCount();
-    do {
+    for (j = 0; j < 2; ++j) {
+        if (xTaskNotifyWait(0, 0xFFFFFFFF, &ulNotifyValue, timeout / 2) == pdPASS && ulNotifyValue == packIndex) {
+            return pdPASS;
+        }
         for (i = 0; i < ARRAY_LEN(gComm_Out_ACK_Records); ++i) {
             if (gComm_Out_ACK_Records[i].ack_idx == packIndex) {
                 return pdPASS;
             }
         }
-        vTaskDelay(5);
-    } while (xTaskGetTickCount() - tick < timeout);
+    }
     return pdFALSE;
 }
 

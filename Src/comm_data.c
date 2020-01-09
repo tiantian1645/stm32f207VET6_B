@@ -808,12 +808,14 @@ void comm_Data_Init(void)
  */
 BaseType_t comm_Data_RecvTask_QueueEmit_ISR(uint8_t * pData, uint16_t length)
 {
-    BaseType_t xWaken = pdFALSE;
+    BaseType_t xResult, xWaken = pdFALSE;
     sComm_Data_RecvInfo recvInfo;
 
     recvInfo.length = length;
     memcpy(recvInfo.buff, pData, length);
-    return xQueueSendToBackFromISR(comm_Data_RecvQueue, &recvInfo, &xWaken);
+    xResult = xQueueSendToBackFromISR(comm_Data_RecvQueue, &recvInfo, &xWaken);
+    portYIELD_FROM_ISR(xWaken);
+    return xResult;
 }
 
 /**
@@ -870,13 +872,11 @@ BaseType_t comm_Data_Send_ACK_Give(uint8_t packIndex)
  */
 BaseType_t comm_Data_Send_ACK_Wait(uint8_t packIndex, uint32_t timeout)
 {
-    uint8_t i;
-    TickType_t tick;
+    uint8_t i, j;
     uint32_t ulNotifyValue = 0;
 
-    tick = xTaskGetTickCount();
-    do {
-        if (xTaskNotifyWait(0, 0xFFFFFFFF, &ulNotifyValue, 100) == pdPASS && ulNotifyValue == packIndex) {
+    for (j = 0; j < 2; ++j) {
+        if (xTaskNotifyWait(0, 0xFFFFFFFF, &ulNotifyValue, timeout / 2) == pdPASS && ulNotifyValue == packIndex) {
             return pdPASS;
         }
         for (i = 0; i < ARRAY_LEN(gComm_Data_ACK_Records); ++i) {
@@ -884,8 +884,7 @@ BaseType_t comm_Data_Send_ACK_Wait(uint8_t packIndex, uint32_t timeout)
                 return pdPASS;
             }
         }
-        vTaskDelay(5);
-    } while (xTaskGetTickCount() - tick < timeout);
+    }
     return pdFALSE;
 }
 
