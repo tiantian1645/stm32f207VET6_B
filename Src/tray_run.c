@@ -286,6 +286,7 @@ eTrayState tray_Motor_Run(void)
     if (gTray_Motor_Run_CMD_Info.step < 0xFFFFFF) {
         switch (gTray_Motor_Run_CMD_Info.dir) {
             case eMotorDir_REV:
+                tray_Motor_EE_Clear();                                                /* 清除托盘丢步标志位 */
                 dSPIN_Set_Param(dSPIN_MAX_SPEED, Index_1_dSPIN_CONF_PARAM_MAX_SPEED); /* 进仓恢复最大速度 */
                 dSPIN_Move(FWD, gTray_Motor_Run_CMD_Info.step);                       /* 向驱动发送指令 */
                 break;
@@ -309,6 +310,7 @@ eTrayState tray_Motor_Run(void)
         }
         dSPIN_Set_Param(dSPIN_MAX_SPEED, Index_1_dSPIN_CONF_PARAM_MAX_SPEED); /* 进仓恢复最大速度 */
 
+        tray_Motor_EE_Clear(); /* 清除托盘丢步标志位 */
         dSPIN_Move(FWD, (eTrayIndex_2 >> 5) << 3);
         xTick = xTaskGetTickCount();
         do {
@@ -388,6 +390,7 @@ eTrayState tray_Motor_Init(void)
         tray_Motor_Deal_Status();
     }
 
+    tray_Motor_EE_Clear(); /* 清除托盘丢步标志位 */
     xTick = xTaskGetTickCount();
     dSPIN_Move(FWD, (eTrayIndex_2 >> 5) << 3);
     do {
@@ -442,13 +445,12 @@ eTrayState tray_Move_By_Index(eTrayIndex index, uint32_t timeout)
             motor_CMD_Info_Set_Step(&gTray_Motor_Run_CMD_Info, 0xFFFFFF);
             break;
         case eTrayIndex_1:
+            tray_Motor_Calculate(0);                                                           /* 计算运动距离 及方向 32细分转8细分 */
+            motor_CMD_Info_Set_PF_Leave(&gTray_Motor_Run_CMD_Info, tray_Motor_Leave_On_OPT_2); /* 等待驱动状态位空闲 */
+            break;
         case eTrayIndex_2:
             tray_Motor_Calculate((index >> 5) << 3);                                              /* 计算运动距离 及方向 32细分转8细分 */
             motor_CMD_Info_Set_PF_Leave(&gTray_Motor_Run_CMD_Info, tray_Motor_Leave_On_Busy_Bit); /* 等待驱动状态位空闲 */
-            break;
-        case eTrayIndex_3:
-            tray_Motor_Calculate(0);                                                           /* 计算运动距离 及方向 32细分转8细分 */
-            motor_CMD_Info_Set_PF_Leave(&gTray_Motor_Run_CMD_Info, tray_Motor_Leave_On_OPT_2); /* 等待驱动状态位空闲 */
             break;
         default:
             return eTrayState_Error;

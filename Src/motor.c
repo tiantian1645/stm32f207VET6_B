@@ -531,7 +531,7 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
             tray_Move_By_Index(eTrayIndex_0, 5000);                                /* 复归到原点 */
             tray_Move_By_Index(eTrayIndex_2, 5000);                                /* 出仓 */
         }
-        if (tray_Move_By_Index(eTrayIndex_3, 5000) != eTrayState_OK) {                            /* 运动托盘电机 */
+        if (tray_Move_By_Index(eTrayIndex_1, 5000) != eTrayState_OK) {                            /* 运动托盘电机 */
             buffer[0] = 0x00;                                                                     /* 托盘电机运动失败 */
             comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
             comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                  /* 转发至外串口但不允许阻塞 */
@@ -705,7 +705,6 @@ static void motor_Task(void * argument)
         cnt = 0;
         switch (mf.fun_type) {
             case eMotor_Fun_In:             /* 入仓 */
-                tray_Motor_EE_Clear();      /* 清除托盘丢步标志位 */
                 if (heat_Motor_Up() != 0) { /* 抬起上加热体电机 失败 */
                     break;
                 };
@@ -717,7 +716,6 @@ static void motor_Task(void * argument)
                 tray_Motor_EE_Mark(); /* 标记托盘丢步标志位 */
                 break;
             case eMotor_Fun_Scan:           /* 扫码 */
-                tray_Motor_EE_Clear();      /* 清除托盘丢步标志位 */
                 if (heat_Motor_Up() != 0) { /* 抬起上加热体电机 失败 */
                     break;
                 };
@@ -738,7 +736,6 @@ static void motor_Task(void * argument)
                 xTick = xTaskGetTickCount();            /* 记录总体准备起始时间 */
                 comm_Data_Conf_Sem_Wait(0);             /* 清除配置信息信号量 */
                 led_Mode_Set(eLED_Mode_Kirakira_Green); /* LED 绿灯闪烁 */
-                tray_Motor_EE_Clear();                  /* 清除托盘丢步标志位 */
 
                 temperature = temp_Get_Temp_Data_BTM();         /* 读取下加热体温度 */
                 if (temperature < 36.7 || temperature > 37.3) { /* 不在范围内 */
