@@ -793,7 +793,7 @@ static void motor_Task(void * argument)
                     break;                          /* 提前结束 */
                 }
                 if (protocol_Debug_SampleBarcode() == 0) {             /* 非调试模式 */
-                    vTaskDelayUntil(&xTick, pdMS_TO_TICKS(20 * 1000)); /* 等待补全20秒 */
+                    vTaskDelayUntil(&xTick, pdMS_TO_TICKS(15 * 1000)); /* 等待补全20秒 */
                 }
                 motor_Sample_Deal();  /* 启动采样并控制白板电机 */
                 motor_Sample_Owari(); /* 清理 */

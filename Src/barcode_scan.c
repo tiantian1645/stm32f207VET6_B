@@ -534,9 +534,21 @@ eBarcodeState barcode_Motor_Run_By_Index(eBarcodeIndex index)
     motor_CMD_Info_Set_PF_Enter(&gBarcodeMotorRunCmdInfo, barcode_Motor_Enter); /* 配置启动前回调 */
     motor_CMD_Info_Set_Tiemout(&gBarcodeMotorRunCmdInfo, 1500);                 /* 运动超时时间 1500mS */
     if (index != eBarcodeIndex_0) {
-        barcode_Motor_Calculate((index >> 5) << 3);                                             /* 计算运动距离 及方向 32细分转8细分 */
+        barcode_Motor_Calculate((index >> 5) << 3);                                            /* 计算运动距离 及方向 32细分转8细分 */
+        if (gBarcodeMotorRunCmdInfo.step <= ((eBarcodeIndex_1 - eBarcodeIndex_0) >> 5) << 4) { /* 两道之内加快运动速度 */
+            dSPIN_Set_Param(dSPIN_ACC, Index_0_dSPIN_CONF_PARAM_ACC * 8 / 3);
+            dSPIN_Set_Param(dSPIN_DEC, Index_0_dSPIN_CONF_PARAM_DEC * 8 / 3);
+            dSPIN_Set_Param(dSPIN_MAX_SPEED, Index_0_dSPIN_CONF_PARAM_MAX_SPEED * 8 / 3);
+        } else {
+            dSPIN_Set_Param(dSPIN_ACC, Index_0_dSPIN_CONF_PARAM_ACC);
+            dSPIN_Set_Param(dSPIN_DEC, Index_0_dSPIN_CONF_PARAM_DEC);
+            dSPIN_Set_Param(dSPIN_MAX_SPEED, Index_0_dSPIN_CONF_PARAM_MAX_SPEED);
+        }
         motor_CMD_Info_Set_PF_Leave(&gBarcodeMotorRunCmdInfo, barcode_Motor_Leave_On_Busy_Bit); /* 等待驱动状态位空闲 */
     } else {
+        dSPIN_Set_Param(dSPIN_ACC, Index_0_dSPIN_CONF_PARAM_ACC);
+        dSPIN_Set_Param(dSPIN_DEC, Index_0_dSPIN_CONF_PARAM_DEC);
+        dSPIN_Set_Param(dSPIN_MAX_SPEED, Index_0_dSPIN_CONF_PARAM_MAX_SPEED);
         motor_CMD_Info_Set_PF_Leave(&gBarcodeMotorRunCmdInfo, barcode_Motor_Leave_On_OPT); /* 等待驱动状态位空闲 */
         motor_CMD_Info_Set_Step(&gBarcodeMotorRunCmdInfo, 0xFFFFFF);
     }
@@ -598,10 +610,10 @@ eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index)
         pResult->length = 0;
         pResult->state = eBarcodeState_Error;
     } else {
-        pResult->state = barcode_Read_From_Serial(&(pResult->length), pResult->pData + 2, max_read_length, 400);     /* 第一次扫描 */
+        pResult->state = barcode_Read_From_Serial(&(pResult->length), pResult->pData + 2, max_read_length, 360);     /* 第一次扫描 */
         if (pResult->length < 10) {                                                                                  /* 扫描结果为空 */
             vTaskDelay(100);                                                                                         /* 延时 */
-            pResult->state = barcode_Read_From_Serial(&(pResult->length), pResult->pData + 2, max_read_length, 800); /* 第二次扫描 */
+            pResult->state = barcode_Read_From_Serial(&(pResult->length), pResult->pData + 2, max_read_length, 720); /* 第二次扫描 */
         }
         if (pResult->state != eBarcodeState_Error) {
             pResult->pData[0] = idx;
