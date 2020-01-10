@@ -99,9 +99,15 @@ uint8_t protocol_has_head(uint8_t * pBuff, uint16_t length);
 uint16_t protocol_has_tail(uint8_t * pBuff, uint16_t length);
 uint8_t protocol_is_comp(uint8_t * pBuff, uint16_t length);
 BaseType_t protocol_is_NeedWaitRACK(uint8_t * pData);
+
 void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length);
+uint8_t protocol_Parse_Out_ISR(uint8_t * pInBuff, uint8_t length);
+
 void protocol_Parse_Main(uint8_t * pInBuff, uint8_t length);
+uint8_t protocol_Parse_Main_ISR(uint8_t * pInBuff, uint8_t length);
+
 void protocol_Parse_Data(uint8_t * pInBuff, uint8_t length);
+uint8_t protocol_Parse_Data_ISR(uint8_t * pInBuff, uint8_t length);
 
 void protocol_Temp_Upload_Resume(void);
 void protocol_Temp_Upload_Pause(void);

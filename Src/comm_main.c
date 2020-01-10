@@ -92,6 +92,7 @@ void comm_Main_ConfInit(void)
     vComm_Main_Serial_Record.has_tail = protocol_has_tail;
     vComm_Main_Serial_Record.is_cmop = protocol_is_comp;
     vComm_Main_Serial_Record.callback = comm_Main_RecvTask_QueueEmit_ISR;
+    vComm_Main_Serial_Record.pre_deal_callback = protocol_Parse_Main_ISR;
 }
 
 /**
@@ -323,6 +324,27 @@ BaseType_t comm_Main_SendTask_ErrorInfoQueueEmitFromISR(uint16_t * pErrorCode)
     BaseType_t xResult, xHigherPriorityTaskWoken = pdFALSE;
     xResult = xQueueSendToBackFromISR(comm_Main_Error_Info_SendQueue, pErrorCode, &xHigherPriorityTaskWoken);
     return xResult;
+}
+
+/**
+ * @brief  串口接收回应包 帧号接收 中断中处理
+ * @param  packIndex   回应包中帧号
+ * @retval 加入发送队列结果
+ */
+BaseType_t comm_Main_Send_ACK_Give_From_ISR(uint8_t packIndex)
+{
+    static uint8_t idx = 0;
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+    gComm_Main_ACK_Records[idx].tick = xTaskGetTickCountFromISR();
+    gComm_Main_ACK_Records[idx].ack_idx = packIndex;
+    ++idx;
+    if (idx >= ARRAY_LEN(gComm_Main_ACK_Records)) {
+        idx = 0;
+    }
+    xTaskNotifyFromISR(comm_Main_Send_Task_Handle, packIndex, eSetValueWithOverwrite, &xHigherPriorityTaskWoken); /* 允许覆盖 */
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    return pdPASS;
 }
 
 /**

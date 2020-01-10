@@ -695,6 +695,27 @@ void protocol_Self_Check_Temp_ENV(uint8_t * pBuffer)
 }
 
 /**
+ * @brief  外串口解析协议 预过滤处理
+ * @param  pInBuff 入站指针
+ * @param  length 入站长度
+ * @param  pOutBuff 出站指针
+ * @retval None
+ */
+uint8_t protocol_Parse_Out_ISR(uint8_t * pInBuff, uint8_t length)
+{
+    if (pInBuff[4] == PROTOCOL_DEVICE_ID_CTRL) { /* 回声现象 */
+        return 0;
+    }
+    protocol_Temp_Upload_Comm_Set(eComm_Out, 1); /* 通讯接收成功 使能本串口温度上送 */
+
+    if (pInBuff[5] == eProtocolRespPack_Client_ACK) { /* 收到对方回应帧 */
+        comm_Out_Send_ACK_Give_From_ISR(pInBuff[6]);  /* 通知串口发送任务 回应包收到 */
+        return 0;                                     /* 直接返回 */
+    }
+    return 1;
+}
+
+/**
  * @brief  外串口解析协议
  * @param  pInBuff 入站指针
  * @param  length 入站长度
@@ -708,16 +729,6 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
     uint8_t result;
     sMotor_Fun motor_fun;
     float temp;
-
-    if (pInBuff[4] == PROTOCOL_DEVICE_ID_CTRL) { /* 回声现象 */
-        return;
-    }
-
-    protocol_Temp_Upload_Comm_Set(eComm_Out, 1);      /* 通讯接收成功 使能本串口温度上送 */
-    if (pInBuff[5] == eProtocolRespPack_Client_ACK) { /* 收到对方回应帧 */
-        comm_Out_Send_ACK_Give(pInBuff[6]);           /* 通知串口发送任务 回应包收到 */
-        return;                                       /* 直接返回 */
-    }
 
     if (pInBuff[4] == PROTOCOL_DEVICE_ID_SAMP) {             /* ID为数据板的数据包 直接透传 调试用 */
         pInBuff[4] = PROTOCOL_DEVICE_ID_CTRL;                /* 修正装置ID */
@@ -1179,6 +1190,27 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
 }
 
 /**
+ * @brief  上位机解析协议 预过滤处理
+ * @param  pInBuff 入站指针
+ * @param  length 入站长度
+ * @param  pOutBuff 出站指针
+ * @retval None
+ */
+uint8_t protocol_Parse_Main_ISR(uint8_t * pInBuff, uint8_t length)
+{
+    if (pInBuff[4] == PROTOCOL_DEVICE_ID_CTRL) { /* 回声现象 */
+        return 0;
+    }
+    protocol_Temp_Upload_Comm_Set(eComm_Main, 1); /* 通讯接收成功 使能本串口温度上送 */
+
+    if (pInBuff[5] == eProtocolRespPack_Client_ACK) { /* 收到对方回应帧 */
+        comm_Main_Send_ACK_Give_From_ISR(pInBuff[6]); /* 通知串口发送任务 回应包收到 */
+        return 0;                                     /* 直接返回 */
+    }
+    return 1;
+}
+
+/**
  * @brief  上位机解析协议
  * @param  pInBuff 入站指针
  * @param  length 入站长度
@@ -1190,17 +1222,6 @@ void protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
     uint8_t result;
     sMotor_Fun motor_fun;
     float temp;
-
-    if (pInBuff[4] == PROTOCOL_DEVICE_ID_CTRL) { /* 回声现象 */
-        return;
-    }
-
-    if (pInBuff[5] == eProtocolRespPack_Client_ACK) { /* 收到对方回应帧 */
-        comm_Main_Send_ACK_Give(pInBuff[6]);          /* 通知串口发送任务 回应包收到 */
-        return;                                       /* 直接返回 */
-    }
-
-    protocol_Temp_Upload_Comm_Set(eComm_Main, 1); /* 通讯接收成功 使能本串口温度上送 */
 
     protocol_Parse_AnswerACK(eComm_Main, pInBuff[3]);     /* 发送回应包 */
     switch (pInBuff[5]) {                                 /* 进一步处理 功能码 */
@@ -1269,6 +1290,27 @@ void protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
 }
 
 /**
+ * @brief  采样板解析协议 预过滤处理
+ * @param  pInBuff 入站指针
+ * @param  length 入站长度
+ * @param  pOutBuff 出站指针
+ * @retval None
+ */
+uint8_t protocol_Parse_Data_ISR(uint8_t * pInBuff, uint8_t length)
+{
+    if (pInBuff[4] == PROTOCOL_DEVICE_ID_CTRL) { /* 回声现象 */
+        return 0;
+    }
+    protocol_Temp_Upload_Comm_Set(eComm_Main, 1); /* 通讯接收成功 使能本串口温度上送 */
+
+    if (pInBuff[5] == eProtocolRespPack_Client_ACK) { /* 收到对方回应帧 */
+        comm_Data_Send_ACK_Give_From_ISR(pInBuff[6]); /* 通知串口发送任务 回应包收到 */
+        return 0;                                     /* 直接返回 */
+    }
+    return 1;
+}
+
+/**
  * @brief  采样板解析协议
  * @param  pInBuff 入站指针
  * @param  length 入站长度
@@ -1279,15 +1321,6 @@ void protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
 {
     static uint8_t last_ack = 0;
     uint8_t data_length;
-
-    if (pInBuff[4] == PROTOCOL_DEVICE_ID_CTRL) { /* 回声现象 */
-        return;
-    }
-
-    if (pInBuff[5] == eProtocolRespPack_Client_ACK) { /* 收到对方回应帧 */
-        comm_Data_Send_ACK_Give(pInBuff[6]);          /* 通知串口发送任务 回应包收到 */
-        return;                                       /* 直接返回 */
-    }
 
     protocol_Parse_AnswerACK(eComm_Data, pInBuff[3]); /* 发送回应包 */
     if (last_ack == pInBuff[3]) {                     /* 收到与上一帧号相同帧 */

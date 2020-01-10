@@ -56,6 +56,7 @@ BaseType_t comm_Out_SendTask_ErrorInfoQueueEmit(uint16_t * pErrorCode, uint32_t 
 BaseType_t comm_Out_SendTask_ErrorInfoQueueEmitFromISR(uint16_t * pErrorCode);
 
 BaseType_t comm_Out_Send_ACK_Give(uint8_t packIndex);
+BaseType_t comm_Out_Send_ACK_Give_From_ISR(uint8_t packIndex);
 
 /* Private defines -----------------------------------------------------------*/
 
