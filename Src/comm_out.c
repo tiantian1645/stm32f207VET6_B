@@ -390,24 +390,6 @@ BaseType_t comm_Out_Send_ACK_Give_From_ISR(uint8_t packIndex)
 }
 
 /**
- * @brief  串口接收回应包 帧号接收
- * @param  packIndex   回应包中帧号
- * @retval 加入发送队列结果
- */
-BaseType_t comm_Out_Send_ACK_Give(uint8_t packIndex)
-{
-    static uint8_t idx = 0;
-    gComm_Out_ACK_Records[idx].tick = xTaskGetTickCount();
-    gComm_Out_ACK_Records[idx].ack_idx = packIndex;
-    ++idx;
-    if (idx >= ARRAY_LEN(gComm_Out_ACK_Records)) {
-        idx = 0;
-    }
-    xTaskNotify(comm_Out_Send_Task_Handle, packIndex, eSetValueWithOverwrite); /* 允许覆盖 */
-    return pdPASS;
-}
-
-/**
  * @brief  串口接收回应包收到处理
  * @param  packIndex   回应包中帧号
  * @retval 加入发送队列结果

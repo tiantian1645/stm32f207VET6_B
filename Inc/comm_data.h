@@ -94,7 +94,6 @@ void comm_Data_DMA_TX_Error(void);
 BaseType_t comm_Data_SendTask_QueueEmit(uint8_t * pdata, uint8_t length, uint32_t timeout);
 #define comm_Data_SendTask_QueueEmitCover(pdata, length) comm_Data_SendTask_QueueEmit((pdata), (length), (COMM_DATA_SER_TX_RETRY_SUM))
 
-BaseType_t comm_Data_Send_ACK_Give(uint8_t packIndex);
 BaseType_t comm_Data_Send_ACK_Give_From_ISR(uint8_t packIndex);
 
 uint8_t gComm_Data_Sample_Max_Point_Get(void);
