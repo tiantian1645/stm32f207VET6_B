@@ -1301,7 +1301,6 @@ uint8_t protocol_Parse_Data_ISR(uint8_t * pInBuff, uint8_t length)
     if (pInBuff[4] == PROTOCOL_DEVICE_ID_CTRL) { /* 回声现象 */
         return 0;
     }
-    protocol_Temp_Upload_Comm_Set(eComm_Main, 1); /* 通讯接收成功 使能本串口温度上送 */
 
     if (pInBuff[5] == eProtocolRespPack_Client_ACK) { /* 收到对方回应帧 */
         comm_Data_Send_ACK_Give_From_ISR(pInBuff[6]); /* 通知串口发送任务 回应包收到 */

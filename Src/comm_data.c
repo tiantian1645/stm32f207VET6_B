@@ -204,7 +204,7 @@ void comm_Data_ConfInit(void)
     vComm_Data_Serial_Record.has_tail = protocol_has_tail;
     vComm_Data_Serial_Record.is_cmop = protocol_is_comp;
     vComm_Data_Serial_Record.callback = comm_Data_RecvTask_QueueEmit_ISR;
-    vComm_Data_Serial_Record.pre_deal_callback = protocol_Parse_Out_ISR;
+    vComm_Data_Serial_Record.pre_deal_callback = protocol_Parse_Data_ISR;
 }
 
 /**
