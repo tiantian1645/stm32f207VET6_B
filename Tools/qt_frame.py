@@ -1,6 +1,6 @@
 # http://doc.qt.io/qt-5/qt.html
 
-import json
+import simplejson
 import os
 import queue
 import random
@@ -86,19 +86,20 @@ HEATER_PID_PS = [1, 100, 0.01, 1, 1, 1]
 
 logger = loguru.logger
 
-
+ICON_PATH = "./icos/tt.ico"
+FLASH_CONF_DATA_PATH = "./data/flash.json"
 CONFIG_PATH = "./conf/config.json"
 CONFIG = dict()
 try:
-    with open(CONFIG_PATH, "r") as f:
-        CONFIG = json.load(f)
+    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+        CONFIG = simplejson.load(f)
 except Exception:
     logger.error(f"load conf failed \n{stackprinter.format()}")
     CONFIG = dict()
     CONFIG["log"] = dict(rotation="1 MB", retention=50)
     try:
-        with open(CONFIG_PATH, "w") as f:
-            json.dump(CONFIG, f)
+        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+            simplejson.dump(CONFIG, f)
     except Exception:
         logger.error(f"dump conf failed \n{stackprinter.format()}")
 
@@ -232,8 +233,7 @@ class MainWindow(QMainWindow):
 
         layout.addLayout(right_ly, stretch=0)
         layout.addWidget(self.matplot_wg, stretch=1)
-        image_path = "./icos/tt.ico"
-        self.setWindowIcon(QIcon(image_path))
+        self.setWindowIcon(QIcon(ICON_PATH))
         self.setCentralWidget(widget)
         self.resize(1024, 587)
 
@@ -1018,9 +1018,7 @@ class MainWindow(QMainWindow):
             std = np.std(ys)
             mean = np.mean(ys)
             cv = std / mean
-            data_infos.append(
-                f"通道 {sd.channel} | {data_format_list(real_data)} | (cv = {cv:.4f}, std = {std:.4f}, mean = {mean:.4f})"
-            )
+            data_infos.append(f"通道 {sd.channel} | {data_format_list(real_data)} | (cv = {cv:.4f}, std = {std:.4f}, mean = {mean:.4f})")
         # https://stackoverflow.com/a/10977872
         font = QFont("Consolas")
         font.setFixedPitch(True)
@@ -1764,40 +1762,35 @@ class MainWindow(QMainWindow):
         out_flash_data_ly = QVBoxLayout(self.out_flash_data_dg)
         self.out_flash_data_te = QTextEdit()
         out_flash_temp_ly = QHBoxLayout()
-        self.out_flash_data_addr = QSpinBox()
-        self.out_flash_data_addr.setRange(0, 8 * 2 ** 20)
-        self.out_flash_data_addr.setMaximumWidth(90)
-        self.out_flash_data_addr.setValue(4096)
-        self.out_flash_data_num = QSpinBox()
-        self.out_flash_data_num.setRange(0, 8 * 2 ** 20)
-        self.out_flash_data_num.setMaximumWidth(90)
-        self.out_flash_data_num.setValue(668)
-        self.out_flash_data_read_bt = QPushButton("读取")
-        out_flash_temp_ly.addWidget(QLabel("地址"))
+        self.out_flash_data_addr = QSpinBox(minimum=0, maximum=8 * 2 ** 20, maximumWidth=90, value=4096)
+        self.out_flash_data_num = QSpinBox(minimum=0, maximum=8 * 2 ** 20, maximumWidth=90, value=668)
+        self.out_flash_data_read_bt = QPushButton("读取", clicked=self.onOutFlashRead, maximumWidth=90)
+
+        out_flash_temp_ly.addWidget(QLabel("地址", maximumWidth=60))
         out_flash_temp_ly.addWidget(self.out_flash_data_addr)
-        out_flash_temp_ly.addWidget(QLabel("数量"))
+        out_flash_temp_ly.addWidget(QLabel("数量", maximumWidth=60))
         out_flash_temp_ly.addWidget(self.out_flash_data_num)
+        out_flash_temp_ly.addSpacing(2)
         out_flash_temp_ly.addWidget(self.out_flash_data_read_bt)
 
         out_flash_param_gb = QGroupBox("系统参数")
         out_flash_param_ly = QVBoxLayout(out_flash_param_gb)
         out_flash_param_ly.setSpacing(5)
-        self.out_flash_param_temp_sps = [QDoubleSpinBox(self) for _ in range(11)]
-        self.out_flash_param_read_bt = QPushButton("读取")
-        self.out_flash_param_write_bt = QPushButton("写入")
-        self.out_flash_param_clear_o_bt = QPushButton("清除测试点")
-        self.out_flash_param_clear_s_bt = QPushButton("清除标准点")
-        self.out_flash_param_clear_s_d_bt = QPushButton("预设标准点")
+        self.out_flash_param_temp_sps = [
+            QDoubleSpinBox(self, maximumWidth=90, minimum=-5, maximum=5, decimals=3, singleStep=0.035, suffix="℃") for _ in range(11)
+        ]
+        self.out_flash_param_read_bt = QPushButton("读取", clicked=self.onOutFlashParamRead, maximumWidth=90)
+        self.out_flash_param_write_bt = QPushButton("写入", clicked=self.onOutFlashParamWrite, maximumWidth=90)
+        self.out_flash_param_clear_o_bt = QPushButton("清除测试点", clicked=self.onOutFlashParamCC_O, maximumWidth=120)
+        self.out_flash_param_clear_s_bt = QPushButton("清除标准点", clicked=self.onOutFlashParamCC_S, maximumWidth=120)
+        self.out_flash_param_clear_s_d_bt = QPushButton("预设标准点", clicked=self.onOutFlashParamCC_S_D, maximumWidth=120)
+        self.out_flash_param_dump_bt = QPushButton("Dump", clicked=self.onOutFlashParamCC_Dump, maximumWidth=90)
+        self.out_flash_param_load_bt = QPushButton("Load", clicked=self.onOutFlashParamCC_Load, maximumWidth=90)
 
         out_flash_param_temp_cc_wg = QGroupBox("温度校正参数")
         out_flash_param_temp_cc_ly = QGridLayout(out_flash_param_temp_cc_wg)
 
         for i, sp in enumerate(self.out_flash_param_temp_sps):
-            sp.setMaximumWidth(90)
-            sp.setRange(-5, 5)
-            sp.setDecimals(3)
-            sp.setSingleStep(0.035)
-            sp.setSuffix("℃")
             temp_ly = QHBoxLayout()
             temp_ly.setContentsMargins(5, 0, 5, 0)
             temp_ly.setSpacing(5)
@@ -1815,11 +1808,7 @@ class MainWindow(QMainWindow):
 
         out_flash_param_od_cc_wg = QGroupBox("OD校正参数")
         out_flash_param_od_cc_ly = QVBoxLayout(out_flash_param_od_cc_wg)
-        self.out_flash_param_cc_sps = [QDoubleSpinBox(self) for _ in range(156)]
-        for idx, sp in enumerate(self.out_flash_param_cc_sps):
-            sp.setRange(0, 99999999)
-            sp.setDecimals(0)
-            sp.setValue(idx)
+        self.out_flash_param_cc_sps = [QDoubleSpinBox(self, minimum=0, maximum=99999999, decimals=0, value=i) for i in range(156)]
         for i in range(6):
             if i == 0:
                 pp = 3
@@ -1855,15 +1844,11 @@ class MainWindow(QMainWindow):
         temp_ly.addWidget(self.out_flash_param_clear_o_bt)
         temp_ly.addWidget(self.out_flash_param_clear_s_bt)
         temp_ly.addWidget(self.out_flash_param_clear_s_d_bt)
+        temp_ly.addWidget(self.out_flash_param_dump_bt)
+        temp_ly.addWidget(self.out_flash_param_load_bt)
         out_flash_data_ly.addLayout(temp_ly)
 
-        self.out_flash_data_read_bt.clicked.connect(self.onOutFlashRead)
-        self.out_flash_param_read_bt.clicked.connect(self.onOutFlashParamRead)
-        self.out_flash_param_write_bt.clicked.connect(self.onOutFlashParamWrite)
         self.out_flash_data_dg = ModernDialog(self.out_flash_data_dg, self)
-        self.out_flash_param_clear_o_bt.clicked.connect(self.onOutFlashParamCC_O)
-        self.out_flash_param_clear_s_bt.clicked.connect(self.onOutFlashParamCC_S)
-        self.out_flash_param_clear_s_d_bt.clicked.connect(self.onOutFlashParamCC_S_D)
 
     def onOutFlashParamCC_O(self, event):
         for idx, sp in enumerate(self.out_flash_param_cc_sps):
@@ -1882,6 +1867,58 @@ class MainWindow(QMainWindow):
                     sp.setValue(0)
                 else:
                     sp.setValue(50 + (idx % 12) * 2000)
+
+    def onOutFlashParamCC_Dump(self, event):
+        with open(FLASH_CONF_DATA_PATH, "w", encoding="utf-8") as f:
+            data = dict(
+                cc_temp_tops=[s.value() for s in self.out_flash_param_temp_sps[:6]],
+                cc_temp_btms=[s.value() for s in self.out_flash_param_temp_sps[6:8]],
+                cc_temp_env=[s.value() for s in self.out_flash_param_temp_sps[8:9]],
+                cc_heaters=[s.value() for s in self.out_flash_param_temp_sps[9:]],
+            )
+            chanel_d = dict()
+            for c in range(6):  # channel
+                waves = 3 if c == 0 else 2
+                c_idx = c * 24 + 12 - (12 if c == 0 else 0)
+                chanel_d[f"CH-{c+1}"] = dict()
+                for w in range(waves):  # 610 550 405?
+                    pairs = []
+                    w_idx = c_idx + 12 * w
+                    for s in range(6):  # s1 ~ s6
+                        idx = w_idx + s
+                        theo = self.out_flash_param_cc_sps[idx].value()
+                        test = self.out_flash_param_cc_sps[idx + 6].value()
+                        pairs.append((theo, test))
+                    chanel_d[f"CH-{c+1}"][("610", "550", "405")[w]] = pairs
+            data["cc_ts"] = chanel_d
+            simplejson.dump(data, f)
+
+    def onOutFlashParamCC_Load(self, event):
+        with open(FLASH_CONF_DATA_PATH, "r", encoding="utf-8") as f:
+            try:
+                data = simplejson.load(f, encoding="utf-8")
+                for i, s in enumerate(self.out_flash_param_temp_sps[:6]):
+                    s.setValue(data["cc_temp_tops"][i])
+                for i, s in enumerate(self.out_flash_param_temp_sps[6:8]):
+                    s.setValue(data["cc_temp_btms"][i])
+                for i, s in enumerate(self.out_flash_param_temp_sps[8:9]):
+                    s.setValue(data["cc_temp_env"][i])
+                for i, s in enumerate(self.out_flash_param_temp_sps[9:]):
+                    s.setValue(data["cc_heaters"][i])
+                for c in range(6):  # channel
+                    data_c = data["cc_ts"][f"CH-{c + 1}"]
+                    waves = 3 if c == 0 else 2
+                    c_idx = c * 24 + 12 - (12 if c == 0 else 0)
+                    for w in range(waves):  # 610 550 405?
+                        w_idx = c_idx + 12 * w
+                        data_c_w = data_c[("610", "550", "405")[w]]
+                        for s in range(6):  # s1 ~ s6
+                            idx = w_idx + s
+                            data_c_w_p = data_c_w[s]
+                            self.out_flash_param_cc_sps[idx].setValue(data_c_w_p[0])
+                            self.out_flash_param_cc_sps[idx + 6].setValue(data_c_w_p[1])
+            except Exception:
+                logger.error(f"load json exception\n{stackprinter.format()}")
 
     def onOutFlashParamRead(self, event):
         data = (*(struct.pack("H", 0)), *(struct.pack("H", 167)))
@@ -2197,6 +2234,7 @@ if __name__ == "__main__":
         window = qtmodern.windows.ModernWindow(window)
 
         window.show()
+        app.setWindowIcon(QIcon(ICON_PATH))
         app.exec_()
     except Exception:
         logger.error(f"exception in main loop \n{stackprinter.format()}")
