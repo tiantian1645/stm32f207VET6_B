@@ -7,7 +7,7 @@ a = Analysis(['qt_frame.py'],
              pathex=['C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Tools'],
              binaries=[],
              datas=[],
-             hiddenimports=['sqlalchemy.ext.baked'],
+             hiddenimports=['sqlalchemy.ext.baked', 'simplejson'],
              hookspath=[],
              runtime_hooks=[],
              excludes=[],
@@ -20,6 +20,7 @@ a.datas += [('.\\icos\\tt.ico', 'C:\\Users\\Administrator\\STM32CubeIDE\\workspa
 a.datas += [('.\\log\\dc201.log', 'C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Tools\\log\\dc201.log', 'DATA')]
 a.datas += [('.\\conf\\config.json', 'C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Tools\\conf\\config.json', 'DATA')]
 a.datas += [('.\\data\\db.sqlite3', 'C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Tools\\data\\db.sqlite3', 'DATA')]
+a.datas += [('.\\data\\flash.json', 'C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Tools\\data\\flash.json', 'DATA')]
 a.datas += [('.\\qtmodern\\resources\\frameless.qss', 'C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Tools\\venv\\Lib\\site-packages\\qtmodern\\resources\\frameless.qss', 'DATA')]
 a.datas += [('.\\qtmodern\\resources\\style.qss', 'C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Tools\\venv\\Lib\\site-packages\\qtmodern\\resources\\style.qss', 'DATA')]
 
