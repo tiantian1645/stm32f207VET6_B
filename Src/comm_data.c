@@ -1028,7 +1028,7 @@ void comm_Data_ISR_Deal(void)
     } else {                                                                             /* 下降沿 采样板采样完成 */
         if (comm_Data_Stary_Test_Is_Running()) {                                         /* 判断是否处于杂散光测试中 */
             motor_Sample_Info_From_ISR(eMotorNotifyValue_SP);                            /* 通知电机任务杂散光测试完成 */
-        } else {                                                                         /* 非杂散光测试 */
+        } else if (gComm_Data_TIM_StartFlag_Check()) {                                   /* 定时器未停止 采样进行中 */
             if (gComm_Data_Sample_Pair_Cnt_Get() >= gComm_Data_Sample_Max_Point_Get()) { /* 采样对次数 大于等于 最大点数 */
                 gComm_Data_Sample_PD_WH_Idx_Clear();                                     /* 标记采样对完成 */
                 comm_Data_sample_Stop();                                                 /* 停止白板定时器 终止测试 */

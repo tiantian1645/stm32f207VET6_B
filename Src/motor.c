@@ -453,6 +453,10 @@ BaseType_t motor_Sample_Info_ISR(eMotorNotifyValue info)
  */
 BaseType_t motor_Sample_Info(eMotorNotifyValue info)
 {
+    if (motor_Task_Handle == NULL) {
+        return pdFAIL;
+    }
+
     if (xTaskNotify(motor_Task_Handle, info, eSetValueWithoutOverwrite) != pdPASS) {
         error_Emit(eError_Motor_Notify_No_Read);
         return pdFALSE;
@@ -468,6 +472,10 @@ BaseType_t motor_Sample_Info(eMotorNotifyValue info)
 BaseType_t motor_Sample_Info_From_ISR(eMotorNotifyValue info)
 {
     BaseType_t xk = pdFALSE;
+
+    if (motor_Task_Handle == NULL) {
+        return pdFAIL;
+    }
 
     if (xTaskNotifyFromISR(motor_Task_Handle, info, eSetValueWithoutOverwrite, &xk) != pdPASS) {
         error_Emit_FromISR(eError_Motor_Notify_No_Read);

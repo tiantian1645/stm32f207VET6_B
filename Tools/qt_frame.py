@@ -2197,7 +2197,7 @@ class MainWindow(QMainWindow):
         msg.setIcon(level)
         msg.setWindowTitle(f"故障信息 | {datetime.now()}")
         msg.setText(f"故障码 {error_code}\n{error_content}")
-        msg.exec_()
+        msg.show()
 
 
 if __name__ == "__main__":
