@@ -379,7 +379,6 @@ void motor_Sample_Deal(void)
         }
         if (xNotifyValue == eMotorNotifyValue_TG) {                 /* 本次采集完成 */
             if (gComm_Data_Sample_PD_WH_Idx_Get() == 1) {           /* 当前检测白物质 */
-                comm_Data_sample_Start_PD();                        /* 启动PD定时器 */
                 white_Motor_PD();                                   /* 运动白板电机 PD位置 */
             } else if (gComm_Data_Sample_PD_WH_Idx_Get() == 2) {    /* 当前检测PD */
                 white_Motor_WH();                                   /* 运动白板电机 白物质位置 */

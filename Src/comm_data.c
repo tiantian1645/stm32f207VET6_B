@@ -1036,6 +1036,9 @@ void comm_Data_ISR_Deal(void)
                 gComm_Data_TIM_StartFlag_Clear();                                        /* 清除测试中标志位 */
             }
             motor_Sample_Info_From_ISR(eMotorNotifyValue_TG); /* 通知电机任务采样完成 */
+            if (gComm_Data_Sample_PD_WH_Idx_Get() == 1) {     /* 当前检测白物质 */
+                comm_Data_sample_Start_PD();                  /* 启动PD定时器 */
+            }
         }
     }
 }
