@@ -536,9 +536,9 @@ eBarcodeState barcode_Motor_Run_By_Index(eBarcodeIndex index)
     if (index != eBarcodeIndex_0) {
         barcode_Motor_Calculate((index >> 5) << 3);                                            /* 计算运动距离 及方向 32细分转8细分 */
         if (gBarcodeMotorRunCmdInfo.step <= ((eBarcodeIndex_1 - eBarcodeIndex_0) >> 5) << 4) { /* 两道之内加快运动速度 */
-            dSPIN_Set_Param(dSPIN_ACC, Index_0_dSPIN_CONF_PARAM_ACC * 8 / 3);
-            dSPIN_Set_Param(dSPIN_DEC, Index_0_dSPIN_CONF_PARAM_DEC * 8 / 3);
-            dSPIN_Set_Param(dSPIN_MAX_SPEED, Index_0_dSPIN_CONF_PARAM_MAX_SPEED * 8 / 3);
+            dSPIN_Set_Param(dSPIN_ACC, Index_0_dSPIN_CONF_PARAM_ACC * 8 / 4);
+            dSPIN_Set_Param(dSPIN_DEC, Index_0_dSPIN_CONF_PARAM_DEC * 8 / 4);
+            dSPIN_Set_Param(dSPIN_MAX_SPEED, Index_0_dSPIN_CONF_PARAM_MAX_SPEED * 10 / 8);
         } else {
             dSPIN_Set_Param(dSPIN_ACC, Index_0_dSPIN_CONF_PARAM_ACC);
             dSPIN_Set_Param(dSPIN_DEC, Index_0_dSPIN_CONF_PARAM_DEC);
