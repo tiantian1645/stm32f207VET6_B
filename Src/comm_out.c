@@ -26,9 +26,9 @@ extern DMA_HandleTypeDef hdma_uart5_rx;
 #define COMM_OUT_SERIAL_INDEX eSerialIndex_5
 #define COMM_OUT_UART_HANDLE huart5
 
-#define COMM_OUT_RECV_QUEU_LENGTH 3
 #define COMM_OUT_SEND_QUEU_LENGTH 12
 #define COMM_OUT_ERROR_SEND_QUEU_LENGTH 16
+#define COMM_OUT_ACK_SEND_QUEU_LENGTH 6
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -46,12 +46,10 @@ static uint8_t gComm_Out_RX_dma_buffer[COMM_OUT_DMA_RX_SIZE];
 /* DMA 接收后 提交到串口拼包缓存 */
 static uint8_t gComm_Out_RX_serial_buffer[COMM_OUT_SER_RX_SIZE];
 
-/* 串口接收队列 */
-static xQueueHandle comm_Out_RecvQueue = NULL;
-
 /* 串口发送队列 */
 static xQueueHandle comm_Out_SendQueue = NULL;
 static xQueueHandle comm_Out_Error_Info_SendQueue = NULL;
+static xQueueHandle comm_Out_ACK_SendQueue = NULL;
 
 /* 串口DMA发送资源信号量 */
 static xSemaphoreHandle comm_Out_Send_Sem = NULL;
@@ -71,10 +69,7 @@ static uint8_t gSendInfoTempLock = 0;
 /* Private constants ---------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
-static void comm_Out_Recv_Task(void * argument);
 static void comm_Out_Send_Task(void * argument);
-
-static BaseType_t comm_Out_RecvTask_QueueEmit_ISR(uint8_t * pData, uint16_t length);
 
 /* Private user code ---------------------------------------------------------*/
 
@@ -97,8 +92,7 @@ void comm_Out_ConfInit(void)
     vComm_Out_Serial_Record.has_head = protocol_has_head;
     vComm_Out_Serial_Record.has_tail = protocol_has_tail;
     vComm_Out_Serial_Record.is_cmop = protocol_is_comp;
-    vComm_Out_Serial_Record.callback = comm_Out_RecvTask_QueueEmit_ISR;
-    vComm_Out_Serial_Record.pre_deal_callback = protocol_Parse_Out_ISR;
+    vComm_Out_Serial_Record.callback = protocol_Parse_Out_ISR;
 }
 
 /**
@@ -192,12 +186,6 @@ void comm_Out_Init(void)
 
     comm_Out_ConfInit();
 
-    /* 接收队列 */
-    comm_Out_RecvQueue = xQueueCreate(COMM_OUT_RECV_QUEU_LENGTH, sizeof(sComm_Out_RecvInfo));
-    if (comm_Out_RecvQueue == NULL) {
-        FL_Error_Handler(__FILE__, __LINE__);
-    }
-
     /* DMA 发送资源信号量*/
     comm_Out_Send_Sem = xSemaphoreCreateBinary();
     if (comm_Out_Send_Sem == NULL) {
@@ -215,43 +203,25 @@ void comm_Out_Init(void)
     if (comm_Out_Error_Info_SendQueue == NULL) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
+    /* 发送队列 ACK专用 */
+    comm_Out_ACK_SendQueue = xQueueCreate(COMM_OUT_ACK_SEND_QUEU_LENGTH, sizeof(uint8_t));
+    if (comm_Out_ACK_SendQueue == NULL) {
+        FL_Error_Handler(__FILE__, __LINE__);
+    }
 
     /* Start DMA */
     if (HAL_UART_Receive_DMA(&COMM_OUT_UART_HANDLE, gComm_Out_RX_dma_buffer, ARRAY_LEN(gComm_Out_RX_dma_buffer)) != HAL_OK) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
 
-    /* 创建串口接收任务 */
-    xResult = xTaskCreate(comm_Out_Recv_Task, "CommOutRX", 256, NULL, TASK_PRIORITY_COMM_OUT_RX, NULL);
-    if (xResult != pdPASS) {
-        FL_Error_Handler(__FILE__, __LINE__);
-    }
     /* 创建串口发送任务 */
-    xResult = xTaskCreate(comm_Out_Send_Task, "CommOutTX", 160, NULL, TASK_PRIORITY_COMM_OUT_TX, &comm_Out_Send_Task_Handle);
+    xResult = xTaskCreate(comm_Out_Send_Task, "CommOutTX", 256, NULL, TASK_PRIORITY_COMM_OUT_TX, &comm_Out_Send_Task_Handle);
     if (xResult != pdPASS) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
 
     /* 使能串口空闲中断 */
     __HAL_UART_ENABLE_IT(&COMM_OUT_UART_HANDLE, UART_IT_IDLE);
-}
-
-/**
- * @brief  加入串口接收队列
- * @param  pData   数据指针
- * @param  length  数据长度
- * @retval 加入发送队列结果
- */
-BaseType_t comm_Out_RecvTask_QueueEmit_ISR(uint8_t * pData, uint16_t length)
-{
-    BaseType_t xResult, xWaken = pdFALSE;
-    sComm_Out_RecvInfo recvInfo;
-
-    recvInfo.length = length;
-    memcpy(recvInfo.buff, pData, length);
-    xResult = xQueueSendToBackFromISR(comm_Out_RecvQueue, &recvInfo, &xWaken);
-    portYIELD_FROM_ISR(xWaken);
-    return xResult;
 }
 
 /**
@@ -296,6 +266,37 @@ BaseType_t comm_Out_SendTask_QueueEmit(uint8_t * pData, uint8_t length, uint32_t
 }
 
 /**
+ * @brief  加入串口发送队列
+ * @param  pData   数据指针
+ * @param  length  数据长度
+ * @retval 加入发送队列结果
+ */
+BaseType_t comm_Out_SendTask_QueueEmit_FromISR(uint8_t * pData, uint8_t length)
+{
+    BaseType_t xResult, xHigherPriorityTaskWoken = pdFALSE;
+
+    if (length == 0 || pData == NULL) {
+        return pdFALSE;
+    }
+
+    if (gSendInfoTempLock == 1) { /* 重入判断 占用中 */
+        return pdFALSE;
+    } else {
+        gSendInfoTempLock = 1; /* 标识占用中 */
+    }
+
+    memcpy(gSendInfoTemp.buff, pData, length);
+    gSendInfoTemp.length = length;
+    xResult = xQueueSendToBackFromISR(comm_Out_SendQueue, &gSendInfoTemp, &xHigherPriorityTaskWoken);
+    gSendInfoTempLock = 0; /* 解除占用标识 */
+    if (xResult != pdPASS) {
+        error_Emit_FromISR(eError_Comm_Out_Busy);
+    }
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    return xResult;
+}
+
+/**
  * @brief  加入串口发送队列 用于发送相同内容 不同通道 修改
  * @note   只需要修改数组第3位 帧号  其余 第4位 ID 最后一位 CRC 均不需他要修改
  * @param  pData   数据指针
@@ -329,6 +330,39 @@ BaseType_t comm_Out_SendTask_QueueEmitWithModify(uint8_t * pData, uint8_t length
 }
 
 /**
+ * @brief  加入串口发送队列 用于发送相同内容 不同通道 修改 中断版本
+ * @note   只需要修改数组第3位 帧号  其余 第4位 ID 最后一位 CRC 均不需他要修改
+ * @param  pData   数据指针
+ * @param  length  数据长度
+ * @retval 加入发送队列结果
+ */
+BaseType_t comm_Out_SendTask_QueueEmitWithModify_FromISR(uint8_t * pData, uint8_t length)
+{
+    BaseType_t xResult, xHigherPriorityTaskWoken = pdFALSE;
+
+    if (length == 0 || pData == NULL) {
+        return pdFALSE;
+    }
+
+    if (gSendInfoTempLock == 1) { /* 重入判断 占用中 */
+        return pdFALSE;
+    } else {
+        gSendInfoTempLock = 1; /* 标识占用中 */
+    }
+    gSendInfoTemp.length = length;                                                                    /* 照搬长度 */
+    memcpy(gSendInfoTemp.buff, pData, length);                                                        /* 复制到缓存 */
+    gProtocol_ACK_IndexAutoIncrease(eComm_Out);                                                       /* 自增帧号 */
+    gSendInfoTemp.buff[3] = gProtocol_ACK_IndexGet(eComm_Out);                                        /* 应用帧号 */
+    xResult = xQueueSendToBackFromISR(comm_Out_SendQueue, &gSendInfoTemp, &xHigherPriorityTaskWoken); /* 加入队列 */
+    gSendInfoTempLock = 0;                                                                            /* 解除占用标识 */
+    if (xResult != pdPASS) {
+        error_Emit_FromISR(eError_Comm_Out_Busy);
+    }
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    return xResult;
+}
+
+/**
  * @brief  加入串口发送队列
  * @param  pData   数据指针
  * @param  length  数据长度
@@ -338,8 +372,24 @@ BaseType_t comm_Out_SendTask_QueueEmitWithModify(uint8_t * pData, uint8_t length
 BaseType_t comm_Out_SendTask_QueueEmitWithBuild(uint8_t cmdType, uint8_t * pData, uint8_t length, uint32_t timeout)
 {
     BaseType_t xResult;
+
     length = buildPackOrigin(eComm_Out, cmdType, pData, length);
     xResult = comm_Out_SendTask_QueueEmit(pData, length, timeout);
+    return xResult;
+}
+
+/**
+ * @brief  加入串口发送队列
+ * @param  pData   数据指针
+ * @param  length  数据长度
+ * @retval 加入发送队列结果
+ */
+BaseType_t comm_Out_SendTask_QueueEmitWithBuild_FromISR(uint8_t cmdType, uint8_t * pData, uint8_t length)
+{
+    BaseType_t xResult;
+
+    length = buildPackOrigin(eComm_Out, cmdType, pData, length);
+    xResult = comm_Out_SendTask_QueueEmit_FromISR(pData, length);
     return xResult;
 }
 
@@ -364,7 +414,54 @@ BaseType_t comm_Out_SendTask_ErrorInfoQueueEmit(uint16_t * pErrorCode, uint32_t 
 BaseType_t comm_Out_SendTask_ErrorInfoQueueEmitFromISR(uint16_t * pErrorCode)
 {
     BaseType_t xResult, xHigherPriorityTaskWoken = pdFALSE;
+
+    if (comm_Out_Error_Info_SendQueue == NULL) {
+        return pdFALSE;
+    }
+
     xResult = xQueueSendToBackFromISR(comm_Out_Error_Info_SendQueue, pErrorCode, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    return xResult;
+}
+
+/**
+ * @brief  加入串口ACK发送队列 中断版本
+ * @param  pPackIndex   回应帧号
+ * @retval 加入发送队列结果
+ */
+BaseType_t comm_Out_SendTask_ACK_QueueEmitFromISR(uint8_t * pPackIndex)
+{
+    BaseType_t xResult, xHigherPriorityTaskWoken = pdFALSE;
+    xResult = xQueueSendToBackFromISR(comm_Out_ACK_SendQueue, pPackIndex, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    return xResult;
+}
+
+/**
+ * @brief  串口ACK发送队列 处理
+ * @param  timoeut   超时时间
+ * @retval 处理发送队列结果
+ */
+BaseType_t comm_Out_SendTask_ACK_Consume(uint32_t timeout)
+{
+    BaseType_t xResult;
+    uint8_t buffer[8];
+
+    if (comm_Out_ACK_SendQueue == NULL) {
+        return pdFAIL;
+    }
+
+    for (;;) {
+        xResult = xQueueReceive(comm_Out_ACK_SendQueue, &buffer[0], timeout / COMM_OUT_ACK_SEND_QUEU_LENGTH);
+        if (xResult) {
+            if (serialSendStartDMA(COMM_OUT_SERIAL_INDEX, buffer, buildPackOrigin(eComm_Out, eProtocolRespPack_Client_ACK, &buffer[0], 1), 30)) {
+                comm_Out_DMA_TX_Wait(30);
+            }
+        } else {
+            break;
+        }
+    }
+
     return xResult;
 }
 
@@ -384,8 +481,10 @@ BaseType_t comm_Out_Send_ACK_Give_From_ISR(uint8_t packIndex)
     if (idx >= ARRAY_LEN(gComm_Out_ACK_Records)) {
         idx = 0;
     }
-    xTaskNotifyFromISR(comm_Out_Send_Task_Handle, packIndex, eSetValueWithOverwrite, &xHigherPriorityTaskWoken); /* 允许覆盖 */
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    if (comm_Out_Send_Task_Handle != NULL) {
+        xTaskNotifyFromISR(comm_Out_Send_Task_Handle, packIndex, eSetValueWithOverwrite, &xHigherPriorityTaskWoken); /* 允许覆盖 */
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
     return pdPASS;
 }
 
@@ -394,13 +493,13 @@ BaseType_t comm_Out_Send_ACK_Give_From_ISR(uint8_t packIndex)
  * @param  packIndex   回应包中帧号
  * @retval 加入发送队列结果
  */
-BaseType_t comm_Out_Send_ACK_Wait(uint8_t packIndex, uint32_t timeout)
+BaseType_t comm_Out_Send_ACK_Wait(uint8_t packIndex)
 {
     uint8_t i, j;
     uint32_t ulNotifyValue = 0;
 
-    for (j = 0; j < 2; ++j) {
-        if (xTaskNotifyWait(0, 0xFFFFFFFF, &ulNotifyValue, timeout / 2) == pdPASS && ulNotifyValue == packIndex) {
+    for (j = 0; j < COMM_OUT_SER_TX_RETRY_WC; ++j) {
+        if (xTaskNotifyWait(0, 0xFFFFFFFF, &ulNotifyValue, COMM_OUT_SER_TX_RETRY_WT) == pdPASS && ulNotifyValue == packIndex) {
             return pdPASS;
         }
         for (i = 0; i < ARRAY_LEN(gComm_Out_ACK_Records); ++i) {
@@ -408,26 +507,9 @@ BaseType_t comm_Out_Send_ACK_Wait(uint8_t packIndex, uint32_t timeout)
                 return pdPASS;
             }
         }
+        comm_Out_SendTask_ACK_Consume(0);
     }
     return pdFALSE;
-}
-
-/**
- * @brief  串口1接收任务 屏托板上位机
- * @param  argument: 每个串口任务配置结构体指针
- * @retval None
- */
-static void comm_Out_Recv_Task(void * argument)
-{
-    sComm_Out_RecvInfo recvInfo;
-
-    for (;;) {
-        if (xQueueReceive(comm_Out_RecvQueue, &recvInfo, portMAX_DELAY) != pdPASS) { /* 检查接收队列 */
-            continue;                                                                /* 队列空 */
-        }
-        protocol_Parse_Out(recvInfo.buff, recvInfo.length); /* 数据包协议解析 */
-        vTaskDelay(pdMS_TO_TICKS(10));
-    }
 }
 
 /**
@@ -447,6 +529,9 @@ static void comm_Out_Send_Task(void * argument)
             vTaskDelay(pdMS_TO_TICKS(10));
             continue;
         }
+
+        comm_Out_SendTask_ACK_Consume(10); /* 处理 ACK发送需求 */
+
         if (xQueueReceive(comm_Out_Error_Info_SendQueue, &errorCode, 0) == pdPASS) {                      /* 查看错误信息队列 */
             memcpy(sendInfo.buff, (uint8_t *)(&errorCode), 2);                                            /* 错误代码 */
             sendInfo.length = buildPackOrigin(eComm_Out, eProtocolRespPack_Client_ERR, sendInfo.buff, 2); /* 构造数据包 */
@@ -466,8 +551,8 @@ static void comm_Out_Send_Task(void * argument)
                 break;
             }
             comm_Out_DMA_TX_Wait(30);
-            if (comm_Out_Send_ACK_Wait(sendInfo.buff[3], COMM_OUT_SER_TX_RETRY_INT) == pdPASS) { /* 等待ACK回应包 */
-                ucResult = 1;                                                                    /* 置位发送成功 */
+            if (comm_Out_Send_ACK_Wait(sendInfo.buff[3]) == pdPASS) { /* 等待ACK回应包 */
+                ucResult = 1;                                         /* 置位发送成功 */
                 break;
             } else {
                 ucResult = 0;
@@ -482,6 +567,5 @@ static void comm_Out_Send_Task(void * argument)
         } else if (ucResult == 1) { /* 本次发送成功 且有ACK */
             last_result = 0;        /* 清空标记 */
         }
-        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }

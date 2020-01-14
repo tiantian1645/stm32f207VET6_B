@@ -509,6 +509,32 @@ uint8_t motor_Emit(sMotor_Fun * pFun_type, uint32_t timeout)
 }
 
 /**
+ * @brief  电机任务 提交 中断版本
+ * @param  pFun_type 任务详情指针
+ * @param  timeout  最长等待时间
+ * @retval 0 提交成功 1 提交失败 2 杂散光测试未结束 3 等待温度稳定中
+ */
+uint8_t motor_Emit_FromISR(sMotor_Fun * pFun_type)
+{
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    if (gMotorTempStableWaiting_Check()) { /* 等待温度稳定中 */
+        error_Emit_FromISR(eError_Temp_BTM_Stable_Waiting);
+        return 3;
+    }
+
+    if (comm_Data_Stary_Test_Is_Running()) { /* 杂散光测试中 */
+        error_Emit_FromISR(eError_Stary_Doing);
+        return 2;
+    }
+    if (xQueueSendToBackFromISR(motor_Fun_Queue_Handle, pFun_type, &xHigherPriorityTaskWoken) != pdPASS) {
+        error_Emit_FromISR(eError_Motor_Task_Busy);
+        return 1;
+    }
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    return 0;
+}
+
+/**
  * @brief  电机任务 托盘运动 附带运动上加热体
  * @note   托盘电机运动前 处理上加热体
  * @param  index 托盘位置索引

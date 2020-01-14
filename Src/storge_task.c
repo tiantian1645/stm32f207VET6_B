@@ -151,6 +151,24 @@ uint8_t storgeReadConfInfo(uint32_t addr, uint32_t num, uint32_t timeout)
 }
 
 /**
+ * @brief  存储任务运行参数 中断版本
+ * @param  addr        操作地址
+ * @param  pIn         写操作时数据源指针
+ * @param  num         操作长度
+ * @retval None
+ */
+uint8_t storgeReadConfInfo_FromISR(uint32_t addr, uint32_t num)
+{
+    if (gStorgeTaskInfoLockAcquire() == 0) {
+        gStorgeTaskInfo.addr = addr;
+        gStorgeTaskInfo.num = num;
+        return 0;
+    }
+    error_Emit_FromISR(eError_Storge_Task_Busy);
+    return 2; /* 错误码2 超时 */
+}
+
+/**
  * @brief  存储任务运行参数
  * @param  addr        操作地址
  * @param  pIn         写操作时数据源指针
@@ -180,7 +198,33 @@ uint8_t storgeWriteConfInfo(uint32_t addr, uint8_t * pIn, uint32_t num, uint32_t
 }
 
 /**
- * @brief  存储任务启动通知
+ * @brief  存储任务运行参数
+ * @param  addr        操作地址
+ * @param  pIn         写操作时数据源指针
+ * @param  num         操作长度
+ * @param  timeout     信号量等待时间
+ * @retval None
+ */
+
+uint8_t storgeWriteConfInfo_FromISR(uint32_t addr, uint8_t * pIn, uint32_t num)
+{
+    if (pIn == NULL ||                             /* 目标指针为空 或者 */
+        num > ARRAY_LEN(gStorgeTaskInfo.buffer)) { /* 长度超过缓冲容量 */
+        return 1;                                  /* 错误码1 */
+    }
+
+    if (gStorgeTaskInfoLockAcquire() == 0) {
+        gStorgeTaskInfo.addr = addr;
+        gStorgeTaskInfo.num = num;
+        memcpy(gStorgeTaskInfo.buffer, pIn, num);
+        return 0;
+    }
+
+    return 2; /* 错误码2 超时 */
+}
+
+/**
+ * @brief  存储任务启动通知 中断版本
  * @param  hw          存储类型
  * @param  rw          操作类型
  * @retval 任务通知结果
@@ -207,6 +251,37 @@ void storgeTaskNotification(eStorgeNotifyConf type, eProtocol_COMM_Index index)
     if (xTaskNotify(storgeTaskHandle, notifyValue, eSetValueWithoutOverwrite) != pdPASS) {
         error_Emit(eError_Storge_Task_Busy);
     }
+}
+
+/**
+ * @brief  存储任务启动通知 中断版本
+ * @param  hw          存储类型
+ * @param  rw          操作类型
+ * @retval 任务通知结果
+ */
+void storgeTaskNotification_FromISR(eStorgeNotifyConf type, eProtocol_COMM_Index index)
+{
+    uint32_t notifyValue = 0;
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    notifyValue = type;
+
+    if (type == eStorgeNotifyConf_Read_Flash || type == eStorgeNotifyConf_Write_Flash) {
+        if (spi_FlashIsInRange(gStorgeTaskInfo.addr, gStorgeTaskInfo.num) == 0) {
+            error_Emit_FromISR(eError_Out_Flash_Deal_Param);
+            return;
+        }
+    }
+
+    if (index == eComm_Out) {
+        notifyValue |= eStorgeNotifyConf_COMM_Out;
+    }
+    if (index == eComm_Main) {
+        notifyValue |= eStorgeNotifyConf_COMM_Main;
+    }
+    if (xTaskNotifyFromISR(storgeTaskHandle, notifyValue, eSetValueWithoutOverwrite, &xHigherPriorityTaskWoken) != pdPASS) {
+        error_Emit_FromISR(eError_Storge_Task_Busy);
+    }
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
 /**

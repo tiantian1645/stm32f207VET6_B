@@ -58,7 +58,7 @@ extern uint32_t SystemCoreClock;
 #define configUSE_TICK_HOOK 0
 #define configCPU_CLOCK_HZ (SystemCoreClock)
 #define configTICK_RATE_HZ ((TickType_t)1000)
-#define configMAX_PRIORITIES (12)
+#define configMAX_PRIORITIES (9)
 #define configMINIMAL_STACK_SIZE ((uint16_t)128)
 #define configTOTAL_HEAP_SIZE ((size_t)20480)
 #define configMAX_TASK_NAME_LEN (16)
@@ -76,9 +76,9 @@ extern uint32_t SystemCoreClock;
 
 /* Software timer definitions. */
 #define configUSE_TIMERS 1
-#define configTIMER_TASK_PRIORITY (10)
+#define configTIMER_TASK_PRIORITY (7)
 #define configTIMER_QUEUE_LENGTH 10
-#define configTIMER_TASK_STACK_DEPTH 208
+#define configTIMER_TASK_STACK_DEPTH 192
 
 /* Set the following definitions to 1 to include the API function, or zero
 to exclude the API function. */

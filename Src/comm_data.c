@@ -31,6 +31,9 @@ extern TIM_HandleTypeDef htim7;
 #define COMM_DATA_TIM_WH htim6
 #define COMM_DATA_TIM_PD htim7
 
+#define COMM_DATA_SEND_QUEU_LENGTH 2
+#define COMM_DATA_ACK_SEND_QUEU_LENGTH 6
+
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
@@ -55,12 +58,12 @@ static sProcol_COMM_ACK_Record gComm_Data_ACK_Records[12];
 
 /* 串口发送队列 */
 static xQueueHandle comm_Data_SendQueue = NULL;
+static xQueueHandle comm_Data_ACK_SendQueue = NULL;
 
 /* 串口DMA发送资源信号量 */
 static xSemaphoreHandle comm_Data_Send_Sem = NULL;
 
 /* 串口收发任务句柄 */
-static xTaskHandle comm_Data_Recv_Task_Handle = NULL;
 static xTaskHandle comm_Data_Send_Task_Handle = NULL;
 
 /* 测试配置项信号量 */
@@ -86,12 +89,9 @@ static eComm_Data_Sample_Radiant gComm_Data_Correct_wave = eComm_Data_Sample_Rad
 /* Private constants ---------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
-static void comm_Data_Recv_Task(void * argument);
 static void comm_Data_Send_Task(void * argument);
-
-static BaseType_t comm_Data_RecvTask_QueueEmit_ISR(uint8_t * pData, uint16_t length);
-
 static BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData);
+
 /* Private user code ---------------------------------------------------------*/
 
 /**
@@ -203,8 +203,7 @@ void comm_Data_ConfInit(void)
     vComm_Data_Serial_Record.has_head = protocol_has_head;
     vComm_Data_Serial_Record.has_tail = protocol_has_tail;
     vComm_Data_Serial_Record.is_cmop = protocol_is_comp;
-    vComm_Data_Serial_Record.callback = comm_Data_RecvTask_QueueEmit_ISR;
-    vComm_Data_Serial_Record.pre_deal_callback = protocol_Parse_Data_ISR;
+    vComm_Data_Serial_Record.callback = protocol_Parse_Data_ISR;
 }
 
 /**
@@ -497,6 +496,25 @@ uint8_t comm_Data_Sample_Force_Stop(void)
 }
 
 /**
+ * @brief  终止采样
+ * @param  None
+ * @retval 0 成功停止 1 采样已停止
+ */
+uint8_t comm_Data_Sample_Force_Stop_FromISR(void)
+{
+    if (gComm_Data_TIM_StartFlag_Check() == 0) {
+        return 1;
+    }
+    comm_Data_sample_Stop();                    /* 停止白板定时器 终止测试 */
+    comm_Data_sample_Stop_PD();                 /* 停止PD定时器 终止测试 */
+    gComm_Data_TIM_StartFlag_Clear();           /* 清除测试中标志位 */
+    gComm_Data_Sample_Max_Point_Clear();        /* 清除最大点数 */
+    gComm_Data_Sample_Pair_Cnt_Clear();         /* 清零 采样对次数 */
+    comm_Data_Sample_Send_Clear_Conf_FromISR(); /* 通知采样板 */
+    return 0;
+}
+
+/**
  * @brief  采样板配置数据包
  * @note   记录最大点数 决定采样终点
  * @param  pData 结果存放指针
@@ -530,6 +548,39 @@ static BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData)
 }
 
 /**
+ * @brief  采样板配置数据包 中断版本
+ * @note   记录最大点数 决定采样终点
+ * @param  pData 结果存放指针
+ * @retval 提交到采集板发送队列结果
+ */
+static BaseType_t comm_Data_Sample_Apply_Conf_FromISR(uint8_t * pData)
+{
+    uint8_t i, result = 0;
+
+    gComm_Data_Sample_Max_Point_Clear(); /* 清除最大点数 */
+    for (i = 0; i < ARRAY_LEN(gComm_Data_Samples); ++i) {
+        gComm_Data_Samples[i].conf.assay = pData[3 * i + 0];                           /* 测试方法 */
+        gComm_Data_Samples[i].conf.radiant = pData[3 * i + 1];                         /* 测试波长 */
+        if (gComm_Data_Samples[i].conf.assay >= eComm_Data_Sample_Assay_Continuous &&  /* 测试方法范围内 */
+            gComm_Data_Samples[i].conf.assay <= eComm_Data_Sample_Assay_Fixed &&       /* and */
+            gComm_Data_Samples[i].conf.radiant >= eComm_Data_Sample_Radiant_610 &&     /* 测试波长范围内 */
+            gComm_Data_Samples[i].conf.radiant <= eComm_Data_Sample_Radiant_405 &&     /* and */
+            pData[3 * i + 2] > 0 && pData[3 * i + 2] <= 120) {                         /* 测试点数范围内 */
+            gComm_Data_Samples[i].conf.points_num = pData[3 * i + 2];                  /* 设置测试点数 */
+            gComm_Data_Sample_Max_Point_Update(gComm_Data_Samples[i].conf.points_num); /* 更新最大点数 */
+            ++result;
+        } else {
+            gComm_Data_Samples[i].conf.points_num = 0; /* 点数清零 */
+        }
+    }
+    comm_Data_Conf_Sem_Give_FromISR(); /* 通知电机任务 配置项已下达 */
+    if (result > 0) {
+        return pdPASS;
+    }
+    return pdFALSE;
+}
+
+/**
  * @brief  发送采样配置
  * @param  pData 缓存指针
  * @retval pdPASS 提交成功 pdFALSE 提交失败
@@ -541,6 +592,20 @@ BaseType_t comm_Data_Sample_Send_Conf(uint8_t * pData)
     comm_Data_Sample_Apply_Conf(pData);
     sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 18); /* 构造测试配置包 */
     return comm_Data_SendTask_QueueEmit(pData, sendLength, 50);
+}
+
+/**
+ * @brief  发送采样配置
+ * @param  pData 缓存指针
+ * @retval pdPASS 提交成功 pdFALSE 提交失败
+ */
+BaseType_t comm_Data_Sample_Send_Conf_FromISR(uint8_t * pData)
+{
+    uint8_t sendLength;
+
+    comm_Data_Sample_Apply_Conf_FromISR(pData);
+    sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 18); /* 构造测试配置包 */
+    return comm_Data_SendTask_QueueEmit_FromISR(pData, sendLength);
 }
 
 /**
@@ -557,6 +622,19 @@ BaseType_t comm_Data_Sample_Send_Conf_TV(uint8_t * pData)
     return comm_Data_SendTask_QueueEmit(pData, sendLength, 50);
 }
 
+/**
+ * @brief  发送采样配置 工装测试 中断版本
+ * @param  pData 缓存指针
+ * @retval pdPASS 提交成功 pdFALSE 提交失败
+ */
+BaseType_t comm_Data_Sample_Send_Conf_TV_FromISR(uint8_t * pData)
+{
+    uint8_t sendLength;
+
+    comm_Data_Sample_Apply_Conf_FromISR(pData);
+    sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_TEST, pData, 19); /* 构造工装测试配置包 */
+    return comm_Data_SendTask_QueueEmit_FromISR(pData, sendLength);
+}
 /**
  * @brief  发送采样配置 定标
  * @param  wave 波长配置  405不做定标
@@ -614,6 +692,26 @@ BaseType_t comm_Data_Sample_Send_Clear_Conf(void)
 }
 
 /**
+ * @brief  发送无效采样配置 中断版本
+ * @note   用于停止采样
+ * @param  None
+ * @retval pdPASS 提交成功 pdFALSE 提交失败
+ */
+BaseType_t comm_Data_Sample_Send_Clear_Conf_FromISR(void)
+{
+    uint8_t i, sendLength, pData[30];
+
+    for (i = 0; i < ARRAY_LEN(gComm_Data_Samples); ++i) {
+        pData[3 * i + 0] = eComm_Data_Sample_Assay_None;       /* 测试方法 */
+        pData[3 * i + 1] = gComm_Data_Samples[i].conf.radiant; /* 测试波长 */
+        pData[3 * i + 2] = 0;                                  /* 测试点数 */
+    }
+
+    sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 18); /* 构造测试配置包 */
+    return comm_Data_SendTask_QueueEmit_FromISR(pData, sendLength);
+}
+
+/**
  * @brief  发送杂散光测试包
  * @note   开始杂散光测试 耗时15秒
  * @retval pdPASS 提交成功 pdFALSE 提交失败
@@ -647,6 +745,20 @@ BaseType_t comm_Data_Conf_Sem_Wait(uint32_t timeout)
 BaseType_t comm_Data_Conf_Sem_Give(void)
 {
     return xSemaphoreGive(comm_Data_Conf_Sem);
+}
+
+/**
+ * @brief  测试配置项信号量 释放 中断版本
+ * @param  None
+ * @retval 释放结果
+ */
+BaseType_t comm_Data_Conf_Sem_Give_FromISR(void)
+{
+    BaseType_t xResult, xHigherPriorityTaskWoken = pdFALSE;
+
+    xResult = xSemaphoreGiveFromISR(comm_Data_Conf_Sem, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    return xResult;
 }
 
 /**
@@ -775,8 +887,13 @@ void comm_Data_Init(void)
     xSemaphoreTake(comm_Data_Conf_Sem, 0);
 
     /* 发送队列 */
-    comm_Data_SendQueue = xQueueCreate(2, sizeof(sComm_Data_SendInfo));
+    comm_Data_SendQueue = xQueueCreate(COMM_DATA_SEND_QUEU_LENGTH, sizeof(sComm_Data_SendInfo));
     if (comm_Data_SendQueue == NULL) {
+        FL_Error_Handler(__FILE__, __LINE__);
+    }
+    /* 发送队列 ACK专用 */
+    comm_Data_ACK_SendQueue = xQueueCreate(COMM_DATA_ACK_SEND_QUEU_LENGTH, sizeof(uint8_t));
+    if (comm_Data_ACK_SendQueue == NULL) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
 
@@ -785,13 +902,8 @@ void comm_Data_Init(void)
         FL_Error_Handler(__FILE__, __LINE__);
     }
 
-    /* 创建串口接收任务 */
-    xResult = xTaskCreate(comm_Data_Recv_Task, "CommDataRX", 232, NULL, TASK_PRIORITY_COMM_DATA_RX, &comm_Data_Recv_Task_Handle);
-    if (xResult != pdPASS) {
-        FL_Error_Handler(__FILE__, __LINE__);
-    }
     /* 创建串口发送任务 */
-    xResult = xTaskCreate(comm_Data_Send_Task, "CommDataTX", 216, NULL, TASK_PRIORITY_COMM_DATA_TX, &comm_Data_Send_Task_Handle);
+    xResult = xTaskCreate(comm_Data_Send_Task, "CommDataTX", 256, NULL, TASK_PRIORITY_COMM_DATA_TX, &comm_Data_Send_Task_Handle);
     if (xResult != pdPASS) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
@@ -801,20 +913,44 @@ void comm_Data_Init(void)
 }
 
 /**
- * @brief  加入串口接收队列
- * @param  pData   数据指针
- * @param  length  数据长度
+ * @brief  加入串口ACK发送队列 中断版本
+ * @param  pPackIndex   回应帧号
  * @retval 加入发送队列结果
  */
-BaseType_t comm_Data_RecvTask_QueueEmit_ISR(uint8_t * pData, uint16_t length)
+BaseType_t comm_Data_SendTask_ACK_QueueEmitFromISR(uint8_t * pPackIndex)
 {
-    BaseType_t xResult, xWaken = pdFALSE;
-    sComm_Data_RecvInfo recvInfo;
+    BaseType_t xResult, xHigherPriorityTaskWoken = pdFALSE;
 
-    recvInfo.length = length;
-    memcpy(recvInfo.buff, pData, length);
-    xResult = xQueueSendToBackFromISR(comm_Data_RecvQueue, &recvInfo, &xWaken);
-    portYIELD_FROM_ISR(xWaken);
+    xResult = xQueueSendToBackFromISR(comm_Data_ACK_SendQueue, pPackIndex, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    return xResult;
+}
+
+/**
+ * @brief  串口ACK发送队列 处理
+ * @param  timoeut   超时时间
+ * @retval 处理发送队列结果
+ */
+BaseType_t comm_Data_SendTask_ACK_Consume(uint32_t timeout)
+{
+    BaseType_t xResult;
+    uint8_t buffer[8];
+
+    if (comm_Data_ACK_SendQueue == NULL) {
+        return pdFAIL;
+    }
+
+    for (;;) {
+        xResult = xQueueReceive(comm_Data_ACK_SendQueue, &buffer[0], timeout / COMM_DATA_ACK_SEND_QUEU_LENGTH);
+        if (xResult) {
+            if (serialSendStartDMA(COMM_DATA_SERIAL_INDEX, buffer, buildPackOrigin(eComm_Data, eProtocolRespPack_Client_ACK, &buffer[0], 1), 30)) {
+                comm_Out_DMA_TX_Wait(30);
+            }
+        } else {
+            break;
+        }
+    }
+
     return xResult;
 }
 
@@ -848,6 +984,36 @@ BaseType_t comm_Data_SendTask_QueueEmit(uint8_t * pData, uint8_t length, uint32_
 }
 
 /**
+ * @brief  加入串口发送队列
+ * @param  pData   数据指针
+ * @param  length  数据长度
+ * @retval 加入发送队列结果
+ */
+BaseType_t comm_Data_SendTask_QueueEmit_FromISR(uint8_t * pData, uint8_t length)
+{
+    BaseType_t xResult;
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    if (length == 0 || pData == NULL) { /* 数据有效性检查 */
+        return pdFALSE;
+    }
+    if (gComm_Data_SendInfoFlag == 0) { /* 重入标志 */
+        error_Emit_FromISR(eError_Comm_Data_Busy);
+        return pdFALSE;
+    }
+    gComm_Data_SendInfoFlag = 0;
+    memcpy(gComm_Data_SendInfo.buff, pData, length);
+    gComm_Data_SendInfo.length = length;
+
+    xResult = xQueueSendToBackFromISR(comm_Data_SendQueue, &gComm_Data_SendInfo, &xHigherPriorityTaskWoken);
+    gComm_Data_SendInfoFlag = 1;
+    if (xResult != pdPASS) {
+        error_Emit_FromISR(eError_Comm_Data_Busy);
+    }
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    return xResult;
+}
+
+/**
  * @brief  串口接收回应包 帧号接收
  * @param  packIndex   回应包中帧号
  * @retval 加入发送队列结果
@@ -873,13 +1039,13 @@ BaseType_t comm_Data_Send_ACK_Give_From_ISR(uint8_t packIndex)
  * @param  packIndex   回应包中帧号
  * @retval 加入发送队列结果
  */
-BaseType_t comm_Data_Send_ACK_Wait(uint8_t packIndex, uint32_t timeout)
+BaseType_t comm_Data_Send_ACK_Wait(uint8_t packIndex)
 {
     uint8_t i, j;
     uint32_t ulNotifyValue = 0;
 
-    for (j = 0; j < 2; ++j) {
-        if (xTaskNotifyWait(0, 0xFFFFFFFF, &ulNotifyValue, timeout / 2) == pdPASS && ulNotifyValue == packIndex) {
+    for (j = 0; j < COMM_DATA_SER_TX_RETRY_WC; ++j) {
+        if (xTaskNotifyWait(0, 0xFFFFFFFF, &ulNotifyValue, COMM_DATA_SER_TX_RETRY_WT) == pdPASS && ulNotifyValue == packIndex) {
             return pdPASS;
         }
         for (i = 0; i < ARRAY_LEN(gComm_Data_ACK_Records); ++i) {
@@ -887,6 +1053,7 @@ BaseType_t comm_Data_Send_ACK_Wait(uint8_t packIndex, uint32_t timeout)
                 return pdPASS;
             }
         }
+        comm_Data_SendTask_ACK_Consume(0);
     }
     return pdFALSE;
 }
@@ -907,23 +1074,6 @@ BaseType_t comm_Data_Sample_Owari(void)
 }
 
 /**
- * @brief  串口1接收任务 采样板
- * @param  argument: 任务参数指针
- * @retval None
- */
-static void comm_Data_Recv_Task(void * argument)
-{
-    sComm_Data_RecvInfo recvInfo;
-
-    for (;;) {
-        if (xQueueReceive(comm_Data_RecvQueue, &recvInfo, portMAX_DELAY) != pdPASS) { /* 检查接收队列 */
-            continue;                                                                 /* 队列空 */
-        }
-        protocol_Parse_Data(recvInfo.buff, recvInfo.length); /* 数据包协议解析 */
-    }
-}
-
-/**
  * @brief  串口1发送任务 采样板
  * @param  argument: 任务参数指针
  * @retval None
@@ -938,6 +1088,8 @@ static void comm_Data_Send_Task(void * argument)
             vTaskDelay(5);
             continue;
         }
+        comm_Data_SendTask_ACK_Consume(5);
+
         if (xQueuePeek(comm_Data_SendQueue, &sendInfo, pdMS_TO_TICKS(5)) != pdPASS) { /* 发送队列为空 */
             continue;
         }
@@ -952,8 +1104,8 @@ static void comm_Data_Send_Task(void * argument)
                 ucResult = 2;                                        /* 无需等待回应包默认成功 */
                 break;
             }
-            if (comm_Data_Send_ACK_Wait(sendInfo.buff[3], COMM_DATA_SER_TX_RETRY_INT) == pdPASS) { /* 等待任务通知 */
-                ucResult = 1;                                                                      /* 置位发送成功 */
+            if (comm_Data_Send_ACK_Wait(sendInfo.buff[3]) == pdPASS) { /* 等待任务通知 */
+                ucResult = 1;                                          /* 置位发送成功 */
                 break;
             } else {
                 ucResult = 0;

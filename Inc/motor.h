@@ -119,6 +119,7 @@ typedef enum {
 
 void motor_Init(void);
 uint8_t motor_Emit(sMotor_Fun * pFun_type, uint32_t timeout);
+uint8_t motor_Emit_FromISR(sMotor_Fun * pFun_type);
 
 BaseType_t motor_Sample_Info_ISR(eMotorNotifyValue info);
 BaseType_t motor_Sample_Info(eMotorNotifyValue info);

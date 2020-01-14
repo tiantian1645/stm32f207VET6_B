@@ -99,11 +99,9 @@ void serialGenerateCallback(uint8_t * pBuff, uint16_t length, sSerialRecord * ps
             if (tail > 0 && psrd->is_cmop(&(psrd->pSerialBuff[i]), tail)) {        /* 完整性判断 */
                 pos = i + tail;                                                    /* 记录处理位置 */
                 if (tail > 0) {                                                    /* 完整一包 */
-                    if (psrd->pre_deal_callback(&psrd->pSerialBuff[i], tail)) {    /* 预过滤处理 */
-                        psrd->callback(&psrd->pSerialBuff[i], tail);               /* 发送到串口接收任务 */
-                    }
-                    i += tail - 1; /* 更新起始测试值 */
-                    continue;      /* 新一轮检测  */
+                    psrd->callback(&psrd->pSerialBuff[i], tail);                   /* 直接中断内处理 */
+                    i += tail - 1;                                                 /* 更新起始测试值 */
+                    continue;                                                      /* 新一轮检测  */
                 }
             } else {                                                          /* 有包头但数据不正确 */
                 if (tail > 0 && tail + psrd->minLength < psrd->validLength) { /* 剩余长度大于最小长度 */

@@ -61,6 +61,9 @@ static uint8_t gProtocol_Temp_Upload_Comm_Suspend = 0;
 static uint8_t gProtocol_Debug_Flag = eProtocol_Debug_ErrorReport;
 /* Private function prototypes -----------------------------------------------*/
 static uint8_t protocol_Is_Debug(eProtocol_Debug_Item item);
+static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length);
+static void protocol_Parse_Main_Fun_ISR(uint8_t * pInBuff, uint16_t length);
+static void protocol_Parse_Data_Fun_ISR(uint8_t * pInBuff, uint16_t length);
 
 /* Private user code ---------------------------------------------------------*/
 
@@ -633,6 +636,37 @@ void protocol_Self_Check_Temp_TOP(uint8_t * pBuffer)
 }
 
 /**
+ * @brief  自检测试 温度判断 中断版本
+ * @param  pBuffer 数据指针
+ * @retval 0 正常 1 异常 2 过高 3 过低
+ **/
+void protocol_Self_Check_Temp_TOP_FromISR(uint8_t * pBuffer)
+{
+    float temp;
+    uint8_t result = 0, i;
+
+    temp = temp_Get_Temp_Data_TOP(); /* 读取温度值 */
+    if (temp == TEMP_INVALID_DATA) { /* 排除无效值 */
+        result = 1;
+    } else if (temp > 37.3) { /* 温度过高 */
+        result = 2;
+    } else if (temp < 36.7) { /* 温度过低 */
+        result = 3;
+    } else {
+        result = 0; /* 正常范围 */
+    }
+
+    for (i = 0; i < 6; ++i) {
+        temp = temp_Get_Temp_Data(i); /* 读取温度值 */
+        memcpy(pBuffer + 2 + 4 * i, (uint8_t *)(&temp), 4);
+    }
+
+    pBuffer[0] = 1;
+    pBuffer[1] = result;
+    comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 26);
+}
+
+/**
  * @brief  自检测试 温度判断
  * @param  pBuffer 数据指针
  * @retval 0 正常 1 异常 2 过高 3 过低
@@ -668,6 +702,37 @@ void protocol_Self_Check_Temp_BTM(uint8_t * pBuffer)
  * @param  pBuffer 数据指针
  * @retval 0 正常 1 异常 2 过高 3 过低
  **/
+void protocol_Self_Check_Temp_BTM_FromISR(uint8_t * pBuffer)
+{
+    float temp;
+    uint8_t result = 0, i;
+
+    temp = temp_Get_Temp_Data_BTM(); /* 读取温度值 */
+    if (temp == TEMP_INVALID_DATA) { /* 排除无效值 */
+        result = 1;
+    } else if (temp > 37.3) { /* 温度过高 */
+        result = 2;
+    } else if (temp < 36.7) { /* 温度过低 */
+        result = 3;
+    } else {
+        result = 0; /* 正常范围 */
+    }
+
+    for (i = 0; i < 2; ++i) {
+        temp = temp_Get_Temp_Data(6 + i); /* 读取温度值 */
+        memcpy(pBuffer + 2 + 4 * i, (uint8_t *)(&temp), 4);
+    }
+
+    pBuffer[0] = 2;
+    pBuffer[1] = result;
+    comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 10);
+}
+
+/**
+ * @brief  自检测试 温度判断
+ * @param  pBuffer 数据指针
+ * @retval 0 正常 1 异常 2 过高 3 过低
+ **/
 void protocol_Self_Check_Temp_ENV(uint8_t * pBuffer)
 {
     float temp;
@@ -695,13 +760,44 @@ void protocol_Self_Check_Temp_ENV(uint8_t * pBuffer)
 }
 
 /**
+ * @brief  自检测试 温度判断
+ * @param  pBuffer 数据指针
+ * @retval 0 正常 1 异常 2 过高 3 过低
+ **/
+void protocol_Self_Check_Temp_ENV_FromISR(uint8_t * pBuffer)
+{
+    float temp;
+    uint8_t result = 0, i;
+
+    temp = temp_Get_Temp_Data_ENV(); /* 读取温度值 */
+    if (temp == TEMP_INVALID_DATA) { /* 排除无效值 */
+        result = 1;
+    } else if (temp > 46) { /* 温度过高 */
+        result = 2;
+    } else if (temp < 16) { /* 温度过低 */
+        result = 3;
+    } else {
+        result = 0; /* 正常范围 */
+    }
+
+    for (i = 0; i < 1; ++i) {
+        temp = temp_Get_Temp_Data(8 + i); /* 读取温度值 */
+        memcpy(pBuffer + 2 + 4 * i, (uint8_t *)(&temp), 4);
+    }
+
+    pBuffer[0] = 3;
+    pBuffer[1] = result;
+    comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 6);
+}
+
+/**
  * @brief  外串口解析协议 预过滤处理
  * @param  pInBuff 入站指针
  * @param  length 入站长度
  * @param  pOutBuff 出站指针
  * @retval None
  */
-uint8_t protocol_Parse_Out_ISR(uint8_t * pInBuff, uint8_t length)
+uint8_t protocol_Parse_Out_ISR(uint8_t * pInBuff, uint16_t length)
 {
     if (pInBuff[4] == PROTOCOL_DEVICE_ID_CTRL) { /* 回声现象 */
         return 0;
@@ -712,7 +808,307 @@ uint8_t protocol_Parse_Out_ISR(uint8_t * pInBuff, uint8_t length)
         comm_Out_Send_ACK_Give_From_ISR(pInBuff[6]);  /* 通知串口发送任务 回应包收到 */
         return 0;                                     /* 直接返回 */
     }
-    return 1;
+
+    if (pInBuff[4] == PROTOCOL_DEVICE_ID_SAMP) {               /* ID为数据板的数据包 直接透传 调试用 */
+        pInBuff[4] = PROTOCOL_DEVICE_ID_CTRL;                  /* 修正装置ID */
+        pInBuff[length - 1] = CRC8(pInBuff + 4, length - 5);   /* 重新校正CRC */
+        comm_Data_SendTask_QueueEmit_FromISR(pInBuff, length); /* 提交到采集板发送任务 */
+        return 0;
+    }
+
+    comm_Out_SendTask_ACK_QueueEmitFromISR(&pInBuff[3]);
+    protocol_Parse_Out_Fun_ISR(pInBuff, length);
+    return 0;
+}
+
+/**
+ * @brief  外串口解析协议 中断版本
+ * @param  pInBuff 入站指针
+ * @param  length 入站长度
+ * @retval None
+ */
+static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length)
+{
+    uint8_t result;
+    uint16_t status = 0;
+    float temp;
+    sMotor_Fun motor_fun;
+
+    switch (pInBuff[5]) { /* 进一步处理 功能码 */
+        case eProtocolEmitPack_Client_CMD_Debug_Heater:
+            switch (length) {
+                case 7:  /* 无参数 读取加热使能状态*/
+                default: /* 兜底 */
+                    pInBuff[0] = 0;
+                    if (heater_BTM_Output_Is_Live()) { /* 下加热体存货状态 */
+                        pInBuff[0] |= (1 << 0);
+                    }
+                    if (heater_TOP_Output_Is_Live()) { /* 上加热体存活状态 */
+                        pInBuff[0] |= (1 << 1);
+                    }
+                    comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolEmitPack_Client_CMD_Debug_Heater, pInBuff, 1);
+                    break;
+                case 8:                            /* 一个参数 配置加热使能状态 */
+                    if (pInBuff[6] & (1 << 0)) {   /* 下加热体 */
+                        heater_BTM_Output_Start(); /* 下加热体使能 */
+                    } else {
+                        heater_BTM_Output_Stop(); /* 下加热体失能 */
+                    }
+                    if (pInBuff[6] & (1 << 1)) {   /* 上加热体 */
+                        heater_TOP_Output_Start(); /* 上加热体使能 */
+                    } else {
+                        heater_TOP_Output_Stop(); /* 上加热体失能 */
+                    }
+                    break;
+                case 10:                   /* 3个参数 读取PID参数 */
+                    if (pInBuff[6] == 0) { /* 下加热体 */
+                        pInBuff[0] = pInBuff[6];
+                        pInBuff[1] = pInBuff[7];
+                        pInBuff[2] = pInBuff[8];
+                        for (result = 0; result < pInBuff[2]; ++result) {
+                            temp = heater_BTM_Conf_Get(pInBuff[7] + result);
+                            memcpy(pInBuff + 3 + 4 * result, (uint8_t *)(&temp), 4);
+                        }
+                        comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolEmitPack_Client_CMD_Debug_Heater, pInBuff, 3 + 4 * pInBuff[2]);
+                    } else { /* 上加热体 */
+                        pInBuff[0] = pInBuff[6];
+                        pInBuff[1] = pInBuff[7];
+                        pInBuff[2] = pInBuff[8];
+                        for (result = 0; result < pInBuff[2]; ++result) {
+                            temp = heater_TOP_Conf_Get(pInBuff[7] + result);
+                            memcpy(pInBuff + 3 + 4 * result, (uint8_t *)(&temp), 4);
+                        }
+                        comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolEmitPack_Client_CMD_Debug_Heater, pInBuff, 3 + 4 * pInBuff[2]);
+                    }
+                    break;
+                case 26:                   /* 26个参数 修改PID参数 */
+                    if (pInBuff[6] == 0) { /* 下加热体 */
+                        for (result = 0; result < pInBuff[8]; ++result) {
+                            temp = *(float *)(pInBuff + 9 + 4 * result);
+                            heater_BTM_Conf_Set(pInBuff[7] + result, temp);
+                        }
+                    } else { /* 上加热体 */
+                        for (result = 0; result < pInBuff[8]; ++result) {
+                            temp = *(float *)(pInBuff + 9 + 4 * result);
+                            heater_TOP_Conf_Set(pInBuff[7] + result, temp);
+                        }
+                    }
+                    break;
+            }
+            break;
+        case eProtocolEmitPack_Client_CMD_Debug_Flag: /* 调试开关 */
+            if (length == 7) {
+                pInBuff[0] = protocol_Debug_Get();
+                comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolEmitPack_Client_CMD_Debug_Flag, pInBuff, 1);
+            } else if (length == 9) {
+                if (pInBuff[7] == 0) {
+                    protocol_Debug_Clear(pInBuff[6]);
+                } else {
+                    protocol_Debug_Mark(pInBuff[6]);
+                }
+            } else {
+                result = comm_Data_Sample_Data_Fetch(pInBuff[6], pInBuff + 1, pInBuff);
+                comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolEmitPack_Client_CMD_Debug_Flag, pInBuff + 1, pInBuff[0]);
+            }
+            break;
+        case eProtocolEmitPack_Client_CMD_Debug_Beep: /* 蜂鸣器控制 */
+            if (length != 14) {
+                beep_Start_FromISR();
+            } else {
+                beep_Start_With_Conf_FromISR(pInBuff[6] % 7, (pInBuff[7] << 8) + pInBuff[8], (pInBuff[9] << 8) + pInBuff[10], (pInBuff[11] << 8) + pInBuff[12]);
+            }
+            break;
+        case eProtocolEmitPack_Client_CMD_Debug_Flash_Read: /* SPI Flash 读测试 */
+            result = storgeReadConfInfo_FromISR((pInBuff[6] << 16) + (pInBuff[7] << 8) + pInBuff[8], (pInBuff[9] << 16) + (pInBuff[10] << 8) + pInBuff[11]);
+            if (result == 0) {
+                storgeTaskNotification_FromISR(eStorgeNotifyConf_Read_Flash, eComm_Out); /* 通知存储任务 */
+            }
+            break;
+        case eProtocolEmitPack_Client_CMD_Debug_Flash_Write: /* SPI Flash 写测试 */
+            result = storgeWriteConfInfo_FromISR((pInBuff[6] << 16) + (pInBuff[7] << 8) + pInBuff[8], &pInBuff[12],
+                                                 (pInBuff[9] << 16) + (pInBuff[10] << 8) + pInBuff[11]);
+            if (result == 0) {
+                storgeTaskNotification_FromISR(eStorgeNotifyConf_Write_Flash, eComm_Out); /* 通知存储任务 */
+            }
+            break;
+        case eProtocolEmitPack_Client_CMD_Debug_EEPROM_Read: /* EEPROM 读测试 */
+            result = storgeReadConfInfo_FromISR((pInBuff[6] << 16) + (pInBuff[7] << 8) + pInBuff[8], (pInBuff[9] << 16) + (pInBuff[10] << 8) + pInBuff[11]);
+            if (result == 0) {
+                storgeTaskNotification_FromISR(eStorgeNotifyConf_Read_ID_Card, eComm_Out); /* 通知存储任务 */
+            }
+            break;
+        case eProtocolEmitPack_Client_CMD_Debug_EEPROM_Write: /* EEPROM 写测试 */
+            result = storgeWriteConfInfo_FromISR((pInBuff[6] << 16) + (pInBuff[7] << 8) + pInBuff[8], &pInBuff[12],
+                                                 (pInBuff[9] << 16) + (pInBuff[10] << 8) + pInBuff[11]);
+            if (result == 0) {
+                storgeTaskNotification_FromISR(eStorgeNotifyConf_Write_ID_Card, eComm_Out); /* 通知存储任务 */
+            }
+            break;
+        case eProtocolEmitPack_Client_CMD_Debug_Self_Check: /* 自检测试 */
+            if (length == 7) {
+                protocol_Self_Check_Temp_TOP_FromISR(pInBuff);
+                protocol_Self_Check_Temp_BTM_FromISR(pInBuff);
+                protocol_Self_Check_Temp_ENV_FromISR(pInBuff);
+                motor_fun.fun_type = eMotor_Fun_Self_Check;                            /* 整体自检测试 */
+                motor_Emit_FromISR(&motor_fun);                                        /* 提交到电机队列 */
+                storgeTaskNotification_FromISR(eStorgeNotifyConf_Test_All, eComm_Out); /* 通知存储任务 */
+            } else if (length == 8) {                                                  /* 单向测试结果 */
+                switch (pInBuff[6]) {
+                    case 1: /* 上加热体温度结果 */
+                        protocol_Self_Check_Temp_TOP_FromISR(pInBuff);
+                        break;
+                    case 2: /* 下加热体温度结果 */
+                        protocol_Self_Check_Temp_BTM_FromISR(pInBuff);
+                        break;
+                    case 3: /* 环境温度结果 */
+                        protocol_Self_Check_Temp_ENV_FromISR(pInBuff);
+                        break;
+                    case 4:                                                                      /* 外部Flash */
+                        storgeTaskNotification_FromISR(eStorgeNotifyConf_Test_Flash, eComm_Out); /* 通知存储任务 */
+                        break;
+                    case 5:                                                                        /* ID Code 卡 */
+                        storgeTaskNotification_FromISR(eStorgeNotifyConf_Test_ID_Card, eComm_Out); /* 通知存储任务 */
+                        break;
+                    default:
+                        motor_fun.fun_type = eMotor_Fun_Self_Check_Motor_White - 6 + pInBuff[6]; /* 整体自检测试 单项 */
+                        motor_Emit_FromISR(&motor_fun);                                          /* 提交到电机队列 */
+                        break;
+                }
+            }
+            break;
+        case eProtocolEmitPack_Client_CMD_Debug_Motor_Fun: /* 电机功能 */
+            motor_fun.fun_type = (eMotor_Fun)pInBuff[6];   /* 开始测试 */
+            pInBuff[0] = motor_Emit_FromISR(&motor_fun);   /* 提交到电机队列 */
+            comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolEmitPack_Client_CMD_Debug_Motor_Fun, pInBuff, 1);
+            break;
+
+        case eProtocolEmitPack_Client_CMD_Debug_System:     /* 系统控制 */
+            if (length == 7) {                              /* 无参数 重启 */
+                comm_Data_Board_Reset();                    /* 重置采样板 */
+                HAL_NVIC_SystemReset();                     /* 重新启动 */
+            } else if (length == 8) {                       /* 单一参数 杂散光测试 */
+                comm_Data_GPIO_Init();                      /* 初始化通讯管脚 */
+                motor_fun.fun_type = eMotor_Fun_Stary_Test; /* 杂散光测试 */
+                motor_Emit_FromISR(&motor_fun);             /* 提交到任务队列 */
+            } else {
+                error_Emit_FromISR(eError_Comm_Out_Param_Error);
+            }
+            break;
+        case eProtocolEmitPack_Client_CMD_Debug_Params:         /* 参数设置 */
+            if (length == 9) {                                  /* 保存参数 */
+                status = (pInBuff[6] << 0) + (pInBuff[7] << 8); /* 起始索引 */
+                if (status == 0xFFFF) {
+                    storgeTaskNotification_FromISR(eStorgeNotifyConf_Dump_Params, eComm_Out);
+                }
+            } else if (length == 11) {                                                                                             /* 读取参数 */
+                result = storgeReadConfInfo_FromISR((pInBuff[6] << 0) + (pInBuff[7] << 8), (pInBuff[8] << 0) + (pInBuff[9] << 8)); /* 配置 */
+                if (result == 0) {
+                    storgeTaskNotification_FromISR(eStorgeNotifyConf_Read_Parmas, eComm_Out); /* 通知存储任务 */
+                }
+            } else if (length > 11 && ((length - 11) % 4 == 0)) { /* 写入参数 */
+                result =
+                    storgeWriteConfInfo_FromISR((pInBuff[6] << 0) + (pInBuff[7] << 8), &pInBuff[10], 4 * ((pInBuff[8] << 0) + (pInBuff[9] << 8))); /* 配置 */
+                if (result == 0) {
+                    storgeTaskNotification_FromISR(eStorgeNotifyConf_Write_Parmas, eComm_Out); /* 通知存储任务 */
+                }
+            } else {
+                error_Emit_FromISR(eError_Comm_Out_Param_Error);
+            }
+            break;
+        case eProtocolEmitPack_Client_CMD_Debug_BL:             /* 升级Bootloader */
+            if ((pInBuff[10] << 0) + (pInBuff[11] << 8) == 0) { /* 数据长度为空 尾包 */
+                result = Innate_Flash_Dump((pInBuff[6] << 0) + (pInBuff[7] << 8),
+                                           (pInBuff[12] << 0) + (pInBuff[13] << 8) + (pInBuff[14] << 16) + (pInBuff[15] << 24));
+                pInBuff[0] = result;
+                comm_Out_SendTask_QueueEmitWithBuild_FromISR(0xDE, pInBuff, 1);
+            } else {                                              /* 数据长度不为空 非尾包 */
+                if ((pInBuff[8] << 0) + (pInBuff[9] << 8) == 0) { /* 起始包 */
+                    result = Innate_Flash_Erase_Temp();           /* 擦除Flash */
+                    if (result > 0) {                             /* 擦除失败 */
+                        HAL_FLASH_Lock();                         /* 回锁 */
+                        pInBuff[0] = result;
+                        comm_Out_SendTask_QueueEmitWithBuild_FromISR(0xDE, pInBuff, 1);
+                        break;
+                    }
+                }
+                result =
+                    Innate_Flash_Write(INNATE_FLASH_ADDR_TEMP + (pInBuff[8] << 0) + (pInBuff[9] << 8), pInBuff + 12, (pInBuff[10] << 0) + (pInBuff[11] << 8));
+                pInBuff[0] = result;
+                comm_Out_SendTask_QueueEmitWithBuild_FromISR(0xDE, pInBuff, 1);
+            }
+            break;
+        case eProtocolEmitPack_Client_CMD_Debug_Version:
+            memcpy(pInBuff, (uint8_t *)(UID_BASE), 12);
+            memcpy(pInBuff + 12, (uint8_t *)__TIME__, strlen(__TIME__));
+            memcpy(pInBuff + 12 + strlen(__TIME__), (uint8_t *)__DATE__, strlen(__DATE__));
+            comm_Out_SendTask_QueueEmitWithBuild_FromISR(0xDF, pInBuff, 12 + strlen(__TIME__) + strlen(__DATE__));
+            break;
+        case eProtocolEmitPack_Client_CMD_START:            /* 开始测量帧 0x01 */
+            gComm_Data_Sample_Max_Point_Clear();            /* 清除最大点数 */
+            protocol_Temp_Upload_Pause();                   /* 暂停温度上送 */
+            comm_Data_GPIO_Init();                          /* 初始化通讯管脚 */
+            motor_fun.fun_type = eMotor_Fun_Sample_Start;   /* 开始测试 */
+            if (motor_Emit_FromISR(&motor_fun) == 0) {      /* 提交到电机队列 */
+                comm_Data_Sample_Send_Clear_Conf_FromISR(); /* 清除采样板上配置信息 */
+            }
+            break;
+        case eProtocolEmitPack_Client_CMD_ABRUPT:             /* 仪器测量取消命令帧 0x02 */
+            barcode_Interrupt_Flag_Mark();                    /* 标记打断扫码 */
+            comm_Data_Sample_Force_Stop_FromISR();            /* 强行停止采样定时器 */
+            motor_Sample_Info_From_ISR(eMotorNotifyValue_BR); /* 提交打断信息 */
+            break;
+        case eProtocolEmitPack_Client_CMD_CONFIG:            /* 测试项信息帧 0x03 */
+            comm_Data_Sample_Send_Conf_FromISR(&pInBuff[6]); /* 发送测试配置 */
+            break;
+        case eProtocolEmitPack_Client_CMD_FORWARD: /* 打开托盘帧 0x04 */
+            motor_fun.fun_type = eMotor_Fun_Out;   /* 配置电机动作套餐类型 出仓 */
+            motor_Emit_FromISR(&motor_fun);        /* 交给电机任务 出仓 */
+            break;
+        case eProtocolEmitPack_Client_CMD_REVERSE: /* 关闭托盘命令帧 0x05 */
+            motor_fun.fun_type = eMotor_Fun_In;    /* 配置电机动作套餐类型 进仓 */
+            motor_Emit_FromISR(&motor_fun);        /* 交给电机任务 进仓 */
+            break;
+        case eProtocolEmitPack_Client_CMD_READ_ID:        /* ID卡读取命令帧 0x06 */
+            result = storgeReadConfInfo_FromISR(0, 4096); /* 暂无定义 按最大读取 */
+            if (result == 0) {
+                storgeTaskNotification_FromISR(eStorgeNotifyConf_Read_ID_Card, eComm_Out); /* 通知存储任务 */
+            }
+            break;
+        case eProtocolEmitPack_Client_CMD_STATUS:                                                   /* 状态信息查询帧 (首帧) 0x07 */
+            temp = temp_Get_Temp_Data_BTM();                                                        /* 下加热体温度 */
+            pInBuff[0] = ((uint16_t)(temp * 100)) & 0xFF;                                           /* 小端模式 低8位 */
+            pInBuff[1] = ((uint16_t)(temp * 100)) >> 8;                                             /* 小端模式 高8位 */
+            temp = temp_Get_Temp_Data_TOP();                                                        /* 上加热体温度 */
+            pInBuff[2] = ((uint16_t)(temp * 100)) & 0xFF;                                           /* 小端模式 低8位 */
+            pInBuff[3] = ((uint16_t)(temp * 100)) >> 8;                                             /* 小端模式 高8位 */
+            comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_TMP, pInBuff, 4); /* 温度信息 */
+
+            protocol_Get_Version(pInBuff);
+            comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_VER, pInBuff, 4); /* 软件版本信息 */
+
+            if (tray_Motor_Get_Status_Position() == 0) { /* 托盘状态信息 */
+                pInBuff[0] = 1;                          /* 托盘处于测试位置 原点 */
+            } else if (tray_Motor_Get_Status_Position() >= (eTrayIndex_2 / 4 - 50) && tray_Motor_Get_Status_Position() <= (eTrayIndex_2 / 4 + 50)) {
+                pInBuff[0] = 2; /* 托盘处于出仓位置 误差范围 +-50步 */
+            } else {
+                pInBuff[0] = 0;
+            }
+            comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_DISH, pInBuff, 1); /* 托盘状态信息 */
+            break;
+        case eProtocolEmitPack_Client_CMD_TEST:                 /* 工装测试配置帧 0x08 */
+            comm_Data_Sample_Send_Conf_TV_FromISR(&pInBuff[6]); /* 保存测试配置 */
+            break;
+        case eProtocolEmitPack_Client_CMD_UPGRADE: /* 下位机升级命令帧 0x0F */
+            if (spi_FlashWriteAndCheck_Word(0x0000, 0x87654321) == 0) {
+                HAL_NVIC_SystemReset(); /* 重新启动 */
+            } else {
+                error_Emit_FromISR(eError_Out_Flash_Write_Failed);
+            }
+            break;
+        default:
+            error_Emit_FromISR(eError_Comm_Out_Unknow_CMD);
+            break;
+    }
 }
 
 /**
@@ -728,16 +1124,8 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
     int32_t step;
     uint8_t result;
     sMotor_Fun motor_fun;
-    float temp;
 
-    if (pInBuff[4] == PROTOCOL_DEVICE_ID_SAMP) {             /* ID为数据板的数据包 直接透传 调试用 */
-        pInBuff[4] = PROTOCOL_DEVICE_ID_CTRL;                /* 修正装置ID */
-        pInBuff[length - 1] = CRC8(pInBuff + 4, length - 5); /* 重新校正CRC */
-        comm_Data_SendTask_QueueEmitCover(pInBuff, length);  /* 提交到采集板发送任务 */
-        return;
-    }
-
-    protocol_Parse_AnswerACK(eComm_Out, pInBuff[3]);   /* 发送回应包 */
+    // protocol_Parse_AnswerACK(eComm_Out, pInBuff[3]);   /* 发送回应包 */
     switch (pInBuff[5]) {                              /* 进一步处理 功能码 */
         case eProtocolEmitPack_Client_CMD_Debug_Motor: /* 电机调试 */
             switch (pInBuff[6]) {                      /* 电机索引 */
@@ -912,278 +1300,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
                 stroge_Conf_CC_O_Data_From_B3(pInBuff + 6); /* 修改测量点 */
             }
             break;
-        case eProtocolEmitPack_Client_CMD_Debug_Heater:
-            switch (length) {
-                case 7:  /* 无参数 读取加热使能状态*/
-                default: /* 兜底 */
-                    pInBuff[0] = 0;
-                    if (heater_BTM_Output_Is_Live()) { /* 下加热体存货状态 */
-                        pInBuff[0] |= (1 << 0);
-                    }
-                    if (heater_TOP_Output_Is_Live()) { /* 上加热体存活状态 */
-                        pInBuff[0] |= (1 << 1);
-                    }
-                    comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Heater, pInBuff, 1);
-                    break;
-                case 8:                            /* 一个参数 配置加热使能状态 */
-                    if (pInBuff[6] & (1 << 0)) {   /* 下加热体 */
-                        heater_BTM_Output_Start(); /* 下加热体使能 */
-                    } else {
-                        heater_BTM_Output_Stop(); /* 下加热体失能 */
-                    }
-                    if (pInBuff[6] & (1 << 1)) {   /* 上加热体 */
-                        heater_TOP_Output_Start(); /* 上加热体使能 */
-                    } else {
-                        heater_TOP_Output_Stop(); /* 上加热体失能 */
-                    }
-                    break;
-                case 10:                   /* 3个参数 读取PID参数 */
-                    if (pInBuff[6] == 0) { /* 下加热体 */
-                        pInBuff[0] = pInBuff[6];
-                        pInBuff[1] = pInBuff[7];
-                        pInBuff[2] = pInBuff[8];
-                        for (result = 0; result < pInBuff[2]; ++result) {
-                            temp = heater_BTM_Conf_Get(pInBuff[7] + result);
-                            memcpy(pInBuff + 3 + 4 * result, (uint8_t *)(&temp), 4);
-                        }
-                        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Heater, pInBuff, 3 + 4 * pInBuff[2]);
-                    } else { /* 上加热体 */
-                        pInBuff[0] = pInBuff[6];
-                        pInBuff[1] = pInBuff[7];
-                        pInBuff[2] = pInBuff[8];
-                        for (result = 0; result < pInBuff[2]; ++result) {
-                            temp = heater_TOP_Conf_Get(pInBuff[7] + result);
-                            memcpy(pInBuff + 3 + 4 * result, (uint8_t *)(&temp), 4);
-                        }
-                        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Heater, pInBuff, 3 + 4 * pInBuff[2]);
-                    }
-                    break;
-                case 26:                   /* 26个参数 修改PID参数 */
-                    if (pInBuff[6] == 0) { /* 下加热体 */
-                        for (result = 0; result < pInBuff[8]; ++result) {
-                            temp = *(float *)(pInBuff + 9 + 4 * result);
-                            heater_BTM_Conf_Set(pInBuff[7] + result, temp);
-                        }
-                    } else { /* 上加热体 */
-                        for (result = 0; result < pInBuff[8]; ++result) {
-                            temp = *(float *)(pInBuff + 9 + 4 * result);
-                            heater_TOP_Conf_Set(pInBuff[7] + result, temp);
-                        }
-                    }
-                    break;
-            }
-            break;
-        case eProtocolEmitPack_Client_CMD_Debug_Flag: /* 调试开关 */
-            if (length == 7) {
-                pInBuff[0] = protocol_Debug_Get();
-                comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Flag, pInBuff, 1);
-            } else if (length == 9) {
-                if (pInBuff[7] == 0) {
-                    protocol_Debug_Clear(pInBuff[6]);
-                } else {
-                    protocol_Debug_Mark(pInBuff[6]);
-                }
-            } else {
-                // comm_Data_Sample_Data_Correct((pInBuff[6] < 1 || pInBuff[6] > 6) ? (1) : (pInBuff[6]), pInBuff + 1, pInBuff);
-                // comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Flag, pInBuff + 1, pInBuff[0]);
-                result = comm_Data_Sample_Data_Fetch(pInBuff[6], pInBuff + 1, pInBuff);
-                comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Flag, pInBuff + 1, pInBuff[0]);
-            }
-            break;
-        case eProtocolEmitPack_Client_CMD_Debug_Beep: /* 蜂鸣器控制 */
-            if (length != 14) {
-                beep_Start();
-            } else {
-                beep_Start_With_Conf(pInBuff[6] % 7, (pInBuff[7] << 8) + pInBuff[8], (pInBuff[9] << 8) + pInBuff[10], (pInBuff[11] << 8) + pInBuff[12]);
-            }
-            break;
-        case eProtocolEmitPack_Client_CMD_Debug_Flash_Read: /* SPI Flash 读测试 */
-            result = storgeReadConfInfo((pInBuff[6] << 16) + (pInBuff[7] << 8) + pInBuff[8], (pInBuff[9] << 16) + (pInBuff[10] << 8) + pInBuff[11], 200);
-            if (result == 0) {
-                storgeTaskNotification(eStorgeNotifyConf_Read_Flash, eComm_Out); /* 通知存储任务 */
-            }
-            break;
-        case eProtocolEmitPack_Client_CMD_Debug_Flash_Write: /* SPI Flash 写测试 */
-            result = storgeWriteConfInfo((pInBuff[6] << 16) + (pInBuff[7] << 8) + pInBuff[8], &pInBuff[12],
-                                         (pInBuff[9] << 16) + (pInBuff[10] << 8) + pInBuff[11], 200);
-            if (result == 0) {
-                storgeTaskNotification(eStorgeNotifyConf_Write_Flash, eComm_Out); /* 通知存储任务 */
-            }
-            break;
-        case eProtocolEmitPack_Client_CMD_Debug_EEPROM_Read: /* EEPROM 读测试 */
-            result = storgeReadConfInfo((pInBuff[6] << 16) + (pInBuff[7] << 8) + pInBuff[8], (pInBuff[9] << 16) + (pInBuff[10] << 8) + pInBuff[11], 200);
-            if (result == 0) {
-                storgeTaskNotification(eStorgeNotifyConf_Read_ID_Card, eComm_Out); /* 通知存储任务 */
-            }
-            break;
-        case eProtocolEmitPack_Client_CMD_Debug_EEPROM_Write: /* EEPROM 写测试 */
-            result = storgeWriteConfInfo((pInBuff[6] << 16) + (pInBuff[7] << 8) + pInBuff[8], &pInBuff[12],
-                                         (pInBuff[9] << 16) + (pInBuff[10] << 8) + pInBuff[11], 200);
-            if (result == 0) {
-                storgeTaskNotification(eStorgeNotifyConf_Write_ID_Card, eComm_Out); /* 通知存储任务 */
-            }
-            break;
-        case eProtocolEmitPack_Client_CMD_Debug_Motor_Fun: /* 电机功能 */
-            motor_fun.fun_type = (eMotor_Fun)pInBuff[6];   /* 开始测试 */
-            pInBuff[0] = motor_Emit(&motor_fun, 0);        /* 提交到电机队列 */
-            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Motor_Fun, pInBuff, 1);
-            break;
-        case eProtocolEmitPack_Client_CMD_Debug_Self_Check: /* 自检测试 */
-            if (length == 7) {
-                protocol_Self_Check_Temp_TOP(pInBuff);
-                protocol_Self_Check_Temp_BTM(pInBuff);
-                protocol_Self_Check_Temp_ENV(pInBuff);
-                motor_fun.fun_type = eMotor_Fun_Self_Check;                    /* 整体自检测试 */
-                motor_Emit(&motor_fun, 0);                                     /* 提交到电机队列 */
-                storgeTaskNotification(eStorgeNotifyConf_Test_All, eComm_Out); /* 通知存储任务 */
-            } else if (length == 8) {                                          /* 单向测试结果 */
-                switch (pInBuff[6]) {
-                    case 1: /* 上加热体温度结果 */
-                        protocol_Self_Check_Temp_TOP(pInBuff);
-                        break;
-                    case 2: /* 下加热体温度结果 */
-                        protocol_Self_Check_Temp_BTM(pInBuff);
-                        break;
-                    case 3: /* 环境温度结果 */
-                        protocol_Self_Check_Temp_ENV(pInBuff);
-                        break;
-                    case 4:                                                              /* 外部Flash */
-                        storgeTaskNotification(eStorgeNotifyConf_Test_Flash, eComm_Out); /* 通知存储任务 */
-                        break;
-                    case 5:                                                                /* ID Code 卡 */
-                        storgeTaskNotification(eStorgeNotifyConf_Test_ID_Card, eComm_Out); /* 通知存储任务 */
-                        break;
-                    default:
-                        motor_fun.fun_type = eMotor_Fun_Self_Check_Motor_White - 6 + pInBuff[6]; /* 整体自检测试 单项 */
-                        motor_Emit(&motor_fun, 0);                                               /* 提交到电机队列 */
-                        break;
-                }
-            }
-            break;
-        case eProtocolEmitPack_Client_CMD_Debug_System:     /* 系统控制 */
-            if (length == 7) {                              /* 无参数 重启 */
-                comm_Data_Board_Reset();                    /* 重置采样板 */
-                HAL_NVIC_SystemReset();                     /* 重新启动 */
-            } else if (length == 8) {                       /* 单一参数 杂散光测试 */
-                comm_Data_GPIO_Init();                      /* 初始化通讯管脚 */
-                motor_fun.fun_type = eMotor_Fun_Stary_Test; /* 杂散光测试 */
-                motor_Emit(&motor_fun, 3000);               /* 提交到任务队列 */
-            } else {
-                error_Emit(eError_Comm_Out_Param_Error);
-            }
-            break;
-        case eProtocolEmitPack_Client_CMD_Debug_Params:         /* 参数设置 */
-            if (length == 9) {                                  /* 保存参数 */
-                status = (pInBuff[6] << 0) + (pInBuff[7] << 8); /* 起始索引 */
-                if (status == 0xFFFF) {
-                    storgeTaskNotification(eStorgeNotifyConf_Dump_Params, eComm_Out);
-                }
-            } else if (length == 11) {                                                                                          /* 读取参数 */
-                result = storgeReadConfInfo((pInBuff[6] << 0) + (pInBuff[7] << 8), (pInBuff[8] << 0) + (pInBuff[9] << 8), 200); /* 配置 */
-                if (result == 0) {
-                    storgeTaskNotification(eStorgeNotifyConf_Read_Parmas, eComm_Out); /* 通知存储任务 */
-                }
-            } else if (length > 11 && ((length - 11) % 4 == 0)) { /* 写入参数 */
-                result = storgeWriteConfInfo((pInBuff[6] << 0) + (pInBuff[7] << 8), &pInBuff[10], 4 * ((pInBuff[8] << 0) + (pInBuff[9] << 8)), 200); /* 配置 */
-                if (result == 0) {
-                    storgeTaskNotification(eStorgeNotifyConf_Write_Parmas, eComm_Out); /* 通知存储任务 */
-                }
-            } else {
-                error_Emit(eError_Comm_Out_Param_Error);
-            }
-            break;
-        case eProtocolEmitPack_Client_CMD_Debug_BL:             /* 升级Bootloader */
-            if ((pInBuff[10] << 0) + (pInBuff[11] << 8) == 0) { /* 数据长度为空 尾包 */
-                result = Innate_Flash_Dump((pInBuff[6] << 0) + (pInBuff[7] << 8),
-                                           (pInBuff[12] << 0) + (pInBuff[13] << 8) + (pInBuff[14] << 16) + (pInBuff[15] << 24));
-                pInBuff[0] = result;
-                comm_Out_SendTask_QueueEmitWithBuildCover(0xDE, pInBuff, 1);
-            } else {                                              /* 数据长度不为空 非尾包 */
-                if ((pInBuff[8] << 0) + (pInBuff[9] << 8) == 0) { /* 起始包 */
-                    result = Innate_Flash_Erase_Temp();           /* 擦除Flash */
-                    if (result > 0) {                             /* 擦除失败 */
-                        HAL_FLASH_Lock();                         /* 回锁 */
-                        pInBuff[0] = result;
-                        comm_Out_SendTask_QueueEmitWithBuildCover(0xDE, pInBuff, 1);
-                        break;
-                    }
-                }
-                result =
-                    Innate_Flash_Write(INNATE_FLASH_ADDR_TEMP + (pInBuff[8] << 0) + (pInBuff[9] << 8), pInBuff + 12, (pInBuff[10] << 0) + (pInBuff[11] << 8));
-                pInBuff[0] = result;
-                comm_Out_SendTask_QueueEmitWithBuildCover(0xDE, pInBuff, 1);
-            }
-            break;
-        case eProtocolEmitPack_Client_CMD_Debug_Version:
-            memcpy(pInBuff, (uint8_t *)(UID_BASE), 12);
-            memcpy(pInBuff + 12, (uint8_t *)__TIME__, strlen(__TIME__));
-            memcpy(pInBuff + 12 + strlen(__TIME__), (uint8_t *)__DATE__, strlen(__DATE__));
-            comm_Out_SendTask_QueueEmitWithBuildCover(0xDF, pInBuff, 12 + strlen(__TIME__) + strlen(__DATE__));
-            break;
-        case eProtocolEmitPack_Client_CMD_START:          /* 开始测量帧 0x01 */
-            gComm_Data_Sample_Max_Point_Clear();          /* 清除最大点数 */
-            protocol_Temp_Upload_Pause();                 /* 暂停温度上送 */
-            comm_Data_GPIO_Init();                        /* 初始化通讯管脚 */
-            motor_fun.fun_type = eMotor_Fun_Sample_Start; /* 开始测试 */
-            if (motor_Emit(&motor_fun, 0) == pdTRUE) {    /* 提交到电机队列 */
-                comm_Data_Sample_Send_Clear_Conf();       /* 清除采样板上配置信息 */
-            }
-            break;
-        case eProtocolEmitPack_Client_CMD_ABRUPT:    /* 仪器测量取消命令帧 0x02 */
-            barcode_Interrupt_Flag_Mark();           /* 标记打断扫码 */
-            comm_Data_Sample_Force_Stop();           /* 强行停止采样定时器 */
-            motor_Sample_Info(eMotorNotifyValue_BR); /* 提交打断信息 */
-            break;
-        case eProtocolEmitPack_Client_CMD_CONFIG:    /* 测试项信息帧 0x03 */
-            comm_Data_Sample_Send_Conf(&pInBuff[6]); /* 发送测试配置 */
-            break;
-        case eProtocolEmitPack_Client_CMD_FORWARD: /* 打开托盘帧 0x04 */
-            motor_fun.fun_type = eMotor_Fun_Out;   /* 配置电机动作套餐类型 出仓 */
-            motor_Emit(&motor_fun, 0);             /* 交给电机任务 出仓 */
-            break;
-        case eProtocolEmitPack_Client_CMD_REVERSE: /* 关闭托盘命令帧 0x05 */
-            motor_fun.fun_type = eMotor_Fun_In;    /* 配置电机动作套餐类型 进仓 */
-            motor_Emit(&motor_fun, 0);             /* 交给电机任务 进仓 */
-            break;
-        case eProtocolEmitPack_Client_CMD_READ_ID:     /* ID卡读取命令帧 0x06 */
-            result = storgeReadConfInfo(0, 4096, 200); /* 暂无定义 按最大读取 */
-            if (result == 0) {
-                storgeTaskNotification(eStorgeNotifyConf_Read_ID_Card, eComm_Out); /* 通知存储任务 */
-            }
-            break;
-        case eProtocolEmitPack_Client_CMD_STATUS:                                                /* 状态信息查询帧 (首帧) 0x07 */
-            temp = temp_Get_Temp_Data_BTM();                                                     /* 下加热体温度 */
-            pInBuff[0] = ((uint16_t)(temp * 100)) & 0xFF;                                        /* 小端模式 低8位 */
-            pInBuff[1] = ((uint16_t)(temp * 100)) >> 8;                                          /* 小端模式 高8位 */
-            temp = temp_Get_Temp_Data_TOP();                                                     /* 上加热体温度 */
-            pInBuff[2] = ((uint16_t)(temp * 100)) & 0xFF;                                        /* 小端模式 低8位 */
-            pInBuff[3] = ((uint16_t)(temp * 100)) >> 8;                                          /* 小端模式 高8位 */
-            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_TMP, pInBuff, 4); /* 温度信息 */
-
-            protocol_Get_Version(pInBuff);
-            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_VER, pInBuff, 4); /* 软件版本信息 */
-
-            if (tray_Motor_Get_Status_Position() == 0) { /* 托盘状态信息 */
-                pInBuff[0] = 1;                          /* 托盘处于测试位置 原点 */
-            } else if (tray_Motor_Get_Status_Position() >= (eTrayIndex_2 / 4 - 50) && tray_Motor_Get_Status_Position() <= (eTrayIndex_2 / 4 + 50)) {
-                pInBuff[0] = 2; /* 托盘处于出仓位置 误差范围 +-50步 */
-            } else {
-                pInBuff[0] = 0;
-            }
-            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, pInBuff, 1); /* 托盘状态信息 */
-            break;
-        case eProtocolEmitPack_Client_CMD_TEST:         /* 工装测试配置帧 0x08 */
-            comm_Data_Sample_Send_Conf_TV(&pInBuff[6]); /* 保存测试配置 */
-            break;
-        case eProtocolEmitPack_Client_CMD_UPGRADE: /* 下位机升级命令帧 0x0F */
-            if (spi_FlashWriteAndCheck_Word(0x0000, 0x87654321) == 0) {
-                HAL_NVIC_SystemReset(); /* 重新启动 */
-            } else {
-                error_Emit(eError_Out_Flash_Write_Failed);
-            }
-            break;
         default:
-            error_Emit(eError_Comm_Out_Unknow_CMD);
             break;
     }
     return;
@@ -1196,7 +1313,7 @@ void protocol_Parse_Out(uint8_t * pInBuff, uint8_t length)
  * @param  pOutBuff 出站指针
  * @retval None
  */
-uint8_t protocol_Parse_Main_ISR(uint8_t * pInBuff, uint8_t length)
+uint8_t protocol_Parse_Main_ISR(uint8_t * pInBuff, uint16_t length)
 {
     if (pInBuff[4] == PROTOCOL_DEVICE_ID_CTRL) { /* 回声现象 */
         return 0;
@@ -1207,64 +1324,65 @@ uint8_t protocol_Parse_Main_ISR(uint8_t * pInBuff, uint8_t length)
         comm_Main_Send_ACK_Give_From_ISR(pInBuff[6]); /* 通知串口发送任务 回应包收到 */
         return 0;                                     /* 直接返回 */
     }
-    return 1;
+
+    comm_Main_SendTask_ACK_QueueEmitFromISR(&pInBuff[3]);
+    protocol_Parse_Main_Fun_ISR(pInBuff, length);
+    return 0;
 }
 
 /**
- * @brief  上位机解析协议
+ * @brief  上位机解析协议 中断版本
  * @param  pInBuff 入站指针
  * @param  length 入站长度
- * @param  pOutBuff 出站指针
  * @retval 解析数据包结果
  */
-void protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
+static void protocol_Parse_Main_Fun_ISR(uint8_t * pInBuff, uint16_t length)
 {
     uint8_t result;
     sMotor_Fun motor_fun;
     float temp;
 
-    protocol_Parse_AnswerACK(eComm_Main, pInBuff[3]);     /* 发送回应包 */
-    switch (pInBuff[5]) {                                 /* 进一步处理 功能码 */
-        case eProtocolEmitPack_Client_CMD_START:          /* 开始测量帧 0x01 */
-            gComm_Data_Sample_Max_Point_Clear();          /* 清除最大点数 */
-            protocol_Temp_Upload_Pause();                 /* 暂停温度上送 */
-            comm_Data_GPIO_Init();                        /* 初始化通讯管脚 */
-            motor_fun.fun_type = eMotor_Fun_Sample_Start; /* 开始测试 */
-            if (motor_Emit(&motor_fun, 0) == pdTRUE) {    /* 提交到电机队列 */
-                comm_Data_Sample_Send_Clear_Conf();       /* 清除采样板上配置信息 */
+    switch (pInBuff[5]) {                                   /* 进一步处理 功能码 */
+        case eProtocolEmitPack_Client_CMD_START:            /* 开始测量帧 0x01 */
+            gComm_Data_Sample_Max_Point_Clear();            /* 清除最大点数 */
+            protocol_Temp_Upload_Pause();                   /* 暂停温度上送 */
+            comm_Data_GPIO_Init();                          /* 初始化通讯管脚 */
+            motor_fun.fun_type = eMotor_Fun_Sample_Start;   /* 开始测试 */
+            if (motor_Emit_FromISR(&motor_fun) == pdTRUE) { /* 提交到电机队列 */
+                comm_Data_Sample_Send_Clear_Conf_FromISR(); /* 清除采样板上配置信息 */
             }
             break;
-        case eProtocolEmitPack_Client_CMD_ABRUPT:    /* 仪器测量取消命令帧 0x02 */
-            comm_Data_Sample_Force_Stop();           /* 强行停止采样定时器 */
-            motor_Sample_Info(eMotorNotifyValue_BR); /* 提交打断信息 */
+        case eProtocolEmitPack_Client_CMD_ABRUPT:             /* 仪器测量取消命令帧 0x02 */
+            comm_Data_Sample_Force_Stop_FromISR();            /* 强行停止采样定时器 */
+            motor_Sample_Info_From_ISR(eMotorNotifyValue_BR); /* 提交打断信息 */
             break;
-        case eProtocolEmitPack_Client_CMD_CONFIG:    /* 测试项信息帧 0x03 */
-            comm_Data_Sample_Send_Conf(&pInBuff[6]); /* 发送测试配置 */
+        case eProtocolEmitPack_Client_CMD_CONFIG:            /* 测试项信息帧 0x03 */
+            comm_Data_Sample_Send_Conf_FromISR(&pInBuff[6]); /* 发送测试配置 */
             break;
         case eProtocolEmitPack_Client_CMD_FORWARD: /* 打开托盘帧 0x04 */
             motor_fun.fun_type = eMotor_Fun_Out;   /* 配置电机动作套餐类型 出仓 */
-            motor_Emit(&motor_fun, 0);             /* 交给电机任务 出仓 */
+            motor_Emit_FromISR(&motor_fun);        /* 交给电机任务 出仓 */
             break;
         case eProtocolEmitPack_Client_CMD_REVERSE: /* 关闭托盘命令帧 0x05 */
             motor_fun.fun_type = eMotor_Fun_In;    /* 配置电机动作套餐类型 进仓 */
-            motor_Emit(&motor_fun, 0);             /* 交给电机任务 进仓 */
+            motor_Emit_FromISR(&motor_fun);        /* 交给电机任务 进仓 */
             break;
-        case eProtocolEmitPack_Client_CMD_READ_ID:     /* ID卡读取命令帧 0x06 */
-            result = storgeReadConfInfo(0, 4096, 200); /* 暂无定义 按最大读取 */
+        case eProtocolEmitPack_Client_CMD_READ_ID:        /* ID卡读取命令帧 0x06 */
+            result = storgeReadConfInfo_FromISR(0, 4096); /* 暂无定义 按最大读取 */
             if (result == 0) {
-                storgeTaskNotification(eStorgeNotifyConf_Read_ID_Card, eComm_Main); /* 通知存储任务 */
+                storgeTaskNotification_FromISR(eStorgeNotifyConf_Read_ID_Card, eComm_Main); /* 通知存储任务 */
             }
             break;
-        case eProtocolEmitPack_Client_CMD_STATUS:                                                 /* 状态信息查询帧 (首帧) */
-            temp = temp_Get_Temp_Data_BTM();                                                      /* 下加热体温度 */
-            pInBuff[0] = ((uint16_t)(temp * 100)) & 0xFF;                                         /* 小端模式 低8位 */
-            pInBuff[1] = ((uint16_t)(temp * 100)) >> 8;                                           /* 小端模式 高8位 */
-            temp = temp_Get_Temp_Data_TOP();                                                      /* 上加热体温度 */
-            pInBuff[2] = ((uint16_t)(temp * 100)) & 0xFF;                                         /* 小端模式 低8位 */
-            pInBuff[3] = ((uint16_t)(temp * 100)) >> 8;                                           /* 小端模式 高8位 */
-            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_TMP, pInBuff, 4); /* 温度信息 */
+        case eProtocolEmitPack_Client_CMD_STATUS:                                                    /* 状态信息查询帧 (首帧) */
+            temp = temp_Get_Temp_Data_BTM();                                                         /* 下加热体温度 */
+            pInBuff[0] = ((uint16_t)(temp * 100)) & 0xFF;                                            /* 小端模式 低8位 */
+            pInBuff[1] = ((uint16_t)(temp * 100)) >> 8;                                              /* 小端模式 高8位 */
+            temp = temp_Get_Temp_Data_TOP();                                                         /* 上加热体温度 */
+            pInBuff[2] = ((uint16_t)(temp * 100)) & 0xFF;                                            /* 小端模式 低8位 */
+            pInBuff[3] = ((uint16_t)(temp * 100)) >> 8;                                              /* 小端模式 高8位 */
+            comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_TMP, pInBuff, 4); /* 温度信息 */
             protocol_Get_Version(pInBuff);
-            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_VER, pInBuff, 4); /* 软件版本信息 */
+            comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_VER, pInBuff, 4); /* 软件版本信息 */
 
             if (tray_Motor_Get_Status_Position() == 0) { /* 托盘状态 */
                 pInBuff[0] = 1;                          /* 托盘处于测试位置 原点 */
@@ -1273,17 +1391,17 @@ void protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
             } else {
                 pInBuff[0] = 0;
             }
-            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, pInBuff, 1); /* 托盘状态信息 */
+            comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_DISH, pInBuff, 1); /* 托盘状态信息 */
             break;
         case eProtocolEmitPack_Client_CMD_UPGRADE: /* 下位机升级命令帧 0x0F */
             if (spi_FlashWriteAndCheck_Word(0x0000, 0x87654321) == 0) {
                 HAL_NVIC_SystemReset(); /* 重新启动 */
             } else {
-                error_Emit(eError_Out_Flash_Write_Failed);
+                error_Emit_FromISR(eError_Out_Flash_Write_Failed);
             }
             break;
         default:
-            error_Emit(eError_Comm_Main_Unknow_CMD);
+            error_Emit_FromISR(eError_Comm_Main_Unknow_CMD);
             break;
     }
     return;
@@ -1296,8 +1414,10 @@ void protocol_Parse_Main(uint8_t * pInBuff, uint8_t length)
  * @param  pOutBuff 出站指针
  * @retval None
  */
-uint8_t protocol_Parse_Data_ISR(uint8_t * pInBuff, uint8_t length)
+uint8_t protocol_Parse_Data_ISR(uint8_t * pInBuff, uint16_t length)
 {
+    static uint8_t last_ack = 0;
+
     if (pInBuff[4] == PROTOCOL_DEVICE_ID_CTRL) { /* 回声现象 */
         return 0;
     }
@@ -1306,7 +1426,16 @@ uint8_t protocol_Parse_Data_ISR(uint8_t * pInBuff, uint8_t length)
         comm_Data_Send_ACK_Give_From_ISR(pInBuff[6]); /* 通知串口发送任务 回应包收到 */
         return 0;                                     /* 直接返回 */
     }
-    return 1;
+
+    comm_Data_SendTask_ACK_QueueEmitFromISR(&pInBuff[3]);
+
+    if (last_ack == pInBuff[3]) { /* 收到与上一帧号相同帧 */
+        return 0;                 /* 不做处理 */
+    }
+    last_ack = pInBuff[3]; /* 记录上一帧号 */
+
+    protocol_Parse_Data_Fun_ISR(pInBuff, length);
+    return 0;
 }
 
 /**
@@ -1316,44 +1445,38 @@ uint8_t protocol_Parse_Data_ISR(uint8_t * pInBuff, uint8_t length)
  * @param  pOutBuff 出站指针
  * @retval 解析数据包结果
  */
-void protocol_Parse_Data(uint8_t * pInBuff, uint8_t length)
+static void protocol_Parse_Data_Fun_ISR(uint8_t * pInBuff, uint16_t length)
 {
-    static uint8_t last_ack = 0;
+
     uint8_t data_length;
 
-    protocol_Parse_AnswerACK(eComm_Data, pInBuff[3]); /* 发送回应包 */
-    if (last_ack == pInBuff[3]) {                     /* 收到与上一帧号相同帧 */
-        return;                                       /* 不做处理 */
-    }
-    last_ack = pInBuff[3]; /* 记录上一帧号 */
-
-    switch (pInBuff[5]) {                                                                                                   /* 进一步处理 功能码 */
-        case eComm_Data_Inbound_CMD_DATA:                                                                                   /* 采集数据帧 */
-            if (gComm_Data_Correct_Flag_Check()) {                                                                          /* 处于定标状态 */
-                stroge_Conf_CC_O_Data_From_B3(pInBuff + 6);                                                                 /* 修改测量点 */
-                comm_Out_SendTask_QueueEmitWithBuild(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7, 20);      /* 转发至外串口 */
-            } else {                                                                                                        /* 未出于定标状态 */
-                if (protocol_Debug_SampleRawData()) {                                                                       /* 选择原始数据 */
-                    comm_Main_SendTask_QueueEmitWithBuild(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7, 20); /* 构造数据包 */
-                    comm_Out_SendTask_QueueEmitWithModify(pInBuff + 6, length, 0);                                          /* 修改帧号ID后转发 */
-                } else {                                                                                                    /* 经过校正映射 */
-                    comm_Data_Sample_Data_Commit(pInBuff[7], pInBuff, length);                                              /* 采样数据记录 */
-                    comm_Data_Sample_Data_Correct(pInBuff[7], pInBuff, &data_length);                                       /* 投影校正 */
-                    comm_Main_SendTask_QueueEmitWithBuild(eProtocolRespPack_Client_SAMP_DATA, pInBuff, data_length, 20);    /* 构造数据包 */
-                    comm_Out_SendTask_QueueEmitWithModify(pInBuff, data_length + 7, 0);                                     /* 修改帧号ID后转发 */
+    switch (pInBuff[5]) {                                                                                                       /* 进一步处理 功能码 */
+        case eComm_Data_Inbound_CMD_DATA:                                                                                       /* 采集数据帧 */
+            if (gComm_Data_Correct_Flag_Check()) {                                                                              /* 处于定标状态 */
+                stroge_Conf_CC_O_Data_From_B3(pInBuff + 6);                                                                     /* 修改测量点 */
+                comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7);      /* 转发至外串口 */
+            } else {                                                                                                            /* 未出于定标状态 */
+                if (protocol_Debug_SampleRawData()) {                                                                           /* 选择原始数据 */
+                    comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7); /* 构造数据包 */
+                    comm_Out_SendTask_QueueEmitWithModify_FromISR(pInBuff + 6, length);                                         /* 修改帧号ID后转发 */
+                } else {                                                                                                        /* 经过校正映射 */
+                    comm_Data_Sample_Data_Commit(pInBuff[7], pInBuff, length);                                                  /* 采样数据记录 */
+                    comm_Data_Sample_Data_Correct(pInBuff[7], pInBuff, &data_length);                                           /* 投影校正 */
+                    comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_SAMP_DATA, pInBuff, data_length);    /* 构造数据包 */
+                    comm_Out_SendTask_QueueEmitWithModify_FromISR(pInBuff, data_length + 7);                                    /* 修改帧号ID后转发 */
                 }
             }
             break;
-        case eComm_Data_Inbound_CMD_OVER:                /* 采集数据完成帧 */
-            if (comm_Data_Stary_Test_Is_Running()) {     /* 判断是否处于杂散光测试中 */
-                motor_Sample_Info(eMotorNotifyValue_SP); /* 通知电机任务杂散光测试完成 */
+        case eComm_Data_Inbound_CMD_OVER:                         /* 采集数据完成帧 */
+            if (comm_Data_Stary_Test_Is_Running()) {              /* 判断是否处于杂散光测试中 */
+                motor_Sample_Info_From_ISR(eMotorNotifyValue_SP); /* 通知电机任务杂散光测试完成 */
             }
             break;
         case eComm_Data_Inbound_CMD_ERROR: /* 采集板错误信息帧 */
-            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_ERR, &pInBuff[6], 2);
+            comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_ERR, &pInBuff[6], 2);
             break;
         default:
-            error_Emit(eError_Comm_Data_Unknow_CMD);
+            error_Emit_FromISR(eError_Comm_Data_Unknow_CMD);
             break;
     }
     return;

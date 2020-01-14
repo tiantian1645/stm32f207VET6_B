@@ -70,6 +70,16 @@ static void beep_Conf_Init_Start(void)
 }
 
 /**
+ * @brief  蜂鸣器 清空上次PWM输出次数记录
+ * @param  None
+ * @retval None
+ */
+static void beep_Conf_Init_Start_FromISR(void)
+{
+    gBeep_Conf.start = xTaskGetTickCountFromISR();
+}
+
+/**
  * @brief  蜂鸣器空闲状态 修改 Sudo
  * @note   无条件修改蜂鸣器工作状态
  * @param  None
@@ -146,6 +156,18 @@ void beep_Start(void)
 }
 
 /**
+ * @brief  蜂鸣器 PWM 开始输出 中断版本
+ * @param  None
+ * @retval None
+ */
+void beep_Start_FromISR(void)
+{
+    HAL_TIM_PWM_Start(&BEEP_TIM, BEEP_TIM_CHN);
+    beep_Conf_Init_Start_FromISR();
+    beep_Conf_Set_State(eBeep_Status_Isogasi);
+}
+
+/**
  * @brief  蜂鸣器 PWM 开始输出 带配置
  * @param  freq         响的频率
  * @param  t_on        周期内响的时间 单位毫秒
@@ -160,6 +182,23 @@ void beep_Start_With_Conf(eBeep_Freq freq, uint16_t t_on, uint16_t t_off, uint16
     beep_Conf_Set_T_off(t_off);
     beep_Conf_Set_Period_Cnt(period_cnt);
     beep_Start();
+}
+
+/**
+ * @brief  蜂鸣器 PWM 开始输出 带配置
+ * @param  freq         响的频率
+ * @param  t_on        周期内响的时间 单位毫秒
+ * @param  t_off       周期内熄的时间 单位毫秒
+ * @param  period_cnt  周期个数
+ * @retval None
+ */
+void beep_Start_With_Conf_FromISR(eBeep_Freq freq, uint16_t t_on, uint16_t t_off, uint16_t period_cnt)
+{
+    beep_Conf_Set_Freq(freq);
+    beep_Conf_Set_T_on(t_on);
+    beep_Conf_Set_T_off(t_off);
+    beep_Conf_Set_Period_Cnt(period_cnt);
+    beep_Start_FromISR();
 }
 
 /**

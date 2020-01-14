@@ -14,6 +14,8 @@
 
 #define COMM_DATA_SER_TX_RETRY_NUM 3   /* 重发次数 */
 #define COMM_DATA_SER_TX_RETRY_INT 200 /* 重发间隔 200mS 内应有响应包 */
+#define COMM_DATA_SER_TX_RETRY_WC 40
+#define COMM_DATA_SER_TX_RETRY_WT ((COMM_DATA_SER_TX_RETRY_INT) / (COMM_DATA_SER_TX_RETRY_WC))
 #define COMM_DATA_SER_TX_RETRY_SUM ((COMM_DATA_SER_TX_RETRY_NUM) * (COMM_DATA_SER_TX_RETRY_INT))
 
 #define COMM_DATA_WH_TIMER_PRESCALER (54000 - 1) /* TIMER 6 主频切半 1 mS */
@@ -94,6 +96,8 @@ void comm_Data_DMA_TX_Error(void);
 BaseType_t comm_Data_SendTask_QueueEmit(uint8_t * pdata, uint8_t length, uint32_t timeout);
 #define comm_Data_SendTask_QueueEmitCover(pdata, length) comm_Data_SendTask_QueueEmit((pdata), (length), (COMM_DATA_SER_TX_RETRY_SUM))
 
+BaseType_t comm_Data_SendTask_QueueEmit_FromISR(uint8_t * pData, uint8_t length);
+
 BaseType_t comm_Data_Send_ACK_Give_From_ISR(uint8_t packIndex);
 
 uint8_t gComm_Data_Sample_Max_Point_Get(void);
@@ -102,6 +106,7 @@ void gComm_Data_Sample_Max_Point_Clear(void);
 uint8_t comm_Data_Sample_Start(void);
 uint8_t comm_Data_sample_Start_PD(void);
 uint8_t comm_Data_Sample_Force_Stop(void);
+uint8_t comm_Data_Sample_Force_Stop_FromISR(void);
 
 void comm_Data_WH_Time_Deal_FromISR(void);
 void comm_Data_PD_Time_Deal_FromISR(void);
@@ -111,11 +116,15 @@ void gComm_Data_TIM_StartFlag_Clear(void);
 uint8_t comm_Data_Build_Sample_Conf_Pack(uint8_t * pData);
 
 BaseType_t comm_Data_Sample_Send_Clear_Conf(void);
+BaseType_t comm_Data_Sample_Send_Clear_Conf_FromISR(void);
 BaseType_t comm_Data_Sample_Send_Conf(uint8_t * pData);
+BaseType_t comm_Data_Sample_Send_Conf_FromISR(uint8_t * pData);
 BaseType_t comm_Data_Sample_Send_Conf_TV(uint8_t * pData);
+BaseType_t comm_Data_Sample_Send_Conf_TV_FromISR(uint8_t * pData);
 
 BaseType_t comm_Data_Conf_Sem_Wait(uint32_t timeout);
 BaseType_t comm_Data_Conf_Sem_Give(void);
+BaseType_t comm_Data_Conf_Sem_Give_FromISR(void);
 
 BaseType_t comm_Data_Sample_Owari(void);
 
@@ -140,6 +149,8 @@ void comm_Data_GPIO_Init(void);
 void comm_Data_Board_Reset(void);
 void comm_Data_ISR_Deal(void);
 void comm_Data_ISR_Tran(uint8_t wp);
+
+BaseType_t comm_Data_SendTask_ACK_QueueEmitFromISR(uint8_t * pPackIndex);
 
 /* Private defines -----------------------------------------------------------*/
 

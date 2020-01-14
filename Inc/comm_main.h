@@ -14,6 +14,8 @@
 
 #define COMM_MAIN_SER_TX_RETRY_NUM 3
 #define COMM_MAIN_SER_TX_RETRY_INT 2000
+#define COMM_MAIN_SER_TX_RETRY_WC 50
+#define COMM_MAIN_SER_TX_RETRY_WT ((COMM_MAIN_SER_TX_RETRY_INT) / (COMM_MAIN_SER_TX_RETRY_WC))
 #define COMM_MAIN_SER_TX_RETRY_SUM ((COMM_MAIN_SER_TX_RETRY_NUM) * (COMM_MAIN_SER_TX_RETRY_INT))
 
 /* Exported types ------------------------------------------------------------*/
@@ -46,11 +48,15 @@ UBaseType_t comm_Main_SendTask_Queue_GetWaiting(void);
 BaseType_t comm_Main_SendTask_ErrorInfoQueueEmit(uint16_t * pErrorCode, uint32_t timeout);
 BaseType_t comm_Main_SendTask_ErrorInfoQueueEmitFromISR(uint16_t * pErrorCode);
 
+BaseType_t comm_Main_SendTask_ACK_QueueEmitFromISR(uint8_t * pPackIndex);
+
 BaseType_t comm_Main_SendTask_QueueEmit(uint8_t * pdata, uint8_t length, uint32_t timeout);
 #define comm_Main_SendTask_QueueEmitCover(pdata, length) comm_Main_SendTask_QueueEmit((pdata), (length), (COMM_MAIN_SER_TX_RETRY_SUM))
 BaseType_t comm_Main_SendTask_QueueEmitWithBuild(uint8_t cmdType, uint8_t * pData, uint8_t length, uint32_t timeout);
 #define comm_Main_SendTask_QueueEmitWithBuildCover(cmdType, pdata, length)                                                                                     \
     comm_Main_SendTask_QueueEmitWithBuild((cmdType), (pdata), (length), (COMM_MAIN_SER_TX_RETRY_SUM))
+
+BaseType_t comm_Main_SendTask_QueueEmitWithBuild_FromISR(uint8_t cmdType, uint8_t * pData, uint8_t length);
 
 BaseType_t comm_Main_Send_ACK_Give_From_ISR(uint8_t packIndex);
 

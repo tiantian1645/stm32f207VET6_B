@@ -15,8 +15,7 @@ typedef struct {
     uint8_t (*has_head)(uint8_t * pBuff, uint16_t length);
     uint16_t (*has_tail)(uint8_t * pBuff, uint16_t length);
     uint8_t (*is_cmop)(uint8_t * pBuff, uint16_t length);
-    BaseType_t (*callback)(uint8_t * pbuff, uint16_t length);
-    uint8_t (*pre_deal_callback)(uint8_t * pbuff, uint8_t length);
+    uint8_t (*callback)(uint8_t * pbuff, uint16_t length);
 } sSerialRecord;
 
 typedef enum {
