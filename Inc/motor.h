@@ -46,9 +46,6 @@ typedef struct {
 typedef enum {
     eMotor_Fun_In,                      /* 入仓 */
     eMotor_Fun_Out,                     /* 出仓 */
-    eMotor_Fun_Scan,                    /* 扫码 */
-    eMotor_Fun_PD,                      /* PD值测试 */
-    eMotor_Fun_WH,                      /* 白底值测试 */
     eMotor_Fun_Sample_Start,            /* 开始测试 */
     eMotor_Fun_SYK,                     /* 交错 */
     eMotor_Fun_RLB,                     /* 回滚 */
@@ -66,11 +63,16 @@ typedef enum {
     eMotor_Fun_Self_Check_PD,           /* 自检测试 单项 PD */
     eMotor_Fun_Stary_Test,              /* 杂散光测试 */
     eMotor_Fun_Correct,                 /* 定标 */
+    eMotor_Fun_Debug_Tray_Scan,         /* 托盘电机扫码位置 */
+    eMotor_Fun_Debug_Heater,            /* 上加热 */
+    eMotor_Fun_Debug_White,             /* 白板电机 */
+    eMotor_Fun_Debug_Scan,              /* 扫码电机 */
 } eMotor_Fun;
 
 /* 电机任务队列效果结构 */
 typedef struct {
     eMotor_Fun fun_type;
+    uint32_t fun_param_1;
 } sMotor_Fun;
 
 typedef enum {

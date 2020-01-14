@@ -744,26 +744,33 @@ static void motor_Task(void * argument)
                 motor_Tray_Move_By_Index(eTrayIndex_0); /* 测试位置 */
                 heat_Motor_Down();                      /* 砸下上加热体 */
                 break;
-            case eMotor_Fun_Out: /* 出仓 */
-                motor_Tray_Move_By_Index(eTrayIndex_2);
-                tray_Motor_EE_Mark(); /* 标记托盘丢步标志位 */
+            case eMotor_Fun_Out:                        /* 出仓 */
+                motor_Tray_Move_By_Index(eTrayIndex_2); /* 出仓位置 */
+                tray_Motor_EE_Mark();                   /* 标记托盘丢步标志位 */
                 break;
-            case eMotor_Fun_Scan:           /* 扫码 */
-                if (heat_Motor_Up() != 0) { /* 抬起上加热体电机 失败 */
+            case eMotor_Fun_Debug_Tray_Scan: /* 扫码 */
+                if (heat_Motor_Up() != 0) {  /* 抬起上加热体电机 失败 */
                     break;
                 };
                 tray_Move_By_Index(eTrayIndex_1, 5000); /* 运动托盘电机 */
                 barcode_Scan_QR();                      /* 执行扫码 */
                 break;
-            case eMotor_Fun_PD:                         /* PD值测试 */
-                motor_Tray_Move_By_Index(eTrayIndex_0); /* 运动托盘电机 */
-                heat_Motor_Down();                      /* 砸下上加热体 */
-                white_Motor_PD();                       /* 运动白板电机 */
+            case eMotor_Fun_Debug_Heater: /* 上加热体电机 */
+                if (mf.fun_param_1 == 0) {
+                    heat_Motor_Up(); /* 上加热体抬升 */
+                } else {
+                    heat_Motor_Down(); /* 上加热体砸下 */
+                }
                 break;
-            case eMotor_Fun_WH:                         /* 白底值测试 */
-                motor_Tray_Move_By_Index(eTrayIndex_0); /* 运动托盘电机 */
-                heat_Motor_Down();                      /* 砸下上加热体 */
-                white_Motor_WH();                       /* 运动白板电机 */
+            case eMotor_Fun_Debug_White: /* 白板电机 */
+                if (mf.fun_param_1 == 0) {
+                    white_Motor_PD(); /* PD位置 */
+                } else {
+                    white_Motor_WH(); /* 白板位置 */
+                }
+                break;
+            case eMotor_Fun_Debug_Scan:                                                         /* 扫码电机 */
+                barcode_Scan_Bantch((uint8_t)(mf.fun_param_1 >> 8), (uint8_t)(mf.fun_param_1)); /* 位置掩码 扫码使能掩码 */
                 break;
             case eMotor_Fun_Sample_Start:               /* 准备测试 */
                 xTick = xTaskGetTickCount();            /* 记录总体准备起始时间 */

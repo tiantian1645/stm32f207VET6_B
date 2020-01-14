@@ -834,7 +834,123 @@ static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length)
     float temp;
     sMotor_Fun motor_fun;
 
-    switch (pInBuff[5]) { /* 进一步处理 功能码 */
+    switch (pInBuff[5]) {                              /* 进一步处理 功能码 */
+        case eProtocolEmitPack_Client_CMD_Debug_Motor: /* 电机调试 */
+            switch (pInBuff[6]) {                      /* 电机索引 */
+                case 0:                                /* 扫码电机 */
+                    if (length == 10) {                /* 应用层调试 */
+                        motor_fun.fun_type = eMotor_Fun_Debug_Scan;
+                        motor_fun.fun_param_1 = (pInBuff[7] << 8) + pInBuff[8];
+                        motor_Emit_FromISR(&motor_fun);
+
+                    } else if (length == 9) {
+                        switch (pInBuff[7]) {
+                            case 0xFE:
+                                gMotorPressureStopBits_Set(eMotor_Fun_PRE_BARCODE, 0);
+                                motor_fun.fun_type = eMotor_Fun_PRE_BARCODE;
+                                motor_Emit_FromISR(&motor_fun);
+                                break;
+                            case 0xFF:
+                                gMotorPressureStopBits_Set(eMotor_Fun_PRE_BARCODE, 1);
+                                break;
+                        }
+                    }
+                    break;
+                case 1:                /* 托盘电机 */
+                    if (length == 9) { /* 应用层调试 */
+                        switch ((pInBuff[7])) {
+                            case 0:
+                                motor_fun.fun_type = eMotor_Fun_In;
+                                motor_Emit_FromISR(&motor_fun);
+                                break;
+                            case 1:
+                                motor_fun.fun_type = eMotor_Fun_Debug_Tray_Scan;
+                                motor_Emit_FromISR(&motor_fun);
+                                break;
+                            case 2:
+                                motor_fun.fun_type = eMotor_Fun_Out;
+                                motor_Emit_FromISR(&motor_fun);
+                                break;
+                            case 0xFE:
+                                gMotorPressureStopBits_Set(eMotor_Fun_PRE_TRAY, 0);
+                                motor_fun.fun_type = eMotor_Fun_PRE_TRAY;
+                                motor_Emit_FromISR(&motor_fun);
+                                break;
+                            case 0xFF:
+                                gMotorPressureStopBits_Set(eMotor_Fun_PRE_TRAY, 1);
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                    break;
+                case 2: /* 上加热体电机 */
+                    if (length == 9) {
+                        switch (pInBuff[7]) {
+                            case 0:
+                            case 1:
+                                motor_fun.fun_type = eMotor_Fun_Debug_Heater;
+                                motor_fun.fun_param_1 = pInBuff[7];
+                                motor_Emit_FromISR(&motor_fun);
+                                break;
+                            case 0xFE:
+                                gMotorPressureStopBits_Set(eMotor_Fun_PRE_HEATER, 0);
+                                motor_fun.fun_type = eMotor_Fun_PRE_HEATER;
+                                motor_Emit_FromISR(&motor_fun);
+                                break;
+                            case 0xFF:
+                                gMotorPressureStopBits_Set(eMotor_Fun_PRE_HEATER, 1);
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                    break;
+                case 3: /* 白板电机 */
+                    if (length == 9) {
+                        switch (pInBuff[7]) {
+                            case 0:
+                            case 1:
+                                motor_fun.fun_type = eMotor_Fun_Debug_White;
+                                motor_fun.fun_param_1 = pInBuff[7];
+                                motor_Emit_FromISR(&motor_fun);
+                                break;
+                            case 0xFE:
+                                gMotorPressureStopBits_Set(eMotor_Fun_PRE_WHITE, 0);
+                                motor_fun.fun_type = eMotor_Fun_PRE_WHITE;
+                                motor_Emit_FromISR(&motor_fun);
+                                break;
+                            case 0xFF:
+                                gMotorPressureStopBits_Set(eMotor_Fun_PRE_WHITE, 1);
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                    break;
+                case 4:
+                    if (length == 9) {
+                        switch (pInBuff[7]) {
+                            case 0xFE:
+                                gMotorPressureStopBits_Set(eMotor_Fun_PRE_ALL, 0);
+                                motor_fun.fun_type = eMotor_Fun_PRE_ALL;
+                                motor_Emit_FromISR(&motor_fun);
+                                break;
+                            case 0xFF:
+                                gMotorPressureStopBits_Set(eMotor_Fun_PRE_ALL, 1);
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                    break;
+                case 0xFF:
+                    gMotorPressureStopBits_Clear();
+                    break;
+                default:
+                    break;
+            }
+            break;
         case eProtocolEmitPack_Client_CMD_Debug_Heater:
             switch (length) {
                 case 7:  /* 无参数 读取加热使能状态*/
