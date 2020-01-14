@@ -33,7 +33,8 @@
 			"xutility": "c",
 			"freertos.h": "c",
 			"portable.h": "c",
-			"portmacro.h": "c"
+			"portmacro.h": "c",
+			"functional": "c"
 		},
 		"python.autoComplete.extraPaths": [
 			"Tools/"
