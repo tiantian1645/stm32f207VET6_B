@@ -842,7 +842,6 @@ static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length)
                         motor_fun.fun_type = eMotor_Fun_Debug_Scan;
                         motor_fun.fun_param_1 = (pInBuff[7] << 8) + pInBuff[8];
                         motor_Emit_FromISR(&motor_fun);
-
                     } else if (length == 9) {
                         switch (pInBuff[7]) {
                             case 0xFE:
