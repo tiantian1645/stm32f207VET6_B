@@ -49,7 +49,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define PRINT_LOG 0
 
 /* USER CODE END PD */
 
@@ -195,7 +194,6 @@ int main(void)
         FL_Error_Handler(__FILE__, __LINE__);
     }
 
-    printf("Start scheduler\n");
     /* Start the scheduler. */
     vTaskStartScheduler();
 #if 0
@@ -1222,52 +1220,30 @@ static void MX_GPIO_Init(void)
     HAL_NVIC_EnableIRQ(EXTI4_IRQn);
 }
 
-/* USER CODE BEGIN 4 */
-int _write(int file, char * ptr, int len)
-{
-/* Implement your write code here, this is used by puts and printf for example */
-#if PRINT_LOG
-    HAL_UART_Transmit(&huart5, (uint8_t *)ptr, len, 0xFFFF);
-#endif
-    return len;
-}
-
 /**
- * @brief  ????
- * @param  file ???
- * @param  line ??
+ * @brief  错需信息打印
+ * @param  file 文件名
+ * @param  line 行数
  * @retval None
  */
 void FL_Error_Handler(char * file, int line)
 {
-    printf("error handle invoked in FILE: %s | LINE: %d \n", file, line);
-}
+    const char plan_1[] = "error handle invoked in FILE: ";
+    const char plan_2[] = " | LINE: ";
+    uint8_t line_buffer[5], i;
 
-void temp_Log(void)
-{
-    static TickType_t xTick = 0, last_tick = 0;
-    static uint32_t xCnt = 0, last_cnt = 0;
-    float temp_env;
+    HAL_UART_Transmit(&huart5, (uint8_t *)plan_1, strlen(plan_1), 30);
+    HAL_UART_Transmit(&huart5, (uint8_t *)file, strlen(file), 30);
 
-    temp_env = temp_Get_Temp_Data_ENV();
-    xTick = xTaskGetTickCount();
-    xCnt = temp_Get_Conv_Cnt();
+    HAL_UART_Transmit(&huart5, (uint8_t *)plan_2, strlen(plan_2), 30);
 
-    if (last_tick == 0) {
-        last_tick = xTick;
-        printf("temp start | %ld\n", xTick);
+    for (i = 0; i < 4; ++i) {
+        line_buffer[3 - i] = '0' + line % 10;
+        line /= 10;
     }
+    line_buffer[4] = '\n';
 
-    printf("\n========\ntask tick | %4lu | adc cnt | %4lu | ", xTick - last_tick, xCnt - last_cnt);
-    printf("env temp | %d.%03d \n", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
-    temp_env = temp_Get_Temp_Data_BTM();
-    printf("tick | %ld | btm temp | %d.%03d | ", xTick, (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
-    temp_env = temp_Get_Temp_Data_TOP();
-    printf("top temp | %d.%03d |\n", (uint8_t)temp_env, (uint16_t)((temp_env * 1000) - (uint32_t)(temp_env)*1000));
-    last_cnt = xCnt;
-    last_tick = xTick;
-    heater_BTM_Log_PID();
-    heater_TOP_Log_PID();
+    HAL_UART_Transmit(&huart5, line_buffer, 5, 30);
 }
 
 /**
