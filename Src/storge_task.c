@@ -262,7 +262,6 @@ void storgeTaskNotification(eStorgeNotifyConf type, eProtocol_COMM_Index index)
 void storgeTaskNotification_FromISR(eStorgeNotifyConf type, eProtocol_COMM_Index index)
 {
     uint32_t notifyValue = 0;
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     notifyValue = type;
 
     if (type == eStorgeNotifyConf_Read_Flash || type == eStorgeNotifyConf_Write_Flash) {
@@ -278,10 +277,9 @@ void storgeTaskNotification_FromISR(eStorgeNotifyConf type, eProtocol_COMM_Index
     if (index == eComm_Main) {
         notifyValue |= eStorgeNotifyConf_COMM_Main;
     }
-    if (xTaskNotifyFromISR(storgeTaskHandle, notifyValue, eSetValueWithoutOverwrite, &xHigherPriorityTaskWoken) != pdPASS) {
+    if (xTaskNotifyFromISR(storgeTaskHandle, notifyValue, eSetValueWithoutOverwrite, NULL) != pdPASS) {
         error_Emit_FromISR(eError_Storge_Task_Busy);
     }
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
 /**

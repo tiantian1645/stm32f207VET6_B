@@ -69,8 +69,9 @@ static xTaskHandle comm_Data_Send_Task_Handle = NULL;
 /* 测试配置项信号量 */
 static xSemaphoreHandle comm_Data_Conf_Sem = NULL;
 
-static sComm_Data_SendInfo gComm_Data_SendInfo;
-static uint8_t gComm_Data_SendInfoFlag = 1; /* 加入发送队列缓存修改重入标志 */
+static sComm_Data_SendInfo gComm_Data_SendInfo;         /* 提交发送任务到队列用缓存 */
+static sComm_Data_SendInfo gComm_Data_SendInfo_FromISR; /* 提交发送任务到队列用缓存 中断用 */
+static uint8_t gComm_Data_SendInfoFlag = 1;             /* 加入发送队列缓存修改重入标志 */
 static uint8_t gComm_Data_TIM_StartFlag = 0;
 static uint8_t gComm_Data_Sample_Max_Point = 0;
 
@@ -204,6 +205,22 @@ void comm_Data_ConfInit(void)
     vComm_Data_Serial_Record.has_tail = protocol_has_tail;
     vComm_Data_Serial_Record.is_cmop = protocol_is_comp;
     vComm_Data_Serial_Record.callback = protocol_Parse_Data_ISR;
+}
+
+/**
+ * @brief  采样数据记录信息初始化
+ * @param  None
+ * @retval None
+ */
+void comm_Data_RecordInit(void)
+{
+    uint8_t i;
+
+    for (i = 0; i < ARRAY_LEN(gComm_Data_Samples); ++i) {
+        gComm_Data_Samples[i].num = 0;
+        gComm_Data_Samples[i].wave = 0;
+        memset(gComm_Data_Samples[i].raw_datas, 0, 240);
+    }
 }
 
 /**
@@ -754,10 +771,9 @@ BaseType_t comm_Data_Conf_Sem_Give(void)
  */
 BaseType_t comm_Data_Conf_Sem_Give_FromISR(void)
 {
-    BaseType_t xResult, xHigherPriorityTaskWoken = pdFALSE;
+    BaseType_t xResult;
 
-    xResult = xSemaphoreGiveFromISR(comm_Data_Conf_Sem, &xHigherPriorityTaskWoken);
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    xResult = xSemaphoreGiveFromISR(comm_Data_Conf_Sem, NULL);
     return xResult;
 }
 
@@ -864,6 +880,7 @@ void comm_Data_Init(void)
     BaseType_t xResult;
 
     comm_Data_ConfInit();
+    comm_Data_RecordInit();
     comm_Data_GPIO_Init();
 
     /* 接收队列 */
@@ -919,10 +936,9 @@ void comm_Data_Init(void)
  */
 BaseType_t comm_Data_SendTask_ACK_QueueEmitFromISR(uint8_t * pPackIndex)
 {
-    BaseType_t xResult, xHigherPriorityTaskWoken = pdFALSE;
+    BaseType_t xResult;
 
-    xResult = xQueueSendToBackFromISR(comm_Data_ACK_SendQueue, pPackIndex, &xHigherPriorityTaskWoken);
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    xResult = xQueueSendToBackFromISR(comm_Data_ACK_SendQueue, pPackIndex, NULL);
     return xResult;
 }
 
@@ -992,24 +1008,19 @@ BaseType_t comm_Data_SendTask_QueueEmit(uint8_t * pData, uint8_t length, uint32_
 BaseType_t comm_Data_SendTask_QueueEmit_FromISR(uint8_t * pData, uint8_t length)
 {
     BaseType_t xResult;
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
     if (length == 0 || pData == NULL) { /* 数据有效性检查 */
         return pdFALSE;
     }
-    if (gComm_Data_SendInfoFlag == 0) { /* 重入标志 */
-        error_Emit_FromISR(eError_Comm_Data_Busy);
-        return pdFALSE;
-    }
-    gComm_Data_SendInfoFlag = 0;
-    memcpy(gComm_Data_SendInfo.buff, pData, length);
-    gComm_Data_SendInfo.length = length;
 
-    xResult = xQueueSendToBackFromISR(comm_Data_SendQueue, &gComm_Data_SendInfo, &xHigherPriorityTaskWoken);
-    gComm_Data_SendInfoFlag = 1;
+    memcpy(gComm_Data_SendInfo_FromISR.buff, pData, length);
+    gComm_Data_SendInfo_FromISR.length = length;
+
+    xResult = xQueueSendToBackFromISR(comm_Data_SendQueue, &gComm_Data_SendInfo_FromISR, NULL);
+
     if (xResult != pdPASS) {
         error_Emit_FromISR(eError_Comm_Data_Busy);
     }
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     return xResult;
 }
 
@@ -1021,7 +1032,6 @@ BaseType_t comm_Data_SendTask_QueueEmit_FromISR(uint8_t * pData, uint8_t length)
 BaseType_t comm_Data_Send_ACK_Give_From_ISR(uint8_t packIndex)
 {
     static uint8_t idx = 0;
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
     gComm_Data_ACK_Records[idx].tick = xTaskGetTickCountFromISR();
     gComm_Data_ACK_Records[idx].ack_idx = packIndex;
@@ -1029,8 +1039,7 @@ BaseType_t comm_Data_Send_ACK_Give_From_ISR(uint8_t packIndex)
     if (idx >= ARRAY_LEN(gComm_Data_ACK_Records)) {
         idx = 0;
     }
-    xTaskNotifyFromISR(comm_Data_Send_Task_Handle, packIndex, eSetValueWithOverwrite, &xHigherPriorityTaskWoken); /* 允许覆盖 */
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    xTaskNotifyFromISR(comm_Data_Send_Task_Handle, packIndex, eSetValueWithOverwrite, NULL); /* 允许覆盖 */
     return pdPASS;
 }
 

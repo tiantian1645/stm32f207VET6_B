@@ -184,10 +184,8 @@ uint8_t m_drv8824_release(void)
  */
 uint8_t m_drv8824_release_ISR(void)
 {
-    BaseType_t xHigherPriorityTaskWoken;
-
     m_drv8824_Deactive_All();
-    if (xSemaphoreGiveFromISR(m_drv8824_spi_sem, &xHigherPriorityTaskWoken) == pdPASS) {
+    if (xSemaphoreGiveFromISR(m_drv8824_spi_sem, NULL) == pdPASS) {
         return 0;
     }
     return 1;

@@ -60,8 +60,8 @@ static xTaskHandle comm_Out_Send_Task_Handle = NULL;
 /* 串口接收ACK记录 */
 static sProcol_COMM_ACK_Record gComm_Out_ACK_Records[COMM_OUT_SEND_QUEU_LENGTH];
 
-/* 添加到串口发送队列数据缓存 */
-static sComm_Out_SendInfo gSendInfoTemp;
+static sComm_Out_SendInfo gComm_Out_SendInfo;         /* 提交发送任务到队列用缓存 */
+static sComm_Out_SendInfo gComm_Out_SendInfo_FromISR; /* 提交发送任务到队列用缓存 中断用 */
 
 /* 添加到串口发送队列数据缓存 资源占用标识 初始化为无占用 */
 static uint8_t gSendInfoTempLock = 0;
@@ -255,9 +255,9 @@ BaseType_t comm_Out_SendTask_QueueEmit(uint8_t * pData, uint8_t length, uint32_t
         gSendInfoTempLock = 1; /* 标识占用中 */
     }
 
-    memcpy(gSendInfoTemp.buff, pData, length);
-    gSendInfoTemp.length = length;
-    xResult = xQueueSendToBack(comm_Out_SendQueue, &gSendInfoTemp, pdMS_TO_TICKS(timeout));
+    memcpy(gComm_Out_SendInfo.buff, pData, length);
+    gComm_Out_SendInfo.length = length;
+    xResult = xQueueSendToBack(comm_Out_SendQueue, &gComm_Out_SendInfo, pdMS_TO_TICKS(timeout));
     gSendInfoTempLock = 0; /* 解除占用标识 */
     if (xResult != pdPASS) {
         error_Emit(eError_Comm_Out_Busy);
@@ -273,26 +273,19 @@ BaseType_t comm_Out_SendTask_QueueEmit(uint8_t * pData, uint8_t length, uint32_t
  */
 BaseType_t comm_Out_SendTask_QueueEmit_FromISR(uint8_t * pData, uint8_t length)
 {
-    BaseType_t xResult, xHigherPriorityTaskWoken = pdFALSE;
+    BaseType_t xResult;
 
     if (length == 0 || pData == NULL) {
         return pdFALSE;
     }
 
-    if (gSendInfoTempLock == 1) { /* 重入判断 占用中 */
-        return pdFALSE;
-    } else {
-        gSendInfoTempLock = 1; /* 标识占用中 */
-    }
+    memcpy(gComm_Out_SendInfo_FromISR.buff, pData, length);
+    gComm_Out_SendInfo_FromISR.length = length;
+    xResult = xQueueSendToBackFromISR(comm_Out_SendQueue, &gComm_Out_SendInfo_FromISR, NULL);
 
-    memcpy(gSendInfoTemp.buff, pData, length);
-    gSendInfoTemp.length = length;
-    xResult = xQueueSendToBackFromISR(comm_Out_SendQueue, &gSendInfoTemp, &xHigherPriorityTaskWoken);
-    gSendInfoTempLock = 0; /* 解除占用标识 */
     if (xResult != pdPASS) {
         error_Emit_FromISR(eError_Comm_Out_Busy);
     }
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     return xResult;
 }
 
@@ -317,12 +310,12 @@ BaseType_t comm_Out_SendTask_QueueEmitWithModify(uint8_t * pData, uint8_t length
     } else {
         gSendInfoTempLock = 1; /* 标识占用中 */
     }
-    gSendInfoTemp.length = length;                                                          /* 照搬长度 */
-    memcpy(gSendInfoTemp.buff, pData, length);                                              /* 复制到缓存 */
-    gProtocol_ACK_IndexAutoIncrease(eComm_Out);                                             /* 自增帧号 */
-    gSendInfoTemp.buff[3] = gProtocol_ACK_IndexGet(eComm_Out);                              /* 应用帧号 */
-    xResult = xQueueSendToBack(comm_Out_SendQueue, &gSendInfoTemp, pdMS_TO_TICKS(timeout)); /* 加入队列 */
-    gSendInfoTempLock = 0;                                                                  /* 解除占用标识 */
+    gComm_Out_SendInfo.length = length;                                                          /* 照搬长度 */
+    memcpy(gComm_Out_SendInfo.buff, pData, length);                                              /* 复制到缓存 */
+    gProtocol_ACK_IndexAutoIncrease(eComm_Out);                                                  /* 自增帧号 */
+    gComm_Out_SendInfo.buff[3] = gProtocol_ACK_IndexGet(eComm_Out);                              /* 应用帧号 */
+    xResult = xQueueSendToBack(comm_Out_SendQueue, &gComm_Out_SendInfo, pdMS_TO_TICKS(timeout)); /* 加入队列 */
+    gSendInfoTempLock = 0;                                                                       /* 解除占用标识 */
     if (xResult != pdPASS) {
         error_Emit(eError_Comm_Out_Busy);
     }
@@ -338,7 +331,7 @@ BaseType_t comm_Out_SendTask_QueueEmitWithModify(uint8_t * pData, uint8_t length
  */
 BaseType_t comm_Out_SendTask_QueueEmitWithModify_FromISR(uint8_t * pData, uint8_t length)
 {
-    BaseType_t xResult, xHigherPriorityTaskWoken = pdFALSE;
+    BaseType_t xResult;
 
     if (length == 0 || pData == NULL) {
         return pdFALSE;
@@ -349,16 +342,15 @@ BaseType_t comm_Out_SendTask_QueueEmitWithModify_FromISR(uint8_t * pData, uint8_
     } else {
         gSendInfoTempLock = 1; /* 标识占用中 */
     }
-    gSendInfoTemp.length = length;                                                                    /* 照搬长度 */
-    memcpy(gSendInfoTemp.buff, pData, length);                                                        /* 复制到缓存 */
-    gProtocol_ACK_IndexAutoIncrease(eComm_Out);                                                       /* 自增帧号 */
-    gSendInfoTemp.buff[3] = gProtocol_ACK_IndexGet(eComm_Out);                                        /* 应用帧号 */
-    xResult = xQueueSendToBackFromISR(comm_Out_SendQueue, &gSendInfoTemp, &xHigherPriorityTaskWoken); /* 加入队列 */
-    gSendInfoTempLock = 0;                                                                            /* 解除占用标识 */
+    gComm_Out_SendInfo.length = length;                                               /* 照搬长度 */
+    memcpy(gComm_Out_SendInfo.buff, pData, length);                                   /* 复制到缓存 */
+    gProtocol_ACK_IndexAutoIncrease(eComm_Out);                                       /* 自增帧号 */
+    gComm_Out_SendInfo.buff[3] = gProtocol_ACK_IndexGet(eComm_Out);                   /* 应用帧号 */
+    xResult = xQueueSendToBackFromISR(comm_Out_SendQueue, &gComm_Out_SendInfo, NULL); /* 加入队列 */
+    gSendInfoTempLock = 0;                                                            /* 解除占用标识 */
     if (xResult != pdPASS) {
         error_Emit_FromISR(eError_Comm_Out_Busy);
     }
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     return xResult;
 }
 
@@ -413,14 +405,13 @@ BaseType_t comm_Out_SendTask_ErrorInfoQueueEmit(uint16_t * pErrorCode, uint32_t 
  */
 BaseType_t comm_Out_SendTask_ErrorInfoQueueEmitFromISR(uint16_t * pErrorCode)
 {
-    BaseType_t xResult, xHigherPriorityTaskWoken = pdFALSE;
+    BaseType_t xResult;
 
     if (comm_Out_Error_Info_SendQueue == NULL) {
         return pdFALSE;
     }
 
-    xResult = xQueueSendToBackFromISR(comm_Out_Error_Info_SendQueue, pErrorCode, &xHigherPriorityTaskWoken);
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    xResult = xQueueSendToBackFromISR(comm_Out_Error_Info_SendQueue, pErrorCode, NULL);
     return xResult;
 }
 
@@ -431,9 +422,9 @@ BaseType_t comm_Out_SendTask_ErrorInfoQueueEmitFromISR(uint16_t * pErrorCode)
  */
 BaseType_t comm_Out_SendTask_ACK_QueueEmitFromISR(uint8_t * pPackIndex)
 {
-    BaseType_t xResult, xHigherPriorityTaskWoken = pdFALSE;
-    xResult = xQueueSendToBackFromISR(comm_Out_ACK_SendQueue, pPackIndex, &xHigherPriorityTaskWoken);
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    BaseType_t xResult;
+
+    xResult = xQueueSendToBackFromISR(comm_Out_ACK_SendQueue, pPackIndex, NULL);
     return xResult;
 }
 
@@ -473,7 +464,6 @@ BaseType_t comm_Out_SendTask_ACK_Consume(uint32_t timeout)
 BaseType_t comm_Out_Send_ACK_Give_From_ISR(uint8_t packIndex)
 {
     static uint8_t idx = 0;
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
     gComm_Out_ACK_Records[idx].tick = xTaskGetTickCountFromISR();
     gComm_Out_ACK_Records[idx].ack_idx = packIndex;
@@ -482,8 +472,7 @@ BaseType_t comm_Out_Send_ACK_Give_From_ISR(uint8_t packIndex)
         idx = 0;
     }
     if (comm_Out_Send_Task_Handle != NULL) {
-        xTaskNotifyFromISR(comm_Out_Send_Task_Handle, packIndex, eSetValueWithOverwrite, &xHigherPriorityTaskWoken); /* 允许覆盖 */
-        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+        xTaskNotifyFromISR(comm_Out_Send_Task_Handle, packIndex, eSetValueWithOverwrite, NULL); /* 允许覆盖 */
     }
     return pdPASS;
 }
