@@ -543,14 +543,19 @@ static BaseType_t comm_Data_Sample_Apply_Conf(uint8_t * pData)
 
     gComm_Data_Sample_Max_Point_Clear(); /* 清除最大点数 */
     for (i = 0; i < ARRAY_LEN(gComm_Data_Samples); ++i) {
-        gComm_Data_Samples[i].conf.assay = pData[3 * i + 0];                           /* 测试方法 */
-        gComm_Data_Samples[i].conf.radiant = pData[3 * i + 1];                         /* 测试波长 */
-        if (gComm_Data_Samples[i].conf.assay >= eComm_Data_Sample_Assay_Continuous &&  /* 测试方法范围内 */
-            gComm_Data_Samples[i].conf.assay <= eComm_Data_Sample_Assay_Fixed &&       /* and */
-            gComm_Data_Samples[i].conf.radiant >= eComm_Data_Sample_Radiant_610 &&     /* 测试波长范围内 */
-            gComm_Data_Samples[i].conf.radiant <= eComm_Data_Sample_Radiant_405 &&     /* and */
-            pData[3 * i + 2] > 0 && pData[3 * i + 2] <= 120) {                         /* 测试点数范围内 */
-            gComm_Data_Samples[i].conf.points_num = pData[3 * i + 2];                  /* 设置测试点数 */
+        gComm_Data_Samples[i].conf.assay = pData[3 * i + 0];                                    /* 测试方法 */
+        gComm_Data_Samples[i].conf.radiant = pData[3 * i + 1];                                  /* 测试波长 */
+        if (gComm_Data_Samples[i].conf.assay >= eComm_Data_Sample_Assay_Continuous &&           /* 测试方法范围内 */
+            gComm_Data_Samples[i].conf.assay <= eComm_Data_Sample_Assay_Fixed &&                /* and */
+            gComm_Data_Samples[i].conf.radiant >= eComm_Data_Sample_Radiant_610 &&              /* 测试波长范围内 */
+            gComm_Data_Samples[i].conf.radiant <= eComm_Data_Sample_Radiant_405 &&              /* and */
+            pData[3 * i + 2] > 0 && pData[3 * i + 2] <= 120) {                                  /* 测试点数范围内 */
+            if (i > 0 && gComm_Data_Samples[i].conf.radiant == eComm_Data_Sample_Radiant_405) { /* 通道 2～6 没有405 */
+                gComm_Data_Samples[i].conf.points_num = 0;                                      /* 清除点数 */
+                pData[3 * i + 2] = 0;                                                           /* 修正原始数据 */
+            } else {
+                gComm_Data_Samples[i].conf.points_num = pData[3 * i + 2]; /* 设置测试点数 */
+            }
             gComm_Data_Sample_Max_Point_Update(gComm_Data_Samples[i].conf.points_num); /* 更新最大点数 */
             ++result;
         } else {
@@ -576,14 +581,19 @@ static BaseType_t comm_Data_Sample_Apply_Conf_FromISR(uint8_t * pData)
 
     gComm_Data_Sample_Max_Point_Clear(); /* 清除最大点数 */
     for (i = 0; i < ARRAY_LEN(gComm_Data_Samples); ++i) {
-        gComm_Data_Samples[i].conf.assay = pData[3 * i + 0];                           /* 测试方法 */
-        gComm_Data_Samples[i].conf.radiant = pData[3 * i + 1];                         /* 测试波长 */
-        if (gComm_Data_Samples[i].conf.assay >= eComm_Data_Sample_Assay_Continuous &&  /* 测试方法范围内 */
-            gComm_Data_Samples[i].conf.assay <= eComm_Data_Sample_Assay_Fixed &&       /* and */
-            gComm_Data_Samples[i].conf.radiant >= eComm_Data_Sample_Radiant_610 &&     /* 测试波长范围内 */
-            gComm_Data_Samples[i].conf.radiant <= eComm_Data_Sample_Radiant_405 &&     /* and */
-            pData[3 * i + 2] > 0 && pData[3 * i + 2] <= 120) {                         /* 测试点数范围内 */
-            gComm_Data_Samples[i].conf.points_num = pData[3 * i + 2];                  /* 设置测试点数 */
+        gComm_Data_Samples[i].conf.assay = pData[3 * i + 0];                                    /* 测试方法 */
+        gComm_Data_Samples[i].conf.radiant = pData[3 * i + 1];                                  /* 测试波长 */
+        if (gComm_Data_Samples[i].conf.assay >= eComm_Data_Sample_Assay_Continuous &&           /* 测试方法范围内 */
+            gComm_Data_Samples[i].conf.assay <= eComm_Data_Sample_Assay_Fixed &&                /* and */
+            gComm_Data_Samples[i].conf.radiant >= eComm_Data_Sample_Radiant_610 &&              /* 测试波长范围内 */
+            gComm_Data_Samples[i].conf.radiant <= eComm_Data_Sample_Radiant_405 &&              /* and */
+            pData[3 * i + 2] > 0 && pData[3 * i + 2] <= 120) {                                  /* 测试点数范围内 */
+            if (i > 0 && gComm_Data_Samples[i].conf.radiant == eComm_Data_Sample_Radiant_405) { /* 通道 2～6 没有405 */
+                gComm_Data_Samples[i].conf.points_num = 0;                                      /* 清除点数 */
+                pData[3 * i + 2] = 0;                                                           /* 修正原始数据 */
+            } else {
+                gComm_Data_Samples[i].conf.points_num = pData[3 * i + 2]; /* 设置测试点数 */
+            }
             gComm_Data_Sample_Max_Point_Update(gComm_Data_Samples[i].conf.points_num); /* 更新最大点数 */
             ++result;
         } else {
