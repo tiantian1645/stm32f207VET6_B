@@ -331,7 +331,7 @@ BaseType_t comm_Out_SendTask_QueueEmitWithModify(uint8_t * pData, uint8_t length
  */
 BaseType_t comm_Out_SendTask_QueueEmitWithModify_FromISR(uint8_t * pData, uint8_t length)
 {
-    BaseType_t xResult;
+    BaseType_t xResult, xHigherPriorityTaskWoken = pdFALSE;
 
     if (length == 0 || pData == NULL) {
         return pdFALSE;
@@ -342,15 +342,16 @@ BaseType_t comm_Out_SendTask_QueueEmitWithModify_FromISR(uint8_t * pData, uint8_
     } else {
         gSendInfoTempLock = 1; /* 标识占用中 */
     }
-    gComm_Out_SendInfo.length = length;                                               /* 照搬长度 */
-    memcpy(gComm_Out_SendInfo.buff, pData, length);                                   /* 复制到缓存 */
-    gProtocol_ACK_IndexAutoIncrease(eComm_Out);                                       /* 自增帧号 */
-    gComm_Out_SendInfo.buff[3] = gProtocol_ACK_IndexGet(eComm_Out);                   /* 应用帧号 */
-    xResult = xQueueSendToBackFromISR(comm_Out_SendQueue, &gComm_Out_SendInfo, NULL); /* 加入队列 */
-    gSendInfoTempLock = 0;                                                            /* 解除占用标识 */
+    gComm_Out_SendInfo.length = length;                                                                    /* 照搬长度 */
+    memcpy(gComm_Out_SendInfo.buff, pData, length);                                                        /* 复制到缓存 */
+    gProtocol_ACK_IndexAutoIncrease(eComm_Out);                                                            /* 自增帧号 */
+    gComm_Out_SendInfo.buff[3] = gProtocol_ACK_IndexGet(eComm_Out);                                        /* 应用帧号 */
+    xResult = xQueueSendToBackFromISR(comm_Out_SendQueue, &gComm_Out_SendInfo, &xHigherPriorityTaskWoken); /* 加入队列 */
+    gSendInfoTempLock = 0;                                                                                 /* 解除占用标识 */
     if (xResult != pdPASS) {
         error_Emit_FromISR(eError_Comm_Out_Busy);
     }
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     return xResult;
 }
 
@@ -464,6 +465,7 @@ BaseType_t comm_Out_SendTask_ACK_Consume(uint32_t timeout)
 BaseType_t comm_Out_Send_ACK_Give_From_ISR(uint8_t packIndex)
 {
     static uint8_t idx = 0;
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
     gComm_Out_ACK_Records[idx].tick = xTaskGetTickCountFromISR();
     gComm_Out_ACK_Records[idx].ack_idx = packIndex;
@@ -471,9 +473,9 @@ BaseType_t comm_Out_Send_ACK_Give_From_ISR(uint8_t packIndex)
     if (idx >= ARRAY_LEN(gComm_Out_ACK_Records)) {
         idx = 0;
     }
-    if (comm_Out_Send_Task_Handle != NULL) {
-        xTaskNotifyFromISR(comm_Out_Send_Task_Handle, packIndex, eSetValueWithOverwrite, NULL); /* 允许覆盖 */
-    }
+
+    xTaskNotifyFromISR(comm_Out_Send_Task_Handle, packIndex, eSetValueWithOverwrite, &xHigherPriorityTaskWoken); /* 允许覆盖 */
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     return pdPASS;
 }
 

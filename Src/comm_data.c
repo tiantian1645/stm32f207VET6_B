@@ -1042,6 +1042,7 @@ BaseType_t comm_Data_SendTask_QueueEmit_FromISR(uint8_t * pData, uint8_t length)
 BaseType_t comm_Data_Send_ACK_Give_From_ISR(uint8_t packIndex)
 {
     static uint8_t idx = 0;
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
     gComm_Data_ACK_Records[idx].tick = xTaskGetTickCountFromISR();
     gComm_Data_ACK_Records[idx].ack_idx = packIndex;
@@ -1049,7 +1050,8 @@ BaseType_t comm_Data_Send_ACK_Give_From_ISR(uint8_t packIndex)
     if (idx >= ARRAY_LEN(gComm_Data_ACK_Records)) {
         idx = 0;
     }
-    xTaskNotifyFromISR(comm_Data_Send_Task_Handle, packIndex, eSetValueWithOverwrite, NULL); /* 允许覆盖 */
+    xTaskNotifyFromISR(comm_Data_Send_Task_Handle, packIndex, eSetValueWithOverwrite, &xHigherPriorityTaskWoken); /* 允许覆盖 */
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     return pdPASS;
 }
 
