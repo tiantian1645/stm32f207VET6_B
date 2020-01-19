@@ -37,6 +37,7 @@ extern "C" {
 #include "timers.h"
 #include "queue.h"
 #include "semphr.h"
+#include "event_groups.h"
 #include "string.h"
 #include "error.h"
 #include "protocol.h"

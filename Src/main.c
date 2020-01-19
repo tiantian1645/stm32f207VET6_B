@@ -182,6 +182,7 @@ int main(void)
     soft_timer_Init();
 
     /* communication task */
+    SerialInit();
     comm_Data_Init();
     comm_Out_Init();
     comm_Main_Init();

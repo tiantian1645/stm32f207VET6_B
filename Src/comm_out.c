@@ -63,9 +63,6 @@ static sProcol_COMM_ACK_Record gComm_Out_ACK_Records[COMM_OUT_SEND_QUEU_LENGTH];
 static sComm_Out_SendInfo gComm_Out_SendInfo;         /* 提交发送任务到队列用缓存 */
 static sComm_Out_SendInfo gComm_Out_SendInfo_FromISR; /* 提交发送任务到队列用缓存 中断用 */
 
-/* 添加到串口发送队列数据缓存 资源占用标识 初始化为无占用 */
-static uint8_t gSendInfoTempLock = 0;
-
 /* Private constants ---------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -249,16 +246,15 @@ BaseType_t comm_Out_SendTask_QueueEmit(uint8_t * pData, uint8_t length, uint32_t
         return pdFALSE;
     }
 
-    if (gSendInfoTempLock == 1) { /* 重入判断 占用中 */
+    if (serialSourceFlagsWait(eSerial_Source_COMM_Out_Send_Buffer_Bit, 10) == pdFALSE) {
+        error_Emit(eError_Comm_Out_Source_Lock);
         return pdFALSE;
-    } else {
-        gSendInfoTempLock = 1; /* 标识占用中 */
     }
-
     memcpy(gComm_Out_SendInfo.buff, pData, length);
     gComm_Out_SendInfo.length = length;
+    serialSourceFlagsSet(eSerial_Source_COMM_Out_Send_Buffer_Bit);
     xResult = xQueueSendToBack(comm_Out_SendQueue, &gComm_Out_SendInfo, pdMS_TO_TICKS(timeout));
-    gSendInfoTempLock = 0; /* 解除占用标识 */
+
     if (xResult != pdPASS) {
         error_Emit(eError_Comm_Out_Busy);
     }
@@ -278,11 +274,15 @@ BaseType_t comm_Out_SendTask_QueueEmit_FromISR(uint8_t * pData, uint8_t length)
     if (length == 0 || pData == NULL) {
         return pdFALSE;
     }
-
+    if (serialSourceFlagsGet_FromISR() && eSerial_Source_COMM_Out_Send_Buffer_ISR_Bit == 0) {
+        error_Emit_FromISR(eError_Comm_Out_Source_Lock);
+        return pdFALSE;
+    }
+    serialSourceFlagsClear_FromISR(eSerial_Source_COMM_Out_Send_Buffer_ISR_Bit);
     memcpy(gComm_Out_SendInfo_FromISR.buff, pData, length);
     gComm_Out_SendInfo_FromISR.length = length;
     xResult = xQueueSendToBackFromISR(comm_Out_SendQueue, &gComm_Out_SendInfo_FromISR, NULL);
-
+    serialSourceFlagsSet_FromISR(eSerial_Source_COMM_Out_Send_Buffer_ISR_Bit);
     if (xResult != pdPASS) {
         error_Emit_FromISR(eError_Comm_Out_Busy);
     }
@@ -305,17 +305,16 @@ BaseType_t comm_Out_SendTask_QueueEmitWithModify(uint8_t * pData, uint8_t length
         return pdFALSE;
     }
 
-    if (gSendInfoTempLock == 1) { /* 重入判断 占用中 */
+    if (serialSourceFlagsWait(eSerial_Source_COMM_Out_Send_Buffer_Bit, 10) == pdFALSE) {
+        error_Emit(eError_Comm_Out_Source_Lock);
         return pdFALSE;
-    } else {
-        gSendInfoTempLock = 1; /* 标识占用中 */
     }
     gComm_Out_SendInfo.length = length;                                                          /* 照搬长度 */
     memcpy(gComm_Out_SendInfo.buff, pData, length);                                              /* 复制到缓存 */
     gProtocol_ACK_IndexAutoIncrease(eComm_Out);                                                  /* 自增帧号 */
     gComm_Out_SendInfo.buff[3] = gProtocol_ACK_IndexGet(eComm_Out);                              /* 应用帧号 */
     xResult = xQueueSendToBack(comm_Out_SendQueue, &gComm_Out_SendInfo, pdMS_TO_TICKS(timeout)); /* 加入队列 */
-    gSendInfoTempLock = 0;                                                                       /* 解除占用标识 */
+    serialSourceFlagsSet(eSerial_Source_COMM_Out_Send_Buffer_Bit);
     if (xResult != pdPASS) {
         error_Emit(eError_Comm_Out_Busy);
     }
@@ -336,18 +335,17 @@ BaseType_t comm_Out_SendTask_QueueEmitWithModify_FromISR(uint8_t * pData, uint8_
     if (length == 0 || pData == NULL) {
         return pdFALSE;
     }
-
-    if (gSendInfoTempLock == 1) { /* 重入判断 占用中 */
+    if (serialSourceFlagsGet_FromISR() && eSerial_Source_COMM_Out_Send_Buffer_ISR_Bit == 0) {
+        error_Emit_FromISR(eError_Comm_Out_Source_Lock);
         return pdFALSE;
-    } else {
-        gSendInfoTempLock = 1; /* 标识占用中 */
     }
-    gComm_Out_SendInfo.length = length;                                                                    /* 照搬长度 */
-    memcpy(gComm_Out_SendInfo.buff, pData, length);                                                        /* 复制到缓存 */
-    gProtocol_ACK_IndexAutoIncrease(eComm_Out);                                                            /* 自增帧号 */
-    gComm_Out_SendInfo.buff[3] = gProtocol_ACK_IndexGet(eComm_Out);                                        /* 应用帧号 */
-    xResult = xQueueSendToBackFromISR(comm_Out_SendQueue, &gComm_Out_SendInfo, &xHigherPriorityTaskWoken); /* 加入队列 */
-    gSendInfoTempLock = 0;                                                                                 /* 解除占用标识 */
+    serialSourceFlagsClear_FromISR(eSerial_Source_COMM_Out_Send_Buffer_ISR_Bit);
+    gComm_Out_SendInfo_FromISR.length = length;                                                                    /* 照搬长度 */
+    memcpy(gComm_Out_SendInfo_FromISR.buff, pData, length);                                                        /* 复制到缓存 */
+    gProtocol_ACK_IndexAutoIncrease(eComm_Out);                                                                    /* 自增帧号 */
+    gComm_Out_SendInfo_FromISR.buff[3] = gProtocol_ACK_IndexGet(eComm_Out);                                        /* 应用帧号 */
+    xResult = xQueueSendToBackFromISR(comm_Out_SendQueue, &gComm_Out_SendInfo_FromISR, &xHigherPriorityTaskWoken); /* 加入队列 */
+    serialSourceFlagsSet_FromISR(eSerial_Source_COMM_Out_Send_Buffer_ISR_Bit);
     if (xResult != pdPASS) {
         error_Emit_FromISR(eError_Comm_Out_Busy);
     }

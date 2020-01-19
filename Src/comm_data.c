@@ -71,7 +71,7 @@ static xSemaphoreHandle comm_Data_Conf_Sem = NULL;
 
 static sComm_Data_SendInfo gComm_Data_SendInfo;         /* 提交发送任务到队列用缓存 */
 static sComm_Data_SendInfo gComm_Data_SendInfo_FromISR; /* 提交发送任务到队列用缓存 中断用 */
-static uint8_t gComm_Data_SendInfoFlag = 1;             /* 加入发送队列缓存修改重入标志 */
+
 static uint8_t gComm_Data_TIM_StartFlag = 0;
 static uint8_t gComm_Data_Sample_Max_Point = 0;
 
@@ -997,16 +997,15 @@ BaseType_t comm_Data_SendTask_QueueEmit(uint8_t * pData, uint8_t length, uint32_
     if (length == 0 || pData == NULL) { /* 数据有效性检查 */
         return pdFALSE;
     }
-    if (gComm_Data_SendInfoFlag == 0) { /* 重入标志 */
-        error_Emit(eError_Comm_Data_Busy);
+    if (serialSourceFlagsWait(eSerial_Source_COMM_Data_Send_Buffer_Bit, 10) == pdFALSE) {
+        error_Emit(eError_Comm_Data_Source_Lock);
         return pdFALSE;
     }
-    gComm_Data_SendInfoFlag = 0;
     memcpy(gComm_Data_SendInfo.buff, pData, length);
     gComm_Data_SendInfo.length = length;
 
     xResult = xQueueSendToBack(comm_Data_SendQueue, &gComm_Data_SendInfo, pdMS_TO_TICKS(timeout));
-    gComm_Data_SendInfoFlag = 1;
+    serialSourceFlagsSet(eSerial_Source_COMM_Data_Send_Buffer_Bit);
     if (xResult != pdPASS) {
         error_Emit(eError_Comm_Data_Busy);
     }
@@ -1026,12 +1025,17 @@ BaseType_t comm_Data_SendTask_QueueEmit_FromISR(uint8_t * pData, uint8_t length)
     if (length == 0 || pData == NULL) { /* 数据有效性检查 */
         return pdFALSE;
     }
+    if (serialSourceFlagsGet_FromISR() && eSerial_Source_COMM_Main_Send_Buffer_ISR_Bit == 0) {
+        error_Emit_FromISR(eError_Comm_Data_Source_Lock);
+        return pdFALSE;
+    }
+    serialSourceFlagsClear_FromISR(eSerial_Source_COMM_Main_Send_Buffer_ISR_Bit);
 
     memcpy(gComm_Data_SendInfo_FromISR.buff, pData, length);
     gComm_Data_SendInfo_FromISR.length = length;
 
     xResult = xQueueSendToBackFromISR(comm_Data_SendQueue, &gComm_Data_SendInfo_FromISR, NULL);
-
+    serialSourceFlagsSet_FromISR(eSerial_Source_COMM_Main_Send_Buffer_ISR_Bit);
     if (xResult != pdPASS) {
         error_Emit_FromISR(eError_Comm_Data_Busy);
     }

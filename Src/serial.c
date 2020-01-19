@@ -21,12 +21,105 @@ extern UART_HandleTypeDef huart2; /* 采样板 */
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
+static EventGroupHandle_t serial_source_flags = NULL; /* 串口资源标志 */
 
 /* Private constants ---------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
 
 /* Private user code ---------------------------------------------------------*/
+
+/**
+ * @brief  串口全局资源初始化
+ * @param  None
+ * @retval None
+ */
+void SerialInit(void)
+{
+    serial_source_flags = xEventGroupCreate();
+    if (serial_source_flags == NULL) {
+        FL_Error_Handler(__FILE__, __LINE__);
+        return;
+    }
+    serialSourceFlagsSet(eSerial_Source_COMM_Out_Send_Buffer_Bit + eSerial_Source_COMM_Out_Send_Buffer_ISR_Bit + eSerial_Source_COMM_Main_Send_Buffer_Bit +
+                         eSerial_Source_COMM_Main_Send_Buffer_ISR_Bit + eSerial_Source_COMM_Data_Send_Buffer_Bit +
+                         eSerial_Source_COMM_Data_Send_Buffer_ISR_Bit);
+}
+
+/**
+ * @brief  串口全局资源标志位状态获取
+ * @param  None
+ * @retval 标志位状态
+ */
+EventBits_t serialSourceFlagsGet(void)
+{
+    return xEventGroupGetBits(serial_source_flags);
+}
+
+/**
+ * @brief  串口全局资源标志位状态获取 中断版本
+ * @param  None
+ * @retval 标志位状态
+ */
+EventBits_t serialSourceFlagsGet_FromISR(void)
+{
+    return xEventGroupGetBitsFromISR(serial_source_flags);
+}
+
+/**
+ * @brief  串口全局资源标志位等待
+ * @param  flag_bits 等待位
+ * @param  timeout 超时时间
+ * @retval 等待结果
+ */
+EventBits_t serialSourceFlagsWait(EventBits_t flag_bits, uint32_t timeout)
+{
+    return xEventGroupWaitBits(serial_source_flags, flag_bits, pdTRUE, pdTRUE, timeout);
+}
+
+/**
+ * @brief  串口全局资源标志位等待 中断版本
+ * @param  flag_bits 等待位
+ * @param  timeout 超时时间
+ * @retval 标志位状态
+ */
+EventBits_t serialSourceFlagsSet_FromISR(EventBits_t flag_bits)
+{
+    return xEventGroupSetBitsFromISR(serial_source_flags, flag_bits, NULL);
+}
+
+/**
+ * @brief  串口全局资源标志位等待
+ * @param  flag_bits 等待位
+ * @param  timeout 超时时间
+ * @retval 标志位状态
+ */
+EventBits_t serialSourceFlagsSet(EventBits_t flag_bits)
+{
+    return xEventGroupSetBits(serial_source_flags, flag_bits);
+}
+
+/**
+ * @brief  串口全局资源标志位等待 中断版本
+ * @param  flag_bits 等待位
+ * @param  timeout 超时时间
+ * @retval 标志位状态
+ */
+EventBits_t serialSourceFlagsClear_FromISR(EventBits_t flag_bits)
+{
+    return xEventGroupClearBitsFromISR(serial_source_flags, flag_bits);
+}
+
+/**
+ * @brief  串口全局资源标志位等待
+ * @param  flag_bits 等待位
+ * @param  timeout 超时时间
+ * @retval 标志位状态
+ */
+EventBits_t serialSourceFlagsClear(EventBits_t flag_bits)
+{
+    return xEventGroupClearBits(serial_source_flags, flag_bits);
+}
 
 /**
  * @brief  接收细节处理

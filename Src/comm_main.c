@@ -58,7 +58,6 @@ static sProcol_COMM_ACK_Record gComm_Main_ACK_Records[COMM_MAIN_SEND_QUEU_LENGTH
 
 static sComm_Main_SendInfo gComm_Main_SendInfo;         /* 提交发送任务到队列用缓存 */
 static sComm_Main_SendInfo gComm_Main_SendInfo_FromISR; /* 提交发送任务到队列用缓存 中断用 */
-static uint8_t gComm_Main_SendInfoFlag = 1;             /* 上述缓存使用锁 */
 
 /* Private constants ---------------------------------------------------------*/
 
@@ -241,15 +240,16 @@ BaseType_t comm_Main_SendTask_QueueEmit(uint8_t * pData, uint8_t length, uint32_
     if (length == 0 || pData == NULL) {
         return pdFALSE;
     }
-    if (gComm_Main_SendInfoFlag == 0) {
+
+    if (serialSourceFlagsWait(eSerial_Source_COMM_Main_Send_Buffer_Bit, 10) == pdFALSE) {
+        error_Emit(eError_Comm_Main_Source_Lock);
         return pdFALSE;
     }
-    gComm_Main_SendInfoFlag = 0;
     memcpy(gComm_Main_SendInfo.buff, pData, length);
     gComm_Main_SendInfo.length = length;
 
     xResult = xQueueSendToBack(comm_Main_SendQueue, &gComm_Main_SendInfo, pdMS_TO_TICKS(timeout));
-    gComm_Main_SendInfoFlag = 1;
+    serialSourceFlagsSet(eSerial_Source_COMM_Main_Send_Buffer_Bit);
     if (xResult != pdPASS) {
         error_Emit(eError_Comm_Main_Busy);
     }
@@ -269,11 +269,16 @@ BaseType_t comm_Main_SendTask_QueueEmit_FromISR(uint8_t * pData, uint8_t length)
     if (length == 0 || pData == NULL) {
         return pdFALSE;
     }
-
+    if (serialSourceFlagsGet_FromISR() && eSerial_Source_COMM_Main_Send_Buffer_ISR_Bit == 0) {
+        error_Emit_FromISR(eError_Comm_Main_Source_Lock);
+        return pdFALSE;
+    }
+    serialSourceFlagsClear_FromISR(eSerial_Source_COMM_Main_Send_Buffer_ISR_Bit);
     memcpy(gComm_Main_SendInfo_FromISR.buff, pData, length);
     gComm_Main_SendInfo_FromISR.length = length;
 
     xResult = xQueueSendToBackFromISR(comm_Main_SendQueue, &gComm_Main_SendInfo_FromISR, NULL);
+    serialSourceFlagsSet_FromISR(eSerial_Source_COMM_Main_Send_Buffer_ISR_Bit);
     if (xResult != pdPASS) {
         error_Emit_FromISR(eError_Comm_Main_Busy);
     }

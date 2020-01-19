@@ -34,7 +34,8 @@
 			"freertos.h": "c",
 			"portable.h": "c",
 			"portmacro.h": "c",
-			"functional": "c"
+			"functional": "c",
+			"serial.h": "c"
 		},
 		"python.autoComplete.extraPaths": [
 			"Tools/"

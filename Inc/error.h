@@ -78,6 +78,9 @@ typedef enum {
     eError_Stary_Doing = 232,                         /* 杂散光测试中 */
     eError_Temp_BTM_Stable_Timeout = 233,             /* 等待下加热体温度稳定超时 */
     eError_Temp_BTM_Stable_Waiting = 234,             /* 等待下加热体温度稳定中 */
+    eError_Comm_Main_Source_Lock = 235,               /* 主串口资源被锁 */
+    eError_Comm_Out_Source_Lock = 236,                /* 外串口资源被锁 */
+    eError_Comm_Data_Source_Lock = 237,               /* 采样板串口资源被锁 */
 
     /* 周期性上送异常 */
     eError_Temperature_Top_Abnormal = 300, /* 上加热体温度异常 */
