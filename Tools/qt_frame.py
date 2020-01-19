@@ -1886,8 +1886,8 @@ class MainWindow(QMainWindow):
                     w_idx = c_idx + 12 * w
                     for s in range(6):  # s1 ~ s6
                         idx = w_idx + s
-                        theo = self.out_flash_param_cc_sps[idx].value()
-                        test = self.out_flash_param_cc_sps[idx + 6].value()
+                        theo = int(self.out_flash_param_cc_sps[idx].value())
+                        test = int(self.out_flash_param_cc_sps[idx + 6].value())
                         pairs.append((theo, test))
                     chanel_d[f"CH-{c+1}"][("610", "550", "405")[w]] = pairs
             data["cc_ts"] = chanel_d
