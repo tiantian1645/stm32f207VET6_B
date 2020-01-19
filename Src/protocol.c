@@ -576,30 +576,29 @@ void protocol_Temp_Upload_Deal(void)
     TickType_t now;
     static TickType_t xTick_Main = 0, xTick_Out = 0;
 
-    if (protocol_Temp_Upload_Is_Suspend()) { /* 暂停标志位 */
-        return;
-    }
-
     temp_btm = temp_Get_Temp_Data_BTM(); /* 下加热体温度 */
     temp_top = temp_Get_Temp_Data_TOP(); /* 上加热体温度 */
 
     now = xTaskGetTickCount();
-    protocol_Temp_Upload_Error_Deal(now, temp_btm, temp_top);
-
-    if (now - xTick_Main > 5 * pdMS_TO_TICKS(1000)) {
-        xTick_Main = now;
-        protocol_Temp_Upload_Main_Deal(temp_btm, temp_top);
+    if (protocol_Temp_Upload_Is_Suspend() == 0) { /* 暂停上送标志 */
+        protocol_Temp_Upload_Error_Deal(now, temp_btm, temp_top);
+        if (now - xTick_Main > 5 * pdMS_TO_TICKS(1000)) {
+            xTick_Main = now;
+            protocol_Temp_Upload_Main_Deal(temp_btm, temp_top);
+        }
     }
 
     if (protocol_Debug_Temperature()) {
-        if (now - xTick_Out > 0.5 * pdMS_TO_TICKS(1000)) {
+        if (now - xTick_Out > 0.2 * pdMS_TO_TICKS(1000)) {
             xTick_Out = now;
             protocol_Temp_Upload_Out_Deal(temp_btm, temp_top);
         }
-    } else {
-        if (now - xTick_Out > 5 * pdMS_TO_TICKS(1000)) {
-            xTick_Out = now;
-            protocol_Temp_Upload_Out_Deal(temp_btm, temp_top);
+    } else if (protocol_Temp_Upload_Is_Suspend() == 0) { /* 暂停上送标志 */
+        {
+            if (now - xTick_Out > 5 * pdMS_TO_TICKS(1000)) {
+                xTick_Out = now;
+                protocol_Temp_Upload_Out_Deal(temp_btm, temp_top);
+            }
         }
     }
 }
