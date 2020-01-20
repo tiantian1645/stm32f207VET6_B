@@ -1018,7 +1018,17 @@ class MainWindow(QMainWindow):
             std = np.std(ys)
             mean = np.mean(ys)
             cv = std / mean
-            data_infos.append(f"通道 {sd.channel} | {data_format_list(real_data)} | (cv = {cv:.4f}, std = {std:.4f}, mean = {mean:.4f})")
+            if len(real_data) > 6:
+                ys_6 = np.array(real_data[6:], dtype=np.int32)
+                std_6 = np.std(ys_6)
+                mean_6 = np.mean(ys_6)
+                cv_6 = std_6 / mean_6
+                data_infos.append(
+                    f"通道 {sd.channel} | {data_format_list(real_data)} | (cv = {cv:.4f}, std = {std:.4f}, mean = {mean:.4f}) | "
+                    f"(cv_6 = {cv_6:.4f}, std_6 = {std_6:.4f}, mean_6 = {mean_6:.4f})"
+                )
+            else:
+                data_infos.append(f"通道 {sd.channel} | {data_format_list(real_data)} | (cv = {cv:.4f}, std = {std:.4f}, mean = {mean:.4f})")
         # https://stackoverflow.com/a/10977872
         font = QFont("Consolas")
         font.setFixedPitch(True)
