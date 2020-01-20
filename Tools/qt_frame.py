@@ -1018,8 +1018,8 @@ class MainWindow(QMainWindow):
             std = np.std(ys)
             mean = np.mean(ys)
             cv = std / mean
-            if len(real_data) > 6:
-                ys_6 = np.array(real_data[6:], dtype=np.int32)
+            if len(real_data) >= 12:
+                ys_6 = np.array(sorted(real_data[6:])[1:-1], dtype=np.int32)
                 std_6 = np.std(ys_6)
                 mean_6 = np.mean(ys_6)
                 cv_6 = std_6 / mean_6
