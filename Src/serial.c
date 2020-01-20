@@ -164,14 +164,33 @@ void serialGenerateDealRecv(UART_HandleTypeDef * huart, sDMA_Record * pDMA_Recor
  */
 void serialGenerateCallback(uint8_t * pBuff, uint16_t length, sSerialRecord * psrd)
 {
+    uint8_t first_head;
     uint16_t i, pos = 0, tail = 0, j;
 
-    if (psrd->validLength + length >= psrd->maxLength) {                      /* 串口接收缓冲空闲长度不足抛弃 */
-        if (psrd->has_head(pBuff, length) && psrd->has_tail(pBuff, length)) { /* 新鲜包为有头有尾整包 */
-            memcpy(psrd->pSerialBuff, pBuff, length);                         /* 新鲜整包作为未处理包 */
-            psrd->validLength = length;                                       /* 更新未处理数据长度 */
-        } else {
-            for (i = 0; i < psrd->maxLength - length; ++i) {
+    first_head = psrd->has_head(pBuff, length);            /* 判断是否有包头 */
+    if (first_head) {                                      /* 有包头 */
+        tail = psrd->has_tail(pBuff, length);              /* 找到包头后 寻找包尾 */
+        if (tail && psrd->is_cmop(pBuff, tail)) {          /* 完整性判断 */
+            psrd->callback(pBuff, tail);                   /* 直接中断内处理 */
+            memset(psrd->pSerialBuff, 0, psrd->maxLength); /* 清空拼包缓存 */
+            psrd->validLength = 0;                         /* 拼包缓存中待处理长度清零 */
+            return;                                        /* 提前返回 */
+        }
+    }
+
+    if (psrd->validLength + length >= psrd->maxLength) {  /* 拼包缓存中待处理数据长度 + 新鲜包长度 >= 拼包缓存总长度 */
+        if (first_head) {                                 /* 新鲜包起始是包头 */
+            tail = psrd->has_tail(pBuff, length);         /* 找到包头后 寻找包尾 */
+            if (tail && psrd->is_cmop(pBuff, tail)) {     /* 完整性判断 */
+                psrd->callback(pBuff, tail);              /* 直接中断内处理 */
+                psrd->validLength = 0;                    /* 拼包缓存中待处理长度清零 */
+                return;                                   /* 提前返回 */
+            } else {                                      /* 有包头但不是完整一包 */
+                memcpy(psrd->pSerialBuff, pBuff, length); /* 新鲜包作为未处理包 */
+                psrd->validLength = length;               /* 更新未处理数据长度 */
+            }
+        } else {                                                          /* 新鲜包起始不是包头 */
+            for (i = 0; i < psrd->maxLength - length; ++i) {              /* 从拼包缓存中移除前length个数据 */
                 psrd->pSerialBuff[0 + i] = psrd->pSerialBuff[length + i]; /* 剔除旧包 */
             }
             memcpy(&psrd->pSerialBuff[psrd->maxLength - length], pBuff, length); /* 拼接到尾部 */
@@ -191,15 +210,13 @@ void serialGenerateCallback(uint8_t * pBuff, uint16_t length, sSerialRecord * ps
             tail = psrd->has_tail(&(psrd->pSerialBuff[i]), psrd->validLength - i); /* 找到包头后 寻找包尾 */
             if (tail > 0 && psrd->is_cmop(&(psrd->pSerialBuff[i]), tail)) {        /* 完整性判断 */
                 pos = i + tail;                                                    /* 记录处理位置 */
-                if (tail > 0) {                                                    /* 完整一包 */
-                    psrd->callback(&psrd->pSerialBuff[i], tail);                   /* 直接中断内处理 */
+                psrd->callback(&psrd->pSerialBuff[i], tail);                       /* 直接中断内处理 */
+                i += tail - 1;                                                     /* 更新起始测试值 */
+                continue;                                                          /* 新一轮检测  */
+            } else {                                                               /* 有包头但数据不正确 */
+                if (tail > 0 && tail + psrd->minLength < psrd->validLength) {      /* 剩余长度大于最小长度 */
                     i += tail - 1;                                                 /* 更新起始测试值 */
                     continue;                                                      /* 新一轮检测  */
-                }
-            } else {                                                          /* 有包头但数据不正确 */
-                if (tail > 0 && tail + psrd->minLength < psrd->validLength) { /* 剩余长度大于最小长度 */
-                    i += tail - 1;                                            /* 更新起始测试值 */
-                    continue;                                                 /* 新一轮检测  */
                 } else {
                     pos = i; /* 记录处理位置 */
                     break;   /* 提前结束检测保留数据 */
@@ -209,10 +226,18 @@ void serialGenerateCallback(uint8_t * pBuff, uint16_t length, sSerialRecord * ps
             pos = i; /* 记录处理位置  */
         }
     }
-
-    psrd->validLength -= pos; /* 更新未处理数据长度 */
-    for (j = 0; j < psrd->validLength; ++j) {
-        psrd->pSerialBuff[j] = psrd->pSerialBuff[j + pos]; /* 残余数据处理 */
+    if (pos > 0) {                                 /* 残余数据处理 */
+        psrd->validLength -= pos;                  /* 更新未处理数据长度 */
+        if (psrd->validLength < psrd->minLength) { /* 报文长度不足 */
+            return;
+        }
+        if (psrd->has_head(&psrd->pSerialBuff[pos], psrd->validLength)) { /* 残余数据起始为包头 */
+            for (j = 0; j < psrd->validLength; ++j) {
+                psrd->pSerialBuff[j] = psrd->pSerialBuff[j + pos];
+            }
+        } else {
+            psrd->validLength = 0; /* 拼包缓存中待处理长度清零 */
+        }
     }
     return;
 }
