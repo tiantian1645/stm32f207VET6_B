@@ -2103,7 +2103,7 @@ class MainWindow(QMainWindow):
         debug_flag_ly = QGridLayout(self.debug_flag_gb)
         debug_flag_ly.setSpacing(3)
         debug_flag_ly.setContentsMargins(3, 3, 3, 3)
-        self.debug_flag_cbs = (QCheckBox("温度"), QCheckBox("告警"), QCheckBox("扫码"), QCheckBox("托盘"), QCheckBox("校正"))
+        self.debug_flag_cbs = (QCheckBox("温度"), QCheckBox("告警"), QCheckBox("扫码"), QCheckBox("托盘"), QCheckBox("原值"))
         for i, cb in enumerate(self.debug_flag_cbs):
             debug_flag_ly.addWidget(cb, i // 3, i % 3)
         storge_ly.addStretch(1)

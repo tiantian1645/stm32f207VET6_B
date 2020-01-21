@@ -1563,6 +1563,7 @@ static void protocol_Parse_Data_Fun_ISR(uint8_t * pInBuff, uint16_t length)
 {
 
     uint8_t data_length;
+    uint16_t i;
 
     switch (pInBuff[5]) {                                                                                                       /* 进一步处理 功能码 */
         case eComm_Data_Inbound_CMD_DATA:                                                                                       /* 采集数据帧 */
@@ -1570,15 +1571,17 @@ static void protocol_Parse_Data_Fun_ISR(uint8_t * pInBuff, uint16_t length)
                 stroge_Conf_CC_O_Data_From_B3(pInBuff + 6);                                                                     /* 修改测量点 */
                 comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7);      /* 转发至外串口 */
             } else {                                                                                                            /* 未出于定标状态 */
+                comm_Data_Sample_Data_Commit(pInBuff[7], pInBuff, length);                                                      /* 采样数据记录 */
                 if (protocol_Debug_SampleRawData()) {                                                                           /* 选择原始数据 */
                     comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7); /* 构造数据包 */
                     comm_Out_SendTask_QueueEmitWithModify_FromISR(pInBuff + 6, length);                                         /* 修改帧号ID后转发 */
-                } else {                                                                                                        /* 经过校正映射 */
-                    comm_Data_Sample_Data_Commit(pInBuff[7], pInBuff, length);                                                  /* 采样数据记录 */
-                    comm_Data_Sample_Data_Correct(pInBuff[7], pInBuff, &data_length);                                           /* 投影校正 */
-                    comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_SAMP_DATA, pInBuff, data_length);    /* 构造数据包 */
-                    comm_Out_SendTask_QueueEmitWithModify_FromISR(pInBuff, data_length + 7);                                    /* 修改帧号ID后转发 */
-                }
+                    for (i = 0; i < length; ++i) {                                                                              /* 修正偏移 */
+                        pInBuff[i] = pInBuff[i + 6];
+                    }
+                }                                                                                                        /* 经过校正映射 */
+                comm_Data_Sample_Data_Correct(pInBuff[7], pInBuff, &data_length);                                        /* 投影校正 */
+                comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_SAMP_DATA, pInBuff, data_length); /* 构造数据包 */
+                comm_Out_SendTask_QueueEmitWithModify_FromISR(pInBuff, data_length + 7);                                 /* 修改帧号ID后转发 */
             }
             break;
         case eComm_Data_Inbound_CMD_OVER:                         /* 采集数据完成帧 */
