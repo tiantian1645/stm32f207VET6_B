@@ -575,6 +575,8 @@ class MainWindow(QMainWindow):
                 self.matplot_conf_houhou_cs[i].setMaximumWidth(75)
                 self.matplot_conf_houhou_cs[i].setCurrentIndex(1)
                 self.matplot_conf_wavelength_cs[i].addItems(WAVE_NAMES)
+                if i > 0:
+                    self.matplot_conf_wavelength_cs[i].setMaxCount(2)
                 self.matplot_conf_wavelength_cs[i].setMaximumWidth(60)
                 self.matplot_conf_wavelength_cs[i].setCurrentIndex(0)
                 self.matplot_conf_point_sps[i].setRange(0, 120)
@@ -595,14 +597,14 @@ class MainWindow(QMainWindow):
                 barcode_ly.addLayout(temp_ly, i, 2, 1, 3)
         self.sample_record_idx_sp = QSpinBox()
         self.sample_record_idx_sp.setRange(0, 99999999)
-        self.sample_record_idx_sp.setMaximumWidth(75)
+        self.sample_record_idx_sp.setMaximumWidth(90)
         self.sample_record_label = QLabel("***********")
         matplot_record_ly = QHBoxLayout()
         matplot_record_ly.setContentsMargins(3, 1, 3, 1)
         matplot_record_ly.setSpacing(1)
-        label = QLabel("序号")
-        label.setMaximumWidth(30)
-        matplot_record_ly.addWidget(label, 0)
+        self.sample_record_pre_label = QLabel("序号[****]")
+        self.sample_record_pre_label.setMaximumWidth(60)
+        matplot_record_ly.addWidget(self.sample_record_pre_label, 0)
         matplot_record_ly.addWidget(self.sample_record_idx_sp, 0)
         matplot_record_ly.addWidget(QVLine(), 0)
         matplot_record_ly.addWidget(self.sample_record_label)
@@ -975,6 +977,7 @@ class MainWindow(QMainWindow):
             logger.error("hit the label limit")
             cnt = self.sample_db.get_label_cnt()
             self.sample_record_idx_sp.setRange(0, cnt - 1)
+            self.sample_record_pre_label.setText(f"序号[{cnt - 1}]")
             return
         # logger.debug(f"get Label {label}")
         # logger.debug(f"get sample datas | {label.sample_datas}")
@@ -1697,6 +1700,7 @@ class MainWindow(QMainWindow):
         if cnt > 1:
             self.sample_record_idx_sp.setRange(0, cnt - 1)
             self.sample_record_idx_sp.setValue(cnt - 1)
+            self.sample_record_pre_label.setText(f"序号[{cnt - 1}]")
         else:
             self.sample_record_plot_by_index(0)
 
