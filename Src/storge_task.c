@@ -902,10 +902,8 @@ uint8_t gStorgeIllumineCnt_Check(uint8_t target)
     return (gStorgeIllumineCnt == target) ? (1) : (0);
 }
 
-uint8_t storge_Conf_CC_Insert(uint8_t channel, eComm_Data_Sample_Radiant wave, uint32_t avg_data)
+uint8_t storge_Conf_CC_Insert(uint8_t channel, eComm_Data_Sample_Radiant wave, uint8_t stage_index, uint32_t avg_data)
 {
-    uint32_t ccs[6] = {0, 0, 0, 0, 0, 0};
-    uint8_t i;
     eStorgeParamIndex idx;
 
     if (wave == eComm_Data_Sample_Radiant_405) {
@@ -913,24 +911,13 @@ uint8_t storge_Conf_CC_Insert(uint8_t channel, eComm_Data_Sample_Radiant wave, u
     }
 
     idx = storge_Param_Illumine_CC_Get_Index(channel, wave);
-    for (i = 0; i < 6; ++i) {
-        ccs[i] = storge_Param_Illumine_CC_Get_Single(idx + i);
-    }
-    for (i = 0; i < 6; ++i) {
-        if (ccs[i] == 0) {
-            ccs[i] = avg_data;
-            storge_Param_CC_Illumine_CC_Sort(ccs, 6);
-            for (i = 0; i < 6; ++i) {
-                storge_Param_Illumine_CC_Set_Single(idx + i, ccs[i]);
-            }
-            gStorgeIllumineCnt_Inc();
-            return 0;
-        }
-    }
+    storge_Param_Illumine_CC_Set_Single(idx + (stage_index + channel - 1) % 6, avg_data);
+    gStorgeIllumineCnt_Inc();
     return 1;
 }
 
 uint8_t stroge_Conf_CC_O_Data_From_B3(uint8_t * pBuffer)
 {
-    return storge_Conf_CC_Insert(pBuffer[1], comm_Data_Get_Correct_Wave(), (uint32_t)storge_Param_CC_Illumine_CC_Filter(pBuffer));
+    return storge_Conf_CC_Insert(pBuffer[1], comm_Data_Get_Correct_Wave(), comm_Data_Get_Corretc_Stage(),
+                                 (uint32_t)storge_Param_CC_Illumine_CC_Filter(pBuffer));
 }

@@ -2137,7 +2137,7 @@ class MainWindow(QMainWindow):
         self.debugtest_bt.setMaximumWidth(50)
         self.debugtest_sp = QSpinBox()
         self.debugtest_sp.setMaximumWidth(35)
-        self.debugtest_sp.setRange(0, 30)
+        self.debugtest_sp.setRange(1, 6)
         self.debugtest_cnt = 0
         boot_ly.addWidget(self.upgrade_bt)
         boot_ly.addWidget(self.bootload_bt)
@@ -2155,45 +2155,8 @@ class MainWindow(QMainWindow):
 
     def onDebugTest(self, event):
         value = self.debugtest_sp.value()
-        if value == 0:
-            self.debugtest_cnt += 1
-            if self.debugtest_cnt > 6:
-                self.debugtest_cnt = 1
-            self._serialSendPack(0xD4, (self.debugtest_cnt, 1, 6))
-        elif value == 7:
-            points = [random.randint(0, 65535) for _ in range(13)]
-            logger.debug(f"points is [{', '.join(f'{i:04x}' for i in points)}]")
-            points_str = "".join(f"{i:04x}" for i in points)
-            data = f'6632{datetime.now().strftime("%y%m%d")}{value:02d}{points_str}{random.randint(0, 255):02X}'
-            self._serialSendPack(0xD2, (*data.encode("ascii"),))
-        elif 1 <= value <= 6:
-            self.onCorrectMatplotStart()
-            self._serialSendPack(0xD2, (0,))
-        elif 21 <= value <= 26:
-            data = [value]
-            for i in range(6):
-                data.append(self.matplot_conf_wavelength_cs[i].currentIndex() + 1)
-                logger.debug(f"get temp sample index | {i} | data {self.temp_saple_data[i]}")
-                if len(self.temp_saple_data[i]) >= 3:
-                    p = int(statistics.mean(self.temp_saple_data[i][-3:]))
-                else:
-                    p = 0
-                data.append(struct.pack("H", p)[0])
-                data.append(struct.pack("H", p)[1])
-            logger.debug(f"test debug send data | {data}")
-            self._serialSendPack(0xD2, (*data,))
-        elif 11 <= value <= 16:
-            data = [12, value]
-            tt = []
-            for i in range(12):
-                m = 50 + (value - 1) * 2000
-                p = random.randint(m - 50, m + 100)
-                data.append(struct.pack("H", p)[0])
-                data.append(struct.pack("H", p)[1])
-                tt.append(p)
-            tt = sorted(tt[-7:])
-            logger.debug(f"test sample data | {tt} | avg {statistics.mean(tt[1:-1]):.2f}")
-            self._serialSendPack(0xD2, (*data,))
+        self.onCorrectMatplotStart()
+        self._serialSendPack(0xD2, (value - 1,))
 
     def getErrorContent(self, error_code):
         for i in DC201ErrorCode:

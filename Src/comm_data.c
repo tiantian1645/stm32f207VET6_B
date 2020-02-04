@@ -87,6 +87,7 @@ static uint8_t gComm_Data_Stary_test_Falg = 0;
 
 static uint8_t gComm_Data_Correct_Flag = 0; /* 定标状态标志 */
 static eComm_Data_Sample_Radiant gComm_Data_Correct_wave = eComm_Data_Sample_Radiant_550;
+static uint8_t gComm_Data_Correct_stage = 0; /* 定标段索引 */
 /* Private constants ---------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -700,6 +701,26 @@ BaseType_t comm_Data_Sample_Send_Conf_Correct(uint8_t * pData, eComm_Data_Sample
 eComm_Data_Sample_Radiant comm_Data_Get_Correct_Wave(void)
 {
     return gComm_Data_Correct_wave;
+}
+
+/**
+ * @brief  校正端索引配置获取
+ * @param  None
+ * @retval gComm_Data_Correct_stage
+ */
+uint8_t comm_Data_Get_Corretc_Stage(void)
+{
+    return gComm_Data_Correct_stage;
+}
+
+/**
+ * @brief  校正端索引配置设置
+ * @param  None
+ * @retval gComm_Data_Correct_stage
+ */
+void comm_Data_Set_Corretc_Stage(uint8_t idx)
+{
+    gComm_Data_Correct_stage = idx;
 }
 
 /**

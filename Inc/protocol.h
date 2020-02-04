@@ -26,7 +26,7 @@ typedef enum {
     eProtocolEmitPack_Client_CMD_UPGRADE = 0x0F, /* 下位机升级命令帧 */
 
     eProtocolEmitPack_Client_CMD_Debug_Motor = 0xD0,        /* 调试用 电机控制 */
-    eProtocolEmitPack_Client_CMD_Debug_Scan = 0xD2,         /* 调试用 扫码测试 */
+    eProtocolEmitPack_Client_CMD_Debug_Correct = 0xD2,      /* 调试用 循环定标 */
     eProtocolEmitPack_Client_CMD_Debug_Heater = 0xD3,       /* 调试用 加热控制 */
     eProtocolEmitPack_Client_CMD_Debug_Flag = 0xD4,         /* 调试用 标志位设置 */
     eProtocolEmitPack_Client_CMD_Debug_Beep = 0xD5,         /* 调试用 蜂鸣器控制 */
