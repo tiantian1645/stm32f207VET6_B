@@ -75,6 +75,7 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 void FL_Error_Handler(char * file, int line);
+uint8_t GetHardwareVersion(void);
 void reset_Tim1(void);
 /* USER CODE END EFP */
 
