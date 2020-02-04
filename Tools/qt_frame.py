@@ -3,7 +3,6 @@
 import simplejson
 import os
 import queue
-import random
 import struct
 import sys
 import time
@@ -19,7 +18,6 @@ import pyperclip
 import serial
 import serial.tools.list_ports
 import stackprinter
-import statistics
 from PyQt5.QtCore import Qt, QThreadPool, QTimer
 from PyQt5.QtGui import QFont, QIcon, QPalette
 from PyQt5.QtWidgets import (
@@ -60,6 +58,7 @@ from qt_modern_dialog import ModernDialog, ModernMessageBox
 from qt_serial import SerialRecvWorker, SerialSendWorker
 from sample_data import MethodEnum, SampleDB, WaveEnum
 from sample_graph import SampleGraph, TemperatureGraph
+from mengy_color_table import ColorReds, ColorGreens, ColorPurples
 
 BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
 TEMPERAUTRE_NAMES = ("下加热体:", "上加热体:")
@@ -188,7 +187,7 @@ class MainWindow(QMainWindow):
         self._getDebuFlag()
         self._getDeviceID()
 
-    def _setColor(sself, wg, nbg=None, nfg=None):
+    def _setColor(self, wg, nbg=None, nfg=None):
         palette = wg.palette()
         bgc = palette.color(QPalette.Background)
         fgc = palette.color(QPalette.Foreground)
@@ -1840,9 +1839,12 @@ class MainWindow(QMainWindow):
                 for k in range(6):
                     temp_ly.addWidget(QVLine())
                     head = k * 1 + j * 12 + i * 24 + 36 - 12 * pp
+                    # self.out_flash_param_cc_sps[head].setMaximumWidth(45)
+                    # self.out_flash_param_cc_sps[head + 6].setMaximumWidth(60)
                     temp_ly.addWidget(self.out_flash_param_cc_sps[head])
                     temp_ly.addWidget(self.out_flash_param_cc_sps[head + 6])
                 out_flash_param_od_cc_ly.addLayout(temp_ly)
+        self.updateOutFlashParamSpinBG()
         out_flash_param_ly.addWidget(out_flash_param_od_cc_wg)
 
         out_flash_data_ly.addWidget(self.out_flash_data_te)
@@ -1865,22 +1867,25 @@ class MainWindow(QMainWindow):
         self.out_flash_data_dg = ModernDialog(self.out_flash_data_dg, self)
 
     def onOutFlashParamCC_O(self, event):
+        """清除测试点"""
         for idx, sp in enumerate(self.out_flash_param_cc_sps):
             if idx % 12 >= 6:
                 sp.setValue(0)
 
     def onOutFlashParamCC_S(self, event):
+        """清除标准点"""
         for idx, sp in enumerate(self.out_flash_param_cc_sps):
             if idx % 12 < 6:
                 sp.setValue(0)
 
     def onOutFlashParamCC_S_D(self, event):
+        """预设标准点"""
         for idx, sp in enumerate(self.out_flash_param_cc_sps):
             if idx % 12 < 6:
                 if idx // 12 == 2:
                     sp.setValue(0)
                 else:
-                    sp.setValue(50 + (idx % 12) * 2000)
+                    sp.setValue(500 + (idx % 12) * 2000)
 
     def onOutFlashParamCC_Dump(self, event):
         with open(FLASH_CONF_DATA_PATH, "w", encoding="utf-8") as f:
@@ -1937,6 +1942,7 @@ class MainWindow(QMainWindow):
     def onOutFlashParamRead(self, event):
         data = (*(struct.pack("H", 0)), *(struct.pack("H", 167)))
         self._serialSendPack(0xDD, data)
+        QTimer.singleShot(1000, self.updateOutFlashParamSpinBG)
 
     def onOutFlashParamWrite(self, event):
         data = []
@@ -1956,6 +1962,24 @@ class MainWindow(QMainWindow):
         for sp in self.out_flash_param_cc_sps + self.out_flash_param_temp_sps:
             self._setColor(sp, nfg="red")
         QTimer.singleShot(500, partial(self.onOutFlashParamRead, event=False))
+
+    def updateOutFlashParamSpinBG(self):
+        for idx, sp in enumerate(self.out_flash_param_cc_sps):
+            if idx % 12 >= 6:  # 测试点
+                cid = 15 - (idx % 12 - 6) * 3
+                row = idx // 12
+                if row in (0, 3, 5, 7, 9, 11):
+                    nbg = ColorReds[cid].hex
+                elif row in (1, 4, 6, 8, 10, 12):
+                    nbg = ColorGreens[cid].hex
+                else:
+                    nbg = ColorPurples[cid].hex
+                nfg = "white"
+                self._setColor(sp, nbg, nfg)
+            else:  # 标准点
+                nbg = "blue"
+                nfg = "yellow"
+                self._setColor(sp, nbg, nfg)
 
     def updateOutFlashParam(self, info):
         raw_pack = info.content
