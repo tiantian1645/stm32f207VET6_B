@@ -3,6 +3,8 @@ import pyqtgraph as pg
 from collections import namedtuple
 import stackprinter
 from bisect import bisect_left
+from numpy import ones, vstack
+from numpy.linalg import lstsq
 
 logger = loguru.logger
 DataConf = namedtuple("DataConf", "name data color plot")
@@ -185,6 +187,78 @@ class TemperatureGraph(SampleGraph):
                     lds.append(f"<span style='font-size: 12pt; color: #{data_conf.color}'>{data_conf.name}=null</span>")
             label_data = ",   ".join(lds)
             label_text = f"{label_data}  ({label_point})"
+            self.label.setText(label_text)
+            # logger.debug(f"label text | {label_text}")
+            self.vLine.setPos(x)
+            self.hLine.setPos(y)
+
+
+class CC_Graph(SampleGraph):
+    def line_equation_from_two_points(self, p1, p2):
+        x_coords, y_coords = zip(p1, p2)
+        A = vstack([x_coords, ones(len(x_coords))]).T
+        m, c = lstsq(A, y_coords, rcond=None)[0]
+        # logger.debug(f"Line Solution is y = {m}x + {c}")
+        return m, c
+
+    def color_tuple_position(self, datas, sample, color):
+        if sample < datas[1]:
+            p = 1
+        elif sample > datas[-2]:
+            p = len(datas) - 1
+        else:
+            for i in range(len(datas)-1, 0, -1):
+                if sample > datas[i]:
+                    p = i + 1
+                    break
+        tt = []
+        for po, d in enumerate(datas):
+            if po == p:
+                tt.append(f"<span style='font-size: 12pt; color: #FFFFFF'>{sample:5.1f}</span>")
+            tt.append(f"<span style='font-size: 12pt; color: #{color}'>{d:05d}</span>")
+        return ", ".join(tt)
+
+    def mouseMoved(self, evt):
+        # logger.debug(f"get evt in mouseMoved | {evt}")
+        pos = evt
+        if self.plot.sceneBoundingRect().contains(pos):
+            mousePoint = self.plot.vb.mapSceneToView(pos)
+            x = mousePoint.x()
+            y = mousePoint.y()
+            index = round(x)
+            lds = []
+            for data_conf in self.plot_data_confs:
+                if data_conf.data is not None and index >= 0 and index < len(data_conf.data):
+                    value = data_conf.data[index]
+                    lds.append(f"<span style='font-size: 12pt; color: #{data_conf.color}'>{data_conf.name}={value:d}</span>")
+                else:
+                    lds.append(f"<span style='font-size: 12pt; color: #{data_conf.color}'>{data_conf.name}=null</span>")
+            label_data = ",   ".join(lds)
+
+            if x < 1:
+                head = 0
+            elif x > len(self.plot_data_confs[0].data) - 2:
+                head = len(self.plot_data_confs[0].data) - 2
+            else:
+                head = int(x)
+            c0, c1 = self.plot_data_confs[0].data[head : head + 2]
+            d0, d1 = self.plot_data_confs[1].data[head : head + 2]
+
+            k, b = self.line_equation_from_two_points((d0, c0), (d1, c1))
+            dx = d0 + (x - head) * (d1 - d0)
+            cx = k * dx + b
+            cxf = c0 + (x - head) * (c1 - c0)
+
+            label_point = (
+                f"<span style='font-size: 12pt'>({x:.1f}, {y:.1f}) | </span>"
+                f"(<span style='font-size: 12pt; color: #{self.plot_data_confs[1].color}'>{dx:.1f} -</span>"
+                f"<span style='font-size: 12pt; color: #{self.plot_data_confs[0].color}'>> {cxf:.1f}) </span>"
+            )
+            label_raw = (
+                f"<br>{self.color_tuple_position(self.plot_data_confs[1].data, dx, self.plot_data_confs[1].color)}"
+                f"<br>{self.color_tuple_position(self.plot_data_confs[0].data, cx, self.plot_data_confs[0].color)}"
+            )
+            label_text = f"{label_data}  {label_point} \n{label_raw}"
             self.label.setText(label_text)
             # logger.debug(f"label text | {label_text}")
             self.vLine.setPos(x)
