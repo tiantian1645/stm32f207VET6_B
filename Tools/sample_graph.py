@@ -31,7 +31,7 @@ DEFAULT_COLORS = (
 def take_closest(myList, myNumber):
     """
     https://stackoverflow.com/a/12141511
-  
+
     Assumes myList is sorted. Returns closest value to myNumber.
 
     If two numbers are equally close, return the smallest number.
