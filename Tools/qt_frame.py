@@ -601,7 +601,7 @@ class MainWindow(QMainWindow):
         matplot_record_ly = QHBoxLayout()
         matplot_record_ly.setContentsMargins(3, 1, 3, 1)
         matplot_record_ly.setSpacing(1)
-        self.sample_record_pre_label = QLabel("序号[****]")
+        self.sample_record_pre_label = QLabel(f"序号[{self.sample_db.get_label_cnt() - 1}]")
         self.sample_record_pre_label.setMaximumWidth(60)
         matplot_record_ly.addWidget(self.sample_record_pre_label, 0)
         matplot_record_ly.addWidget(self.sample_record_idx_sp, 0)
