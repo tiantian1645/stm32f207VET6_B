@@ -610,9 +610,9 @@ class MainWindow(QMainWindow):
         barcode_ly.addLayout(matplot_record_ly, 7, 0, 1, 3)
         self.stary_test_bt = QPushButton("杂散光", maximumWidth=75)
         self.stary_test_bt.clicked.connect(lambda x: self._serialSendPack(0xDC, (0,)))
-        self.out_flash_param_parse_bt = QPushButton("校正曲线", clicked=self.onOutFlashParamCC_parse, maximumWidth=90)     
+        self.out_flash_param_parse_bt = QPushButton("校正曲线", clicked=self.onOutFlashParamCC_parse, maximumWidth=90)
         barcode_ly.addWidget(self.stary_test_bt, 7, 3, 1, 1)
-        barcode_ly.addWidget(self.out_flash_param_parse_bt, 7, 4, 1, 1)   
+        barcode_ly.addWidget(self.out_flash_param_parse_bt, 7, 4, 1, 1)
         self.barcode_scan_bt.clicked.connect(self.onBarcodeScan)
         self.matplot_start_bt.clicked.connect(self.onMatplotStart)
         self.matplot_cancel_bt.clicked.connect(self.onMatplotCancel)
@@ -1941,22 +1941,20 @@ class MainWindow(QMainWindow):
                 logger.error(f"load json exception\n{stackprinter.format()}")
 
     def updateFlashCC_Plot(self):
-        self.out_flash_data_parse_dg.setWindowTitle(f"校正曲线-CH{self.flash_plot_channel}-{self.flash_plot_wave}")
+        self.out_flash_data_parse_dg.setWindowTitle(f"校正曲线-----{self.flash_plot_wave}")
         with open(FLASH_CONF_DATA_PATH, "r", encoding="utf-8") as f:
             data = simplejson.load(f, encoding="utf-8")
         self.flash_plot_graph.clear_plot()
-        self.flash_plot_graph.plot_data_new(name="标准值", color="ff3300")
-        self.flash_plot_graph.plot_data_new(name="测试值", color="3399ff")
-        xs = (i[0] for i in data['cc_ts'][f'CH-{self.flash_plot_channel}'][f'{self.flash_plot_wave}'])
-        ys = (i[1] for i in data['cc_ts'][f'CH-{self.flash_plot_channel}'][f'{self.flash_plot_wave}'])
-        for x, y in zip(xs, ys):
+        self.flash_plot_graph.plot_data_new(name="标准值")
+        for i in range(6):
+            self.flash_plot_graph.plot_data_new(name=f"CH-{i + 1}")
+        xs = (i[0] for i in data['cc_ts'][f'CH-1'][f'{self.flash_plot_wave}'])
+        yss = ((i[1] for i in data['cc_ts'][f'CH-{j + 1}'][f'{self.flash_plot_wave}']) for j in range(6))
+        for x in xs:
             self.flash_plot_graph.plot_data_update(0, x)
-            self.flash_plot_graph.plot_data_update(1, y)
-
-    def updateFlashCC_PlotSelectChannel(self):
-        # logger.debug(f"self.out_flash_plot_ccb.currentData() | {self.out_flash_plot_ccb.currentText()}")
-        self.flash_plot_channel = self.out_flash_plot_ccb.currentText()
-        self.updateFlashCC_Plot()
+        for i, ys in enumerate(yss):
+            for y in ys:
+                self.flash_plot_graph.plot_data_update(i + 1, y)
 
     def updateFlashCC_PlotSelectWave(self):
         # logger.debug(f"self.out_flash_plot_ccw.currentData() | {self.out_flash_plot_ccw.currentText()}")
@@ -1973,10 +1971,6 @@ class MainWindow(QMainWindow):
         bt_ly = QHBoxLayout()
         parse_ly.addLayout(bt_ly)
         bt_ly.setAlignment(Qt.AlignRight)
-        bt_ly.addWidget(QLabel("通道"))
-        self.out_flash_plot_ccb = QComboBox(maximumWidth=90, currentIndexChanged=self.updateFlashCC_PlotSelectChannel)
-        self.out_flash_plot_ccb.addItems((str(i + 1) for i in range(6)))
-        bt_ly.addWidget(self.out_flash_plot_ccb)
         bt_ly.addWidget(QLabel("波长"))
         self.out_flash_plot_ccw = QComboBox(maximumWidth=90, currentIndexChanged=self.updateFlashCC_PlotSelectWave)
         self.out_flash_plot_ccw.addItems(("610", "550"))
