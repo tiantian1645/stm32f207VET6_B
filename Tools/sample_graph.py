@@ -201,24 +201,21 @@ class CC_Graph(SampleGraph):
         # logger.debug(f"Line Solution is y = {m}x + {c}")
         return m, c
 
-    def color_tuple_position(self, datas, sample, color=None):
-        if sample < datas[1]:
+    def color_tuple_position(self, data_conf, sample):
+        if sample < data_conf.data[1]:
             p = 1
-        elif sample > datas[-2]:
-            p = len(datas) - 1
+        elif sample > data_conf.data[-2]:
+            p = len(data_conf.data) - 1
         else:
-            for i in range(len(datas) - 1, 0, -1):
-                if sample > datas[i]:
+            for i in range(len(data_conf.data) - 1, 0, -1):
+                if sample > data_conf.data[i]:
                     p = i + 1
                     break
         tt = []
-        for po, d in enumerate(datas):
+        for po, d in enumerate(data_conf.data):
             if po == p:
                 tt.append(f"<span style='font-size: 12pt; color: #FFFFFF'>{sample:7.1f}</span>")
-            if color:
-                tt.append(f"<span style='font-size: 12pt; color: #{color}'>{d:05d}</span>")
-            else:
-                tt.append(f"<span style='font-size: 12pt;'>{d:05d}</span>")
+            tt.append(f"<span style='font-size: 12pt; color: #{data_conf.color}'>{d:05d}</span>")
         return ", ".join(tt)
 
     def mouseMoved(self, evt):
@@ -267,13 +264,13 @@ class CC_Graph(SampleGraph):
                 f"<span style='font-size: 12pt; color: #{self.plot_data_confs[6].color}'>{dxs[6 - 1]:.1f}) </span>"
             )
             label_raw = (
-                f"<br>{self.color_tuple_position(self.plot_data_confs[0].data, cx)}"
-                f"<br>{self.color_tuple_position(self.plot_data_confs[1].data, dxs[1 - 1], self.plot_data_confs[1].color)}"
-                f"<br>{self.color_tuple_position(self.plot_data_confs[2].data, dxs[2 - 1], self.plot_data_confs[2].color)}"
-                f"<br>{self.color_tuple_position(self.plot_data_confs[3].data, dxs[3 - 1], self.plot_data_confs[3].color)}"
-                f"<br>{self.color_tuple_position(self.plot_data_confs[4].data, dxs[4 - 1], self.plot_data_confs[4].color)}"
-                f"<br>{self.color_tuple_position(self.plot_data_confs[5].data, dxs[5 - 1], self.plot_data_confs[5].color)}"
-                f"<br>{self.color_tuple_position(self.plot_data_confs[6].data, dxs[6 - 1], self.plot_data_confs[6].color)}"
+                f"<br>{self.color_tuple_position(self.plot_data_confs[0], cx)}"
+                f"<br>{self.color_tuple_position(self.plot_data_confs[1], dxs[1 - 1])}"
+                f"<br>{self.color_tuple_position(self.plot_data_confs[2], dxs[2 - 1])}"
+                f"<br>{self.color_tuple_position(self.plot_data_confs[3], dxs[3 - 1])}"
+                f"<br>{self.color_tuple_position(self.plot_data_confs[4], dxs[4 - 1])}"
+                f"<br>{self.color_tuple_position(self.plot_data_confs[5], dxs[5 - 1])}"
+                f"<br>{self.color_tuple_position(self.plot_data_confs[6], dxs[6 - 1])}"
             )
             label_text = f"{label_data}  {label_point} \n{label_raw}"
             self.label.setText(label_text)

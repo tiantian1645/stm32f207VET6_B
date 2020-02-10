@@ -95,7 +95,7 @@ try:
 except Exception:
     logger.error(f"load conf failed \n{stackprinter.format()}")
     CONFIG = dict()
-    CONFIG["log"] = dict(rotation="1 MB", retention=50)
+    CONFIG["log"] = dict(rotation="4 MB", retention=16)
     try:
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
             simplejson.dump(CONFIG, f)
@@ -103,7 +103,7 @@ except Exception:
         logger.error(f"dump conf failed \n{stackprinter.format()}")
 
 rotation = CONFIG.get("log", {}).get("rotation", "4 MB")
-retention = CONFIG.get("log", {}).get("retention", 25)
+retention = CONFIG.get("log", {}).get("retention", 16)
 logger.add("./log/dc201.log", rotation=rotation, retention=retention, enqueue=True)
 
 
@@ -1948,11 +1948,11 @@ class MainWindow(QMainWindow):
         with open(FLASH_CONF_DATA_PATH, "r", encoding="utf-8") as f:
             data = simplejson.load(f, encoding="utf-8")
         self.flash_plot_graph.clear_plot()
-        self.flash_plot_graph.plot_data_new(name="标准值")
+        self.flash_plot_graph.plot_data_new(name="标准值", color="DAEDF0")
         for i in range(6):
             self.flash_plot_graph.plot_data_new(name=f"CH-{i + 1}")
-        xs = (i[0] for i in data['cc_ts'][f'CH-1'][f'{self.flash_plot_wave}'])
-        yss = ((i[1] for i in data['cc_ts'][f'CH-{j + 1}'][f'{self.flash_plot_wave}']) for j in range(6))
+        xs = (i[0] for i in data["cc_ts"][f"CH-1"][f"{self.flash_plot_wave}"])
+        yss = ((i[1] for i in data["cc_ts"][f"CH-{j + 1}"][f"{self.flash_plot_wave}"]) for j in range(6))
         for x in xs:
             self.flash_plot_graph.plot_data_update(0, x)
         for i, ys in enumerate(yss):
