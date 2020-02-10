@@ -1883,10 +1883,13 @@ class MainWindow(QMainWindow):
         """预设标准点"""
         for idx, sp in enumerate(self.out_flash_param_cc_sps):
             if idx % 12 < 6:
-                if idx // 12 == 2:
+                if idx // 12 < 2:
+                    if sp.value() < 200:
+                        sp.setValue(500 + (idx % 12) * 2000)
+                elif idx // 12 == 2:
                     sp.setValue(0)
-                else:
-                    sp.setValue(500 + (idx % 12) * 2000)
+                elif idx // 12 >= 3:
+                    sp.setValue(self.out_flash_param_cc_sps[idx - 12 * ((idx + 12) // 24 * 2 - 1)].value())
 
     def onOutFlashParamCC_Dump(self, event):
         with open(FLASH_CONF_DATA_PATH, "w", encoding="utf-8") as f:
