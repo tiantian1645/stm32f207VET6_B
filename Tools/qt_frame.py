@@ -12,7 +12,7 @@ from datetime import datetime
 from functools import partial
 from hashlib import sha256
 
-import loguru
+from loguru import logger
 import numpy as np
 import pyperclip
 import serial
@@ -60,6 +60,7 @@ from sample_data import MethodEnum, SampleDB, WaveEnum
 from sample_graph import SampleGraph, TemperatureGraph, CC_Graph
 from mengy_color_table import ColorReds, ColorGreens, ColorPurples
 
+
 BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
 TEMPERAUTRE_NAMES = ("下加热体:", "上加热体:")
 LINE_COLORS = ("b", "g", "r", "c", "m", "y", "k", "w")
@@ -82,8 +83,6 @@ METHOD_NAMES = ("无项目", "速率法", "终点法", "两点终点法")
 WAVE_NAMES = ("610", "550", "405")
 SampleConf = namedtuple("SampleConf", "method wave point_num")
 HEATER_PID_PS = [1, 100, 0.01, 1, 1, 1]
-
-logger = loguru.logger
 
 ICON_PATH = "./icos/tt.ico"
 FLASH_CONF_DATA_PATH = "./data/flash.json"
@@ -147,6 +146,8 @@ class MainWindow(QMainWindow):
         self.serial_send_worker = None
         self.sample_db = SampleDB("sqlite:///data/db.sqlite3")
         self.sample_record_current_label = None
+        self.flash_json_data = None
+        self.last_falsh_save_dir = "./"
         self.initUI()
         self.center()
 
@@ -1892,7 +1893,14 @@ class MainWindow(QMainWindow):
                     sp.setValue(self.out_flash_param_cc_sps[idx - 12 * ((idx + 12) // 24 * 2 - 1)].value())
 
     def onOutFlashParamCC_Dump(self, event):
-        with open(FLASH_CONF_DATA_PATH, "w", encoding="utf-8") as f:
+        fd = QFileDialog()
+        file_path, _ = fd.getSaveFileName(filter="JSON 文件 (*.json)", directory=os.path.join(self.last_falsh_save_dir, "flash.json"))
+        if not file_path:
+            return
+        else:
+            if file_path:
+                self.last_falsh_save_dir = os.path.split(file_path)[0]
+        with open(file_path, "w", encoding="utf-8") as f:
             data = dict(
                 cc_temp_tops=[s.value() for s in self.out_flash_param_temp_sps[:6]],
                 cc_temp_btms=[s.value() for s in self.out_flash_param_temp_sps[6:8]],
@@ -1917,7 +1925,11 @@ class MainWindow(QMainWindow):
             simplejson.dump(data, f)
 
     def onOutFlashParamCC_Load(self, event):
-        with open(FLASH_CONF_DATA_PATH, "r", encoding="utf-8") as f:
+        fd = QFileDialog()
+        file_path, _ = fd.getOpenFileName(filter="JSON 文件 (*.json)")
+        if not file_path:
+            return
+        with open(file_path, "r", encoding="utf-8") as f:
             try:
                 data = simplejson.load(f, encoding="utf-8")
                 for i, s in enumerate(self.out_flash_param_temp_sps[:6]):
@@ -1943,10 +1955,18 @@ class MainWindow(QMainWindow):
             except Exception:
                 logger.error(f"load json exception\n{stackprinter.format()}")
 
-    def updateFlashCC_Plot(self):
+    def updateFlashCC_Plot(self, refresh=True):
+        logger.debug(f"refresh | {refresh} | self.flash_json_data is None {self.flash_json_data is None}")
         self.out_flash_data_parse_dg.setWindowTitle(f"校正曲线-----{self.flash_plot_wave}")
-        with open(FLASH_CONF_DATA_PATH, "r", encoding="utf-8") as f:
-            data = simplejson.load(f, encoding="utf-8")
+        if refresh or self.flash_json_data is None:
+            fd = QFileDialog()
+            file_path, _ = fd.getOpenFileName(filter="JSON 文件 (*.json)")
+            if not file_path:
+                return
+            with open(file_path, "r", encoding="utf-8") as f:
+                data = simplejson.load(f, encoding="utf-8")
+        else:
+            data = self.flash_json_data
         self.flash_plot_graph.clear_plot()
         self.flash_plot_graph.plot_data_new(name="标准值", color="DAEDF0")
         for i in range(6):
@@ -1958,11 +1978,13 @@ class MainWindow(QMainWindow):
         for i, ys in enumerate(yss):
             for y in ys:
                 self.flash_plot_graph.plot_data_update(i + 1, y)
+        self.flash_json_data = data
 
     def updateFlashCC_PlotSelectWave(self):
         # logger.debug(f"self.out_flash_plot_ccw.currentData() | {self.out_flash_plot_ccw.currentText()}")
         self.flash_plot_wave = self.out_flash_plot_ccw.currentText()
-        self.updateFlashCC_Plot()
+        logger.debug(f"invoke | {self.updateFlashCC_Plot}")
+        self.updateFlashCC_Plot(refresh=False)
 
     def onOutFlashParamCC_parse(self):
         self.out_flash_data_parse_dg = QDialog(self)
@@ -1976,8 +1998,11 @@ class MainWindow(QMainWindow):
         bt_ly.setAlignment(Qt.AlignRight)
         bt_ly.addWidget(QLabel("波长"))
         self.out_flash_plot_ccw = QComboBox(maximumWidth=90, currentIndexChanged=self.updateFlashCC_PlotSelectWave)
+        self.out_flash_plot_ccw.blockSignals(True)
         self.out_flash_plot_ccw.addItems(("610", "550"))
+        self.out_flash_plot_ccw.blockSignals(False)
         bt_ly.addWidget(self.out_flash_plot_ccw)
+        logger.debug(f"invoke | {self.updateFlashCC_Plot}")
         self.updateFlashCC_Plot()
         self.out_flash_data_parse_dg = ModernDialog(self.out_flash_data_parse_dg, self)
         self.out_flash_data_parse_dg.resize(900, 400)

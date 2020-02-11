@@ -84,7 +84,7 @@ class SampleGraph:
 
     def plot_data_new(self, data=None, name=None, color=None):
         if data is None:
-            logger.warning("data is None new as list")
+            # logger.warning("data is None new as list")
             data = []
         dl = len(self.plot_data_confs)
         if color is None:
