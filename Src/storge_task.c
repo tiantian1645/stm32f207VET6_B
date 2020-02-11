@@ -849,6 +849,12 @@ void storge_Param_CC_Illumine_CC_Sort(uint32_t * pBuffer, uint8_t length)
     }
 }
 
+/**
+ * @brief  测量数据过滤
+ * @param  pBuffer 缓存指针
+ * @note   数据量最少要求12个 取后7个中去除2个极值后平均值
+ * @retval 浮点值
+ */
 float storge_Param_CC_Illumine_CC_Filter(uint8_t * pBuffer)
 {
     uint8_t i;
@@ -872,6 +878,12 @@ float storge_Param_CC_Illumine_CC_Filter(uint8_t * pBuffer)
     return (sum - max - min) / (float)(7 - 2) + 0.5;
 }
 
+/**
+ * @brief  计算校正值索引
+ * @param  channel 通道
+ * @param  wave 波长
+ * @retval 校正值索引
+ */
 eStorgeParamIndex storge_Param_Illumine_CC_Get_Index(uint8_t channel, eComm_Data_Sample_Radiant wave)
 {
     switch (channel) {
@@ -887,37 +899,73 @@ eStorgeParamIndex storge_Param_Illumine_CC_Get_Index(uint8_t channel, eComm_Data
     }
 }
 
+/**
+ * @brief  校正通道数计数自增
+ * @retval None
+ */
 void gStorgeIllumineCnt_Inc(void)
 {
     ++gStorgeIllumineCnt;
 }
 
+/**
+ * @brief  校正通道数计数清零
+ * @retval None
+ */
 void gStorgeIllumineCnt_Clr(void)
 {
     gStorgeIllumineCnt = 0;
 }
 
+/**
+ * @brief  校正通道数计数 是否达到6
+ * @note   计数达到6 即认为该通道校正完成
+ * @retval 校正值索引
+ */
 uint8_t gStorgeIllumineCnt_Check(uint8_t target)
 {
     return (gStorgeIllumineCnt == target) ? (1) : (0);
 }
 
+/**
+ * @brief  校正实际值设置
+ * @param  channel 通道索引
+ * @param  wave  波长
+ * @param  stage_index 段索引
+ * @param  avg_data 设置值
+ * @retval 校正值索引
+ */
 uint8_t storge_Conf_CC_Insert(uint8_t channel, eComm_Data_Sample_Radiant wave, uint8_t stage_index, uint32_t avg_data)
 {
     eStorgeParamIndex idx;
 
-    if (wave == eComm_Data_Sample_Radiant_405) {
+    if (wave == eComm_Data_Sample_Radiant_405) { /* 剔除405 不进行校正 */
         return 0;
     }
 
-    idx = storge_Param_Illumine_CC_Get_Index(channel, wave);
-    storge_Param_Illumine_CC_Set_Single(idx + (stage_index + channel - 1) % 6, avg_data);
-    gStorgeIllumineCnt_Inc();
+    idx = storge_Param_Illumine_CC_Get_Index(channel, wave);          /* 根据通道和波长 得出校正参数实际值索引 */
+    storge_Param_Illumine_CC_Set_Single(idx + stage_index, avg_data); /* 设置校正实际值 */
+    gStorgeIllumineCnt_Inc();                                         /* 校正通道数计数自增 */
     return 1;
 }
 
+/**
+ * @brief  报文解析处理
+ * @param  pBuffer 报文 起始指针指向数据区
+ * @retval 校正实际值设置 结果
+ * @note   当前定标第1段 则依次写入 C1-S1 C2-S2 C3-S3 C4-S4 C6-S5 C6-S6
+ * @note   当前定标第2段 则依次写入 C2-S1 C3-S2 C4-S3 C5-S4 C6-S5 C1-S6
+ * @note   当前定标第3段 则依次写入 C3-S1 C4-S2 C5-S3 C6-S4 C5-S5 C4-S6
+ * @note   当前定标第4段 则依次写入 C4-S1 C5-S2 C6-S3 C1-S4 C2-S5 C3-S6
+ * @note   当前定标第5段 则依次写入 C5-S1 C6-S2 C1-S3 C2-S4 C3-S5 C4-S6
+ * @note   当前定标第6段 则依次写入 C6-S1 C1-S2 C2-S3 C3-S4 C4-S5 C5-S6
+ */
 uint8_t stroge_Conf_CC_O_Data_From_B3(uint8_t * pBuffer)
 {
-    return storge_Conf_CC_Insert(pBuffer[1], comm_Data_Get_Correct_Wave(), comm_Data_Get_Corretc_Stage(),
-                                 (uint32_t)storge_Param_CC_Illumine_CC_Filter(pBuffer));
+    return storge_Conf_CC_Insert(                                                      /* 写入校正实际值 */
+                                 pBuffer[1],                                           /* 数据区第一字节 通道号 1～6 */
+                                 comm_Data_Get_Correct_Wave(),                         /* 当前测试的波长 */
+                                 (comm_Data_Get_Corretc_Stage() + pBuffer[1] - 1) % 6, /* 当前校正段数 */
+                                 (uint32_t)storge_Param_CC_Illumine_CC_Filter(pBuffer) /* 滤波后的平均值 */
+    );
 }
