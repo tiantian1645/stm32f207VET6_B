@@ -6,7 +6,7 @@
 /* Private includes ----------------------------------------------------------*/
 
 /* Exported macro ------------------------------------------------------------*/
-#define BARCODE_QR_LENGTH 100
+#define BARCODE_QR_LENGTH 120
 #define BARCODE_BA_LENGTH 20
 #define BARCODE_INDEX_NUM 6
 
@@ -46,11 +46,11 @@ typedef struct {
 
 /* 定标校正信息结构体 */
 typedef struct {
-    uint32_t branch;     /* 批次 */
-    uint32_t date;       /* 日期 */
-    uint8_t stage;       /* 标点序号 0 ～ 5 */
-    uint16_t values[13]; /* 标段数据 13个灯 */
-    uint32_t check;      /* 校验数据 */
+    uint32_t branch;       /* 批次 */
+    uint32_t date;         /* 日期 */
+    uint16_t i_values[13]; /* 标段数据 理论值 13个灯 */
+    uint16_t o_values[13]; /* 标段数据 实际值 13个灯 */
+    uint32_t check;        /* 校验数据 */
 } sBarcodeCorrectInfo;
 
 /* Exported constants --------------------------------------------------------*/

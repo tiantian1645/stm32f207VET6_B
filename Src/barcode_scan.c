@@ -810,6 +810,13 @@ void barcode_Scan_Bantch(uint8_t pos_mark, uint8_t scan_mark)
     }
 }
 
+/**
+ * @brief  字符串转换成整数 10进制
+ * @param  pBuffer 数据指针
+ * @param  length 数据长度
+ * @note   '1234' -> 1234
+ * @retval 整数
+ */
 static uint32_t barcode_Str_2_Int_Base_10(uint8_t * pBuffer, uint8_t length)
 {
     uint8_t i;
@@ -830,6 +837,13 @@ static uint32_t barcode_Str_2_Int_Base_10(uint8_t * pBuffer, uint8_t length)
     return result;
 }
 
+/**
+ * @brief  字符串转换成整数 16进制
+ * @param  pBuffer 数据指针
+ * @param  length 数据长度
+ * @note   '1234' -> 4660
+ * @retval 整数
+ */
 static uint32_t barcode_Str_2_Int_Base_16(uint8_t * pBuffer, uint8_t length)
 {
     uint8_t i;
@@ -854,24 +868,36 @@ static uint32_t barcode_Str_2_Int_Base_16(uint8_t * pBuffer, uint8_t length)
     return result;
 }
 
+/**
+ * @brief  扫码结果解析 校正数据
+ * @param  pBuffer 数据指针
+ * @param  length 数据长度
+ * @note   数据包长度应等同 sBarcodeCorrectInfo 数据类型
+ * @retval 0 成功 1 失败
+ */
 uint8_t barcode_Scan_Decode_Correct_Info(uint8_t * pBuffer, uint8_t length)
 {
     uint8_t i;
 
-    if (pBuffer == NULL || length != 66) {
+    if (pBuffer == NULL || length != 116) {
         return 1;
     }
 
-    gBarcodeCorrectInfo.branch = barcode_Str_2_Int_Base_10(pBuffer, 4);                     /* 4位批号 */
-    gBarcodeCorrectInfo.date = barcode_Str_2_Int_Base_10(pBuffer + 4, 6);                   /* 6位日期 */
-    gBarcodeCorrectInfo.stage = barcode_Str_2_Int_Base_10(pBuffer + 10, 2);                 /* 2位定标段索引 */
-    for (i = 0; i < 13; ++i) {                                                              /* 13个定标点 */
-        gBarcodeCorrectInfo.values[i] = barcode_Str_2_Int_Base_16(pBuffer + 12 + 4 * i, 4); /* 每个4位 */
+    gBarcodeCorrectInfo.branch = barcode_Str_2_Int_Base_10(pBuffer, 4);                       /* 4位批号 */
+    gBarcodeCorrectInfo.date = barcode_Str_2_Int_Base_10(pBuffer + 4, 6);                     /* 6位日期 */
+    for (i = 0; i < 13; ++i) {                                                                /* 13个定标点 */
+        gBarcodeCorrectInfo.i_values[i] = barcode_Str_2_Int_Base_16(pBuffer + 10 + 8 * i, 4); /* 每个4位 */
+        gBarcodeCorrectInfo.o_values[i] = barcode_Str_2_Int_Base_16(pBuffer + 14 + 8 * i, 4); /* 每个4位 */
     }
-    gBarcodeCorrectInfo.check = barcode_Str_2_Int_Base_16(pBuffer + 64, 2); /* 2位校验位 */
+    gBarcodeCorrectInfo.check = barcode_Str_2_Int_Base_16(pBuffer + 114, 2); /* 2位校验位 */
     return 0;
 }
 
+/**
+ * @brief  扫码结果解析上层接口
+ * @note   指定以 二维码扫码结果暂存 gBarcodeDecodeResult[0] 为数据来源
+ * @retval 0 成功 1 失败
+ */
 uint8_t barcode_Scan_Decode_Correct_Info_From_Result(void)
 {
     if (gBarcodeDecodeResult[0].state != eBarcodeState_OK) { /* 扫码结果失败 */
