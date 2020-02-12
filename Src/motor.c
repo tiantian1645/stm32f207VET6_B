@@ -1108,6 +1108,6 @@ static void motor_Self_Check_Scan(uint8_t * pBuffer)
     tray_Move_By_Index(eTrayIndex_1, 3000);                                          /* 扫码位置 */
     pBuffer[0] = eMotor_Fun_Self_Check_Scan - eMotor_Fun_Self_Check_Motor_White + 6; /* 自检测试 单项 扫码头 */
     barcode_Motor_Run_By_Index(eBarcodeIndex_0);                                     /* 移动到初始位置 */
-    pBuffer[1] = barcode_Read_From_Serial(pBuffer + 2, pBuffer + 3, 10, 1000);       /* 读取扫码结果 */
+    pBuffer[1] = barcode_Read_From_Serial(pBuffer + 2, pBuffer + 3, 10, 1000);       /* 读取扫码结果 长度为10 */
     comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, pBuffer[2] + 3);
 }

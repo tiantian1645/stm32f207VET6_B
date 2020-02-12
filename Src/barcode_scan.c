@@ -502,6 +502,11 @@ eBarcodeState barcode_Read_From_Serial(uint8_t * pOut_length, uint8_t * pData, u
 {
     HAL_StatusTypeDef status;
     eBarcodeState result;
+    uint8_t max_retry = 20;
+
+    while (HAL_UART_Receive(&BARCODE_UART, pData, 1, 1) == HAL_OK && max_retry > 0) { /* 清理残余内容 */
+        --max_retry;
+    }
 
     HAL_GPIO_WritePin(BC_TRIG_N_GPIO_Port, BC_TRIG_N_Pin, GPIO_PIN_RESET);
     status = HAL_UART_Receive(&BARCODE_UART, pData, max_read_length, pdMS_TO_TICKS(timeout));

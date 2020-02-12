@@ -1596,10 +1596,17 @@ class MainWindow(QMainWindow):
                 self._setColor(self.selftest_motor_scan_m, nbg="green")
         elif item == 10:
             if result > 0:
+                logger.error(f"get raw byte in self check barcode | {bytesPuttyPrint(raw_bytes[9 : 9 + raw_bytes[8]])}")
                 self._setColor(self.selftest_motor_scan_l, nbg="red")
+                text = bytesPuttyPrint(raw_bytes)
+                self.selftest_motor_scan_l.setText(text)
             else:
                 self._setColor(self.selftest_motor_scan_l, nbg="green")
-                text = raw_bytes[9 : 9 + raw_bytes[8]].decode(errors="replace")
+                try:
+                    text = raw_bytes[9 : 9 + raw_bytes[8]].decode()
+                except Exception:
+                    text = bytesPuttyPrint(raw_bytes)
+                    logger.warning(f"decode failed use bytes result | {text}")
                 self.selftest_motor_scan_l.setText(text)
 
     def onSelfCheck(self, event):
