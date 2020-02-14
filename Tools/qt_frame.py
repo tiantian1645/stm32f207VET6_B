@@ -59,6 +59,7 @@ from qt_serial import SerialRecvWorker, SerialSendWorker
 from sample_data import MethodEnum, SampleDB, WaveEnum
 from sample_graph import SampleGraph, TemperatureGraph, CC_Graph
 from mengy_color_table import ColorReds, ColorGreens, ColorPurples
+from deal_openpyxl import TEMP_CC_DataInfo, ILLU_CC_DataInfo, dump_CC, load_CC
 
 
 BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
@@ -1901,66 +1902,73 @@ class MainWindow(QMainWindow):
 
     def onOutFlashParamCC_Dump(self, event):
         fd = QFileDialog()
-        file_path, _ = fd.getSaveFileName(filter="JSON 文件 (*.json)", directory=os.path.join(self.last_falsh_save_dir, "flash.json"))
+        file_path, _ = fd.getSaveFileName(filter="Excel 工作簿 (*.xlsx)", directory=os.path.join(self.last_falsh_save_dir, "flash.xlsx"))
         if not file_path:
             return
         else:
             if file_path:
                 self.last_falsh_save_dir = os.path.split(file_path)[0]
-        with open(file_path, "w", encoding="utf-8") as f:
-            data = dict(
-                cc_temp_tops=[s.value() for s in self.out_flash_param_temp_sps[:6]],
-                cc_temp_btms=[s.value() for s in self.out_flash_param_temp_sps[6:8]],
-                cc_temp_env=[s.value() for s in self.out_flash_param_temp_sps[8:9]],
-                cc_heaters=[s.value() for s in self.out_flash_param_temp_sps[9:]],
+        data = [
+            TEMP_CC_DataInfo(
+                tops=[s.value() for s in self.out_flash_param_temp_sps[:6]],
+                btms=[s.value() for s in self.out_flash_param_temp_sps[6:8]],
+                env=[s.value() for s in self.out_flash_param_temp_sps[8:9]][0],
+                heaters=[s.value() for s in self.out_flash_param_temp_sps[9:]],
             )
-            chanel_d = dict()
-            for c in range(6):  # channel
-                waves = 3 if c == 0 else 2
-                c_idx = c * 24 + 12 - (12 if c == 0 else 0)
-                chanel_d[f"CH-{c+1}"] = dict()
-                for w in range(waves):  # 610 550 405?
-                    pairs = []
-                    w_idx = c_idx + 12 * w
-                    for s in range(6):  # s1 ~ s6
-                        idx = w_idx + s
-                        theo = int(self.out_flash_param_cc_sps[idx].value())
-                        test = int(self.out_flash_param_cc_sps[idx + 6].value())
-                        pairs.append((theo, test))
-                    chanel_d[f"CH-{c+1}"][("610", "550", "405")[w]] = pairs
-            data["cc_ts"] = chanel_d
-            simplejson.dump(data, f)
+        ]
+        chanel_d = dict()
+        for c in range(6):  # channel
+            waves = 3 if c == 0 else 2
+            c_idx = c * 24 + 12 - (12 if c == 0 else 0)
+            chanel_d[f"CH-{c+1}"] = dict()
+            for w in range(waves):  # 610 550 405?
+                pairs = []
+                w_idx = c_idx + 12 * w
+                for s in range(6):  # s1 ~ s6
+                    idx = w_idx + s
+                    theo = int(self.out_flash_param_cc_sps[idx].value())
+                    test = int(self.out_flash_param_cc_sps[idx + 6].value())
+                    pairs.append((theo, test))
+                chanel_d[f"CH-{c+1}"][WAVE_NAMES[w]] = pairs
+        for wave in WAVE_NAMES:
+            standard_points = [chanel_d["CH-1"][wave][i][0] for i in range(6)]
+            channel_pointses = []
+            for c in range(6):
+                channel_points = [chanel_d[f"CH-{c + 1}"][wave][i][1] for i in range(6)]
+                channel_pointses.append(channel_points)
+                if wave == WAVE_NAMES[-1]:
+                    break
+            data.append(ILLU_CC_DataInfo(wave=wave, standard_points=standard_points, channel_pointses=channel_pointses))
+        dump_CC(data, file_path)
 
     def onOutFlashParamCC_Load(self, event):
         fd = QFileDialog()
-        file_path, _ = fd.getOpenFileName(filter="JSON 文件 (*.json)")
+        file_path, _ = fd.getOpenFileName(filter="Excel 工作簿 (*.xlsx)")
         if not file_path:
             return
-        with open(file_path, "r", encoding="utf-8") as f:
-            try:
-                data = simplejson.load(f, encoding="utf-8")
+        data = load_CC(file_path)
+        if not data:
+            return
+        for d in data:
+            if isinstance(d, TEMP_CC_DataInfo):
                 for i, s in enumerate(self.out_flash_param_temp_sps[:6]):
-                    s.setValue(data["cc_temp_tops"][i])
+                    s.setValue(d.tops[i])
                 for i, s in enumerate(self.out_flash_param_temp_sps[6:8]):
-                    s.setValue(data["cc_temp_btms"][i])
+                    s.setValue(d.btms[i])
                 for i, s in enumerate(self.out_flash_param_temp_sps[8:9]):
-                    s.setValue(data["cc_temp_env"][i])
+                    s.setValue(d.env)
                 for i, s in enumerate(self.out_flash_param_temp_sps[9:]):
-                    s.setValue(data["cc_heaters"][i])
-                for c in range(6):  # channel
-                    data_c = data["cc_ts"][f"CH-{c + 1}"]
-                    waves = 3 if c == 0 else 2
-                    c_idx = c * 24 + 12 - (12 if c == 0 else 0)
-                    for w in range(waves):  # 610 550 405?
-                        w_idx = c_idx + 12 * w
-                        data_c_w = data_c[("610", "550", "405")[w]]
-                        for s in range(6):  # s1 ~ s6
-                            idx = w_idx + s
-                            data_c_w_p = data_c_w[s]
-                            self.out_flash_param_cc_sps[idx].setValue(data_c_w_p[0])
-                            self.out_flash_param_cc_sps[idx + 6].setValue(data_c_w_p[1])
-            except Exception:
-                logger.error(f"load json exception\n{stackprinter.format()}")
+                    s.setValue(d.heaters[i])
+            elif isinstance(d, ILLU_CC_DataInfo):
+                w_idx = WAVE_NAMES.index(str(d.wave))
+                for i in range(6):  # stage
+                    for start in (w_idx * 12 + 24 * i + (12 if i > 0 else 0) for i in range(len(d.channel_pointses))):
+                        self.out_flash_param_cc_sps[start + i].setValue(d.standard_points[i])
+
+                for c_idx, channel_points in enumerate(d.channel_pointses):
+                    start = w_idx * 12 + 24 * c_idx + (12 if c_idx > 0 else 0)
+                    for i in range(6):
+                        self.out_flash_param_cc_sps[start + i + 6].setValue(channel_points[i])
 
     def updateFlashCC_Plot(self, refresh=True):
         logger.debug(f"refresh | {refresh} | self.flash_json_data is None {self.flash_json_data is None}")
