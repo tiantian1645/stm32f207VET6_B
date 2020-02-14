@@ -57,7 +57,7 @@ def load_CC(file_path):
             channel_pointses = []
             cn = 6 if t_idx != 2 else 1
             for row_idx in range(cn):
-                channel_pointses.append(tuple(sheet.cell(column=column_idx + 2, row=3 + row_idx).value for column_idx in range(6)))   
+                channel_pointses.append(tuple(sheet.cell(column=column_idx + 2, row=3 + row_idx).value for column_idx in range(6)))
             data.append(ILLU_CC_DataInfo(wave=title, standard_points=standard_points, channel_pointses=tuple(channel_pointses)))
         sheet = wb["温度"]
         data.append(

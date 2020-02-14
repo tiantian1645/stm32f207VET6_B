@@ -214,3 +214,6 @@ dmypy.json
 
 # SVN
 .svn/
+
+
+db.sqlite3_i
