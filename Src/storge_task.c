@@ -953,9 +953,9 @@ uint8_t storge_Conf_CC_Insert(uint8_t channel, eComm_Data_Sample_Radiant wave, u
  * @brief  报文解析处理
  * @param  pBuffer 报文 起始指针指向数据区
  * @retval 校正实际值设置 结果
- * @note   当前定标第1段 则依次写入 C1-S1 C2-S2 C3-S3 C4-S4 C6-S5 C6-S6
+ * @note   当前定标第1段 则依次写入 C1-S1 C2-S2 C3-S3 C4-S4 C5-S5 C6-S6
  * @note   当前定标第2段 则依次写入 C2-S1 C3-S2 C4-S3 C5-S4 C6-S5 C1-S6
- * @note   当前定标第3段 则依次写入 C3-S1 C4-S2 C5-S3 C6-S4 C5-S5 C4-S6
+ * @note   当前定标第3段 则依次写入 C3-S1 C4-S2 C5-S3 C6-S4 C1-S5 C2-S6
  * @note   当前定标第4段 则依次写入 C4-S1 C5-S2 C6-S3 C1-S4 C2-S5 C3-S6
  * @note   当前定标第5段 则依次写入 C5-S1 C6-S2 C1-S3 C2-S4 C3-S5 C4-S6
  * @note   当前定标第6段 则依次写入 C6-S1 C1-S2 C2-S3 C3-S4 C4-S5 C5-S6
