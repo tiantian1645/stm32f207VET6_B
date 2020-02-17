@@ -890,7 +890,7 @@ uint8_t barcode_Scan_Decode_Correct_Info(uint8_t * pBuffer, uint8_t length)
 
     gBarcodeCorrectInfo.branch = barcode_Str_2_Int_Base_10(pBuffer, 4);   /* 4位批号 */
     gBarcodeCorrectInfo.date = barcode_Str_2_Int_Base_10(pBuffer + 4, 6); /* 6位日期 */
-    for (i = 0; i < 6; += i) {
+    for (i = 0; i < 6; ++ i) {
         gBarcodeCorrectInfo.stages[i] = barcode_Str_2_Int_Base_10(pBuffer + 10 + i, 1); /* 6位定标段索引 */
     }
     for (i = 0; i < 13; ++i) {                                                                /* 13个定标点 */
