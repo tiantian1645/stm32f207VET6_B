@@ -33,6 +33,7 @@ extern TIM_HandleTypeDef htim3;
 static sPID_Ctrl_Conf gHeater_BTM_PID_Conf;
 static sPID_Ctrl_Conf gHeater_TOP_PID_Conf;
 
+static uint8_t gHeater_Overshoot_Flag = 0;
 // Control loop input,output and setpoint variables
 static float btm_input = 0, btm_output = 0, btm_setpoint = HEATER_BTM_DEFAULT_SETPOINT;
 static float top_input = 0, top_output = 0, top_setpoint = HEATER_TOP_DEFAULT_SETPOINT;
@@ -42,6 +43,67 @@ static float top_input = 0, top_output = 0, top_setpoint = HEATER_TOP_DEFAULT_SE
 /* Private function prototypes -----------------------------------------------*/
 
 /* Private user code ---------------------------------------------------------*/
+
+/**
+ * @brief  过冲标志 获取
+ * @retval gHeater_Overshoot_Flag
+ */
+uint8_t heater_Overshoot_Flag_Get(void)
+{
+    return gHeater_Overshoot_Flag;
+}
+
+/**
+ * @brief  过冲标志 设置
+ * @param  flag 设置值
+ * @retval 参数数值
+ */
+void heater_Overshoot_Flag_Set(uint8_t flag)
+{
+    gHeater_Overshoot_Flag = (flag > 0) ? (1) : (0);
+}
+
+/**
+ * @brief  目标值获取 下加热体
+ * @retval 参数数值
+ */
+float heater_BTM_Setpoint_Get(void)
+{
+    return btm_setpoint;
+}
+
+/**
+ * @brief  目标值设置 下加热体
+ * @param  setpoint 设置值
+ * @retval 参数数值
+ */
+void heater_BTM_Setpoint_Set(float setpoint)
+{
+    if (setpoint >= HEATER_BTM_DEFAULT_SETPOINT - 0.5 && setpoint <= HEATER_BTM_DEFAULT_SETPOINT + 0.5) {
+        btm_setpoint = setpoint;
+    }
+}
+
+/**
+ * @brief  目标值获取 上加热体
+ * @retval 参数数值
+ */
+float heater_TOP_Setpoint_Get(void)
+{
+    return top_setpoint;
+}
+
+/**
+ * @brief  目标值设置 上加热体
+ * @param  setpoint 设置值
+ * @retval 参数数值
+ */
+void heater_TOP_Setpoint_Set(float setpoint)
+{
+    if (setpoint >= HEATER_TOP_DEFAULT_SETPOINT - 0.5 && setpoint <= HEATER_TOP_DEFAULT_SETPOINT + 0.5) {
+        top_setpoint = setpoint;
+    }
+}
 
 /**
  * @brief  PID参数 读取

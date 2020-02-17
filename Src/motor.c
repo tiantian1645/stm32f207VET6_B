@@ -25,6 +25,7 @@
 #include "led.h"
 #include "storge_task.h"
 #include "temperature.h"
+#include "heater.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim6;
@@ -646,6 +647,7 @@ void motor_Sample_Owari_Correct(void)
  */
 void motor_Sample_Owari(void)
 {
+    heater_Overshoot_Flag_Set(0);                /* 取消过冲加热标志 */
     white_Motor_WH();                            /* 运动白板电机 白板位置 */
     heat_Motor_Up();                             /* 采样结束 抬起加热体电机 */
     motor_Tray_Move_By_Index(eTrayIndex_2);      /* 出仓 */
@@ -741,6 +743,7 @@ static void motor_Task(void * argument)
                 };
                 motor_Tray_Move_By_Index(eTrayIndex_0); /* 测试位置 */
                 heat_Motor_Down();                      /* 砸下上加热体 */
+                heater_Overshoot_Flag_Set(1);           /* 过冲标志设置 */
                 break;
             case eMotor_Fun_Out:                        /* 出仓 */
                 motor_Tray_Move_By_Index(eTrayIndex_2); /* 出仓位置 */
@@ -794,6 +797,7 @@ static void motor_Task(void * argument)
                     }
                 }
 
+                heater_Overshoot_Flag_Set(1);                /* 过冲标志设置 */
                 if (protocol_Debug_SampleMotorTray() == 0) { /* 非调试模式 */
                     motor_Tray_Move_By_Index(eTrayIndex_0);  /* 入仓 */
                     heat_Motor_Down();                       /* 砸下上加热体 */
