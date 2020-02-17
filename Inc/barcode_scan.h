@@ -48,6 +48,7 @@ typedef struct {
 typedef struct {
     uint32_t branch;       /* 批次 */
     uint32_t date;         /* 日期 */
+    uint8_t stages[6];     /* 定标段索引 */
     uint16_t i_values[13]; /* 标段数据 理论值 13个灯 */
     uint16_t o_values[13]; /* 标段数据 实际值 13个灯 */
     uint32_t check;        /* 校验数据 */

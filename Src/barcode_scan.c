@@ -884,17 +884,20 @@ uint8_t barcode_Scan_Decode_Correct_Info(uint8_t * pBuffer, uint8_t length)
 {
     uint8_t i;
 
-    if (pBuffer == NULL || length != 116) {
+    if (pBuffer == NULL || length != 122) {
         return 1;
     }
 
-    gBarcodeCorrectInfo.branch = barcode_Str_2_Int_Base_10(pBuffer, 4);                       /* 4位批号 */
-    gBarcodeCorrectInfo.date = barcode_Str_2_Int_Base_10(pBuffer + 4, 6);                     /* 6位日期 */
-    for (i = 0; i < 13; ++i) {                                                                /* 13个定标点 */
-        gBarcodeCorrectInfo.i_values[i] = barcode_Str_2_Int_Base_16(pBuffer + 10 + 8 * i, 4); /* 每个4位 */
-        gBarcodeCorrectInfo.o_values[i] = barcode_Str_2_Int_Base_16(pBuffer + 14 + 8 * i, 4); /* 每个4位 */
+    gBarcodeCorrectInfo.branch = barcode_Str_2_Int_Base_10(pBuffer, 4);   /* 4位批号 */
+    gBarcodeCorrectInfo.date = barcode_Str_2_Int_Base_10(pBuffer + 4, 6); /* 6位日期 */
+    for (i = 0; i < 6; += i) {
+        gBarcodeCorrectInfo.stages[i] = barcode_Str_2_Int_Base_10(pBuffer + 10 + i, 1); /* 6位定标段索引 */
     }
-    gBarcodeCorrectInfo.check = barcode_Str_2_Int_Base_16(pBuffer + 114, 2); /* 2位校验位 */
+    for (i = 0; i < 13; ++i) {                                                                /* 13个定标点 */
+        gBarcodeCorrectInfo.i_values[i] = barcode_Str_2_Int_Base_16(pBuffer + 16 + 8 * i, 4); /* 每个4位 */
+        gBarcodeCorrectInfo.o_values[i] = barcode_Str_2_Int_Base_16(pBuffer + 20 + 8 * i, 4); /* 每个4位 */
+    }
+    gBarcodeCorrectInfo.check = barcode_Str_2_Int_Base_16(pBuffer + 120, 2); /* 2位校验位 */
     return 0;
 }
 
