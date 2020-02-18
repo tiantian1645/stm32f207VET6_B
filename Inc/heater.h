@@ -17,8 +17,11 @@
 #define HEATER_BTM_DEFAULT_SETPOINT (37)
 #define HEATER_TOP_DEFAULT_SETPOINT (37)
 
-#define HEATER_OVERSHOOT_TIMEOUT (12)  /* 过冲持续时间 */
-#define HEATER_OVERSHOOT_TARGET (37.5) /* 过冲目标温度 */
+#define HEATER_BTM_OVERSHOOT_TIMEOUT (5.5) /* 下加热体过冲持续时间 */
+#define HEATER_BTM_OVERSHOOT_TARGET (37.6) /* 下加热体过冲目标温度 */
+
+#define HEATER_TOP_OVERSHOOT_TIMEOUT (12)  /* 上加热体过冲持续时间 */
+#define HEATER_TOP_OVERSHOOT_TARGET (37.7) /* 上加热体过冲目标温度 */
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum {
@@ -30,11 +33,16 @@ typedef enum {
     eHeater_PID_Conf_Output,
 } eHeater_PID_Conf;
 
+typedef enum {
+    eHeater_BTM,
+    eHeater_TOP,
+} eHeater_Index;
+
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/
-uint8_t heater_Overshoot_Flag_Get(void);
-void heater_Overshoot_Flag_Set(uint8_t flag);
+uint8_t heater_Overshoot_Flag_Get(eHeater_Index idx);
+void heater_Overshoot_Flag_Set(eHeater_Index idx, uint8_t flag);
 
 float heater_BTM_Setpoint_Get(void);
 void heater_BTM_Setpoint_Set(float setpoint);

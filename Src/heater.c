@@ -48,9 +48,9 @@ static float top_input = 0, top_output = 0, top_setpoint = HEATER_TOP_DEFAULT_SE
  * @brief  过冲标志 获取
  * @retval gHeater_Overshoot_Flag
  */
-uint8_t heater_Overshoot_Flag_Get(void)
+uint8_t heater_Overshoot_Flag_Get(eHeater_Index idx)
 {
-    return gHeater_Overshoot_Flag;
+    return ((gHeater_Overshoot_Flag & (1 << idx)) > 0) ? (1) : (0);
 }
 
 /**
@@ -58,9 +58,13 @@ uint8_t heater_Overshoot_Flag_Get(void)
  * @param  flag 设置值
  * @retval 参数数值
  */
-void heater_Overshoot_Flag_Set(uint8_t flag)
+void heater_Overshoot_Flag_Set(eHeater_Index idx, uint8_t flag)
 {
-    gHeater_Overshoot_Flag = (flag > 0) ? (1) : (0);
+    if (flag > 0) {
+        gHeater_Overshoot_Flag |= (1 << idx);
+    } else {
+        gHeater_Overshoot_Flag &= (0xFF - (1 << idx));
+    }
 }
 
 /**
@@ -79,7 +83,7 @@ float heater_BTM_Setpoint_Get(void)
  */
 void heater_BTM_Setpoint_Set(float setpoint)
 {
-    if (setpoint >= HEATER_BTM_DEFAULT_SETPOINT - 0.5 && setpoint <= HEATER_BTM_DEFAULT_SETPOINT + 0.5) {
+    if (setpoint >= HEATER_BTM_DEFAULT_SETPOINT - 1.5 && setpoint <= HEATER_BTM_DEFAULT_SETPOINT + 1.5) {
         btm_setpoint = setpoint;
     }
 }
@@ -100,7 +104,7 @@ float heater_TOP_Setpoint_Get(void)
  */
 void heater_TOP_Setpoint_Set(float setpoint)
 {
-    if (setpoint >= HEATER_TOP_DEFAULT_SETPOINT - 0.5 && setpoint <= HEATER_TOP_DEFAULT_SETPOINT + 0.5) {
+    if (setpoint >= HEATER_TOP_DEFAULT_SETPOINT - 1.5 && setpoint <= HEATER_TOP_DEFAULT_SETPOINT + 1.5) {
         top_setpoint = setpoint;
     }
 }
