@@ -35,7 +35,8 @@
 			"portable.h": "c",
 			"portmacro.h": "c",
 			"functional": "c",
-			"serial.h": "c"
+			"serial.h": "c",
+			"white_motor.h": "c"
 		},
 		"python.autoComplete.extraPaths": [
 			"Tools/"
