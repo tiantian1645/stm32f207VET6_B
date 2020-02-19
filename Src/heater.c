@@ -41,6 +41,8 @@ static float top_input = 0, top_output = 0, top_setpoint = HEATER_TOP_DEFAULT_SE
 /* Private constants ---------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
+static float heater_PID_Conf_Param_Get(sPID_Ctrl_Conf * pConf, eHeater_PID_Conf offset);
+static void heater_PID_Conf_Param_Set(sPID_Ctrl_Conf * pConf, eHeater_PID_Conf offset, float data);
 
 /* Private user code ---------------------------------------------------------*/
 
@@ -115,7 +117,7 @@ void heater_TOP_Setpoint_Set(float setpoint)
  * @param  offset 参数项别
  * @retval 参数数值
  */
-float heater_PID_Conf_Param_Get(sPID_Ctrl_Conf * pConf, eHeater_PID_Conf offset)
+static float heater_PID_Conf_Param_Get(sPID_Ctrl_Conf * pConf, eHeater_PID_Conf offset)
 {
     switch (offset) {
         case eHeater_PID_Conf_Kp:
@@ -130,6 +132,10 @@ float heater_PID_Conf_Param_Get(sPID_Ctrl_Conf * pConf, eHeater_PID_Conf offset)
             return *(pConf->input);
         case eHeater_PID_Conf_Output:
             return *(pConf->output);
+        case eHeater_PID_Conf_Min_Output:
+            return pConf->omin;
+        case eHeater_PID_Conf_Max_Output:
+            return pConf->omax;
     }
     return 0;
 }
@@ -141,7 +147,7 @@ float heater_PID_Conf_Param_Get(sPID_Ctrl_Conf * pConf, eHeater_PID_Conf offset)
  * @param  data   数据
  * @retval None
  */
-void heater_PID_Conf_Param_Set(sPID_Ctrl_Conf * pConf, eHeater_PID_Conf offset, float data)
+static void heater_PID_Conf_Param_Set(sPID_Ctrl_Conf * pConf, eHeater_PID_Conf offset, float data)
 {
     switch (offset) {
         case eHeater_PID_Conf_Kp:
@@ -161,6 +167,12 @@ void heater_PID_Conf_Param_Set(sPID_Ctrl_Conf * pConf, eHeater_PID_Conf offset, 
             break;
         case eHeater_PID_Conf_Output:
             *(pConf->output) = data;
+            break;
+        case eHeater_PID_Conf_Min_Output:
+            pConf->omin = data;
+            break;
+        case eHeater_PID_Conf_Max_Output:
+            pConf->omax = data;
             break;
     }
 }

@@ -17,11 +17,11 @@
 #define HEATER_BTM_DEFAULT_SETPOINT (37)
 #define HEATER_TOP_DEFAULT_SETPOINT (37)
 
-#define HEATER_BTM_OVERSHOOT_TIMEOUT (6)   /* 下加热体过冲持续时间 */
-#define HEATER_BTM_OVERSHOOT_TARGET (37.5) /* 下加热体过冲目标温度 */
+#define HEATER_BTM_OVERSHOOT_TIMEOUT (8)   /* 下加热体过冲持续时间 */
+#define HEATER_BTM_OVERSHOOT_TARGET (37.4) /* 下加热体过冲目标温度 */
 
-#define HEATER_TOP_OVERSHOOT_TIMEOUT (20)  /* 上加热体过冲持续时间 */
-#define HEATER_TOP_OVERSHOOT_TARGET (37.8) /* 上加热体过冲目标温度 */
+#define HEATER_TOP_OVERSHOOT_TIMEOUT (24)  /* 上加热体过冲持续时间 */
+#define HEATER_TOP_OVERSHOOT_TARGET (37.7) /* 上加热体过冲目标温度 */
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum {
@@ -31,6 +31,8 @@ typedef enum {
     eHeater_PID_Conf_Set_Point,
     eHeater_PID_Conf_Input,
     eHeater_PID_Conf_Output,
+    eHeater_PID_Conf_Min_Output,
+    eHeater_PID_Conf_Max_Output,
 } eHeater_PID_Conf;
 
 typedef enum {
