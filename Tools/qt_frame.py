@@ -11,6 +11,7 @@ from collections import namedtuple
 from datetime import datetime
 from functools import partial
 from hashlib import sha256
+from urllib.request import urlretrieve
 
 from loguru import logger
 import numpy as np
@@ -1370,6 +1371,13 @@ class MainWindow(QMainWindow):
     def onUpgBLDialog(self, event):
         if event is True:
             file_path = self.upgbl_dg_lb.text()
+            if file_path.startswith("http") and file_path.endswith("bin"):
+                try:
+                    file_path = urlretrieve(file_path, "temp_app.bin")[0]
+                    self.upgbl_dg_lb.setText(file_path)
+                except Exception as e:
+                    self.upgbl_dg_lb.setText(f"url 处理异常 | {repr(e)}")
+                    file_path = ""
             if os.path.isfile(file_path):
                 self.upgbl_dg_bt.setEnabled(False)
                 self.bl_wrote_size = 0
@@ -1377,6 +1385,7 @@ class MainWindow(QMainWindow):
                 for pack in write_firmware_pack_BL(self.dd, file_path, chunk_size=224):
                     self.task_queue.put(pack)
             else:
+                logger.error(f"invalid file path | {file_path}")
                 self.upgbl_dg_bt.setChecked(False)
                 self.upgbl_dg_lb.setText("请输入有效路径")
                 self.upgbl_dg.setWindowTitle("Bootloader升级")
@@ -1669,6 +1678,13 @@ class MainWindow(QMainWindow):
     def onUpgradeDialog(self, event):
         if event is True:
             file_path = self.upgrade_dg_lb.text()
+            if file_path.startswith("http") and file_path.endswith("bin"):
+                try:
+                    file_path = urlretrieve(file_path, "temp_app.bin")[0]
+                    self.upgrade_dg_lb.setText(file_path)
+                except Exception as e:
+                    self.upgrade_dg_lb.setText(f"url 处理异常 | {repr(e)}")
+                    file_path = ""
             if os.path.isfile(file_path):
                 self.upgrade_dg_bt.setEnabled(False)
                 self._serialSendPack(0x0F)
