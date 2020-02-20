@@ -294,10 +294,14 @@ void heater_BTM_Output_Keep_Deal(void)
         btm_input = temp_Get_Temp_Data_BTM();
         storge_ParamReadSingle(eStorgeParamIndex_Heater_Offset_BTM, read_data.u8s);
         btm_input -= read_data.f32;
-        // Compute new PID output value
-        pid_ctrl_compute(&gHeater_BTM_PID_Conf);
-        // Change actuator value
-        heater_BTM_Output_Ctl(btm_output / gHeater_BTM_PID_Conf.omax);
+        if (btm_input > HEATER_BTM_DEFAULT_SETPOINT + 1) {
+            heater_BTM_Output_Ctl(0);
+        } else {
+            // Compute new PID output value
+            pid_ctrl_compute(&gHeater_BTM_PID_Conf);
+            // Change actuator value
+            heater_BTM_Output_Ctl(btm_output / gHeater_BTM_PID_Conf.omax);
+        }
     }
 }
 
@@ -381,10 +385,14 @@ void heater_TOP_Output_Keep_Deal(void)
         top_input = temp_Get_Temp_Data_TOP();
         storge_ParamReadSingle(eStorgeParamIndex_Heater_Offset_TOP, read_data.u8s);
         top_input -= read_data.f32;
-        // Compute new PID output value
-        pid_ctrl_compute(&gHeater_TOP_PID_Conf);
-        // Change actuator value
-        heater_TOP_Output_Ctl(top_output / gHeater_TOP_PID_Conf.omax);
+        if (top_input > HEATER_TOP_DEFAULT_SETPOINT + 1) {
+            heater_TOP_Output_Ctl(0);
+        } else {
+            // Compute new PID output value
+            pid_ctrl_compute(&gHeater_TOP_PID_Conf);
+            // Change actuator value
+            heater_TOP_Output_Ctl(top_output / gHeater_TOP_PID_Conf.omax);
+        }
     }
 }
 
