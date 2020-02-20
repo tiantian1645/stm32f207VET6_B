@@ -24,10 +24,10 @@ typedef enum {
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
-#define WHITE_MOTOR_PD_PCS_MAX 30000
-#define WHITE_MOTOR_PD_PCS_MIN 27000
+#define WHITE_MOTOR_PD_PCS_MAX 36000
+#define WHITE_MOTOR_PD_PCS_MIN 18000
 #define WHITE_MOTOR_PD_PCS_UNT 8
-#define WHITE_MOTOR_PD_PCS_SUM 306
+#define WHITE_MOTOR_PD_PCS_SUM 312
 #define WHITE_MOTOR_PD_PCS_PATCH 6
 #define WHITE_MOTOR_PD_PCS_GAP ((WHITE_MOTOR_PD_PCS_MAX - WHITE_MOTOR_PD_PCS_MIN) / WHITE_MOTOR_PD_PCS_SUM)
 
