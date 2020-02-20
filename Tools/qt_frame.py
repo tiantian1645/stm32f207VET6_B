@@ -18,7 +18,7 @@ import pyperclip
 import serial
 import serial.tools.list_ports
 import stackprinter
-from PyQt5.QtCore import Qt, QThreadPool, QTimer
+from PyQt5.QtCore import Qt, QThreadPool, QTimer, QMutex
 from PyQt5.QtGui import QFont, QIcon, QPalette
 from PyQt5.QtWidgets import (
     QApplication,
@@ -1103,7 +1103,7 @@ class MainWindow(QMainWindow):
             self.serial_refresh_bt.setEnabled(False)
             self.serial_switch_bt.setText("关闭串口")
             self._clearTaskQueue()
-            self.serial_recv_worker = SerialRecvWorker(self.serial, self.henji_queue, logger)
+            self.serial_recv_worker = SerialRecvWorker(self.serial, self.henji_queue, QMutex(), logger)
             self.serial_recv_worker.signals.finished.connect(self.onSerialWorkerFinish)
             self.serial_recv_worker.signals.error.connect(self.onSerialWorkerError)
             self.serial_recv_worker.signals.serial_statistic.connect(self.onSerialStatistic)

@@ -31,11 +31,12 @@ HENJI_TABLE = (
 
 
 class SerialRecvWorker(QRunnable):
-    def __init__(self, serial, henji_queue, logger=loguru.logger):
+    def __init__(self, serial, henji_queue, serial_lock, logger=loguru.logger):
         super(SerialRecvWorker, self).__init__()
         self.serial = serial
         self.logger = logger
         self.henji_queue = henji_queue
+        self.serial_lock = serial_lock
         self.need_henji = (0xAA,)
         self.dd = DC201_PACK()
         self.signals = SeialWorkerSignals()
@@ -76,7 +77,9 @@ class SerialRecvWorker(QRunnable):
                 if self.stop:
                     break
                 # check recv task
+                self.serial_lock.lock()
                 recv_data = self.serial.read(2048)
+                self.serial_lock.unlock()
                 if len(recv_data) <= 0:
                     continue
 
@@ -93,7 +96,9 @@ class SerialRecvWorker(QRunnable):
                         fun_code = info.content[5]
                         if fun_code != 0xAA:
                             write_data = self.dd.buildPack(0x13, 0xFF - ack, 0xAA, (ack,))
+                            self.serial_lock.lock()
                             self.serial.write(write_data)
+                            self.serial_lock.unlock()
                             self.signals.serial_statistic.emit(("w", write_data))
                             self.logger.info(f"reply ack pack | {bytesPuttyPrint(write_data)} --> {info.text}")
                             self.signals.result.emit(info)
@@ -191,7 +196,10 @@ class SerialSendWorker(QRunnable):
                 if write_data is None:
                     continue
                 logger.debug(f"serial write data | {bytesPuttyPrint(write_data)}")
+                # time.sleep(0.01)
+                self.recv_worker.serial_lock.lock()
                 self.serial.write(write_data)
+                self.recv_worker.serial_lock.unlock()
                 self.signals.serial_statistic.emit(("w", write_data))
                 if write_data[5] in (0x0F, 0xDD, 0xFC):
                     timeout = 8
