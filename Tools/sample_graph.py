@@ -202,7 +202,7 @@ class CC_Graph(SampleGraph):
         return m, c
 
     def color_tuple_position(self, data_conf, sample):
-        if sample < data_conf.data[1]:
+        if sample <= data_conf.data[1]:
             p = 1
         elif sample > data_conf.data[-2]:
             p = len(data_conf.data) - 1
@@ -241,6 +241,8 @@ class CC_Graph(SampleGraph):
                 head = len(self.plot_data_confs[0].data) - 2
             else:
                 head = int(x)
+            if not self.plot_data_confs[0].data:
+                return
             c0, c1 = self.plot_data_confs[0].data[head : head + 2]
             dxs = []
             cxs = []

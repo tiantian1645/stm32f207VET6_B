@@ -1991,22 +1991,32 @@ class MainWindow(QMainWindow):
         self.out_flash_data_parse_dg.setWindowTitle(f"校正曲线-----{self.flash_plot_wave}")
         if refresh or self.flash_json_data is None:
             fd = QFileDialog()
-            file_path, _ = fd.getOpenFileName(filter="JSON 文件 (*.json)")
+            file_path, _ = fd.getOpenFileName(filter="Excel 工作簿 (*.xlsx)")
             if not file_path:
                 return
-            with open(file_path, "r", encoding="utf-8") as f:
-                data = simplejson.load(f, encoding="utf-8")
+            data = load_CC(file_path)
+            if not data:
+                return
+            xs = []
+            yss = []
+            for d in data:
+                if isinstance(d, ILLU_CC_DataInfo):
+                    if d.wave != int(self.flash_plot_wave):
+                        continue
+                    xs = d.standard_points
+                    yss = d.channel_pointses
+                    self.flash_json_data = data
+                    break
         else:
             data = self.flash_json_data
         self.flash_plot_graph.clear_plot()
         self.flash_plot_graph.plot_data_new(name="标准值", color="DAEDF0")
         for i in range(6):
             self.flash_plot_graph.plot_data_new(name=f"CH-{i + 1}")
-        xs = (i[0] for i in data["cc_ts"][f"CH-1"][f"{self.flash_plot_wave}"])
-        yss = ((i[1] for i in data["cc_ts"][f"CH-{j + 1}"][f"{self.flash_plot_wave}"]) for j in range(6))
         for x in xs:
             self.flash_plot_graph.plot_data_update(0, x)
         for i, ys in enumerate(yss):
+            logger.debug(f"load ys | {i} | {ys}")
             for y in ys:
                 self.flash_plot_graph.plot_data_update(i + 1, y)
         self.flash_json_data = data
