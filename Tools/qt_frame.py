@@ -60,7 +60,7 @@ from qt_serial import SerialRecvWorker, SerialSendWorker
 from sample_data import MethodEnum, SampleDB, WaveEnum
 from sample_graph import SampleGraph, TemperatureGraph, CC_Graph
 from mengy_color_table import ColorReds, ColorGreens, ColorPurples
-from deal_openpyxl import TEMP_CC_DataInfo, ILLU_CC_DataInfo, dump_CC, load_CC
+from deal_openpyxl import TEMP_CC_DataInfo, ILLU_CC_DataInfo, dump_CC, load_CC, dump_sample
 
 
 BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
@@ -548,6 +548,14 @@ class MainWindow(QMainWindow):
         logger.debug(f"get datetime obj | {self.device_datetime}")
         self.version_lb.setToolTip(f"V{self.version}.{datetime.strftime(self.device_datetime, '%Y%m%d.%H%M%S')}")
 
+    def onSampleDataBase2Excel(self, event):
+        fd = QFileDialog()
+        file_path, _ = fd.getSaveFileName(filter="Excel 工作簿 (*.xlsx)", directory=os.path.join(self.last_falsh_save_dir, "采样数据.xlsx"))
+        if not file_path:
+            return
+        logger.debug(f"onSampleDataBase2Excel | {file_path}")
+        dump_sample(self.sample_db.iter_all_data(), file_path)
+
     def createBarcode(self):
         self.barcode_gb = QGroupBox("测试通道")
         barcode_ly = QGridLayout(self.barcode_gb)
@@ -604,9 +612,10 @@ class MainWindow(QMainWindow):
         matplot_record_ly = QHBoxLayout()
         matplot_record_ly.setContentsMargins(3, 1, 3, 1)
         matplot_record_ly.setSpacing(1)
-        self.sample_record_pre_label = QLabel(f"序号[{self.sample_db.get_label_cnt() - 1}]")
-        self.sample_record_pre_label.setMaximumWidth(60)
-        matplot_record_ly.addWidget(self.sample_record_pre_label, 0)
+        self.sample_record_pre_bt = QPushButton(f"序号[{self.sample_db.get_label_cnt() - 1}]")
+        self.sample_record_pre_bt.clicked.connect(self.onSampleDataBase2Excel)
+        self.sample_record_pre_bt.setMaximumWidth(60)
+        matplot_record_ly.addWidget(self.sample_record_pre_bt, 0)
         matplot_record_ly.addWidget(self.sample_record_idx_sp, 0)
         matplot_record_ly.addWidget(QVLine(), 0)
         matplot_record_ly.addWidget(self.sample_record_label)
@@ -980,7 +989,7 @@ class MainWindow(QMainWindow):
             logger.error("hit the label limit")
             cnt = self.sample_db.get_label_cnt()
             self.sample_record_idx_sp.setRange(0, cnt - 1)
-            self.sample_record_pre_label.setText(f"序号[{cnt - 1}]")
+            self.sample_record_pre_bt.setText(f"序号[{cnt - 1}]")
             return
         # logger.debug(f"get Label {label}")
         # logger.debug(f"get sample datas | {label.sample_datas}")
@@ -1725,7 +1734,7 @@ class MainWindow(QMainWindow):
         if cnt > 1:
             self.sample_record_idx_sp.setRange(0, cnt - 1)
             self.sample_record_idx_sp.setValue(cnt - 1)
-            self.sample_record_pre_label.setText(f"序号[{cnt - 1}]")
+            self.sample_record_pre_bt.setText(f"序号[{cnt - 1}]")
         else:
             self.sample_record_plot_by_index(0)
 

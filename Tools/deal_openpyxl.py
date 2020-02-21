@@ -2,12 +2,13 @@ from collections import namedtuple
 
 import stackprinter
 from loguru import logger
-
 from openpyxl import Workbook, load_workbook
 from openpyxl.cell import WriteOnlyCell
+from openpyxl.styles import Alignment, NamedStyle, PatternFill
 
 TEMP_CC_DataInfo = namedtuple("TEMP_CC_DataInfo", "tops btms env heaters")
 ILLU_CC_DataInfo = namedtuple("ILLU_CC_DataInfo", "wave standard_points channel_pointses")
+SAMPLE_TITLES = ("索引", "日期", "标签", "控制板程序版本", "控制板芯片ID", "通道", "方法", "波长", "采样数据")
 
 
 def dump_CC(data, file_path):
@@ -71,6 +72,54 @@ def load_CC(file_path):
         return tuple(data)
     except Exception:
         logger.error(f"load data from xlsx failed\n{stackprinter.format()}")
+
+
+def dump_sample(sample_iter, file_path, title=None):
+    try:
+        wb = Workbook(write_only=True)
+        odd_style = NamedStyle(name="odd")
+        odd_style.fill = PatternFill(start_color="1ABC9C", end_color="76D7C4", fill_type="solid")
+        odd_style.alignment = Alignment(horizontal="center", vertical="bottom", text_rotation=0, wrap_text=False, shrink_to_fit=False, indent=0)
+        wb.add_named_style(odd_style)
+        even_style = NamedStyle(name="even")
+        even_style.fill = PatternFill(start_color="FFDDE1", end_color="EE9CA7", fill_type="solid")
+        even_style.alignment = Alignment(horizontal="center", vertical="bottom", text_rotation=0, wrap_text=False, shrink_to_fit=False, indent=0)
+        wb.add_named_style(even_style)
+        if title is None:
+            title = f"Sheet{len(wb.sheetnames) + 1}"
+        sheet = wb.create_sheet(f"{title}")
+        cells = [WriteOnlyCell(sheet, value=SAMPLE_TITLES[i]) for i in range(7)]
+        for cell in cells:
+            cell.alignment = Alignment(horizontal="center", vertical="bottom", text_rotation=0, wrap_text=False, shrink_to_fit=False, indent=0)
+        sheet.append(cells)
+        last_label_id = None
+        label_cnt = 0
+        for si in sample_iter:
+            cells = [
+                WriteOnlyCell(sheet, value=si.label_id),
+                WriteOnlyCell(sheet, value=si.label_datetimne),
+                WriteOnlyCell(sheet, value=si.label_name),
+                WriteOnlyCell(sheet, value=si.label_version),
+                WriteOnlyCell(sheet, value=si.label_device_id),
+                WriteOnlyCell(sheet, value=si.sample_channel),
+                WriteOnlyCell(sheet, value=si.sample_method),
+                WriteOnlyCell(sheet, value=si.sample_wave),
+            ] + [WriteOnlyCell(sheet, value=sp) for sp in si.sample_datas]
+            if si.label_id != last_label_id:
+                last_label_id = si.label_id
+                label_cnt += 1
+            for cell in cells:
+                if label_cnt % 2 == 0:
+                    cell.style = even_style
+                else:
+                    cell.style = odd_style
+            sheet.append(cells)
+        for dim in sheet.column_dimensions.values():
+            dim.bestFit = True
+        wb.save(file_path)
+        logger.success("finish dump db to excel")
+    except Exception:
+        logger.error(f"dump sample data to xlsx failed\n{stackprinter.format()}")
 
 
 if __name__ == "__main__":

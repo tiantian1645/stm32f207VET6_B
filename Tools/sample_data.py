@@ -1,15 +1,21 @@
-from sqlalchemy import create_engine
-from sqlalchemy import Column, Integer, String, DATETIME, BLOB, Enum
-from sqlalchemy.ext.declarative import declarative_base
-from bytes_helper import bytesPuttyPrint
-from datetime import datetime
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import ForeignKey
-from sqlalchemy.orm import relationship
-import loguru
 import enum
+from struct import unpack
+from collections import namedtuple
+from datetime import datetime
+from more_itertools import divide
 
-logger = loguru.logger
+from loguru import logger
+from sqlalchemy import BLOB, DATETIME, Column, Enum, ForeignKey, Integer, String, create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship, sessionmaker
+
+from bytes_helper import bytesPuttyPrint
+
+SapmleInfo = namedtuple("SapmleInfo", "label_id label_datetimne label_name label_version label_device_id sample_channel sample_method sample_wave sample_datas")
+METHOD_NAMES = ("无项目", "速率法", "终点法", "两点终点法")
+WAVES = (610, 550, 405)
+
+
 Base = declarative_base()
 
 
@@ -109,6 +115,45 @@ class SampleDB:
             return self.session.query(Label).order_by(Label.id)[index]
         except IndexError:
             return None
+
+    def _decode_raw_data(self, total, raw_data):
+        if total == 0 or len(raw_data) == 0:
+            return []
+        elif len(raw_data) / total == 2:
+            return [unpack("H", bytes((i)))[0] for i in divide(total, raw_data)]
+        elif len(raw_data) / total == 4:
+            return [unpack("I", bytes((i)))[0] for i in divide(total, raw_data)]
+        else:
+            return []
+
+    def iter_all_data(self):
+        for label in self.session.query(Label).filter(Label.sample_datas.__ne__(None)).order_by(Label.id):
+            for sample_data in label.sample_datas:
+
+                if sample_data.total == 0 or len(sample_data.raw_data) == 0:
+                    continue
+                else:
+                    sample_datas = self._decode_raw_data(sample_data.total, sample_data.raw_data)
+                if 0 < sample_data.method.value < len(METHOD_NAMES):
+                    sample_method = METHOD_NAMES[sample_data.method.value]
+                else:
+                    sample_method = f"error-method-{sample_data.method.value}"
+                if 0 < sample_data.wave.value < len(WAVES):
+                    sample_wave = WAVES[sample_data.wave.value]
+                else:
+                    sample_wave = f"error-wave-{sample_data.wave.value}"
+
+                yield SapmleInfo(
+                    label_id=label.id,
+                    label_datetimne=str(label.datetime),
+                    label_name=label.name,
+                    label_version=label.version,
+                    label_device_id=label.device_id,
+                    sample_channel=sample_data.channel,
+                    sample_method=sample_method,
+                    sample_wave=sample_wave,
+                    sample_datas=sample_datas,
+                )
 
 
 if __name__ == "__main__":
