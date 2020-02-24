@@ -679,7 +679,7 @@ static void motor_Stary_Test(void)
     heat_Motor_Down();                                /* 砸下加热体 */
     led_Mode_Set(eLED_Mode_Kirakira_Red);             /* LED 红灯闪烁 */
     gMotorTempStableWaiting_Mark();                   /* 初始化温度稳定等待标记 */
-    result = temp_Wait_Stable_BTM(600, 36, 38);       /* 等待下加热体温度稳定 */
+    result = temp_Wait_Stable_BTM(36, 38, 600);       /* 等待下加热体温度稳定 */
     gMotorTempStableWaiting_Clear();                  /* 等待温度稳定结束 */
     if (result == 1) {                                /* 等待温度稳定超时 */
         error_Emit(eError_Temp_BTM_Stable_Timeout);   /* 发送异常 下加热体温度稳定等待超时 */
