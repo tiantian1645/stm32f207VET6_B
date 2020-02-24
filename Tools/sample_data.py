@@ -3,6 +3,7 @@ from struct import unpack
 from collections import namedtuple
 from datetime import datetime
 from more_itertools import divide
+from math import log10
 
 from loguru import logger
 from sqlalchemy import BLOB, DATETIME, Column, Enum, ForeignKey, Integer, String, create_engine
@@ -75,6 +76,7 @@ class SampleDB:
         Session = sessionmaker(bind=self.engine)
         self.session = Session()
         logger.success(f"init db over | {db_url}")
+        self._i32 = -1
 
     def build_label(self, dt=None, name="no name", version="no version", device_id="no device id"):
         if dt is None:
@@ -122,14 +124,23 @@ class SampleDB:
         elif len(raw_data) / total == 2:
             return [unpack("H", bytes((i)))[0] for i in divide(total, raw_data)]
         elif len(raw_data) / total == 4:
-            return [unpack("I", bytes((i)))[0] for i in divide(total, raw_data)]
+            result = [unpack("I", bytes((i)))[0] for i in divide(total, raw_data)]
+            if self._i32 < 0:
+                self._i32 = result[-1]
+            elif self._i32 >= 0:
+                new = result[-1]
+                if new > 0:
+                    result.append(log10(self._i32 / new) * 10000)
+                self._i32 = -1
+            return result
         else:
             return []
 
     def iter_all_data(self):
         for label in self.session.query(Label).filter(Label.sample_datas.__ne__(None)).order_by(Label.id):
+            self._i32 = -1
             for sample_data in label.sample_datas:
-
+                # no data
                 if sample_data.total == 0 or len(sample_data.raw_data) == 0:
                     continue
                 else:
