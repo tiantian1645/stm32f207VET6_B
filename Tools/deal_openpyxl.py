@@ -88,7 +88,16 @@ def dump_sample(sample_iter, file_path, title=None):
         if title is None:
             title = f"Sheet{len(wb.sheetnames) + 1}"
         sheet = wb.create_sheet(f"{title}")
-        cells = [WriteOnlyCell(sheet, value=SAMPLE_TITLES[i]) for i in range(7)]
+        sheet.freeze_panes = "D2"
+        sheet.column_dimensions["A"].width = 6.25
+        sheet.column_dimensions["B"].width = 30
+        sheet.column_dimensions["C"].width = 27
+        sheet.column_dimensions["D"].width = 0.01
+        sheet.column_dimensions["E"].width = 0.01
+        sheet.column_dimensions["F"].width = 5
+        sheet.column_dimensions["G"].width = 9
+        sheet.column_dimensions["H"].width = 5
+        cells = [WriteOnlyCell(sheet, value=SAMPLE_TITLES[i]) for i in range(len(SAMPLE_TITLES))]
         for cell in cells:
             cell.alignment = Alignment(horizontal="center", vertical="bottom", text_rotation=0, wrap_text=False, shrink_to_fit=False, indent=0)
         sheet.append(cells)
@@ -114,8 +123,6 @@ def dump_sample(sample_iter, file_path, title=None):
                 else:
                     cell.style = odd_style
             sheet.append(cells)
-        for dim in sheet.column_dimensions.values():
-            dim.bestFit = True
         wb.save(file_path)
         logger.success("finish dump db to excel")
     except Exception:
