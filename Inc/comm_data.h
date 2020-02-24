@@ -22,7 +22,7 @@
 #define COMM_DATA_WH_TIMER_PERIOD (10000 - 1)    /* 10000C 10 S */
 
 #define COMM_DATA_PD_TIMER_PRESCALER (54000 - 1) /* TIMER 7 主频切半 1 mS */
-#define COMM_DATA_PD_TIMER_PERIOD (800 - 1)      /* 800C 800 mS */
+#define COMM_DATA_PD_TIMER_PERIOD (500 - 1)      /* 500C 500 mS */
 
 /* Exported types ------------------------------------------------------------*/
 /* 采集板串口 接收数据定义*/
