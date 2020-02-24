@@ -24,18 +24,18 @@ typedef enum {
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
-#define WHITE_MOTOR_PD_PCS_MAX 36000
-#define WHITE_MOTOR_PD_PCS_MIN 18000
+#define WHITE_MOTOR_PD_PCS_MAX 60000
+#define WHITE_MOTOR_PD_PCS_MIN 15000
 #define WHITE_MOTOR_PD_PCS_UNT 8
-#define WHITE_MOTOR_PD_PCS_SUM 312
+#define WHITE_MOTOR_PD_PCS_SUM 315
 #define WHITE_MOTOR_PD_PCS_PATCH 6
-#define WHITE_MOTOR_PD_PCS_GAP ((WHITE_MOTOR_PD_PCS_MAX - WHITE_MOTOR_PD_PCS_MIN) / WHITE_MOTOR_PD_PCS_SUM)
+#define WHITE_MOTOR_PD_PCS_GAP (1800)
 
-#define WHITE_MOTOR_WH_PCS_MAX 33000
-#define WHITE_MOTOR_WH_PCS_MIN 27000
+#define WHITE_MOTOR_WH_PCS_MAX 48000
+#define WHITE_MOTOR_WH_PCS_MIN 32000
 #define WHITE_MOTOR_WH_PCS_UNT 8
-#define WHITE_MOTOR_WH_PCS_SUM 306
-#define WHITE_MOTOR_WH_PCS_GAP ((WHITE_MOTOR_WH_PCS_MAX - WHITE_MOTOR_WH_PCS_MIN) / WHITE_MOTOR_WH_PCS_SUM)
+#define WHITE_MOTOR_WH_PCS_SUM 309
+#define WHITE_MOTOR_WH_PCS_GAP (800)
 
 /* Private variables ---------------------------------------------------------*/
 static eMotorDir gWhite_Motor_Dir = eMotorDir_FWD;
