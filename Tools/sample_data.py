@@ -138,8 +138,8 @@ class SampleDB:
                     sample_method = METHOD_NAMES[sample_data.method.value]
                 else:
                     sample_method = f"error-method-{sample_data.method.value}"
-                if 0 < sample_data.wave.value < len(WAVES):
-                    sample_wave = WAVES[sample_data.wave.value]
+                if 0 < sample_data.wave.value <= len(WAVES):
+                    sample_wave = WAVES[sample_data.wave.value - 1]
                 else:
                     sample_wave = f"error-wave-{sample_data.wave.value}"
 
