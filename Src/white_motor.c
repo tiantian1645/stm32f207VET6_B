@@ -24,7 +24,7 @@ typedef enum {
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
-#define WHITE_MOTOR_PD_PCS_MAX 60000
+#define WHITE_MOTOR_PD_PCS_MAX 50000
 #define WHITE_MOTOR_PD_PCS_MIN 15000
 #define WHITE_MOTOR_PD_PCS_UNT 8
 #define WHITE_MOTOR_PD_PCS_SUM 315
