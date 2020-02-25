@@ -1,14 +1,16 @@
-import loguru
 import os
 
-logger = loguru.logger
+import stackprinter
+from loguru import logger
+
+TARGET_FILE = "../Src/protocol.c"
+
 
 if __name__ == "__main__":
     try:
-        with open("../Src/protocol.c", "a") as f:
-            f.write(" ")
-        with open("../Src/protocol.c", "rb+") as f:
-            f.seek(-1, os.SEEK_END)
-            f.truncate()
+        if os.path.isfile(TARGET_FILE):
+            os.utime(TARGET_FILE)
+        else:
+            logger.error(f"file path not exist {os.path.abspath(TARGET_FILE)}")
     except Exception:
-        logger.exception(f"exception append\n")
+        logger.exception(f"exception append\n{stackprinter.format()}")
