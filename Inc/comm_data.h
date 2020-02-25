@@ -142,7 +142,7 @@ uint8_t comm_Data_Sample_Data_Correct(uint8_t channel, uint8_t * pBuffer, uint8_
 void gComm_Data_Correct_Flag_Mark(void);
 void gComm_Data_Correct_Flag_Clr(void);
 uint8_t gComm_Data_Correct_Flag_Check(void);
-BaseType_t comm_Data_Sample_Send_Conf_Correct(uint8_t * pData, eComm_Data_Sample_Radiant wave);
+BaseType_t comm_Data_Sample_Send_Conf_Correct(uint8_t * pData, eComm_Data_Sample_Radiant wave, uint8_t point_num);
 eComm_Data_Sample_Radiant comm_Data_Get_Correct_Wave(void);
 
 uint8_t comm_Data_Get_Corretc_Stage(void);

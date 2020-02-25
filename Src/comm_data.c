@@ -420,7 +420,7 @@ void comm_Data_WH_Time_Deal_FromISR(void)
 
 /**
  * @brief  串口定时器中断处理 用于同步发送开始采集信号
- * @note   800 mS 回调一次 优先级置于操作系统之上 不允许调用系统API
+ * @note   500 mS 回调一次 优先级置于操作系统之上 不允许调用系统API
  * @param  None
  * @retval None
  */
@@ -671,9 +671,10 @@ BaseType_t comm_Data_Sample_Send_Conf_TV_FromISR(uint8_t * pData)
  * @brief  发送采样配置 定标
  * @param  wave 波长配置  405不做定标
  * @param  pData 缓存指针
+ * @param  point_num 点数
  * @retval pdPASS 提交成功 pdFALSE 提交失败
  */
-BaseType_t comm_Data_Sample_Send_Conf_Correct(uint8_t * pData, eComm_Data_Sample_Radiant wave)
+BaseType_t comm_Data_Sample_Send_Conf_Correct(uint8_t * pData, eComm_Data_Sample_Radiant wave, uint8_t point_num)
 {
     uint8_t i, sendLength;
 
@@ -681,12 +682,8 @@ BaseType_t comm_Data_Sample_Send_Conf_Correct(uint8_t * pData, eComm_Data_Sample
     for (i = 0; i < 6; ++i) {
         pData[0 + 3 * i] = eComm_Data_Sample_Assay_Continuous; /* 测试方法 */
         pData[1 + 3 * i] = wave;                               /* 测试波长 */
-        if (wave == eComm_Data_Sample_Radiant_610) {
-            pData[2 + 3 * i] = 12; /* 测试点数 12 */
-        } else {
-            pData[2 + 3 * i] = 12; /* 测试点数 12 */
-        }
-        gComm_Data_Sample_Max_Point_Update(pData[2 + 3 * i]); /* 更新最大点数 */
+        pData[2 + 3 * i] = point_num;                          /* 测试点数 point_num */
+        gComm_Data_Sample_Max_Point_Update(pData[2 + 3 * i]);  /* 更新最大点数 */
     }
     gComm_Data_Correct_wave = wave;
     sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 18); /* 构造工装测试配置包 */
