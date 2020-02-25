@@ -647,20 +647,19 @@ void motor_Sample_Owari_Correct(void)
  */
 void motor_Sample_Owari(void)
 {
-    heater_Overshoot_Flag_Set(eHeater_BTM, 0);           /* 取消下加热体过冲加热标志 */
-    heater_Overshoot_Flag_Set(eHeater_TOP, 0);           /* 取消上加热体过冲加热标志 */
-    heater_TOP_Conf_Set(eHeater_PID_Conf_Min_Output, 0); /* 恢复上加热体最小输出 */
-    white_Motor_WH();                                    /* 运动白板电机 白板位置 */
-    heat_Motor_Up();                                     /* 采样结束 抬起加热体电机 */
-    motor_Tray_Move_By_Index(eTrayIndex_2);              /* 出仓 */
-    barcode_Motor_Run_By_Index(eBarcodeIndex_0);         /* 复位 */
-    barcode_Motor_Run_By_Index(eBarcodeIndex_6);         /* 二维码位置就位 */
-    gComm_Data_Sample_Max_Point_Clear();                 /* 清除需要测试点数 */
-    protocol_Temp_Upload_Resume();                       /* 恢复温度上送 */
-    led_Mode_Set(eLED_Mode_Keep_Green);                  /* LED 绿灯常亮 */
-    barcode_Interrupt_Flag_Clear();                      /* 清除打断标志位 */
-    comm_Data_Sample_Owari();                            /* 上送采样结束报文 */
-    comm_Data_GPIO_Init();                               /* 初始化通讯管脚 */
+    heater_Overshoot_Flag_Set(eHeater_BTM, 0);   /* 取消下加热体过冲加热标志 */
+    heater_Overshoot_Flag_Set(eHeater_TOP, 0);   /* 取消上加热体过冲加热标志 */
+    white_Motor_WH();                            /* 运动白板电机 白板位置 */
+    heat_Motor_Up();                             /* 采样结束 抬起加热体电机 */
+    motor_Tray_Move_By_Index(eTrayIndex_2);      /* 出仓 */
+    barcode_Motor_Run_By_Index(eBarcodeIndex_0); /* 复位 */
+    barcode_Motor_Run_By_Index(eBarcodeIndex_6); /* 二维码位置就位 */
+    gComm_Data_Sample_Max_Point_Clear();         /* 清除需要测试点数 */
+    protocol_Temp_Upload_Resume();               /* 恢复温度上送 */
+    led_Mode_Set(eLED_Mode_Keep_Green);          /* LED 绿灯常亮 */
+    barcode_Interrupt_Flag_Clear();              /* 清除打断标志位 */
+    comm_Data_Sample_Owari();                    /* 上送采样结束报文 */
+    comm_Data_GPIO_Init();                       /* 初始化通讯管脚 */
 }
 
 /**

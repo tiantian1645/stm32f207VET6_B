@@ -64,7 +64,7 @@ void soft_timer_Heater_Call_Back(TimerHandle_t xTimer)
                     heater_BTM_Setpoint_Set(HEATER_BTM_DEFAULT_SETPOINT); /* 恢复下加热体目标温度 */
                 } else {
                     heater_BTM_Setpoint_Set(HEATER_BTM_DEFAULT_SETPOINT +
-                                            0.3 * ((btm_cnt - HEATER_BTM_OVERSHOOT_LEVEL_TIMEOUT * SOFT_TIMER_HEATER_SECOND_UNIT) /
+                                            0.2 * ((btm_cnt - HEATER_BTM_OVERSHOOT_LEVEL_TIMEOUT * SOFT_TIMER_HEATER_SECOND_UNIT) /
                                                    ((HEATER_BTM_OVERSHOOT_TIMEOUT - HEATER_BTM_OVERSHOOT_LEVEL_TIMEOUT) * SOFT_TIMER_HEATER_SECOND_UNIT)));
                 }
             }
@@ -86,14 +86,18 @@ void soft_timer_Heater_Call_Back(TimerHandle_t xTimer)
                 top_flag = 1;
             }
             if (top_flag) {
-                if (++top_cnt > HEATER_TOP_OVERSHOOT_TIMEOUT * SOFT_TIMER_HEATER_SECOND_UNIT) { /* 保持过冲温度超时计数 */
+                ++top_cnt;
+                if (top_cnt < HEATER_TOP_OVERSHOOT_LEVEL_TIMEOUT * SOFT_TIMER_HEATER_SECOND_UNIT) { /* 保持过冲温度超时计数 */
+
+                } else if (top_cnt > HEATER_TOP_OVERSHOOT_TIMEOUT * SOFT_TIMER_HEATER_SECOND_UNIT) { /* 完成过冲 */
                     top_cnt = 0;
                     top_flag = 0;
                     heater_Overshoot_Flag_Set(eHeater_TOP, 0);
-                    heater_TOP_Setpoint_Set(HEATER_TOP_DEFAULT_SETPOINT); /* 恢复上加热体目标温度 */
-                    heater_TOP_Conf_Set(eHeater_PID_Conf_Min_Output, 0);  /* 恢复上加热体最小输出 */
-                } else if (temp_Get_Temp_Data_TOP() < HEATER_TOP_OVERSHOOT_TARGET - 0.08) {
-                    heater_TOP_Conf_Set(eHeater_PID_Conf_Min_Output, HEATER_TOP_OVERSHOOT_MINOUT * HEATER_TOP_ARR / 100); /* 修改上加热体最小输出 */
+                    heater_TOP_Setpoint_Set(HEATER_TOP_DEFAULT_SETPOINT); /* 恢复下加热体目标温度 */
+                } else {
+                    heater_TOP_Setpoint_Set(HEATER_TOP_DEFAULT_SETPOINT +
+                                            0.2 * ((top_cnt - HEATER_TOP_OVERSHOOT_LEVEL_TIMEOUT * SOFT_TIMER_HEATER_SECOND_UNIT) /
+                                                   ((HEATER_TOP_OVERSHOOT_TIMEOUT - HEATER_TOP_OVERSHOOT_LEVEL_TIMEOUT) * SOFT_TIMER_HEATER_SECOND_UNIT)));
                 }
             }
         }
@@ -102,9 +106,6 @@ void soft_timer_Heater_Call_Back(TimerHandle_t xTimer)
         top_flag = 0;
         if (heater_TOP_Setpoint_Get() != HEATER_TOP_DEFAULT_SETPOINT) {
             heater_TOP_Setpoint_Set(HEATER_TOP_DEFAULT_SETPOINT); /* 恢复上加热体目标温度 */
-        }
-        if (heater_TOP_Conf_Get(eHeater_PID_Conf_Min_Output) > 0) {
-            heater_TOP_Conf_Set(eHeater_PID_Conf_Min_Output, 0); /* 恢复上加热体最小输出 */
         }
     }
 
