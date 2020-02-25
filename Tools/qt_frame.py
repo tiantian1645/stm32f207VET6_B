@@ -2,6 +2,7 @@
 
 import simplejson
 import os
+import re
 import queue
 import struct
 import sys
@@ -106,6 +107,8 @@ except Exception:
 rotation = CONFIG.get("log", {}).get("rotation", "4 MB")
 retention = CONFIG.get("log", {}).get("retention", 16)
 logger.add("./log/dc201.log", rotation=rotation, retention=retention, enqueue=True)
+
+DB_EXCEL_PATH_RE = re.compile(r"s(\d+)n(\d+)")
 
 
 class QHLine(QFrame):
@@ -550,11 +553,19 @@ class MainWindow(QMainWindow):
 
     def onSampleDataBase2Excel(self, event):
         fd = QFileDialog()
-        file_path, _ = fd.getSaveFileName(filter="Excel 工作簿 (*.xlsx)", directory=os.path.join(self.last_falsh_save_dir, "采样数据.xlsx"))
+        file_path, _ = fd.getSaveFileName(filter="Excel 工作簿 (*.xlsx)", directory=os.path.join(self.last_falsh_save_dir, "采样数据-s0n10.xlsx"))
         if not file_path:
             return
         logger.debug(f"onSampleDataBase2Excel | {file_path}")
-        dump_sample(self.sample_db.iter_all_data(), file_path)
+        rmo = DB_EXCEL_PATH_RE.search(file_path)
+        if rmo is None or len(rmo.groups()) != 2:
+            start = 0
+            num = 2 ** 32
+        else:
+            gr = rmo.groups()
+            start = int(gr[0])
+            num = int(gr[1])
+        dump_sample(self.sample_db.iter_all_data(start, num), file_path)
 
     def createBarcode(self):
         self.barcode_gb = QGroupBox("测试通道")

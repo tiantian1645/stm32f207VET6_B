@@ -1,12 +1,12 @@
 import enum
-from struct import unpack
 from collections import namedtuple
 from datetime import datetime
-from more_itertools import divide
 from math import log10
+from struct import unpack
 
 from loguru import logger
-from sqlalchemy import BLOB, DATETIME, Column, Enum, ForeignKey, Integer, String, create_engine
+from more_itertools import divide
+from sqlalchemy import BLOB, DATETIME, Column, Enum, ForeignKey, Integer, String, create_engine, desc
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 
@@ -76,7 +76,7 @@ class SampleDB:
         Session = sessionmaker(bind=self.engine)
         self.session = Session()
         logger.success(f"init db over | {db_url}")
-        self._i32 = -1
+        self._i32 = None
 
     def build_label(self, dt=None, name="no name", version="no version", device_id="no device id"):
         if dt is None:
@@ -125,20 +125,23 @@ class SampleDB:
             return [unpack("H", bytes((i)))[0] for i in divide(total, raw_data)]
         elif len(raw_data) / total == 4:
             result = [unpack("I", bytes((i)))[0] for i in divide(total, raw_data)]
-            if self._i32 < 0:
-                self._i32 = result[-1]
-            elif self._i32 >= 0:
-                new = result[-1]
-                if new > 0:
-                    result.append(log10(self._i32 / new) * 10000)
-                self._i32 = -1
+            if self._i32 is None:
+                self._i32 = result[:]
+            else:
+                new = result[: len(self._i32)]
+                for i, j in zip(self._i32, new):
+                    if j != 0:
+                        result.append(log10(i / j) * 10000)
+                    else:
+                        result.append(0)
+                self._i32 = None
             return result
         else:
             return []
 
-    def iter_all_data(self):
-        for label in self.session.query(Label).filter(Label.sample_datas.__ne__(None)).order_by(Label.id):
-            self._i32 = -1
+    def iter_all_data(self, start=0, num=2 ** 32):
+        for label in self.session.query(Label).filter(Label.sample_datas.__ne__(None)).order_by(desc(Label.id))[start : start + num]:
+            self._i32 = None
             for sample_data in label.sample_datas:
                 # no data
                 if sample_data.total == 0 or len(sample_data.raw_data) == 0:
