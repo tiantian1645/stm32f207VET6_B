@@ -1016,6 +1016,28 @@ static void motor_Task(void * argument)
                 }
                 gComm_Data_Correct_Flag_Clr(); /* 退出定标状态 */
                 break;
+            case eMotor_Fun_Lamp_BP:
+                gComm_Data_Lamp_BP_Flag_Mark();         /* 标记灯BP状态 */
+                comm_Data_Sample_Send_Clear_Conf();     /* 清除配置 */
+                motor_Tray_Move_By_Index(eTrayIndex_2); /* 入仓 */
+                white_Motor_PD();                       /* 运动白板电机 白物质位置 */
+                for (buffer[29] = eComm_Data_Sample_Radiant_610; buffer[29] <= eComm_Data_Sample_Radiant_405; ++buffer[29]) {
+                    comm_Data_Sample_Send_Conf_Correct(buffer, buffer[29], 3); /* 配置波长 点数 */
+                    vTaskDelay(500);
+                    for (cnt = 0; cnt < 3; ++cnt) {
+                        comm_Data_ISR_Tran(0); /* 采集白板 */
+                        vTaskDelay(2000);
+                        comm_Data_ISR_Tran(1); /* 采集PD */
+                        vTaskDelay(3000);
+                    }
+                    vTaskDelay(1000);
+                    comm_Data_Sample_Send_Clear_Conf();
+                    vTaskDelay(1000);
+                }
+                comm_Data_Sample_Owari();
+                gComm_Data_Lamp_BP_Flag_Clr();          /* 清除灯BP状态 */
+                motor_Tray_Move_By_Index(eTrayIndex_2); /* 出仓 */
+                break;
             default:
                 break;
         }

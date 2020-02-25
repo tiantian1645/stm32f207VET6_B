@@ -148,6 +148,10 @@ eComm_Data_Sample_Radiant comm_Data_Get_Correct_Wave(void);
 uint8_t comm_Data_Get_Corretc_Stage(void);
 void comm_Data_Set_Corretc_Stage(uint8_t idx);
 
+void gComm_Data_Lamp_BP_Flag_Mark(void);
+void gComm_Data_Lamp_BP_Flag_Clr(void);
+uint8_t gComm_Data_Lamp_BP_Flag_Check(void);
+
 void comm_Data_GPIO_Init(void);
 void comm_Data_Board_Reset(void);
 void comm_Data_ISR_Deal(void);

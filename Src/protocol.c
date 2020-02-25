@@ -1103,15 +1103,19 @@ static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length)
             pInBuff[0] = motor_Emit_FromISR(&motor_fun);   /* 提交到电机队列 */
             comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolEmitPack_Client_CMD_Debug_Motor_Fun, pInBuff, 1);
             break;
-
-        case eProtocolEmitPack_Client_CMD_Debug_System:     /* 系统控制 */
-            if (length == 7) {                              /* 无参数 重启 */
-                comm_Data_Board_Reset();                    /* 重置采样板 */
-                HAL_NVIC_SystemReset();                     /* 重新启动 */
-            } else if (length == 8) {                       /* 单一参数 杂散光测试 */
-                comm_Data_GPIO_Init();                      /* 初始化通讯管脚 */
-                motor_fun.fun_type = eMotor_Fun_Stary_Test; /* 杂散光测试 */
-                motor_Emit_FromISR(&motor_fun);             /* 提交到任务队列 */
+        case eProtocolEmitPack_Client_CMD_Debug_System: /* 系统控制 */
+            if (length == 7) {                          /* 无参数 重启 */
+                comm_Data_Board_Reset();                /* 重置采样板 */
+                HAL_NVIC_SystemReset();                 /* 重新启动 */
+            } else if (length == 8) {                   /* 单一参数 杂散光测试 灯BP */
+                comm_Data_GPIO_Init();                  /* 初始化通讯管脚 */
+                if (pInBuff[6] == 0) {
+                    motor_fun.fun_type = eMotor_Fun_Stary_Test; /* 杂散光测试 */
+                    motor_Emit_FromISR(&motor_fun);             /* 提交到任务队列 */
+                } else if (pInBuff[6] == 1) {
+                    motor_fun.fun_type = eMotor_Fun_Lamp_BP; /* 灯BP */
+                    motor_Emit_FromISR(&motor_fun);          /* 提交到任务队列 */
+                }
             } else {
                 error_Emit_FromISR(eError_Comm_Out_Param_Error);
             }
@@ -1375,7 +1379,7 @@ uint8_t protocol_Parse_Data_ISR(uint8_t * pInBuff, uint16_t length)
 static void protocol_Parse_Data_Fun_ISR(uint8_t * pInBuff, uint16_t length)
 {
 
-    uint8_t data_length;
+    uint8_t data_length, type;
     uint16_t i;
 
     switch (pInBuff[5]) {                                                                                                       /* 进一步处理 功能码 */
@@ -1384,11 +1388,14 @@ static void protocol_Parse_Data_Fun_ISR(uint8_t * pInBuff, uint16_t length)
                 stroge_Conf_CC_O_Data_From_B3(pInBuff + 6);                                                                     /* 修改测量点 */
                 comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7);      /* 转发至外串口 */
             } else {                                                                                                            /* 未出于定标状态 */
-                comm_Data_Sample_Data_Commit(pInBuff[7], pInBuff, length);                                                      /* 采样数据记录 */
-                if (protocol_Debug_SampleRawData()) {                                                                           /* 选择原始数据 */
+                type = comm_Data_Sample_Data_Commit(pInBuff[7], pInBuff, length);                                               /* 采样数据记录 */
+                if (protocol_Debug_SampleRawData() || type > 0 || gComm_Data_Lamp_BP_Flag_Check()) {                            /* 选择原始数据 */
                     comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7); /* 构造数据包 */
                     comm_Out_SendTask_QueueEmitWithModify_FromISR(pInBuff + 6, length);                                         /* 修改帧号ID后转发 */
-                    for (i = 0; i < length; ++i) {                                                                              /* 修正偏移 */
+                    if (type > 0 || gComm_Data_Lamp_BP_Flag_Check()) { /* u32类型 或 处于灯BP状态 */
+                        break;
+                    }
+                    for (i = 0; i < length; ++i) { /* 修正偏移 */
                         pInBuff[i] = pInBuff[i + 6];
                     }
                 }                                                                                                        /* 经过校正映射 */

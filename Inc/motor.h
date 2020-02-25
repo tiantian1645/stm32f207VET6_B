@@ -67,6 +67,7 @@ typedef enum {
     eMotor_Fun_Debug_Heater,            /* 上加热 */
     eMotor_Fun_Debug_White,             /* 白板电机 */
     eMotor_Fun_Debug_Scan,              /* 扫码电机 */
+    eMotor_Fun_Lamp_BP,                 /* 灯光测试 */
 } eMotor_Fun;
 
 /* 电机任务队列效果结构 */

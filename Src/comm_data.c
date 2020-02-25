@@ -88,6 +88,8 @@ static uint8_t gComm_Data_Stary_test_Falg = 0;
 static uint8_t gComm_Data_Correct_Flag = 0; /* 定标状态标志 */
 static eComm_Data_Sample_Radiant gComm_Data_Correct_wave = eComm_Data_Sample_Radiant_550;
 static uint8_t gComm_Data_Correct_stage = 0; /* 定标段索引 */
+
+static uint8_t gComm_Data_Lamp_BP_Flag = 0; /* 灯BP状态标志 */
 /* Private constants ---------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -158,7 +160,7 @@ void gComm_Data_Sample_PD_WH_Idx_Clear(void)
 
 /**
  * @brief  定标状态 标记
- * @param  stage 定标段索引
+ * @param  None
  * @retval None
  */
 void gComm_Data_Correct_Flag_Mark(void)
@@ -184,6 +186,36 @@ void gComm_Data_Correct_Flag_Clr(void)
 uint8_t gComm_Data_Correct_Flag_Check(void)
 {
     return (gComm_Data_Correct_Flag > 0) ? (1) : (0);
+}
+
+/**
+ * @brief  灯BP状态 标记
+ * @param  None
+ * @retval None
+ */
+void gComm_Data_Lamp_BP_Flag_Mark(void)
+{
+    gComm_Data_Lamp_BP_Flag = 1;
+}
+
+/**
+ * @brief  灯BP状态 清零
+ * @param  None
+ * @retval None
+ */
+void gComm_Data_Lamp_BP_Flag_Clr(void)
+{
+    gComm_Data_Lamp_BP_Flag = 0;
+}
+
+/**
+ * @brief  灯BP状态 检查
+ * @param  None
+ * @retval 1 处于灯BP状态 0 未处于定标
+ */
+uint8_t gComm_Data_Lamp_BP_Flag_Check(void)
+{
+    return (gComm_Data_Lamp_BP_Flag > 0) ? (1) : (0);
 }
 
 /**
@@ -832,26 +864,30 @@ uint8_t comm_Data_Sample_Data_Fetch(uint8_t channel, uint8_t * pBuffer, uint8_t 
 /**
  * @brief  采样数据记录
  * @param  channel 通道索引 1～6 pBuffer 数据输入指针 length 数据输入长度
- * @retval 变换结果 0 正常 1 通道索引异常
+ * @retval 变换结果 0 u16 1 u32 2 数据长度不匹配 3 通道索引异常
  */
 uint8_t comm_Data_Sample_Data_Commit(uint8_t channel, uint8_t * pBuffer, uint8_t length)
 {
+    uint8_t result;
 
     if (channel < 1 || channel > 6) { /* 检查通道编码 */
-        return 1;
+        return 3;
     }
 
     gComm_Data_Samples[channel - 1].num = pBuffer[6]; /* 数据个数 u16 | u32 */
 
     if (length - 9 == pBuffer[6] * 2) {                /* u16 */
         gComm_Data_Samples[channel - 1].data_type = 2; /* 数据类型标识 */
+        result = 0;
     } else if (length - 9 == pBuffer[6] * 4) {         /* u32 */
         gComm_Data_Samples[channel - 1].data_type = 4; /* 数据类型标识 */
+        result = 1;
     } else {                                           /* 异常长度 */
         gComm_Data_Samples[channel - 1].data_type = 1; /* 数据类型标识 */
+        result = 2;
     }
     memcpy(gComm_Data_Samples[channel - 1].raw_datas, pBuffer + 8, length - 9); /* 原封不动复制 */
-    return 0;
+    return result;
 }
 
 /**

@@ -2238,6 +2238,25 @@ class MainWindow(QMainWindow):
             logger.debug(f"DebugTest Data channel {self.debugtest_cnt} | {data}")
             self.debugtest_bt.setToolTip(f"{data}")
 
+    def onLampBP(self):
+        self._serialSendPack(0xDC, (1,))
+        self.sample_record_lable_name = f"Lamp BP {datetime.now().strftime('%Y%m%d%H%M%S')}"
+        logger.debug(f"set correct label name | {self.sample_record_lable_name}")
+        conf = []
+        self.sample_confs = []
+        self.sample_datas = []
+        for i in range(6):
+            conf.append(1)
+            conf.append(1)
+            conf.append(12)
+            self.sample_confs.append(SampleConf(conf[-3], conf[-2], conf[-1]))
+        logger.debug(f"get matplot cnf | {conf}")
+        self.sample_label = self.sample_db.build_label(
+            name=self.sample_record_lable_name, version=f"{self.version}.{datetime.strftime(self.device_datetime, '%Y%m%d.%H%M%S')}", device_id=self.device_id
+        )
+        self.plot_graph.clear_plot()
+        self.matplot_data.clear()
+
     def createSysConf(self):
         self.sys_conf_gb = QGroupBox("系统")
         sys_conf_ly = QVBoxLayout(self.sys_conf_gb)
@@ -2264,6 +2283,9 @@ class MainWindow(QMainWindow):
         self.debug_flag_cbs = (QCheckBox("温度"), QCheckBox("告警"), QCheckBox("扫码"), QCheckBox("托盘"), QCheckBox("原值"))
         for i, cb in enumerate(self.debug_flag_cbs):
             debug_flag_ly.addWidget(cb, i // 3, i % 3)
+        self.lamp_bp_bt = QPushButton("BP", maximumWidth=30)
+        self.lamp_bp_bt.clicked.connect(self.onLampBP)
+        debug_flag_ly.addWidget(self.lamp_bp_bt, 1, 2)
         storge_ly.addStretch(1)
         storge_ly.addWidget(self.storge_gb)
         storge_ly.addStretch(1)
