@@ -125,8 +125,9 @@ def dump_sample(sample_iter, file_path, title=None):
             sheet.append(cells)
         wb.save(file_path)
         logger.success("finish dump db to excel")
-    except Exception:
+    except Exception as e:
         logger.error(f"dump sample data to xlsx failed\n{stackprinter.format()}")
+        return (repr(e), stackprinter.format())
 
 
 if __name__ == "__main__":

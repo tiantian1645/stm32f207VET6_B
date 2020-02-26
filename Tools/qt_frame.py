@@ -565,7 +565,15 @@ class MainWindow(QMainWindow):
             gr = rmo.groups()
             start = int(gr[0])
             num = int(gr[1])
-        dump_sample(self.sample_db.iter_all_data(start, num), file_path)
+        fault = dump_sample(self.sample_db.iter_all_data(start, num), file_path)
+        if fault:
+            msg = ModernMessageBox(self)
+            msg.setTextInteractionFlags(Qt.TextSelectableByMouse)
+            msg.setIcon(QMessageBox.Warning)
+            msg.setWindowTitle(f"保存失败 {file_path}")
+            msg.setText(fault[0])
+            msg.setDetailedText(fault[1])
+            msg.exec_()
 
     def onSampleSetChanged(self, item_idx, w_idx):
         logger.debug(f"onSampleSetChanged | item_idx {item_idx} | w_idx {w_idx}")
@@ -615,7 +623,7 @@ class MainWindow(QMainWindow):
         self.matplot_cancel_bt.setMaximumWidth(50)
         self.matplot_period_tv_lb = QLabel("NL")
         self.matplot_period_tv_lb.setAlignment(Qt.AlignCenter)
-        self.matplot_period_tv_cb = QCheckBox()
+        self.matplot_period_tv_cb = QCheckBox(minimumWidth=40)
         self.matplot_period_tv_cb.setTristate(True)
         self.matplot_period_tv_cb.stateChanged.connect(lambda x: self.matplot_period_tv_lb.setText(("NL", "OD", "PD")[x]))
         for i in range(7):
