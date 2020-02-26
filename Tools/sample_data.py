@@ -46,6 +46,35 @@ class MethodEnum(enum.Enum):
     two_point = 3
 
 
+SampleSetInfo = namedtuple("SampleSetInfo", "short_name full_name wave method points_num")
+SAMPLE_SET_INFOS = (
+    SampleSetInfo(short_name="None", full_name="Default", wave=WaveEnum.wave_610, method=MethodEnum.rate, points_num=6),
+    SampleSetInfo(short_name="α-AMY", full_name="α-淀粉酶", wave=WaveEnum.wave_405, method=MethodEnum.rate, points_num=12),
+    SampleSetInfo(short_name="UREA", full_name="尿素", wave=WaveEnum.wave_610, method=MethodEnum.end_point, points_num=12),
+    SampleSetInfo(short_name="UA", full_name="尿酸", wave=WaveEnum.wave_610, method=MethodEnum.end_point, points_num=12),
+    SampleSetInfo(short_name="ALB", full_name="白蛋白", wave=WaveEnum.wave_610, method=MethodEnum.end_point, points_num=6),
+    SampleSetInfo(short_name="HB", full_name="血红蛋白", wave=WaveEnum.wave_550, method=MethodEnum.end_point, points_num=6),
+    SampleSetInfo(short_name="ALT", full_name="丙氨酸氨基转移酶", wave=WaveEnum.wave_610, method=MethodEnum.rate, points_num=15),
+    SampleSetInfo(short_name="CHE", full_name="胆碱酯酶", wave=WaveEnum.wave_610, method=MethodEnum.rate, points_num=12),
+    SampleSetInfo(short_name="CREA", full_name="肌酐", wave=WaveEnum.wave_610, method=MethodEnum.two_point, points_num=30),
+    SampleSetInfo(short_name="LDH", full_name="乳酸脱氢酶", wave=WaveEnum.wave_550, method=MethodEnum.rate, points_num=12),
+    SampleSetInfo(short_name="AST", full_name="天门冬氨酸氨基转移酶", wave=WaveEnum.wave_610, method=MethodEnum.rate, points_num=12),
+    SampleSetInfo(short_name="ALC", full_name="乙醇", wave=WaveEnum.wave_610, method=MethodEnum.end_point, points_num=12),
+    SampleSetInfo(short_name="CK", full_name="肌酸激酶", wave=WaveEnum.wave_550, method=MethodEnum.rate, points_num=18),
+    SampleSetInfo(short_name="CKMB", full_name="肌酸激酶同工酶MB", wave=WaveEnum.wave_550, method=MethodEnum.rate, points_num=24),
+    SampleSetInfo(short_name="LPS", full_name="脂肪酶", wave=WaveEnum.wave_610, method=MethodEnum.two_point, points_num=18),
+    SampleSetInfo(short_name="GLU", full_name="葡萄糖", wave=WaveEnum.wave_610, method=MethodEnum.end_point, points_num=12),
+    SampleSetInfo(short_name="α-HBDH", full_name="α-羟丁酸脱氢酶", wave=WaveEnum.wave_550, method=MethodEnum.rate, points_num=12),
+    SampleSetInfo(short_name="DAO", full_name="二胺氧化酶", wave=WaveEnum.wave_610, method=MethodEnum.two_point, points_num=30),
+    SampleSetInfo(short_name="D-LAC", full_name="D-乳酸", wave=WaveEnum.wave_550, method=MethodEnum.end_point, points_num=12),
+    SampleSetInfo(short_name="TP", full_name="总蛋白", wave=WaveEnum.wave_550, method=MethodEnum.end_point, points_num=12),
+    SampleSetInfo(short_name="TBA", full_name="总胆汁酸", wave=WaveEnum.wave_550, method=MethodEnum.end_point, points_num=18),
+    SampleSetInfo(short_name="TBIL", full_name="总胆红素", wave=WaveEnum.wave_550, method=MethodEnum.end_point, points_num=18),
+    SampleSetInfo(short_name="DBIL", full_name="直接胆红素", wave=WaveEnum.wave_550, method=MethodEnum.end_point, points_num=18),
+    SampleSetInfo(short_name="G6PD", full_name="葡萄糖-6-磷酸脱氢酶", wave=WaveEnum.wave_550, method=MethodEnum.rate, points_num=12),
+)
+
+
 class SampleData(Base):
     __tablename__ = "sample_datas"
 

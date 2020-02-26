@@ -58,7 +58,7 @@ import qtmodern.styles
 import qtmodern.windows
 from qt_modern_dialog import ModernDialog, ModernMessageBox
 from qt_serial import SerialRecvWorker, SerialSendWorker
-from sample_data import MethodEnum, SampleDB, WaveEnum
+from sample_data import MethodEnum, SampleDB, WaveEnum, SAMPLE_SET_INFOS
 from sample_graph import SampleGraph, TemperatureGraph, CC_Graph
 from mengy_color_table import ColorReds, ColorGreens, ColorPurples
 from deal_openpyxl import TEMP_CC_DataInfo, ILLU_CC_DataInfo, dump_CC, load_CC, dump_sample
@@ -567,6 +567,36 @@ class MainWindow(QMainWindow):
             num = int(gr[1])
         dump_sample(self.sample_db.iter_all_data(start, num), file_path)
 
+    def onSampleSetChanged(self, item_idx, w_idx):
+        logger.debug(f"onSampleSetChanged | item_idx {item_idx} | w_idx {w_idx}")
+        ssi = SAMPLE_SET_INFOS[item_idx]
+        self.matplot_conf_houhou_cs[w_idx].blockSignals(True)
+        self.matplot_conf_wavelength_cs[w_idx].blockSignals(True)
+        self.matplot_conf_point_sps[w_idx].blockSignals(True)
+        self.matplot_conf_houhou_cs[w_idx].setCurrentIndex(ssi.method.value)
+        self.matplot_conf_wavelength_cs[w_idx].setCurrentIndex(ssi.wave.value - 1)
+        self.matplot_conf_point_sps[w_idx].setValue(ssi.points_num)
+        self.matplot_conf_houhou_cs[w_idx].blockSignals(False)
+        self.matplot_conf_wavelength_cs[w_idx].blockSignals(False)
+        self.matplot_conf_point_sps[w_idx].blockSignals(False)
+
+    def onSampleSubChanged(self, value, w_idx):
+        logger.debug(f"onSampleSubChanged | value {value} | w_idx {w_idx}")
+        for i, ssi in enumerate(SAMPLE_SET_INFOS):
+            if (
+                self.matplot_conf_houhou_cs[w_idx].currentIndex() == ssi.method.value
+                and self.matplot_conf_wavelength_cs[w_idx].currentIndex() == (ssi.wave.value - 1)
+                and self.matplot_conf_point_sps[w_idx].value() == ssi.points_num
+            ):
+                self.matplot_conf_set_cs[w_idx].blockSignals(True)
+                self.matplot_conf_set_cs[w_idx].setCurrentIndex(i)
+                self.matplot_conf_set_cs[w_idx].blockSignals(False)
+                break
+        else:
+            self.matplot_conf_set_cs[w_idx].blockSignals(True)
+            self.matplot_conf_set_cs[w_idx].setCurrentIndex(0)
+            self.matplot_conf_set_cs[w_idx].blockSignals(False)
+
     def createBarcode(self):
         self.barcode_gb = QGroupBox("测试通道")
         barcode_ly = QGridLayout(self.barcode_gb)
@@ -576,6 +606,7 @@ class MainWindow(QMainWindow):
         self.matplot_conf_houhou_cs = [QComboBox() for i in range(6)]
         self.matplot_conf_wavelength_cs = [QComboBox() for i in range(6)]
         self.matplot_conf_point_sps = [QSpinBox() for i in range(6)]
+        self.matplot_conf_set_cs = [QComboBox() for i in range(6)]
         self.barcode_scan_bt = QPushButton("扫码")
         self.barcode_scan_bt.setMaximumWidth(50)
         self.matplot_start_bt = QPushButton("测试")
@@ -601,11 +632,20 @@ class MainWindow(QMainWindow):
                 self.matplot_conf_wavelength_cs[i].setMaximumWidth(60)
                 self.matplot_conf_wavelength_cs[i].setCurrentIndex(0)
                 self.matplot_conf_point_sps[i].setRange(0, 120)
-                self.matplot_conf_point_sps[i].setMaximumWidth(60)
+                self.matplot_conf_point_sps[i].setMaximumWidth(45)
                 self.matplot_conf_point_sps[i].setValue(6)
+                for j, ssi in enumerate(SAMPLE_SET_INFOS):
+                    self.matplot_conf_set_cs[i].addItem(ssi.short_name)
+                    self.matplot_conf_set_cs[i].setItemData(j, ssi.full_name, Qt.ToolTipRole)
+                self.matplot_conf_set_cs[i].currentIndexChanged.connect(partial(self.onSampleSetChanged, w_idx=i))
+                self.matplot_conf_houhou_cs[i].currentIndexChanged.connect(partial(self.onSampleSubChanged, w_idx=i))
+                self.matplot_conf_wavelength_cs[i].currentIndexChanged.connect(partial(self.onSampleSubChanged, w_idx=i))
+                self.matplot_conf_point_sps[i].valueChanged.connect(partial(self.onSampleSubChanged, w_idx=i))
+
                 barcode_ly.addWidget(self.matplot_conf_houhou_cs[i], i, 2)
                 barcode_ly.addWidget(self.matplot_conf_wavelength_cs[i], i, 3)
                 barcode_ly.addWidget(self.matplot_conf_point_sps[i], i, 4)
+                barcode_ly.addWidget(self.matplot_conf_set_cs[i], i, 5)
             else:
                 temp_ly = QHBoxLayout()
                 temp_ly.setSpacing(3)
@@ -618,7 +658,7 @@ class MainWindow(QMainWindow):
                 barcode_ly.addLayout(temp_ly, i, 2, 1, 3)
         self.sample_record_idx_sp = QSpinBox()
         self.sample_record_idx_sp.setRange(0, 99999999)
-        self.sample_record_idx_sp.setMaximumWidth(90)
+        self.sample_record_idx_sp.setMaximumWidth(75)
         self.sample_record_label = QLabel("***********")
         matplot_record_ly = QHBoxLayout()
         matplot_record_ly.setContentsMargins(3, 1, 3, 1)
@@ -630,12 +670,12 @@ class MainWindow(QMainWindow):
         matplot_record_ly.addWidget(self.sample_record_idx_sp, 0)
         matplot_record_ly.addWidget(QVLine(), 0)
         matplot_record_ly.addWidget(self.sample_record_label)
-        barcode_ly.addLayout(matplot_record_ly, 7, 0, 1, 3)
+        barcode_ly.addLayout(matplot_record_ly, 7, 0, 1, 4)
         self.stary_test_bt = QPushButton("杂散光", maximumWidth=75)
         self.stary_test_bt.clicked.connect(lambda x: self._serialSendPack(0xDC, (0,)))
         self.out_flash_param_parse_bt = QPushButton("校正曲线", clicked=self.onOutFlashParamCC_parse, maximumWidth=90)
-        barcode_ly.addWidget(self.stary_test_bt, 7, 3, 1, 1)
-        barcode_ly.addWidget(self.out_flash_param_parse_bt, 7, 4, 1, 1)
+        barcode_ly.addWidget(self.stary_test_bt, 7, 4, 1, 1)
+        barcode_ly.addWidget(self.out_flash_param_parse_bt, 7, 5, 1, 1)
         self.barcode_scan_bt.clicked.connect(self.onBarcodeScan)
         self.matplot_start_bt.clicked.connect(self.onMatplotStart)
         self.matplot_cancel_bt.clicked.connect(self.onMatplotCancel)
