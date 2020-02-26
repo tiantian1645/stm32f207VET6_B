@@ -636,6 +636,8 @@ class MainWindow(QMainWindow):
                 self.matplot_conf_point_sps[i].setValue(6)
                 for j, ssi in enumerate(SAMPLE_SET_INFOS):
                     self.matplot_conf_set_cs[i].addItem(ssi.short_name)
+                    if i > 0 and ssi.wave.value == 3:
+                        self.matplot_conf_set_cs[i].model().item(j).setEnabled(False)
                     self.matplot_conf_set_cs[i].setItemData(j, ssi.full_name, Qt.ToolTipRole)
                 self.matplot_conf_set_cs[i].currentIndexChanged.connect(partial(self.onSampleSetChanged, w_idx=i))
                 self.matplot_conf_houhou_cs[i].currentIndexChanged.connect(partial(self.onSampleSubChanged, w_idx=i))
