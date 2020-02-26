@@ -1,13 +1,15 @@
-import loguru
 import os
-import zlib
-import stackprinter
-from bytes_helper import bytesPuttyPrint, crc8, str2Bytes, bytes2Float
 import struct
-from functools import lru_cache
+import zlib
 from collections import namedtuple
 from enum import Enum
+from functools import lru_cache
+
+import loguru
 import numpy as np
+import stackprinter
+
+from bytes_helper import bytes2Float, bytesPuttyPrint, crc8, str2Bytes
 
 logger = loguru.logger.bind(name=__name__)
 PackInfo = namedtuple("PackInfo", "type is_head is_crc content text")
