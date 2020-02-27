@@ -564,7 +564,7 @@ class MainWindow(QMainWindow):
         else:
             gr = rmo.groups()
             start = int(gr[0])
-            num = int(gr[1])
+            num = int(gr[1]) if int(gr[1]) > 0 else 2 ** 32
         fault = dump_sample(self.sample_db.iter_all_data(start, num), file_path)
         if fault:
             msg = ModernMessageBox(self)
@@ -621,11 +621,11 @@ class MainWindow(QMainWindow):
         self.matplot_start_bt.setMaximumWidth(50)
         self.matplot_cancel_bt = QPushButton("取消")
         self.matplot_cancel_bt.setMaximumWidth(50)
-        self.matplot_period_tv_lb = QLabel("NL")
-        self.matplot_period_tv_lb.setAlignment(Qt.AlignCenter)
-        self.matplot_period_tv_cb = QCheckBox(minimumWidth=40)
+        self.matplot_period_tv_cb = QCheckBox("&NL", maximumWidth=60)
         self.matplot_period_tv_cb.setTristate(True)
-        self.matplot_period_tv_cb.stateChanged.connect(lambda x: self.matplot_period_tv_lb.setText(("NL", "OD", "PD")[x]))
+        self.matplot_period_tv_cb.stateChanged.connect(lambda x: self.matplot_period_tv_cb.setText(("&NL", "&OD", "&PD")[x]))
+        self.lamp_bp_bt = QPushButton("BP", maximumWidth=30)
+        self.lamp_bp_bt.clicked.connect(self.onLampBP)
         for i in range(7):
             self.motor_scan_bts[i].setMaximumWidth(45)
             barcode_ly.addWidget(self.motor_scan_bts[i], i, 0)
@@ -663,8 +663,8 @@ class MainWindow(QMainWindow):
                 temp_ly.addWidget(self.barcode_scan_bt)
                 temp_ly.addWidget(self.matplot_start_bt)
                 temp_ly.addWidget(self.matplot_cancel_bt)
-                temp_ly.addWidget(self.matplot_period_tv_lb)
                 temp_ly.addWidget(self.matplot_period_tv_cb)
+                temp_ly.addWidget(self.lamp_bp_bt)
                 barcode_ly.addLayout(temp_ly, i, 2, 1, 3)
         self.sample_record_idx_sp = QSpinBox()
         self.sample_record_idx_sp.setRange(0, 99999999)
@@ -2333,9 +2333,6 @@ class MainWindow(QMainWindow):
         self.debug_flag_cbs = (QCheckBox("温度"), QCheckBox("告警"), QCheckBox("扫码"), QCheckBox("托盘"), QCheckBox("原值"))
         for i, cb in enumerate(self.debug_flag_cbs):
             debug_flag_ly.addWidget(cb, i // 3, i % 3)
-        self.lamp_bp_bt = QPushButton("BP", maximumWidth=30)
-        self.lamp_bp_bt.clicked.connect(self.onLampBP)
-        debug_flag_ly.addWidget(self.lamp_bp_bt, 1, 2)
         storge_ly.addStretch(1)
         storge_ly.addWidget(self.storge_gb)
         storge_ly.addStretch(1)

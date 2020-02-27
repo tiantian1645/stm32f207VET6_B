@@ -159,7 +159,7 @@ class SampleDB:
             else:
                 new = result[: len(self._i32)]
                 for i, j in zip(self._i32, new):
-                    if j != 0:
+                    if j != 0 and i / j > 0:
                         result.append(log10(i / j) * 10000)
                     else:
                         result.append(0)
