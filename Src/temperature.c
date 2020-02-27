@@ -229,10 +229,28 @@ float temp_Get_Temp_Data(eTemp_NTC_Index idx)
 {
     float temp;
     uStorgeParamItem up;
+    eStorgeParamIndex s_idx;
 
     temp = temp_ADC_2_Temp(gTempADC_Results[idx]);
     up.f32 = 0;
-    if (storge_ParamReadSingle(eStorgeParamIndex_Temp_CC_top_1 + idx, up.u8s) == 4) {
+    switch (idx) {
+        case eTemp_NTC_Index_0:
+        case eTemp_NTC_Index_1:
+        case eTemp_NTC_Index_2:
+        case eTemp_NTC_Index_3:
+        case eTemp_NTC_Index_4:
+        case eTemp_NTC_Index_5:
+            s_idx = eStorgeParamIndex_Temp_CC_top;
+            break;
+        case eTemp_NTC_Index_6:
+        case eTemp_NTC_Index_7:
+            s_idx = eStorgeParamIndex_Temp_CC_btm;
+            break;
+        case eTemp_NTC_Index_8:
+            s_idx = eStorgeParamIndex_Temp_CC_env;
+            break;
+    }
+    if (storge_ParamReadSingle(s_idx, up.u8s) == 4) {
         if (up.f32 > 5 || up.f32 < -5) {
             up.f32 = 0;
         }

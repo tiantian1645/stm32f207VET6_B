@@ -1872,7 +1872,7 @@ class MainWindow(QMainWindow):
         self.out_flash_data_te = QTextEdit()
         out_flash_temp_ly = QHBoxLayout()
         self.out_flash_data_addr = QSpinBox(minimum=0, maximum=8 * 2 ** 20, maximumWidth=90, value=4096)
-        self.out_flash_data_num = QSpinBox(minimum=0, maximum=8 * 2 ** 20, maximumWidth=90, value=668)
+        self.out_flash_data_num = QSpinBox(minimum=0, maximum=8 * 2 ** 20, maximumWidth=90, value=636)
         self.out_flash_data_read_bt = QPushButton("读取", clicked=self.onOutFlashRead, maximumWidth=90)
 
         out_flash_temp_ly.addWidget(QLabel("地址", maximumWidth=60))
@@ -1886,7 +1886,7 @@ class MainWindow(QMainWindow):
         out_flash_param_ly = QVBoxLayout(out_flash_param_gb)
         out_flash_param_ly.setSpacing(5)
         self.out_flash_param_temp_sps = [
-            QDoubleSpinBox(self, maximumWidth=90, minimum=-5, maximum=5, decimals=3, singleStep=0.035, suffix="℃") for _ in range(11)
+            QDoubleSpinBox(self, maximumWidth=90, minimum=-5, maximum=5, decimals=3, singleStep=0.035, suffix="℃") for _ in range(3)
         ]
         self.out_flash_param_read_bt = QPushButton("读取", clicked=self.onOutFlashParamRead, maximumWidth=90)
         self.out_flash_param_write_bt = QPushButton("写入", clicked=self.onOutFlashParamWrite, maximumWidth=90)
@@ -1898,19 +1898,13 @@ class MainWindow(QMainWindow):
 
         out_flash_param_temp_cc_wg = QGroupBox("温度校正参数")
         out_flash_param_temp_cc_ly = QGridLayout(out_flash_param_temp_cc_wg)
+        out_flash_param_temp_cc_ly.setAlignment(Qt.AlignCenter)
 
         for i, sp in enumerate(self.out_flash_param_temp_sps):
             temp_ly = QHBoxLayout()
             temp_ly.setContentsMargins(5, 0, 5, 0)
             temp_ly.setSpacing(5)
-            if i < 6:
-                temp_ly.addWidget(QLabel(f"#{i + 1} 上加热体-{i + 1}"))
-            elif i < 8:
-                temp_ly.addWidget(QLabel(f"#{i + 1} 下加热体-{i - 5}"))
-            elif i == 8:
-                temp_ly.addWidget(QLabel(f"#{i + 1} 环境-{i - 7}"))
-            else:
-                temp_ly.addWidget(QLabel(f"目标点偏差-{('下', '上')[i-9]}"))
+            temp_ly.addWidget(QLabel(("上加热体", "下加热体", "环境")[i]))
             temp_ly.addWidget(sp)
             out_flash_param_temp_cc_ly.addLayout(temp_ly, i // 6, i % 6)
         out_flash_param_ly.addWidget(out_flash_param_temp_cc_wg)
@@ -1996,10 +1990,7 @@ class MainWindow(QMainWindow):
                 self.last_falsh_save_dir = os.path.split(file_path)[0]
         data = [
             TEMP_CC_DataInfo(
-                tops=[s.value() for s in self.out_flash_param_temp_sps[:6]],
-                btms=[s.value() for s in self.out_flash_param_temp_sps[6:8]],
-                env=[s.value() for s in self.out_flash_param_temp_sps[8:9]][0],
-                heaters=[s.value() for s in self.out_flash_param_temp_sps[9:]],
+                top=self.out_flash_param_temp_sps[0].value(), btm=self.out_flash_param_temp_sps[1].value(), env=self.out_flash_param_temp_sps[2].value(),
             )
         ]
         chanel_d = dict()
@@ -2037,14 +2028,9 @@ class MainWindow(QMainWindow):
             return
         for d in data:
             if isinstance(d, TEMP_CC_DataInfo):
-                for i, s in enumerate(self.out_flash_param_temp_sps[:6]):
-                    s.setValue(d.tops[i])
-                for i, s in enumerate(self.out_flash_param_temp_sps[6:8]):
-                    s.setValue(d.btms[i])
-                for i, s in enumerate(self.out_flash_param_temp_sps[8:9]):
-                    s.setValue(d.env)
-                for i, s in enumerate(self.out_flash_param_temp_sps[9:]):
-                    s.setValue(d.heaters[i])
+                self.out_flash_param_temp_sps[0].setValue(d.top)
+                self.out_flash_param_temp_sps[1].setValue(d.btm)
+                self.out_flash_param_temp_sps[2].setValue(d.env)
             elif isinstance(d, ILLU_CC_DataInfo):
                 w_idx = WAVE_NAMES.index(str(d.wave))
                 for i in range(6):  # stage
@@ -2120,14 +2106,14 @@ class MainWindow(QMainWindow):
         self.out_flash_data_parse_dg.show()
 
     def onOutFlashParamRead(self, event):
-        data = (*(struct.pack("H", 0)), *(struct.pack("H", 167)))
+        data = (*(struct.pack("H", 0)), *(struct.pack("H", 159)))
         self._serialSendPack(0xDD, data)
         QTimer.singleShot(1000, self.updateOutFlashParamSpinBG)
 
     def onOutFlashParamWrite(self, event):
         data = []
         for idx, sp in enumerate(self.out_flash_param_temp_sps):
-            for d in struct.pack("f", sp.value()):
+            for d in struct.pack("f", sp.value() * -1):
                 data.append(d)
         for idx, sp in enumerate(self.out_flash_param_cc_sps):
             for d in struct.pack("I", int(sp.value())):
@@ -2168,7 +2154,7 @@ class MainWindow(QMainWindow):
         for i in range(num):
             idx = start + i
             if idx < len(self.out_flash_param_temp_sps):
-                value = struct.unpack("f", raw_pack[10 + i * 4 : 14 + i * 4])[0]
+                value = struct.unpack("f", raw_pack[10 + i * 4 : 14 + i * 4])[0] * -1
                 sp = self.out_flash_param_temp_sps[idx]
             else:
                 value = struct.unpack("I", raw_pack[10 + i * 4 : 14 + i * 4])[0]
@@ -2261,7 +2247,7 @@ class MainWindow(QMainWindow):
         result = self.genBinaryData(self.out_flash_data[: start + length], offset=self.out_flash_start)
         raw_text = "\n".join(result)
         logger.debug(f"Out Flash Raw Data | {start} | {length}\n{raw_text}")
-        if self.out_flash_start == 0x1000 and self.out_flash_length == 668:
+        if self.out_flash_start == 0x1000 and self.out_flash_length == 636:
             info = DC201_ParamInfo(self.out_flash_data[: start + length])
             plain_text = f"{info}\n{'=' * 100}\nraw bytes:\n{raw_text}"
             self.out_flash_data_te.setPlainText(plain_text)

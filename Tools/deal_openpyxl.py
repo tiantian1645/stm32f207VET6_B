@@ -6,7 +6,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.cell import WriteOnlyCell
 from openpyxl.styles import Alignment, NamedStyle, PatternFill
 
-TEMP_CC_DataInfo = namedtuple("TEMP_CC_DataInfo", "tops btms env heaters")
+TEMP_CC_DataInfo = namedtuple("TEMP_CC_DataInfo", "top btm env")
 ILLU_CC_DataInfo = namedtuple("ILLU_CC_DataInfo", "wave standard_points channel_pointses")
 SAMPLE_TITLES = ("索引", "日期", "标签", "控制板程序版本", "控制板芯片ID", "通道", "方法", "波长", "采样数据")
 
@@ -21,7 +21,7 @@ def dump_CC(data, file_path):
         cells = [WriteOnlyCell(sheet, value=(sheet.title, "测试点-1", "测试点-2", "测试点-3", "测试点-4", "测试点-5", "测试点-6")[i]) for i in range(7)]
         sheet.append(cells)
     sheet = sheets[-1]
-    cells = [WriteOnlyCell(sheet, value=f"探头-{i + 1}") for i in range(9)] + [WriteOnlyCell(sheet, value=["目标温度偏移-上", "目标温度偏移-下"][i]) for i in range(2)]
+    cells = [WriteOnlyCell(sheet, value=("上加热体", "下加热体", "环境")[i]) for i in range(3)]
     sheet.append(cells)
     # insert data
     try:
@@ -36,10 +36,9 @@ def dump_CC(data, file_path):
             elif isinstance(d, TEMP_CC_DataInfo):
                 sheet = wb["温度"]
                 cells = (
-                    [WriteOnlyCell(sheet, value=i) for i in d.tops]
-                    + [WriteOnlyCell(sheet, value=i) for i in d.btms]
-                    + [WriteOnlyCell(sheet, value=d.env)]
-                    + [WriteOnlyCell(sheet, value=i) for i in d.heaters]
+                    WriteOnlyCell(sheet, value=d.top),
+                    WriteOnlyCell(sheet, value=d.btm),
+                    WriteOnlyCell(sheet, value=d.env),
                 )
                 sheet.append(cells)
         wb.save(file_path)
@@ -61,14 +60,7 @@ def load_CC(file_path):
                 channel_pointses.append(tuple(sheet.cell(column=column_idx + 2, row=3 + row_idx).value for column_idx in range(6)))
             data.append(ILLU_CC_DataInfo(wave=title, standard_points=standard_points, channel_pointses=tuple(channel_pointses)))
         sheet = wb["温度"]
-        data.append(
-            TEMP_CC_DataInfo(
-                tops=tuple(sheet.cell(column=column_idx, row=2).value for column_idx in range(1, 7)),
-                btms=tuple(sheet.cell(column=column_idx, row=2).value for column_idx in range(7, 9)),
-                env=sheet.cell(column=9, row=2).value,
-                heaters=tuple(sheet.cell(column=column_idx, row=2).value for column_idx in range(10, 12)),
-            )
-        )
+        data.append(TEMP_CC_DataInfo(top=sheet.cell(column=1, row=2).value, btm=sheet.cell(column=2, row=2).value, env=sheet.cell(column=3, row=2).value))
         return tuple(data)
     except Exception:
         logger.error(f"load data from xlsx failed\n{stackprinter.format()}")
@@ -158,7 +150,7 @@ if __name__ == "__main__":
             ),
         ),
         ILLU_CC_DataInfo(wave=405, standard_points=(13, 14, 15, 16, 17, 18,), channel_pointses=((18100, 17200, 16300, 15400, 14500, 13600),),),
-        TEMP_CC_DataInfo(tops=(1.0, 1.5, 2.0, 2.5, 3.0, 3.6), btms=(4.0, 5.0), env=6, heaters=(7.0, 8.0)),
+        TEMP_CC_DataInfo(top=1, btm=2, env=6),
     )
     dump_CC(data, file_path)
     rdata = load_CC(file_path)

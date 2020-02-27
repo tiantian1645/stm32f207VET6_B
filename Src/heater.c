@@ -286,14 +286,10 @@ void heater_BTM_Output_Init(void)
  */
 void heater_BTM_Output_Keep_Deal(void)
 {
-    uStorgeParamItem read_data;
-
     // Check if need to compute PID
     if (pid_ctrl_need_compute(&gHeater_BTM_PID_Conf)) {
         // Read process feedback
         btm_input = temp_Get_Temp_Data_BTM();
-        storge_ParamReadSingle(eStorgeParamIndex_Heater_Offset_BTM, read_data.u8s);
-        btm_input -= read_data.f32;
         if (btm_input > HEATER_BTM_DEFAULT_SETPOINT + 1) {
             heater_BTM_Output_Ctl(0);
         } else {
@@ -377,14 +373,10 @@ void heater_TOP_Output_Init(void)
  */
 void heater_TOP_Output_Keep_Deal(void)
 {
-    uStorgeParamItem read_data;
-
     // Check if need to compute PID
     if (pid_ctrl_need_compute(&gHeater_TOP_PID_Conf)) {
         // Read process feedback
         top_input = temp_Get_Temp_Data_TOP();
-        storge_ParamReadSingle(eStorgeParamIndex_Heater_Offset_TOP, read_data.u8s);
-        top_input -= read_data.f32;
         if (top_input > HEATER_TOP_DEFAULT_SETPOINT + 1) {
             heater_TOP_Output_Ctl(0);
         } else {

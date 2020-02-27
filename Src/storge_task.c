@@ -507,18 +507,9 @@ static void storge_ParamInit(void)
 {
     memset(&gStorgeParamInfo, 0, sizeof(gStorgeParamInfo));
 
-    gStorgeParamInfo.temperature_cc_top_1 = 0;
-    gStorgeParamInfo.temperature_cc_top_2 = 0;
-    gStorgeParamInfo.temperature_cc_top_3 = 0;
-    gStorgeParamInfo.temperature_cc_top_4 = 0;
-    gStorgeParamInfo.temperature_cc_top_5 = 0;
-    gStorgeParamInfo.temperature_cc_top_6 = 0;
-    gStorgeParamInfo.temperature_cc_btm_1 = 0;
+    gStorgeParamInfo.temperature_cc_top = 0;
     gStorgeParamInfo.temperature_cc_btm_2 = 0;
     gStorgeParamInfo.temperature_cc_env = 0;
-
-    gStorgeParamInfo.heater_offset_btm = 0;
-    gStorgeParamInfo.heater_offset_top = 0;
 }
 
 /**
@@ -575,12 +566,12 @@ uint8_t storge_ParamWriteSingle(eStorgeParamIndex idx, uint8_t * pBuff, uint8_t 
         return 3;
     }
 
-    if (idx >= eStorgeParamIndex_Temp_CC_top_1 && idx <= eStorgeParamIndex_Heater_Offset_TOP) {
+    if (idx >= eStorgeParamIndex_Temp_CC_top && idx <= eStorgeParamIndex_Temp_CC_env) {
         if (length != 4) {
             return 3;
         }
         memcpy(read_data.u8s, pBuff, length);
-        pData_f = &(gStorgeParamInfo.temperature_cc_top_1) + (idx - eStorgeParamIndex_Temp_CC_top_1);
+        pData_f = &(gStorgeParamInfo.temperature_cc_top) + (idx - eStorgeParamIndex_Temp_CC_top);
         if (read_data.f32 <= 5 && read_data.f32 >= -5) { /* 温度校正范围限制在±5℃ */
             *pData_f = read_data.f32;
             return 0;
