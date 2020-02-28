@@ -956,7 +956,7 @@ uint8_t stroge_Conf_CC_O_Data_From_B3(uint8_t * pBuffer)
     return storge_Conf_CC_Insert(                                                      /* 写入校正实际值 */
                                  pBuffer[1],                                           /* 数据区第一字节 通道号 1～6 */
                                  comm_Data_Get_Correct_Wave(),                         /* 当前测试的波长 */
-                                 (comm_Data_Get_Corretc_Stage() + pBuffer[1] - 1) % 6, /* 当前校正段数 */
+                                 comm_Data_Get_Corretc_Stage(pBuffer[1]),              /* 当前通道的校正段索引 */
                                  (uint32_t)storge_Param_CC_Illumine_CC_Filter(pBuffer) /* 滤波后的平均值 */
     );
 }

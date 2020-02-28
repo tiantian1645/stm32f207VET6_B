@@ -953,7 +953,7 @@ static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length)
             if (length == 8) {
                 gComm_Data_Correct_Flag_Mark();          /* 标记进入定标状态 */
                 motor_fun.fun_type = eMotor_Fun_Correct; /* 电机执行定标 */
-                comm_Data_Set_Corretc_Stage(pInBuff[6]); /* 定标段索引 */
+                motor_fun.fun_param_1 = pInBuff[6];      /* 定标段索引偏移 */
                 motor_Emit_FromISR(&motor_fun);
             }
             break;

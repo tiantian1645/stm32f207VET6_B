@@ -87,7 +87,7 @@ static uint8_t gComm_Data_Stary_test_Falg = 0;
 
 static uint8_t gComm_Data_Correct_Flag = 0; /* 定标状态标志 */
 static eComm_Data_Sample_Radiant gComm_Data_Correct_wave = eComm_Data_Sample_Radiant_550;
-static uint8_t gComm_Data_Correct_stage = 0; /* 定标段索引 */
+static uint8_t gComm_Data_Correct_stages[6] = {0, 0, 0, 0, 0, 0}; /* 定标段索引 */
 
 static uint8_t gComm_Data_Lamp_BP_Flag = 0; /* 灯BP状态标志 */
 /* Private constants ---------------------------------------------------------*/
@@ -733,23 +733,24 @@ eComm_Data_Sample_Radiant comm_Data_Get_Correct_Wave(void)
 }
 
 /**
- * @brief  校正端索引配置获取
- * @param  None
- * @retval gComm_Data_Correct_stage
+ * @brief  校正段索引配置获取
+ * @param  uint8_t channel 通道号 1 ~ 6
+ * @retval gComm_Data_Correct_stages
  */
-uint8_t comm_Data_Get_Corretc_Stage(void)
+uint8_t comm_Data_Get_Corretc_Stage(uint8_t channel)
 {
-    return gComm_Data_Correct_stage;
+    return gComm_Data_Correct_stages[channel - 1];
 }
 
 /**
- * @brief  校正端索引配置设置
- * @param  None
- * @retval gComm_Data_Correct_stage
+ * @brief  校正段索引配置设置
+ * @param  uint8_t channel 通道号 1 ~ 6
+ * @param  uint8_t idx 校正段索引
+ * @retval gComm_Data_Correct_stages
  */
-void comm_Data_Set_Corretc_Stage(uint8_t idx)
+void comm_Data_Set_Corretc_Stage(uint8_t channel, uint8_t idx)
 {
-    gComm_Data_Correct_stage = idx;
+    gComm_Data_Correct_stages[channel - 1] = idx;
 }
 
 /**

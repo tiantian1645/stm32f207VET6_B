@@ -145,8 +145,8 @@ uint8_t gComm_Data_Correct_Flag_Check(void);
 BaseType_t comm_Data_Sample_Send_Conf_Correct(uint8_t * pData, eComm_Data_Sample_Radiant wave, uint8_t point_num);
 eComm_Data_Sample_Radiant comm_Data_Get_Correct_Wave(void);
 
-uint8_t comm_Data_Get_Corretc_Stage(void);
-void comm_Data_Set_Corretc_Stage(uint8_t idx);
+uint8_t comm_Data_Get_Corretc_Stage(uint8_t channel);
+void comm_Data_Set_Corretc_Stage(uint8_t channel, uint8_t idx);
 
 void gComm_Data_Lamp_BP_Flag_Mark(void);
 void gComm_Data_Lamp_BP_Flag_Clr(void);
