@@ -508,7 +508,7 @@ static void storge_ParamInit(void)
     memset(&gStorgeParamInfo, 0, sizeof(gStorgeParamInfo));
 
     gStorgeParamInfo.temperature_cc_top = 0;
-    gStorgeParamInfo.temperature_cc_btm_2 = 0;
+    gStorgeParamInfo.temperature_cc_btm = 0;
     gStorgeParamInfo.temperature_cc_env = 0;
 }
 
