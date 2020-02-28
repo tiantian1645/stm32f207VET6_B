@@ -890,7 +890,7 @@ uint8_t barcode_Scan_Decode_Correct_Info(uint8_t * pBuffer, uint8_t length)
 
     gBarcodeCorrectInfo.branch = barcode_Str_2_Int_Base_10(pBuffer, 4);   /* 4位批号 */
     gBarcodeCorrectInfo.date = barcode_Str_2_Int_Base_10(pBuffer + 4, 6); /* 6位日期 */
-    for (i = 0; i < 6; ++ i) {
+    for (i = 0; i < 6; ++i) {
         gBarcodeCorrectInfo.stages[i] = barcode_Str_2_Int_Base_10(pBuffer + 10 + i, 1); /* 6位定标段索引 */
     }
     for (i = 0; i < 13; ++i) {                                                                /* 13个定标点 */
@@ -898,6 +898,25 @@ uint8_t barcode_Scan_Decode_Correct_Info(uint8_t * pBuffer, uint8_t length)
         gBarcodeCorrectInfo.o_values[i] = barcode_Str_2_Int_Base_16(pBuffer + 20 + 8 * i, 4); /* 每个4位 */
     }
     gBarcodeCorrectInfo.check = barcode_Str_2_Int_Base_16(pBuffer + 120, 2); /* 2位校验位 */
+    return 0;
+}
+
+/**
+ * @brief  校正数据抽取
+ * @param  channel 通道号 1～6
+ * @param  wave 波长 eComm_Data_Sample_Radiant
+ * @param  pBciu 输出指针
+ * @note   从 gBarcodeCorrectInfo 中抽取通道波长对应校正数据
+ * @retval 0 成功 1 参数越限
+ */
+uint8_t barcode_Scan_Pick_Correct_Info(uint8_t channel, eComm_Data_Sample_Radiant wave, sBarcodeCorrectInfoUnit * pBciu)
+{
+    if (channel < 1 || channel > 6 || wave < eComm_Data_Sample_Radiant_610 || wave > eComm_Data_Sample_Radiant_405) { /* 范围检查 */
+        return 1;
+    }
+    pBciu->stage = gBarcodeCorrectInfo.stages[channel - 1];
+    pBciu->i_value = gBarcodeCorrectInfo.i_values[(wave - eComm_Data_Sample_Radiant_610) * 6 + (channel - 1)];
+    pBciu->o_value = gBarcodeCorrectInfo.o_values[(wave - eComm_Data_Sample_Radiant_610) * 6 + (channel - 1)];
     return 0;
 }
 

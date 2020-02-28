@@ -2,6 +2,7 @@
 #ifndef __BARCODE_SCAN_H
 #define __BARCODE_SCAN_H
 /* Includes ------------------------------------------------------------------*/
+#include "comm_data.h"
 
 /* Private includes ----------------------------------------------------------*/
 
@@ -54,6 +55,12 @@ typedef struct {
     uint32_t check;        /* 校验数据 */
 } sBarcodeCorrectInfo;
 
+typedef struct {
+    uint8_t stage;
+    uint16_t i_value;
+    uint16_t o_value;
+} sBarcodeCorrectInfoUnit;
+
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/
@@ -81,6 +88,7 @@ void barcode_Scan_Bantch(uint8_t pos_mark, uint8_t scan_mark);
 int32_t barcode_Motor_Read_Position(void);
 
 uint8_t barcode_Scan_Decode_Correct_Info(uint8_t * pBuffer, uint8_t length);
+uint8_t barcode_Scan_Pick_Correct_Info(uint8_t channel, eComm_Data_Sample_Radiant wave, sBarcodeCorrectInfoUnit * pBciu);
 uint8_t barcode_Scan_Decode_Correct_Info_From_Result(void);
 /* Private defines -----------------------------------------------------------*/
 
