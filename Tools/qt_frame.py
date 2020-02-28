@@ -12,6 +12,7 @@ from collections import namedtuple
 from datetime import datetime
 from functools import partial
 from hashlib import sha256
+from math import log10
 from urllib.request import urlretrieve
 
 from loguru import logger
@@ -1027,9 +1028,10 @@ class MainWindow(QMainWindow):
         self.barcode_lbs[idx].setText("*" * 10)
         self._serialSendPack(0xD0, (0, (1 << idx), (1 << idx)))
 
-    def sample_record_parse_raw_data(self, total, raw_data):
+    def sample_record_parse_raw_data(self, total, raw_data, last_sd=None):
         data = []
         data_len = len(raw_data)
+        c_data = []
         if total == 0:
             logger.error(f"sample data total error | {total}")
             return data
@@ -1039,9 +1041,16 @@ class MainWindow(QMainWindow):
         elif data_len / total == 4:
             for i in range(0, data_len, 4):
                 data.append(struct.unpack("I", raw_data[i : i + 4])[0])
+            if last_sd:
+                for i in range(0, data_len, 4):
+                    ld = struct.unpack("I", last_sd.raw_data[i : i + 4])[0]
+                    if ld / data[i // 4] <= 0:
+                        c_data.append(0)
+                    else:
+                        c_data.append(log10(ld / data[i // 4]) * 10000)
         else:
             logger.error(f"sample data length error | {data_len}")
-        return data
+        return data, c_data
 
     def sample_record_plot_by_index(self, idx):
         label = self.sample_db.get_label_by_index(idx)
@@ -1063,7 +1072,7 @@ class MainWindow(QMainWindow):
             self.matplot_conf_point_sps[i].setValue(0)
         for sd in label.sample_datas:
             channel_idx = sd.channel - 1
-            data = self.sample_record_parse_raw_data(sd.total, sd.raw_data)
+            data = self.sample_record_parse_raw_data(sd.total, sd.raw_data)[0]
             self.temp_saple_data[channel_idx] = data
             self.plot_graph.plot_data_new(data=data, name=f"B-{channel_idx + 1}")
             self.matplot_conf_houhou_cs[channel_idx].setCurrentIndex(sd.method.value)
@@ -1071,8 +1080,11 @@ class MainWindow(QMainWindow):
             self.matplot_conf_point_sps[channel_idx].setValue(sd.total)
 
     def onSampleLabelClick(self, event):
-        def data_format_list(data):
-            result = ", ".join(f"{i:#5d}" for i in data)
+        def data_format_list(data, t=int):
+            if t is int:
+                result = ", ".join(f"{i:#5d}" for i in data)
+            elif t is float:
+                result = ", ".join(f"{i:7.2f}" for i in data)
             if len(result) > 300:
                 result = result[:300] + "..."
             return result
@@ -1086,8 +1098,13 @@ class MainWindow(QMainWindow):
         msg.setIcon(QMessageBox.Information)
         msg.setWindowTitle(f"采样数据 | {label.datetime} | {label.name}")
         data_infos = []
-        for sd in sds:
-            real_data = self.sample_record_parse_raw_data(sd.total, sd.raw_data)
+        last_sd = None
+        for i, sd in enumerate(sds):
+            if last_sd and last_sd.channel == sd.channel and len(last_sd.raw_data) / sd.total == 4:
+                real_data, c_data = self.sample_record_parse_raw_data(sd.total, sd.raw_data, last_sd)
+                last_sd = None
+            else:
+                real_data, c_data = self.sample_record_parse_raw_data(sd.total, sd.raw_data)
             if len(real_data) == 0:
                 continue
             ys = np.array(real_data, dtype=np.int32)
@@ -1105,6 +1122,14 @@ class MainWindow(QMainWindow):
                 )
             else:
                 data_infos.append(f"通道 {sd.channel} | {data_format_list(real_data)} | (cv = {cv:.4f}, std = {std:.4f}, mean = {mean:.4f})")
+            if c_data:
+                ys = np.array(c_data, dtype=np.float)
+                std = np.std(ys)
+                mean = np.mean(ys)
+                cv = std / mean
+                data_infos.append(f"通道 {sd.channel} | {data_format_list(c_data, float)} | (cv = {cv:.4f}, std = {std:.4f}, mean = {mean:.4f})")
+                data_infos.append("=" * 24)
+            last_sd = sd
         # https://stackoverflow.com/a/10977872
         font = QFont("Consolas")
         font.setFixedPitch(True)
@@ -1114,7 +1139,7 @@ class MainWindow(QMainWindow):
         detail_text = f"\n{'=' * 24}\n".join(
             (
                 f"通道 {sd.channel} | {sd.datetime} | {METHOD_NAMES[sd.method.value]} | {WAVE_NAMES[sd.wave.value - 1]} | 点数 {sd.total}\n"
-                f"{self.sample_record_parse_raw_data(sd.total, sd.raw_data)}\n{bytesPuttyPrint(sd.raw_data)}"
+                f"{self.sample_record_parse_raw_data(sd.total, sd.raw_data)[0]}\n{bytesPuttyPrint(sd.raw_data)}"
             )
             for sd in sds
         )
