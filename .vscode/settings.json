@@ -1,5 +1,5 @@
 {
-  "python.pythonPath": "Tools\\venv\\Scripts\\python.exe",
+  "python.pythonPath": "C:\\Program Files\\Python37\\python.exe",
   // "python.pythonPath": "Tools\\venv32\\Scripts\\python.exe",
   "python.linting.flake8Enabled": true,
   "python.linting.enabled": true,

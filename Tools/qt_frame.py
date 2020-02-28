@@ -1107,6 +1107,14 @@ class MainWindow(QMainWindow):
                 real_data, c_data = self.sample_record_parse_raw_data(sd.total, sd.raw_data)
             if len(real_data) == 0:
                 continue
+            if last_sd and last_sd.channel != sd.channel:
+                data_infos.append("=" * 24)
+            if label.name.startswith("Lamp BP"):
+                wave_name = WAVE_NAMES[i % 3]
+            elif label.name.startswith("Correct "):
+                wave_name = WAVE_NAMES[i % 2]
+            else:
+                wave_name = sd.wave.name[-3:]
             ys = np.array(real_data, dtype=np.int32)
             std = np.std(ys)
             mean = np.mean(ys)
@@ -1117,17 +1125,17 @@ class MainWindow(QMainWindow):
                 mean_6 = np.mean(ys_6)
                 cv_6 = std_6 / mean_6
                 data_infos.append(
-                    f"通道 {sd.channel} | {data_format_list(real_data)} | (cv = {cv:.4f}, std = {std:.4f}, mean = {mean:.4f}) | "
+                    f"通道 {sd.channel} | {wave_name} | {data_format_list(real_data)} | (cv = {cv:.4f}, std = {std:.4f}, mean = {mean:.4f}) | "
                     f"(cv_6 = {cv_6:.4f}, std_6 = {std_6:.4f}, mean_6 = {mean_6:.4f})"
                 )
             else:
-                data_infos.append(f"通道 {sd.channel} | {data_format_list(real_data)} | (cv = {cv:.4f}, std = {std:.4f}, mean = {mean:.4f})")
+                data_infos.append(f"通道 {sd.channel} | {wave_name} | {data_format_list(real_data)} | (cv = {cv:.4f}, std = {std:.4f}, mean = {mean:.4f})")
             if c_data:
                 ys = np.array(c_data, dtype=np.float)
                 std = np.std(ys)
                 mean = np.mean(ys)
                 cv = std / mean
-                data_infos.append(f"通道 {sd.channel} | {data_format_list(c_data, float)} | (cv = {cv:.4f}, std = {std:.4f}, mean = {mean:.4f})")
+                data_infos.append(f"通道 {sd.channel} | {wave_name} | {data_format_list(c_data, float)} | (cv = {cv:.4f}, std = {std:.4f}, mean = {mean:.4f})")
                 data_infos.append("=" * 24)
             last_sd = sd
         # https://stackoverflow.com/a/10977872
@@ -1944,7 +1952,7 @@ class MainWindow(QMainWindow):
                 pp = 2
             out_flash_param_od_cc_ly.addWidget(QHLine())
             for j in range(pp):
-                wave = ("610", "550", "405")[j]
+                wave = WAVE_NAMES[j]
                 temp_ly = QHBoxLayout()
                 if j == 0:
                     channel = f"通道{i + 1}"
@@ -2015,7 +2023,7 @@ class MainWindow(QMainWindow):
                 self.last_falsh_save_dir = os.path.split(file_path)[0]
         data = [
             TEMP_CC_DataInfo(
-                top=self.out_flash_param_temp_sps[0].value(), btm=self.out_flash_param_temp_sps[1].value(), env=self.out_flash_param_temp_sps[2].value(),
+                top=self.out_flash_param_temp_sps[0].value(), btm=self.out_flash_param_temp_sps[1].value(), env=self.out_flash_param_temp_sps[2].value()
             )
         ]
         chanel_d = dict()
