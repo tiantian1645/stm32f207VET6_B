@@ -590,7 +590,6 @@ class MainWindow(QMainWindow):
         self.matplot_conf_point_sps[w_idx].blockSignals(False)
 
     def onSampleSubChanged(self, value, w_idx):
-        logger.debug(f"onSampleSubChanged | value {value} | w_idx {w_idx}")
         for i, ssi in enumerate(SAMPLE_SET_INFOS):
             if (
                 self.matplot_conf_houhou_cs[w_idx].currentIndex() == ssi.method.value
@@ -1044,7 +1043,7 @@ class MainWindow(QMainWindow):
             if last_sd:
                 for i in range(0, data_len, 4):
                     ld = struct.unpack("I", last_sd.raw_data[i : i + 4])[0]
-                    if ld / data[i // 4] <= 0:
+                    if data[i // 4] == 0 or ld / data[i // 4] <= 0:
                         c_data.append(0)
                     else:
                         c_data.append(log10(ld / data[i // 4]) * 10000)
@@ -2422,7 +2421,7 @@ class MainWindow(QMainWindow):
 if __name__ == "__main__":
 
     def trap_exc_during_debug(exc_type, exc_value, exc_traceback):
-        logger.error(f"sys execpthook\n{''.join(traceback.format_exception(exc_type, exc_value, exc_traceback))}")
+        logger.error(f"sys execpt hook\n{traceback.format_exception(exc_type, exc_value, exc_traceback)}")
 
     sys.excepthook = trap_exc_during_debug
     try:
