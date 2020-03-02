@@ -31,10 +31,9 @@ HENJI_TABLE = (
 
 
 class SerialRecvWorker(QRunnable):
-    def __init__(self, serial, henji_queue, serial_lock, logger=loguru.logger):
+    def __init__(self, serial, henji_queue, serial_lock):
         super(SerialRecvWorker, self).__init__()
         self.serial = serial
-        self.logger = logger
         self.henji_queue = henji_queue
         self.serial_lock = serial_lock
         self.need_henji = (0xAA,)
@@ -83,7 +82,7 @@ class SerialRecvWorker(QRunnable):
                 if len(recv_data) <= 0:
                     continue
 
-                self.logger.debug(f"get raw bytes | {bytesPuttyPrint(recv_data)}")
+                logger.debug(f"get raw bytes | {bytesPuttyPrint(recv_data)}")
                 self.signals.serial_statistic.emit(("r", recv_data))
 
                 recv_buffer += recv_data
@@ -100,13 +99,13 @@ class SerialRecvWorker(QRunnable):
                             self.serial.write(write_data)
                             self.serial_lock.unlock()
                             self.signals.serial_statistic.emit(("w", write_data))
-                            self.logger.info(f"reply ack pack | {bytesPuttyPrint(write_data)} --> {info.text}")
+                            logger.info(f"reply ack pack | {bytesPuttyPrint(write_data)} --> {info.text}")
                             self.signals.result.emit(info)
                         if fun_code in self.need_henji:
                             logger.info(f"put henji | self.need_henji {self._str_Henji()} | fun_code 0x{fun_code:02X} | write cmd 0x{self.temp_wrote[5]:02X}")
                             self.henji_queue.put(info)
                         elif fun_code not in (0xAA, 0xA0, 0xEE, 0xD0):
-                            logger.error(f"no put to henji | self.need_henji {self._str_Henji()} | info {info.text}")
+                            logger.debug(f"no put to henji | self.need_henji {self._str_Henji()} | info {info.text}")
                 if info is not None:
                     if info.is_head and info.is_crc and info.is_tail:
                         recv_buffer = b""
@@ -123,10 +122,9 @@ class SerialRecvWorker(QRunnable):
 
 
 class SerialSendWorker(QRunnable):
-    def __init__(self, serial, task_queue, henji_queue, recv_worker, logger=loguru.logger):
+    def __init__(self, serial, task_queue, henji_queue, recv_worker):
         super(SerialSendWorker, self).__init__()
         self.serial = serial
-        self.logger = logger
         self.task_queue = task_queue
         self.henji_queue = henji_queue
         self.dd = DC201_PACK()
