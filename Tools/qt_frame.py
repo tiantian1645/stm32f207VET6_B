@@ -1817,6 +1817,9 @@ class MainWindow(QMainWindow):
             self.upgrade_dg.setWindowTitle(f"固件升级 | {self._getFileHash_SHA256(file_path)}")
 
     def onSampleOver(self):
+        if self.sample_record_lable_name.startswith("Correct "):
+            logger.success("correct sample over read flash back")
+            self.onOutFlashParamRead()
         records = []
         for k in sorted(self.matplot_data.keys()):
             v = self.matplot_data.get(k, [0])
@@ -2136,12 +2139,12 @@ class MainWindow(QMainWindow):
         self.out_flash_data_parse_dg.resize(900, 400)
         self.out_flash_data_parse_dg.show()
 
-    def onOutFlashParamRead(self, event):
+    def onOutFlashParamRead(self, event=None):
         data = (*(struct.pack("H", 0)), *(struct.pack("H", 159)))
         self._serialSendPack(0xDD, data)
         QTimer.singleShot(1000, self.updateOutFlashParamSpinBG)
 
-    def onOutFlashParamWrite(self, event):
+    def onOutFlashParamWrite(self, event=None):
         data = []
         for idx, sp in enumerate(self.out_flash_param_temp_sps):
             for d in struct.pack("f", sp.value() * -1):
@@ -2308,7 +2311,7 @@ class MainWindow(QMainWindow):
     def onLampBP(self):
         self._serialSendPack(0xDC, (1,))
         self.sample_record_lable_name = f"Lamp BP {datetime.now().strftime('%Y%m%d%H%M%S')}"
-        logger.debug(f"set correct label name | {self.sample_record_lable_name}")
+        logger.debug(f"set lamp bp label name | {self.sample_record_lable_name}")
         conf = []
         self.sample_confs = []
         self.sample_datas = []
