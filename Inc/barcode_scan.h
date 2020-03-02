@@ -50,15 +50,13 @@ typedef struct {
     uint32_t branch;       /* 批次 */
     uint32_t date;         /* 日期 */
     uint8_t stages[6];     /* 定标段索引 */
-    uint16_t i_values[13]; /* 标段数据 理论值 13个灯 */
-    uint16_t o_values[13]; /* 标段数据 实际值 13个灯 */
+    uint16_t i_values[13]; /* 标段数据 标准机上测试值 13个灯 610 * 6 / 550 * 6 / 405 * 1  */
     uint32_t check;        /* 校验数据 */
 } sBarcodeCorrectInfo;
 
 typedef struct {
     uint8_t stage;
     uint16_t i_value;
-    uint16_t o_value;
 } sBarcodeCorrectInfoUnit;
 
 /* Exported constants --------------------------------------------------------*/
