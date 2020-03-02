@@ -595,10 +595,9 @@ uint8_t storge_ParamWriteSingle(eStorgeParamIndex idx, uint8_t * pBuff, uint8_t 
 }
 
 /**
- * @brief  参数读取
+ * @brief  定标参数读取
  * @param  idx 参数类型
- * @param  pBuff 输出数据
- * @retval 输出数据长度
+ * @retval 定标参数
  */
 uint32_t storge_Param_Illumine_CC_Get_Single(eStorgeParamIndex idx)
 {
@@ -613,10 +612,10 @@ uint32_t storge_Param_Illumine_CC_Get_Single(eStorgeParamIndex idx)
 }
 
 /**
- * @brief  参数读取
+ * @brief  定标参数设置
  * @param  idx 参数类型
- * @param  pBuff 输出数据
- * @retval 输出数据长度
+ * @param  data 数据
+ * @retval None
  */
 void storge_Param_Illumine_CC_Set_Single(eStorgeParamIndex idx, uint32_t data)
 {
@@ -633,6 +632,7 @@ void storge_Param_Illumine_CC_Set_Single(eStorgeParamIndex idx, uint32_t data)
 
 /**
  * @brief  参数读取
+ * @note   全局变量 gStorgeParamInfo -> 缓存
  * @param  idx 参数类型
  * @param  pBuff 输出数据
  * @retval 输出数据长度
