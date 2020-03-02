@@ -12,7 +12,7 @@ from collections import namedtuple
 from datetime import datetime
 from functools import partial
 from hashlib import sha256
-from math import log10
+from math import log10, nan
 from urllib.request import urlretrieve
 
 from loguru import logger
@@ -1044,7 +1044,7 @@ class MainWindow(QMainWindow):
                 for i in range(0, data_len, 4):
                     ld = struct.unpack("I", last_sd.raw_data[i : i + 4])[0]
                     if data[i // 4] == 0 or ld / data[i // 4] <= 0:
-                        c_data.append(0)
+                        c_data.append(nan)
                     else:
                         c_data.append(log10(ld / data[i // 4]) * 10000)
         else:

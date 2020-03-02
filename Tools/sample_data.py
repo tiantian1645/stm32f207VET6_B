@@ -1,7 +1,7 @@
 import enum
 from collections import namedtuple
 from datetime import datetime
-from math import log10
+from math import log10, nan
 from struct import unpack
 
 from loguru import logger
@@ -162,7 +162,7 @@ class SampleDB:
                     if j != 0 and i / j > 0:
                         result.append(log10(i / j) * 10000)
                     else:
-                        result.append(0)
+                        result.append(nan)
                 self._i32 = None
             return result
         else:
