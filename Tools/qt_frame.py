@@ -1135,7 +1135,6 @@ class MainWindow(QMainWindow):
                 mean = np.mean(ys)
                 cv = std / mean
                 data_infos.append(f"通道 {sd.channel} | {wave_name} | {data_format_list(c_data, float)} | (cv = {cv:.4f}, std = {std:.4f}, mean = {mean:.4f})")
-                data_infos.append("=" * 24)
             last_sd = sd
         # https://stackoverflow.com/a/10977872
         font = QFont("Consolas")
