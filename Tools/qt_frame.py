@@ -626,6 +626,7 @@ class MainWindow(QMainWindow):
         self.matplot_period_tv_cb.stateChanged.connect(lambda x: self.matplot_period_tv_cb.setText(("&NL", "&OD", "&PD")[x]))
         self.lamp_bp_bt = QPushButton("BP", maximumWidth=30)
         self.lamp_bp_bt.clicked.connect(self.onLampBP)
+        self.lamp_ag_cb = QCheckBox("AG", maximumWidth=60)
         for i in range(7):
             self.motor_scan_bts[i].setMaximumWidth(45)
             barcode_ly.addWidget(self.motor_scan_bts[i], i, 0)
@@ -665,7 +666,8 @@ class MainWindow(QMainWindow):
                 temp_ly.addWidget(self.matplot_cancel_bt)
                 temp_ly.addWidget(self.matplot_period_tv_cb)
                 temp_ly.addWidget(self.lamp_bp_bt)
-                barcode_ly.addLayout(temp_ly, i, 2, 1, 3)
+                temp_ly.addWidget(self.lamp_ag_cb)
+                barcode_ly.addLayout(temp_ly, i, 2, 1, 4)
         self.sample_record_idx_sp = QSpinBox()
         self.sample_record_idx_sp.setRange(0, 99999999)
         self.sample_record_idx_sp.setMaximumWidth(75)
@@ -1380,12 +1382,17 @@ class MainWindow(QMainWindow):
         matplot_ly.addWidget(self.plot_graph.win)
         self.temp_saple_data = [None] * 6
 
-    def onMatplotStart(self, event):
+    def onMatplotStart(self, event, name_text=None):
         self.initBarcodeScan()
-        name_text, press_result = QInputDialog.getText(self, "测试标签", "输入标签名称", QLineEdit.Normal, datetime.now().strftime("%Y%m%d%H%M%S"))
-        if not press_result:
-            logger.info("cancel sample test")
-            return
+        press_result = False
+        if name_text is None:
+            if self.lamp_ag_cb.isChecked():
+                name_text = f"Aging {datetime.now().strftime('%Y%m%d%H%M%S')}"
+            else:
+                name_text, press_result = QInputDialog.getText(self, "测试标签", "输入标签名称", QLineEdit.Normal, datetime.now().strftime("%Y%m%d%H%M%S"))
+                if not press_result:
+                    logger.info("cancel sample test")
+                    return
         if len(name_text) > 0:
             self.sample_record_lable_name = name_text
         else:
@@ -1836,6 +1843,8 @@ class MainWindow(QMainWindow):
             self.sample_record_pre_bt.setText(f"序号[{cnt - 1}]")
         else:
             self.sample_record_plot_by_index(0)
+        if self.lamp_ag_cb.isChecked():
+            self.onMatplotStart(False, f"Aging {datetime.now().strftime('%Y%m%d%H%M%S')}")
 
     def updateMatplotData(self, info):
         length = info.content[6]
