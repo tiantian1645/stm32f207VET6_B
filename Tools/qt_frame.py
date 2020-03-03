@@ -1086,8 +1086,8 @@ class MainWindow(QMainWindow):
                 result = ", ".join(f"{i:#5d}" for i in data)
             elif t is float:
                 result = ", ".join(f"{i:7.2f}" for i in data)
-            if len(result) > 300:
-                result = result[:300] + "..."
+            if len(result) > 150:
+                result = result[:147] + "..."
             return result
 
         label = self.sample_record_current_label

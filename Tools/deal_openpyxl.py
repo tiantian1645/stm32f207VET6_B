@@ -8,7 +8,7 @@ from openpyxl.styles import Alignment, NamedStyle, PatternFill
 
 TEMP_CC_DataInfo = namedtuple("TEMP_CC_DataInfo", "top btm env")
 ILLU_CC_DataInfo = namedtuple("ILLU_CC_DataInfo", "wave standard_points channel_pointses")
-SAMPLE_TITLES = ("索引", "日期", "标签", "控制板程序版本", "控制板芯片ID", "通道", "方法", "波长", "采样数据")
+SAMPLE_TITLES = ("索引", "日期", "标签", "控制板程序版本", "控制板芯片ID", "通道", "方法", "波长")
 
 
 def dump_CC(data, file_path):
@@ -35,11 +35,7 @@ def dump_CC(data, file_path):
                     sheet.append(cells)
             elif isinstance(d, TEMP_CC_DataInfo):
                 sheet = wb["温度"]
-                cells = (
-                    WriteOnlyCell(sheet, value=d.top),
-                    WriteOnlyCell(sheet, value=d.btm),
-                    WriteOnlyCell(sheet, value=d.env),
-                )
+                cells = (WriteOnlyCell(sheet, value=d.top), WriteOnlyCell(sheet, value=d.btm), WriteOnlyCell(sheet, value=d.env))
                 sheet.append(cells)
         wb.save(file_path)
         return True
@@ -89,7 +85,7 @@ def dump_sample(sample_iter, file_path, title=None):
         sheet.column_dimensions["F"].width = 5
         sheet.column_dimensions["G"].width = 9
         sheet.column_dimensions["H"].width = 5
-        cells = [WriteOnlyCell(sheet, value=SAMPLE_TITLES[i]) for i in range(len(SAMPLE_TITLES))]
+        cells = [WriteOnlyCell(sheet, value=SAMPLE_TITLES[i]) for i in range(len(SAMPLE_TITLES))] + [WriteOnlyCell(sheet, value=i) for i in range(1, 121)]
         for cell in cells:
             cell.alignment = Alignment(horizontal="center", vertical="bottom", text_rotation=0, wrap_text=False, shrink_to_fit=False, indent=0)
         sheet.append(cells)
@@ -149,7 +145,7 @@ if __name__ == "__main__":
                 (7105, 8205, 9305, 10405, 11505, 12605),
             ),
         ),
-        ILLU_CC_DataInfo(wave=405, standard_points=(13, 14, 15, 16, 17, 18,), channel_pointses=((18100, 17200, 16300, 15400, 14500, 13600),),),
+        ILLU_CC_DataInfo(wave=405, standard_points=(13, 14, 15, 16, 17, 18), channel_pointses=((18100, 17200, 16300, 15400, 14500, 13600),)),
         TEMP_CC_DataInfo(top=1, btm=2, env=6),
     )
     dump_CC(data, file_path)
