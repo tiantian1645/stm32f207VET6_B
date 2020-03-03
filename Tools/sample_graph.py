@@ -5,6 +5,7 @@ import stackprinter
 from bisect import bisect_left
 from numpy import ones, vstack
 from numpy.linalg import lstsq
+from PyQt5 import QtCore
 
 logger = loguru.logger
 DataConf = namedtuple("DataConf", "name data color plot")
@@ -15,11 +16,11 @@ DEFAULT_COLORS = (
     "00a300",
     "2451c4",
     "F39C12",
-    "1e7145",
     "ff0097",
+    "1e7145",
     "03DAC5",
     "9f00a7",
-    "00aba9",
+    "e3eb10",
     "2d89ef",
     "ee1111",
     "ffc40d",
@@ -82,6 +83,16 @@ class SampleGraph:
         else:
             return pos - 1
 
+    def _check_duplicated_name(self, name):
+        result = 0
+        color = None
+        for data_conf in self.plot_data_confs:
+            if data_conf.name == name:
+                result += 1
+                if color is None:
+                    color = data_conf.color
+        return result, color
+
     def plot_data_new(self, data=None, name=None, color=None):
         if data is None:
             # logger.warning("data is None new as list")
@@ -91,8 +102,20 @@ class SampleGraph:
             color = DEFAULT_COLORS[dl % len(DEFAULT_COLORS)]
         if name is None:
             name = f"y{dl + 1}"
+        duplicated, duplicated_color = self._check_duplicated_name(name)
+        # logger.debug(f"dl {dl} | color {color} | duplicated_color {duplicated_color}")
+        if duplicated_color:
+            color = duplicated_color
+        if duplicated == 0:
+            pen = pg.mkPen(color=color)
+        elif duplicated == 1:
+            pen = pg.mkPen(color=color, style=QtCore.Qt.DashLine)
+        elif duplicated == 2:
+            pen = pg.mkPen(color=color, style=QtCore.Qt.DashDotLine)
+        else:
+            pen = pg.mkPen(color=color, style=QtCore.Qt.DashDotDotLine)
         # self.matplot_plots.append(self.plot_wg.plot([], name=f"B{k+1}", pen=mkPen(color=color), symbol=symbol, symbolSize=5, symbolBrush=(color)))
-        p = self.plot.plot(data, name=name, pen=pg.mkPen(color=color), symbolSize=5, symbolBrush=(color))
+        p = self.plot.plot(data, name=name, pen=pen, symbolSize=5, symbolBrush=(color))
         data_conf = DataConf(name=name, data=data, color=color, plot=p)
         self.plot_data_confs.append(data_conf)
 

@@ -1474,7 +1474,9 @@ class MainWindow(QMainWindow):
             file_path = self.upgbl_dg_lb.text()
             if file_path.startswith("http") and file_path.endswith("bin"):
                 try:
-                    file_path = urlretrieve(file_path, "temp_app.bin")[0]
+                    if os.path.isfile("temp_bootloader.bin"):
+                        os.remove("temp_bootloader.bin")
+                    file_path = urlretrieve(file_path, "temp_bootloader.bin")[0]
                     self.upgbl_dg_lb.setText(file_path)
                 except Exception as e:
                     self.upgbl_dg_lb.setText(f"url 处理异常 | {repr(e)}")
@@ -1781,7 +1783,9 @@ class MainWindow(QMainWindow):
             file_path = self.upgrade_dg_lb.text()
             if file_path.startswith("http") and file_path.endswith("bin"):
                 try:
-                    file_path = urlretrieve(file_path, "temp_app.bin")[0]
+                    if os.path.isfile("temp_application.bin"):
+                        os.remove("temp_application.bin")
+                    file_path = urlretrieve(file_path, "temp_application.bin")[0]
                     self.upgrade_dg_lb.setText(file_path)
                 except Exception as e:
                     self.upgrade_dg_lb.setText(f"url 处理异常 | {repr(e)}")
