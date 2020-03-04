@@ -1942,6 +1942,7 @@ class MainWindow(QMainWindow):
         self.out_flash_param_clear_s_d_bt = QPushButton("预设标准点", clicked=self.onOutFlashParamCC_S_D, maximumWidth=120)
         self.out_flash_param_dump_bt = QPushButton("Dump", clicked=self.onOutFlashParamCC_Dump, maximumWidth=90)
         self.out_flash_param_load_bt = QPushButton("Load", clicked=self.onOutFlashParamCC_Load, maximumWidth=90)
+        self.out_flash_param_debug_bt = QPushButton("Debug", clicked=self.onOutFlashParamCC_Debug, maximumWidth=90)
 
         out_flash_param_temp_cc_wg = QGroupBox("温度校正参数")
         out_flash_param_temp_cc_ly = QGridLayout(out_flash_param_temp_cc_wg)
@@ -1999,6 +2000,7 @@ class MainWindow(QMainWindow):
         temp_ly.addWidget(self.out_flash_param_clear_s_d_bt)
         temp_ly.addWidget(self.out_flash_param_dump_bt)
         temp_ly.addWidget(self.out_flash_param_load_bt)
+        temp_ly.addWidget(self.out_flash_param_debug_bt)
         out_flash_data_ly.addLayout(temp_ly)
 
         self.out_flash_data_dg = ModernDialog(self.out_flash_data_dg, self)
@@ -2088,6 +2090,12 @@ class MainWindow(QMainWindow):
                     start = w_idx * 12 + 24 * c_idx + (12 if c_idx > 0 else 0)
                     for i in range(6):
                         self.out_flash_param_cc_sps[start + i + 6].setValue(channel_points[i])
+
+    def onOutFlashParamCC_Debug(self, event):
+        for idx, sp in enumerate(self.out_flash_param_cc_sps):
+            if idx % 12 < 6:
+                p_sp = self.out_flash_param_cc_sps[idx + 6]
+                sp.setValue(p_sp.value())
 
     def updateFlashCC_Plot(self, refresh=True):
         logger.debug(f"refresh | {refresh} | self.flash_json_data is None {self.flash_json_data is None}")
