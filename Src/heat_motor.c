@@ -24,11 +24,11 @@ extern TIM_HandleTypeDef htim1;
 #define HEAT_MOTOR_UP_PCS_SUM 110
 #define HEAT_MOTOR_UP_PCS_GAP (200)
 
-#define HEAT_MOTOR_DOWN_PCS_MAX 36000
-#define HEAT_MOTOR_DOWN_PCS_MIN 30000
+#define HEAT_MOTOR_DOWN_PCS_MAX 28000
+#define HEAT_MOTOR_DOWN_PCS_MIN 24000
 #define HEAT_MOTOR_DOWN_PCS_UNT 24
 #define HEAT_MOTOR_DOWN_PCS_SUM 80
-#define HEAT_MOTOR_DOWN_PCS_GAP (400)
+#define HEAT_MOTOR_DOWN_PCS_GAP (((HEAT_MOTOR_DOWN_PCS_MAX) - (HEAT_MOTOR_DOWN_PCS_MIN)) / (HEAT_MOTOR_DOWN_PCS_SUM))
 /* Private variables ---------------------------------------------------------*/
 static eMotorDir gHeat_Motor_Dir = eMotorDir_FWD;
 static uint32_t gHeat_Motor_Position = 0xFFFFFFFF;
@@ -294,11 +294,11 @@ uint8_t heat_Motor_PWM_Gen_Down(void)
         PWM_AW_Stop();
         return 0;
     } else {
-        gHeat_Motor_SRC_Buffer[0] = (HEAT_MOTOR_DOWN_PCS_MIN + HEAT_MOTOR_DOWN_PCS_GAP * cnt > HEAT_MOTOR_DOWN_PCS_MAX)
-                                        ? (HEAT_MOTOR_DOWN_PCS_MAX)
-                                        : (HEAT_MOTOR_DOWN_PCS_MIN + HEAT_MOTOR_DOWN_PCS_GAP * cnt); /* 周期长度 */
-        gHeat_Motor_SRC_Buffer[1] = HEAT_MOTOR_DOWN_PCS_UNT;                                         /* 重复次数 */
-        gHeat_Motor_SRC_Buffer[2] = (gHeat_Motor_SRC_Buffer[0] + 1) / 2;                             /* 占空比 默认50% */
+        gHeat_Motor_SRC_Buffer[0] = (HEAT_MOTOR_DOWN_PCS_MAX - HEAT_MOTOR_DOWN_PCS_MIN > HEAT_MOTOR_DOWN_PCS_GAP * cnt)
+                                        ? (HEAT_MOTOR_DOWN_PCS_MAX - HEAT_MOTOR_DOWN_PCS_GAP * cnt)
+                                        : (HEAT_MOTOR_DOWN_PCS_MIN);     /* 周期长度 */
+        gHeat_Motor_SRC_Buffer[1] = HEAT_MOTOR_DOWN_PCS_UNT;             /* 重复次数 */
+        gHeat_Motor_SRC_Buffer[2] = (gHeat_Motor_SRC_Buffer[0] + 1) / 2; /* 占空比 默认50% */
         /* burst模式修改时基单元 */
         HAL_TIM_DMABurst_WriteStart(&htim1, TIM_DMABASE_ARR, TIM_DMA_UPDATE, (uint32_t *)gHeat_Motor_SRC_Buffer, TIM_DMABURSTLENGTH_3TRANSFERS);
         gHeat_Motor_Position_Inc(gHeat_Motor_SRC_Buffer[1]); /* 自增位置记录 */
