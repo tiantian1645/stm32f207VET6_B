@@ -145,8 +145,8 @@ class MainWindow(QMainWindow):
         self.temp_raw_start_time = None
         self.dd = DC201_PACK()
         self.pack_index = 1
-        self.device_id = "no name"
-        self.version = "no version"
+        self.device_id = ""
+        self.version = ""
         self.device_datetime = datetime.now()
         self.serial_recv_worker = None
         self.serial_send_worker = None
@@ -554,7 +554,7 @@ class MainWindow(QMainWindow):
 
     def onSampleDataBase2Excel(self, event):
         fd = QFileDialog()
-        file_path, _ = fd.getSaveFileName(filter="Excel 工作簿 (*.xlsx)", directory=os.path.join(self.last_falsh_save_dir, "采样数据-s0n10.xlsx"))
+        file_path, _ = fd.getSaveFileName(filter="Excel 工作簿 (*.xlsx)", directory=os.path.join(self.last_falsh_save_dir, f"采样数据-{self.device_id}-s0n10.xlsx"))
         if not file_path:
             return
         logger.debug(f"onSampleDataBase2Excel | {file_path}")
@@ -1383,6 +1383,7 @@ class MainWindow(QMainWindow):
         self.temp_saple_data = [None] * 6
 
     def onMatplotStart(self, event, name_text=None):
+        self._getDeviceID()
         self.initBarcodeScan()
         press_result = False
         if name_text is None:
@@ -1858,8 +1859,12 @@ class MainWindow(QMainWindow):
             return
         self.plot_graph.plot_data_new(data=data, name=f"B-{channel}")
         self.matplot_data[channel] = data
+        if self.sample_record_lable_name.startswith("Correct ") and len(self.sample_datas) >= 6:
+            wave = self.sample_confs[channel - 1].wave + 1
+            logger.debug(f"change wave from {self.sample_confs[channel - 1].wave} to {wave}")
+        else:
+            wave = self.sample_confs[channel - 1].wave
         method = self.sample_confs[channel - 1].method
-        wave = self.sample_confs[channel - 1].wave
         raw_data = info.content[8:-1]
         sample_data = self.sample_db.build_sample_data(
             datetime.now(), channel=channel, method=MethodEnum(method), wave=WaveEnum(wave), total=length, raw_data=raw_data
