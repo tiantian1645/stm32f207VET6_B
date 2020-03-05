@@ -256,7 +256,7 @@ eTrayState tray_Motor_Leave_On_Busy_Bit(void)
 
 /**
  * @brief  托盘电机运动
- * @param  runInfo 运动信息
+ * @param  None
  * @retval 运动结果 0 正常 1 异常
  */
 eTrayState tray_Motor_Run(void)
@@ -426,19 +426,17 @@ void tray_Motor_Calculate(uint32_t target_step)
 }
 
 /**
- * @brief  扫码执行
- * @param  index   条码位置索引
- * @param  pdata   结果存放指针
- * @param  length  最大结果长度
+ * @brief  托盘电机运动
+ * @param  index   位置索引
  * @param  timeout 串口接收等待时间
- * @retval 扫码结果数据长度
+ * @retval 运动结果 0 正常 1 异常
  */
 eTrayState tray_Move_By_Index(eTrayIndex index, uint32_t timeout)
 {
     eTrayState result;
 
     motor_CMD_Info_Set_PF_Enter(&gTray_Motor_Run_CMD_Info, tray_Motor_Enter); /* 配置启动前回调 */
-    motor_CMD_Info_Set_Tiemout(&gTray_Motor_Run_CMD_Info, timeout);           /* 运动超时时间 1000mS */
+    motor_CMD_Info_Set_Tiemout(&gTray_Motor_Run_CMD_Info, timeout);           /* 运动超时时间 */
     switch (index) {
         case eTrayIndex_0:
             motor_CMD_Info_Set_PF_Leave(&gTray_Motor_Run_CMD_Info, tray_Motor_Leave_On_OPT); /* 等待驱动状态位空闲 */
@@ -455,6 +453,28 @@ eTrayState tray_Move_By_Index(eTrayIndex index, uint32_t timeout)
         default:
             return eTrayState_Error;
     }
+    result = tray_Motor_Run(); /* 执行电机运动 */
+    return result;
+}
+
+/**
+ * @brief  托盘电机运动 相对位置
+ * @param  index   位置索引
+ * @param  timeout 串口接收等待时间
+ * @retval 运动结果 0 正常 1 异常
+ */
+eTrayState tray_Move_By_Relative(eMotorDir dir, uint32_t step, uint32_t timeout)
+{
+    eTrayState result;
+
+    motor_CMD_Info_Set_PF_Enter(&gTray_Motor_Run_CMD_Info, tray_Motor_Enter); /* 配置启动前回调 */
+    motor_CMD_Info_Set_Tiemout(&gTray_Motor_Run_CMD_Info, timeout);           /* 运动超时时间 */
+
+    motor_CMD_Info_Set_Step(&gTray_Motor_Run_CMD_Info, step); /* 配置运动步数 */
+    motor_CMD_Info_Set_Dir(&gTray_Motor_Run_CMD_Info, dir);   /* 配置运动方向 */
+
+    motor_CMD_Info_Set_PF_Leave(&gTray_Motor_Run_CMD_Info, tray_Motor_Leave_On_Busy_Bit); /* 等待驱动状态位空闲 */
+
     result = tray_Motor_Run(); /* 执行电机运动 */
     return result;
 }

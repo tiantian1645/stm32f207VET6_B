@@ -4,6 +4,7 @@
 /* Includes ------------------------------------------------------------------*/
 
 /* Private includes ----------------------------------------------------------*/
+#include "motor.h"
 
 /* Exported macro ------------------------------------------------------------*/
 #define TRAY_MOTOR_IS_OPT_1 (motor_OPT_Status_Get_Tray() == eMotor_OPT_Status_OFF)                      /* 光耦输入 */
@@ -33,6 +34,7 @@ int32_t tray_Motor_Get_Status_Position(void);
 uint8_t tray_Motor_Reset_Pos();
 eTrayState tray_Motor_Init(void);
 eTrayState tray_Move_By_Index(eTrayIndex index, uint32_t timeout);
+eTrayState tray_Move_By_Relative(eMotorDir dir, uint32_t step, uint32_t timeout);
 
 int32_t tray_Motor_Read_Position(void);
 
