@@ -85,7 +85,7 @@ TEMP_RAW_COLORS = (
 TEMP_RAW_SYMBOL_CONFIG = (("o", 4, "b"), ("s", 4, "g"), ("t", 4, "r"), ("d", 4, "c"), ("+", 4, "m"), ("o", 4, "y"), ("s", 4, "k"), ("t", 4, "w"), ("d", 4, "r"))
 METHOD_NAMES = ("无项目", "速率法", "终点法", "两点终点法")
 WAVE_NAMES = ("610", "550", "405")
-SampleConf = namedtuple("SampleConf", "method wave point_num")
+SampleConf = namedtuple("SampleConf", "method wave point_num set_info")
 HEATER_PID_PS = [1, 100, 0.01, 1, 1, 1]
 
 ICON_PATH = "./icos/tt.ico"
@@ -647,7 +647,11 @@ class MainWindow(QMainWindow):
                     self.matplot_conf_set_cs[i].addItem(ssi.short_name)
                     if i > 0 and ssi.wave.value == 3:
                         self.matplot_conf_set_cs[i].model().item(j).setEnabled(False)
-                    self.matplot_conf_set_cs[i].setItemData(j, ssi.full_name, Qt.ToolTipRole)
+                    self.matplot_conf_set_cs[i].setItemData(
+                        j,
+                        f"{ssi.full_name} | {WAVE_NAMES[ssi.wave.value - 1]} | {METHOD_NAMES[ssi.method.value]} | {ssi.points_num / 6:.1f} min",
+                        Qt.ToolTipRole,
+                    )
                 self.matplot_conf_set_cs[i].currentIndexChanged.connect(partial(self.onSampleSetChanged, w_idx=i))
                 self.matplot_conf_houhou_cs[i].currentIndexChanged.connect(partial(self.onSampleSubChanged, w_idx=i))
                 self.matplot_conf_wavelength_cs[i].currentIndexChanged.connect(partial(self.onSampleSubChanged, w_idx=i))
@@ -1079,6 +1083,14 @@ class MainWindow(QMainWindow):
             self.matplot_conf_houhou_cs[channel_idx].setCurrentIndex(sd.method.value)
             self.matplot_conf_wavelength_cs[channel_idx].setCurrentIndex(sd.wave.value - 1)
             self.matplot_conf_point_sps[channel_idx].setValue(sd.total)
+            set_info_name_list = [i.short_name for i in SAMPLE_SET_INFOS]
+            if sd.set_info in set_info_name_list:
+                name_idx = set_info_name_list.index(sd.set_info)
+                if name_idx == 0:
+                    continue
+                self.matplot_conf_set_cs[channel_idx].blockSignals(True)
+                self.matplot_conf_set_cs[channel_idx].setCurrentIndex(name_idx)
+                self.matplot_conf_set_cs[channel_idx].blockSignals(False)
 
     def onSampleLabelClick(self, event):
         def data_format_list(data, t=int):
@@ -1406,7 +1418,7 @@ class MainWindow(QMainWindow):
             conf.append(self.matplot_conf_houhou_cs[i].currentIndex())
             conf.append(self.matplot_conf_wavelength_cs[i].currentIndex() + 1)
             conf.append(self.matplot_conf_point_sps[i].value())
-            self.sample_confs.append(SampleConf(conf[-3], conf[-2], conf[-1]))
+            self.sample_confs.append(SampleConf(conf[-3], conf[-2], conf[-1], self.matplot_conf_set_cs[i].currentText()))
         logger.debug(f"get matplot cnf | {conf}")
         self.sample_label = self.sample_db.build_label(
             name=self.sample_record_lable_name, version=f"{self.version}.{datetime.strftime(self.device_datetime, '%Y%m%d.%H%M%S')}", device_id=self.device_id
@@ -1431,7 +1443,7 @@ class MainWindow(QMainWindow):
             conf.append(1)
             conf.append(1)
             conf.append(12)
-            self.sample_confs.append(SampleConf(conf[-3], conf[-2], conf[-1]))
+            self.sample_confs.append(SampleConf(conf[-3], conf[-2], conf[-1], "定标"))
         logger.debug(f"get matplot cnf | {conf}")
         self.sample_label = self.sample_db.build_label(
             name=self.sample_record_lable_name, version=f"{self.version}.{datetime.strftime(self.device_datetime, '%Y%m%d.%H%M%S')}", device_id=self.device_id
@@ -1865,9 +1877,10 @@ class MainWindow(QMainWindow):
         else:
             wave = self.sample_confs[channel - 1].wave
         method = self.sample_confs[channel - 1].method
+        set_info = self.sample_confs[channel - 1].set_info
         raw_data = info.content[8:-1]
         sample_data = self.sample_db.build_sample_data(
-            datetime.now(), channel=channel, method=MethodEnum(method), wave=WaveEnum(wave), total=length, raw_data=raw_data
+            datetime.now(), channel=channel, set_info=set_info, method=MethodEnum(method), wave=WaveEnum(wave), total=length, raw_data=raw_data
         )
         self.sample_datas.append(sample_data)
         logger.debug(f"get data in channel | {channel} | {data}")
@@ -2345,7 +2358,7 @@ class MainWindow(QMainWindow):
             conf.append(1)
             conf.append(1)
             conf.append(12)
-            self.sample_confs.append(SampleConf(conf[-3], conf[-2], conf[-1]))
+            self.sample_confs.append(SampleConf(conf[-3], conf[-2], conf[-1], "Lamp BP"))
         logger.debug(f"get matplot cnf | {conf}")
         self.sample_label = self.sample_db.build_label(
             name=self.sample_record_lable_name, version=f"{self.version}.{datetime.strftime(self.device_datetime, '%Y%m%d.%H%M%S')}", device_id=self.device_id

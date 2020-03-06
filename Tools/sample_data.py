@@ -12,7 +12,9 @@ from sqlalchemy.orm import relationship, sessionmaker
 
 from bytes_helper import bytesPuttyPrint
 
-SapmleInfo = namedtuple("SapmleInfo", "label_id label_datetimne label_name label_version label_device_id sample_channel sample_method sample_wave sample_datas")
+SapmleInfo = namedtuple(
+    "SapmleInfo", "label_id label_datetimne label_name label_version label_device_id sample_channel sample_method sample_set_info sample_wave sample_datas"
+)
 METHOD_NAMES = ("无项目", "速率法", "终点法", "两点终点法")
 WAVES = (610, 550, 405)
 
@@ -81,6 +83,7 @@ class SampleData(Base):
     id = Column(Integer, primary_key=True)
     datetime = Column(DATETIME)
     channel = Column(Integer)
+    set_info = Column(String, default="None")
     method = Column(Enum(MethodEnum))
     wave = Column(Enum(WaveEnum))
     total = Column(Integer)
@@ -91,7 +94,8 @@ class SampleData(Base):
     def __repr__(self):
         return (
             f"<Sample Data(id={self.id},  datetime='{self.datetime}', "
-            f"channel={self.channel}, total={self.total}, method={self.method}, wave={self.wave}, raw_data='{bytesPuttyPrint(self.raw_data)}')>"
+            f"channel={self.channel}, set_info={self.set_info}, "
+            f"total={self.total}, method={self.method}, wave={self.wave}, raw_data='{bytesPuttyPrint(self.raw_data)}')>"
         )
 
 
@@ -118,8 +122,8 @@ class SampleDB:
         self.session.add(data)
         self.session.commit()
 
-    def build_sample_data(self, dt, channel, method, wave, total, raw_data):
-        sample_data = SampleData(datetime=dt, channel=channel, method=method, wave=wave, total=total, raw_data=raw_data)
+    def build_sample_data(self, dt, channel, set_info, method, wave, total, raw_data):
+        sample_data = SampleData(datetime=dt, channel=channel, set_info=set_info, method=method, wave=wave, total=total, raw_data=raw_data)
         logger.debug(f"insert new sample_data | {sample_data}")
         return sample_data
 
@@ -194,6 +198,7 @@ class SampleDB:
                     label_device_id=label.device_id,
                     sample_channel=sample_data.channel,
                     sample_method=sample_method,
+                    sample_set_info=sample_data.set_info,
                     sample_wave=sample_wave,
                     sample_datas=sample_datas,
                 )
@@ -203,7 +208,9 @@ if __name__ == "__main__":
     self = SampleDB("sqlite:///data/db.sqlite3")
     lb = self.build_label(name="test", version="0.1", device_id="200-200-300")
     sds = [
-        self.build_sample_data(datetime.now(), channel=i, method=MethodEnum(1 + i), wave=WaveEnum(1 + i), total=i * 4, raw_data=b"\x01\x02" * i)
+        self.build_sample_data(
+            datetime.now(), channel=i, set_info="None", method=MethodEnum(1 + i), wave=WaveEnum(1 + i), total=i * 4, raw_data=b"\x01\x02" * i
+        )
         for i in range(3)
     ]
     self.bind_label_sample_datas(lb, sds)
@@ -215,8 +222,8 @@ if __name__ == "__main__":
     session = Session()
 
     new_label = Label(datetime=datetime.now(), name="test", version="0.1")
-    new_sample_data = SampleData(datetime=datetime.now(), channel=0, method=0, wave=610, total=2, raw_data=b"\x01\x08")
-    new_sample_data_2 = SampleData(datetime=datetime.now(), channel=1, method=0, wave=610, total=2, raw_data=b"\x01\x08")
+    new_sample_data = SampleData(datetime=datetime.now(), channel=0, method=MethodEnum(1), wave=WaveEnum(2), total=2, raw_data=b"\x01\x08")
+    new_sample_data_2 = SampleData(datetime=datetime.now(), channel=1, method=MethodEnum(2), wave=WaveEnum(1), total=2, raw_data=b"\x01\x08")
     new_label.sample_datas = [new_sample_data]
     new_sample_data_2.label = new_label
 
