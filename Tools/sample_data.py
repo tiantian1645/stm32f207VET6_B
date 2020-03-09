@@ -105,11 +105,22 @@ Label.sample_datas = relationship("SampleData", order_by=SampleData.id, back_pop
 class SampleDB:
     def __init__(self, db_url="sqlite:///data/db.sqlite3", echo=False):
         self.engine = create_engine(db_url, echo=echo)
+        columns_names = [i[1] for i in self.engine.execute("PRAGMA table_info(sample_datas);").fetchall()]
+        if "set_info" not in columns_names:
+            logger.debug(f"patch column 'set_info' to {columns_names}")
+            column = Column("set_info", String, default="None")
+            self.add_column("sample_datas", column)
+
         Base.metadata.create_all(self.engine)
         Session = sessionmaker(bind=self.engine)
         self.session = Session()
         logger.success(f"init db over | {db_url}")
         self._i32 = None
+
+    def add_column(self, table_name, column):
+        column_name = column.compile(dialect=self.engine.dialect)
+        column_type = column.type.compile(self.engine.dialect)
+        self.engine.execute("ALTER TABLE %s ADD COLUMN %s %s" % (table_name, column_name, column_type))
 
     def build_label(self, dt=None, name="no name", version="no version", device_id="no device id"):
         if dt is None:
