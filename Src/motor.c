@@ -983,21 +983,22 @@ static void motor_Task(void * argument)
             case eMotor_Fun_Correct:                    /* 定标 */
                 motor_Tray_Move_By_Index(eTrayIndex_0); /* 入仓 */
 
-                led_Mode_Set(eLED_Mode_Kirakira_Red);                                                                /* LED 红灯闪烁 */
-                if (protocol_Debug_SampleBarcode() == 0) {                                                           /* 非调试模式 */
-                    motor_Tray_Move_By_Index(eTrayIndex_1);                                                          /* 扫码位置 */
-                    barcode_result = barcode_Scan_QR();                                                              /* 扫描二维条码 */
-                    if (barcode_result != eBarcodeState_OK || barcode_Scan_Decode_Correct_Info_From_Result() != 0) { /* 扫码失败或者解析失败 */
-                        for (cnt = 1; cnt <= 6; ++cnt) {                                                             /* 定标段索引配置 */
-                            comm_Data_Set_Corretc_Stage(cnt, (cnt - 1 + mf.fun_param_1) % 6);                        /* 定标段索引 */
-                        }
-                    } else {
-                        for (cnt = 1; cnt <= 6; ++cnt) {                                                       /* 定标段索引配置 */
-                            barcode_Scan_Pick_Correct_Info(cnt, eComm_Data_Sample_Radiant_610, &correct_info); /* 抽取通道校正信息 */
-                            comm_Data_Set_Corretc_Stage(cnt, correct_info.stage);                              /* 定标段索引 */
-                        }
+                led_Mode_Set(eLED_Mode_Kirakira_Red);       /* LED 红灯闪烁 */
+                if (protocol_Debug_SampleBarcode() == 0) {  /* 非调试模式 */
+                    motor_Tray_Move_By_Index(eTrayIndex_1); /* 扫码位置 */
+                }
+                barcode_result = barcode_Scan_QR();                                                              /* 扫描二维条码 */
+                if (barcode_result != eBarcodeState_OK || barcode_Scan_Decode_Correct_Info_From_Result() != 0) { /* 扫码失败或者解析失败 */
+                    for (cnt = 1; cnt <= 6; ++cnt) {                                                             /* 定标段索引配置 */
+                        comm_Data_Set_Corretc_Stage(cnt, (cnt - 1 + mf.fun_param_1) % 6);                        /* 定标段索引 */
+                    }
+                } else {
+                    for (cnt = 1; cnt <= 6; ++cnt) {                                                       /* 定标段索引配置 */
+                        barcode_Scan_Pick_Correct_Info(cnt, eComm_Data_Sample_Radiant_610, &correct_info); /* 抽取通道校正信息 */
+                        comm_Data_Set_Corretc_Stage(cnt, correct_info.stage);                              /* 定标段索引 */
                     }
                 }
+
                 if (protocol_Debug_SampleMotorTray() == 0) {      /* 非调试模式 */
                     motor_Tray_Move_By_Index(eTrayIndex_0);       /* 入仓 */
                     heat_Motor_Down();                            /* 砸下上加热体 */
