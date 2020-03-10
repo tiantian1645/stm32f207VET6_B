@@ -106,7 +106,7 @@ class SampleDB:
     def __init__(self, db_url="sqlite:///data/db.sqlite3", echo=False):
         self.engine = create_engine(db_url, echo=echo)
         columns_names = [i[1] for i in self.engine.execute("PRAGMA table_info(sample_datas);").fetchall()]
-        if "set_info" not in columns_names:
+        if columns_names and "set_info" not in columns_names:
             logger.debug(f"patch column 'set_info' to {columns_names}")
             column = Column("set_info", String, default="None")
             self.add_column("sample_datas", column)

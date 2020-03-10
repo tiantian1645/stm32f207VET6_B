@@ -1,21 +1,21 @@
 {
-  "data_xlsx_path": "",
-  "log": {
-    "retention": 25,
-    "rotation": "4 MB"
-  },
-  "temp_ctl": {
-    "btm": {
-      "Kd": 4800,
-      "Ki": 4800,
-      "Kp": 1200000,
-      "target": 37
+    "data_xlsx_path": "C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Tools\\data\\e276d51e54114ef4bf14bb429e8cb6ea.xlsx",
+    "log": {
+        "retention": 25,
+        "rotation": "4 MB"
     },
-    "top": {
-      "Kd": 2000,
-      "Ki": 1000,
-      "Kp": 600000,
-      "target": 37
+    "temp_ctl": {
+        "btm": {
+            "Kd": 4800,
+            "Ki": 4800,
+            "Kp": 1200000,
+            "target": 37
+        },
+        "top": {
+            "Kd": 2000,
+            "Ki": 1000,
+            "Kp": 600000,
+            "target": 37
+        }
     }
-  }
 }
