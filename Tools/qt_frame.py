@@ -628,13 +628,17 @@ class MainWindow(QMainWindow):
         self.matplot_conf_wavelength_cs = [QComboBox() for i in range(6)]
         self.matplot_conf_point_sps = [QSpinBox() for i in range(6)]
         self.matplot_conf_set_cs = [QComboBox() for i in range(6)]
+        self.matplot_timer_lbs = [QLabel(f"TT{i}", maximumWidth=40) for i in range(6)]
+        self.matplot_timer = QTimer(self)
+        self.matplot_timer.timeout.connect(self.update_matplot_timer)
+        self.matplot_timer_time = time.time()
         self.barcode_scan_bt = QPushButton("扫码")
         self.barcode_scan_bt.setMaximumWidth(50)
         self.matplot_start_bt = QPushButton("测试")
         self.matplot_start_bt.setMaximumWidth(50)
         self.matplot_cancel_bt = QPushButton("取消")
         self.matplot_cancel_bt.setMaximumWidth(50)
-        self.matplot_period_tv_cb = QCheckBox("&NL", maximumWidth=60)
+        self.matplot_period_tv_cb = QCheckBox("&NL", maximumWidth=30)
         self.matplot_period_tv_cb.setTristate(True)
         self.matplot_period_tv_cb.stateChanged.connect(lambda x: self.matplot_period_tv_cb.setText(("&NL", "&OD", "&PD")[x]))
         self.lamp_bp_bt = QPushButton("BP", maximumWidth=30)
@@ -654,7 +658,7 @@ class MainWindow(QMainWindow):
                 self.matplot_conf_wavelength_cs[i].setMaximumWidth(60)
                 self.matplot_conf_wavelength_cs[i].setCurrentIndex(0)
                 self.matplot_conf_point_sps[i].setRange(0, 120)
-                self.matplot_conf_point_sps[i].setMaximumWidth(45)
+                self.matplot_conf_point_sps[i].setMaximumWidth(60)
                 self.matplot_conf_point_sps[i].setValue(6)
                 for j, ssi in enumerate(SAMPLE_SET_INFOS):
                     self.matplot_conf_set_cs[i].addItem(ssi.short_name)
@@ -674,6 +678,7 @@ class MainWindow(QMainWindow):
                 barcode_ly.addWidget(self.matplot_conf_wavelength_cs[i], i, 3)
                 barcode_ly.addWidget(self.matplot_conf_point_sps[i], i, 4)
                 barcode_ly.addWidget(self.matplot_conf_set_cs[i], i, 5)
+                barcode_ly.addWidget(self.matplot_timer_lbs[i], i, 6)
             else:
                 temp_ly = QHBoxLayout()
                 temp_ly.setSpacing(3)
@@ -684,7 +689,7 @@ class MainWindow(QMainWindow):
                 temp_ly.addWidget(self.matplot_period_tv_cb)
                 temp_ly.addWidget(self.lamp_bp_bt)
                 temp_ly.addWidget(self.lamp_ag_cb)
-                barcode_ly.addLayout(temp_ly, i, 2, 1, 4)
+                barcode_ly.addLayout(temp_ly, i, 2, 1, 6)
         self.sample_record_idx_sp = QSpinBox()
         self.sample_record_idx_sp.setRange(0, 99999999)
         self.sample_record_idx_sp.setMaximumWidth(75)
@@ -699,7 +704,7 @@ class MainWindow(QMainWindow):
         matplot_record_ly.addWidget(self.sample_record_idx_sp, 0)
         matplot_record_ly.addWidget(QVLine(), 0)
         matplot_record_ly.addWidget(self.sample_record_label)
-        barcode_ly.addLayout(matplot_record_ly, 7, 0, 1, 4)
+        barcode_ly.addLayout(matplot_record_ly, 7, 0, 1, 6)
         self.stary_test_bt = QPushButton("杂散光", maximumWidth=75)
         self.stary_test_bt.clicked.connect(lambda x: self._serialSendPack(0xDC, (0,)))
         self.out_flash_param_parse_bt = QPushButton("校正曲线", clicked=self.onOutFlashParamCC_parse, maximumWidth=90)
@@ -1407,6 +1412,15 @@ class MainWindow(QMainWindow):
         matplot_ly.addWidget(self.plot_graph.win)
         self.temp_saple_data = [None] * 6
 
+    def update_matplot_timer(self):
+        for idx, lb in enumerate(self.matplot_timer_lbs):
+            v = float(lb.text())
+            v = v - 0.5
+            if v > 0:
+                lb.setText(f"{v}")
+            else:
+                lb.setText("0")
+
     def onMatplotStart(self, event, name_text=None):
         self._getDeviceID()
         self.initBarcodeScan()
@@ -1431,6 +1445,11 @@ class MainWindow(QMainWindow):
             conf.append(self.matplot_conf_houhou_cs[i].currentIndex())
             conf.append(self.matplot_conf_wavelength_cs[i].currentIndex() + 1)
             conf.append(self.matplot_conf_point_sps[i].value())
+            if conf[-3] == 0 or conf[-1] == 0:
+                v = 0
+            else:
+                v = conf[-1] * 10 + 12.5
+            self.matplot_timer_lbs[i].setText(f"{v}")
             self.sample_confs.append(SampleConf(conf[-3], conf[-2], conf[-1], self.matplot_conf_set_cs[i].currentText()))
         logger.debug(f"get matplot cnf | {conf}")
         self.sample_label = self.sample_db.build_label(
@@ -1444,6 +1463,8 @@ class MainWindow(QMainWindow):
             self._serialSendPack(0x03, conf)
         self.plot_graph.clear_plot()
         self.matplot_data.clear()
+        self.matplot_timer.start(500)
+        self.matplot_timer_time = time.time()
 
     def onCorrectMatplotStart(self):
         self.initBarcodeScan()
@@ -1464,8 +1485,15 @@ class MainWindow(QMainWindow):
         self.plot_graph.clear_plot()
         self.matplot_data.clear()
 
+    def stop_matplot_timer(self):
+        logger.debug(f"time live for | {time.time() - self.matplot_timer_time:.2f} S")
+        self.matplot_timer.stop()
+        for idx, lb in enumerate(self.matplot_timer_lbs):
+            lb.setText(f"TT{idx}")
+
     def onMatplotCancel(self, event):
         self._serialSendPack(0x02)
+        self.stop_matplot_timer()
 
     def onBootload(self, event):
         # self._serialSendPack(0x0F)
@@ -1854,6 +1882,7 @@ class MainWindow(QMainWindow):
             self.upgrade_dg.setWindowTitle(f"固件升级 | {self._getFileHash_SHA256(file_path)}")
 
     def onSampleOver(self):
+        self.stop_matplot_timer()
         if self.sample_record_lable_name.startswith("Correct "):
             logger.success("correct sample over read flash back")
             self.onOutFlashParamRead()
