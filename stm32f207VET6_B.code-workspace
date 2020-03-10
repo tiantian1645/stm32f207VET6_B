@@ -36,7 +36,8 @@
 			"portmacro.h": "c",
 			"functional": "c",
 			"serial.h": "c",
-			"white_motor.h": "c"
+			"white_motor.h": "c",
+			"i2c_eeprom.h": "c"
 		},
 		"python.autoComplete.extraPaths": [
 			"Tools/"
