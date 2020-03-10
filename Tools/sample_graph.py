@@ -162,10 +162,10 @@ class SampleGraph:
 class TemperatureGraph(SampleGraph):
     def plot_data_new(self, data_x=None, data_y=None, name=None, color=None):
         if data_x is None:
-            logger.warning("data_x is None new as list")
+            # logger.warning("data_x is None new as list")
             data_x = []
         if data_y is None:
-            logger.warning("data_y is None new as list")
+            # logger.warning("data_y is None new as list")
             data_y = []
         dl = len(self.plot_data_confs)
         if color is None:

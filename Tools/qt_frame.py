@@ -244,7 +244,7 @@ class MainWindow(QMainWindow):
         self.resize(1024, 587)
 
     def center(self):
-        logger.debug(f"invoke center in ModernWidget")
+        # logger.debug(f"invoke center in ModernWidget")
         qr = self.frameGeometry()
         cp = QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)
