@@ -8,6 +8,7 @@ import struct
 import sys
 import time
 import traceback
+import uuid
 from collections import namedtuple
 from datetime import datetime
 from functools import partial
@@ -62,7 +63,7 @@ from qt_serial import SerialRecvWorker, SerialSendWorker
 from sample_data import MethodEnum, SampleDB, WaveEnum, SAMPLE_SET_INFOS
 from sample_graph import SampleGraph, TemperatureGraph, CC_Graph
 from mengy_color_table import ColorReds, ColorGreens, ColorPurples
-from deal_openpyxl import TEMP_CC_DataInfo, ILLU_CC_DataInfo, dump_CC, load_CC, dump_sample
+from deal_openpyxl import TEMP_CC_DataInfo, ILLU_CC_DataInfo, dump_CC, load_CC, dump_sample, insert_sample, check_file_permission
 
 
 BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
@@ -154,6 +155,18 @@ class MainWindow(QMainWindow):
         self.sample_record_current_label = None
         self.flash_json_data = None
         self.last_falsh_save_dir = "./"
+        data_xlsx_path = CONFIG.get("data_xlsx_path")
+        if os.path.isfile(data_xlsx_path):
+            self.data_xlsx_path = data_xlsx_path
+        else:
+            self.data_xlsx_path = f"data/{uuid.uuid4().hex}.xlsx"
+            CONFIG["data_xlsx_path"] = os.path.abspath(self.data_xlsx_path)
+            try:
+                with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+                    simplejson.dump(CONFIG, f, sort_keys=True, indent=4 * " ")
+            except Exception:
+                logger.error(f"could not update CONFIG | {CONFIG}")
+        logger.debug(f"self.data_xlsx_path | {os.path.abspath(self.data_xlsx_path)}")
         self.initUI()
         self.center()
 
@@ -1039,7 +1052,7 @@ class MainWindow(QMainWindow):
         c_data = []
         if total == 0:
             logger.error(f"sample data total error | {total}")
-            return data
+            return data, c_data
         if data_len / total == 2:
             for i in range(0, data_len, 2):
                 data.append(struct.unpack("H", raw_data[i : i + 2])[0])
@@ -1856,6 +1869,10 @@ class MainWindow(QMainWindow):
             self.sample_record_pre_bt.setText(f"序号[{cnt - 1}]")
         else:
             self.sample_record_plot_by_index(0)
+        if not check_file_permission(self.data_xlsx_path):
+            dump_sample(self.sample_db.iter_all_data(), self.data_xlsx_path)
+        else:
+            insert_sample(self.sample_db.iter_from_label(), self.data_xlsx_path)
         if self.lamp_ag_cb.isChecked():
             self.onMatplotStart(False, f"Aging {datetime.now().strftime('%Y%m%d%H%M%S')}")
 
@@ -2126,18 +2143,18 @@ class MainWindow(QMainWindow):
             data = load_CC(file_path)
             if not data:
                 return
-            xs = []
-            yss = []
-            for d in data:
-                if isinstance(d, ILLU_CC_DataInfo):
-                    if d.wave != int(self.flash_plot_wave):
-                        continue
-                    xs = d.standard_points
-                    yss = d.channel_pointses
-                    self.flash_json_data = data
-                    break
+            self.flash_json_data = data
         else:
             data = self.flash_json_data
+        xs = []
+        yss = []
+        for d in data:
+            if isinstance(d, ILLU_CC_DataInfo):
+                if d.wave != int(self.flash_plot_wave):
+                    continue
+                xs = d.standard_points
+                yss = d.channel_pointses
+                break
         self.flash_plot_graph.clear_plot()
         self.flash_plot_graph.plot_data_new(name="标准值", color="DAEDF0")
         for i in range(6):

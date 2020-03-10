@@ -1,3 +1,5 @@
+import os
+from uuid import uuid4
 from collections import namedtuple
 
 import stackprinter
@@ -9,6 +11,14 @@ from openpyxl.styles import Alignment, NamedStyle, PatternFill
 TEMP_CC_DataInfo = namedtuple("TEMP_CC_DataInfo", "top btm env")
 ILLU_CC_DataInfo = namedtuple("ILLU_CC_DataInfo", "wave standard_points channel_pointses")
 SAMPLE_TITLES = ("索引", "日期", "标签", "控制板程序版本", "控制板芯片ID", "通道", "项目", "方法", "波长")
+
+
+ODD_STYLE = NamedStyle(name="odd")
+ODD_STYLE.fill = PatternFill(start_color="1ABC9C", end_color="76D7C4", fill_type="solid")
+ODD_STYLE.alignment = Alignment(horizontal="center", vertical="bottom", text_rotation=0, wrap_text=False, shrink_to_fit=False, indent=0)
+EVEN_STYLE = NamedStyle(name="even")
+EVEN_STYLE.fill = PatternFill(start_color="FFDDE1", end_color="EE9CA7", fill_type="solid")
+EVEN_STYLE.alignment = Alignment(horizontal="center", vertical="bottom", text_rotation=0, wrap_text=False, shrink_to_fit=False, indent=0)
 
 
 def dump_CC(data, file_path):
@@ -37,7 +47,7 @@ def dump_CC(data, file_path):
                 sheet = wb["温度"]
                 cells = (WriteOnlyCell(sheet, value=d.top), WriteOnlyCell(sheet, value=d.btm), WriteOnlyCell(sheet, value=d.env))
                 sheet.append(cells)
-        wb.save(file_path)
+        wb.save(find_new_file(file_path))
         return True
     except Exception:
         logger.error(f"save data to xlsx failed\n{stackprinter.format()}")
@@ -62,21 +72,48 @@ def load_CC(file_path):
         logger.error(f"load data from xlsx failed\n{stackprinter.format()}")
 
 
+def check_file_permission(file_path):
+    if not os.path.isfile(file_path):
+        return False
+    old_path = file_path
+    new_path = f"{file_path}{uuid4().hex}"
+    while os.path.isfile(new_path):
+        new_path = f"{file_path}{uuid4().hex}"
+    try:
+        os.rename(old_path, new_path)
+    except PermissionError:
+        return False
+    finally:
+        if os.path.isfile(new_path):
+            os.rename(new_path, old_path)
+    return True
+
+
+def find_new_file(file_path):
+    if not check_file_permission(file_path):
+        logger.warning(f"file_path could not be renamed | {file_path}")
+        attemp = 1
+        dir_path, file_name = os.path.split(file_path)
+        new_file_name = f"{os.path.splitext(file_name)[0]}_{attemp}{os.path.splitext(file_name)[1]}"
+        while os.path.isfile(new_file_name):
+            new_file_name = f"{os.path.splitext(file_name)[0]}_{attemp}{os.path.splitext(file_name)[1]}"
+            attemp += 1
+        file_path = os.path.join(dir_path, new_file_name)
+        logger.warning(f"new file_path become | {file_path}")
+    return file_path
+
+
 def dump_sample(sample_iter, file_path, title=None):
     try:
         wb = Workbook(write_only=True)
-        odd_style = NamedStyle(name="odd")
-        odd_style.fill = PatternFill(start_color="1ABC9C", end_color="76D7C4", fill_type="solid")
-        odd_style.alignment = Alignment(horizontal="center", vertical="bottom", text_rotation=0, wrap_text=False, shrink_to_fit=False, indent=0)
-        wb.add_named_style(odd_style)
-        even_style = NamedStyle(name="even")
-        even_style.fill = PatternFill(start_color="FFDDE1", end_color="EE9CA7", fill_type="solid")
-        even_style.alignment = Alignment(horizontal="center", vertical="bottom", text_rotation=0, wrap_text=False, shrink_to_fit=False, indent=0)
-        wb.add_named_style(even_style)
+        wb.add_named_style(ODD_STYLE)
+        wb.add_named_style(EVEN_STYLE)
+        # title
         if title is None:
             title = f"Sheet{len(wb.sheetnames) + 1}"
+        # sheet
         sheet = wb.create_sheet(f"{title}")
-        sheet.freeze_panes = "D2"
+        sheet.freeze_panes = "G2"
         sheet.column_dimensions["A"].width = 6.25
         sheet.column_dimensions["B"].width = 30
         sheet.column_dimensions["C"].width = 27
@@ -86,10 +123,12 @@ def dump_sample(sample_iter, file_path, title=None):
         sheet.column_dimensions["G"].width = 10
         sheet.column_dimensions["H"].width = 9
         sheet.column_dimensions["I"].width = 5
+        # head
         cells = [WriteOnlyCell(sheet, value=SAMPLE_TITLES[i]) for i in range(len(SAMPLE_TITLES))] + [WriteOnlyCell(sheet, value=i) for i in range(1, 121)]
         for cell in cells:
             cell.alignment = Alignment(horizontal="center", vertical="bottom", text_rotation=0, wrap_text=False, shrink_to_fit=False, indent=0)
         sheet.append(cells)
+        # body
         last_label_id = None
         label_cnt = 0
         for si in sample_iter:
@@ -109,14 +148,84 @@ def dump_sample(sample_iter, file_path, title=None):
                 label_cnt += 1
             for cell in cells:
                 if label_cnt % 2 == 0:
-                    cell.style = even_style
+                    cell.style = EVEN_STYLE
                 else:
-                    cell.style = odd_style
+                    cell.style = ODD_STYLE
             sheet.append(cells)
-        wb.save(file_path)
+        wb.save(find_new_file(file_path))
         logger.success("finish dump db to excel")
     except Exception as e:
         logger.error(f"dump sample data to xlsx failed\n{stackprinter.format()}")
+        return (repr(e), stackprinter.format())
+
+
+def insert_sample(sample_iter, file_path):
+    sample_list = [i for i in sample_iter]
+    try:
+        if os.path.isfile(file_path):
+            wb = load_workbook(file_path)
+            new_flag = False
+        else:
+            wb = Workbook()
+            new_flag = True
+        if ODD_STYLE.name not in wb.style_names:
+            wb.add_named_style(ODD_STYLE)
+        if EVEN_STYLE.name not in wb.style_names:
+            wb.add_named_style(EVEN_STYLE)
+        # sheet
+        sheet = wb.active
+        if new_flag:
+            sheet.freeze_panes = "G2"
+            sheet.column_dimensions["A"].width = 6.25
+            sheet.column_dimensions["B"].width = 30
+            sheet.column_dimensions["C"].width = 27
+            sheet.column_dimensions["D"].width = 0.01
+            sheet.column_dimensions["E"].width = 0.01
+            sheet.column_dimensions["F"].width = 5
+            sheet.column_dimensions["G"].width = 10
+            sheet.column_dimensions["H"].width = 9
+            sheet.column_dimensions["I"].width = 5
+        # head
+        if new_flag:
+            cells = [sheet.cell(column=i + 1, row=1, value=s) for i, s in enumerate(SAMPLE_TITLES)] + [
+                sheet.cell(column=i + len(SAMPLE_TITLES), row=1, value=i) for i in range(1, 121)
+            ]
+            for cell in cells:
+                cell.alignment = Alignment(horizontal="center", vertical="bottom", text_rotation=0, wrap_text=False, shrink_to_fit=False, indent=0)
+        # body
+        last_cell = sheet["A2"]
+        last_id = last_cell.value
+        record_id = None
+        new_style = "odd"
+        if last_cell.has_style and last_cell.style == "odd":
+            new_style = "even"
+        sheet.insert_rows(2, len(sample_list))
+        for idx, si in enumerate(sample_list):
+            if si.label_id == last_id:
+                logger.warning(f"not insert for same label id | {last_id} | {si}")
+                continue
+            cells = [
+                sheet.cell(column=1, row=2 + idx, value=si.label_id),
+                sheet.cell(column=2, row=2 + idx, value=si.label_datetimne),
+                sheet.cell(column=3, row=2 + idx, value=si.label_name),
+                sheet.cell(column=4, row=2 + idx, value=si.label_version),
+                sheet.cell(column=5, row=2 + idx, value=si.label_device_id),
+                sheet.cell(column=6, row=2 + idx, value=si.sample_channel),
+                sheet.cell(column=7, row=2 + idx, value=si.sample_set_info),
+                sheet.cell(column=8, row=2 + idx, value=si.sample_method),
+                sheet.cell(column=9, row=2 + idx, value=si.sample_wave),
+            ] + [sheet.cell(column=10 + i, row=2 + idx, value=sp) for i, sp in enumerate(si.sample_datas)]
+            if record_id is None:
+                record_id = si.label_id
+            elif record_id != si.label_id:
+                record_id = si.label_id
+                new_style = "odd" if new_style == "even" else "even"
+            for cell in cells:
+                cell.style = new_style
+        wb.save(find_new_file(file_path))
+        logger.success("finish insert db to excel")
+    except Exception as e:
+        logger.error(f"insert sample data to xlsx failed\n{stackprinter.format()}")
         return (repr(e), stackprinter.format())
 
 

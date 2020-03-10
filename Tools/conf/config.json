@@ -1,20 +1,21 @@
 {
-    "log": {
-        "rotation": "4 MB",
-        "retention": 25
+  "data_xlsx_path": "",
+  "log": {
+    "retention": 25,
+    "rotation": "4 MB"
+  },
+  "temp_ctl": {
+    "btm": {
+      "Kd": 4800,
+      "Ki": 4800,
+      "Kp": 1200000,
+      "target": 37
     },
-    "temp_ctl": {
-        "btm": {
-            "target": 37,
-            "Kp": 92000,
-            "Ki": 1600,
-            "Kd": 1600
-        },
-        "top": {
-            "target": 37,
-            "Kp": 600000,
-            "Ki": 1000,
-            "Kd": 2000
-        }
+    "top": {
+      "Kd": 2000,
+      "Ki": 1000,
+      "Kp": 600000,
+      "target": 37
     }
+  }
 }

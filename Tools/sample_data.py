@@ -183,36 +183,41 @@ class SampleDB:
         else:
             return []
 
+    def iter_from_label(self, label=None):
+        if label is None:
+            label = self.session.query(Label).filter(Label.sample_datas.__ne__(None)).order_by(desc(Label.id))[0]
+        self._i32 = None
+        for sample_data in label.sample_datas:
+            # no data
+            if sample_data.total == 0 or len(sample_data.raw_data) == 0:
+                continue
+            else:
+                sample_datas = self._decode_raw_data(sample_data.total, sample_data.raw_data)
+            if 0 < sample_data.method.value < len(METHOD_NAMES):
+                sample_method = METHOD_NAMES[sample_data.method.value]
+            else:
+                sample_method = f"error-method-{sample_data.method.value}"
+            if 0 < sample_data.wave.value <= len(WAVES):
+                sample_wave = WAVES[sample_data.wave.value - 1]
+            else:
+                sample_wave = f"error-wave-{sample_data.wave.value}"
+
+            yield SapmleInfo(
+                label_id=label.id,
+                label_datetimne=str(label.datetime),
+                label_name=label.name,
+                label_version=label.version,
+                label_device_id=label.device_id,
+                sample_channel=sample_data.channel,
+                sample_method=sample_method,
+                sample_set_info=sample_data.set_info,
+                sample_wave=sample_wave,
+                sample_datas=sample_datas,
+            )
+
     def iter_all_data(self, start=0, num=2 ** 32):
         for label in self.session.query(Label).filter(Label.sample_datas.__ne__(None)).order_by(desc(Label.id))[start : start + num]:
-            self._i32 = None
-            for sample_data in label.sample_datas:
-                # no data
-                if sample_data.total == 0 or len(sample_data.raw_data) == 0:
-                    continue
-                else:
-                    sample_datas = self._decode_raw_data(sample_data.total, sample_data.raw_data)
-                if 0 < sample_data.method.value < len(METHOD_NAMES):
-                    sample_method = METHOD_NAMES[sample_data.method.value]
-                else:
-                    sample_method = f"error-method-{sample_data.method.value}"
-                if 0 < sample_data.wave.value <= len(WAVES):
-                    sample_wave = WAVES[sample_data.wave.value - 1]
-                else:
-                    sample_wave = f"error-wave-{sample_data.wave.value}"
-
-                yield SapmleInfo(
-                    label_id=label.id,
-                    label_datetimne=str(label.datetime),
-                    label_name=label.name,
-                    label_version=label.version,
-                    label_device_id=label.device_id,
-                    sample_channel=sample_data.channel,
-                    sample_method=sample_method,
-                    sample_set_info=sample_data.set_info,
-                    sample_wave=sample_wave,
-                    sample_datas=sample_datas,
-                )
+            yield from self.iter_from_label(label)
 
 
 if __name__ == "__main__":
