@@ -117,6 +117,8 @@ class DC201ErrorCode(Enum):
     eError_Comm_Data_UART = (117, "采样板串口DMA中断处理发生串口异常")
     eError_Comm_Out_UART = (118, "外串口DMA中断处理发生串口异常")
     eError_Tray_Motor_Lose = (119, "托盘出仓后无命令下托盘移动到扫码光耦处")
+    eError_Tray_ID_Code_Card_In = (120, "ID Code 卡插入")
+    eError_Tray_ID_Code_Card_Out = (121, "ID Code 卡拔出")
     eError_Motor_Heater_Timeout_Up = (200, "上加热体电机运动超时 上升方向")
     eError_Motor_Heater_Timeout_Down = (201, "上加热体电机运动超时 下降方向")
     eError_Motor_Heater_Status_Warui = (202, "上加热体电机驱动状态异常")

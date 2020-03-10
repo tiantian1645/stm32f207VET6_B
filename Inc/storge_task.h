@@ -434,6 +434,7 @@ uint16_t storge_ParamRead(eStorgeParamIndex idx, uint16_t num, uint8_t * pBuff);
 uint8_t stroge_Conf_CC_O_Data(uint8_t * pBuffer);
 uint8_t stroge_Conf_CC_O_Data_From_B3(uint8_t * pBuffer);
 eStorgeParamIndex storge_Param_Illumine_CC_Get_Index(uint8_t channel, eComm_Data_Sample_Radiant wave);
+void storge_Param_Illumine_CC_Set_Single(eStorgeParamIndex idx, uint32_t data);
 
 void gStorgeIllumineCnt_Clr(void);
 uint8_t gStorgeIllumineCnt_Check(uint8_t target);

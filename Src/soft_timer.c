@@ -12,6 +12,7 @@
 #include "soft_timer.h"
 #include "beep.h"
 #include "temperature.h"
+#include "i2c_eeprom.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim4;
@@ -111,9 +112,10 @@ void soft_timer_Heater_Call_Back(TimerHandle_t xTimer)
         }
     }
 
-    heater_BTM_Output_Keep_Deal();
-    heater_TOP_Output_Keep_Deal();
-    motor_OPT_Status_Update();
+    heater_BTM_Output_Keep_Deal();    /* 下加热体PID控制 */
+    heater_TOP_Output_Keep_Deal();    /* 上加热体PID控制 */
+    motor_OPT_Status_Update();        /* 电机光耦位置状态更新 */
+    I2C_EEPROM_Card_Status_Update();  /* ID Code 卡插入状态更新 */
     beep_Deal(SOFT_TIMER_HEATER_PER); /* 蜂鸣器处处理 */
 }
 
