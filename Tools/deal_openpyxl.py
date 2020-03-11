@@ -74,7 +74,7 @@ def load_CC(file_path):
 
 def check_file_permission(file_path):
     if not os.path.isfile(file_path):
-        return False
+        return True
     old_path = file_path
     new_path = f"{file_path}{uuid4().hex}"
     while os.path.isfile(new_path):
@@ -83,10 +83,11 @@ def check_file_permission(file_path):
         os.rename(old_path, new_path)
     except PermissionError:
         return False
+    else:
+        return True
     finally:
         if os.path.isfile(new_path):
             os.rename(new_path, old_path)
-    return True
 
 
 def find_new_file(file_path):

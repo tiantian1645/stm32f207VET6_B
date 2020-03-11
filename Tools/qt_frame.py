@@ -111,6 +111,7 @@ retention = CONFIG.get("log", {}).get("retention", 16)
 logger.add("./log/dc201.log", rotation=rotation, retention=retention, enqueue=True)
 
 DB_EXCEL_PATH_RE = re.compile(r"s(\d+)n(\d+)")
+TMER_INTERVAL = 200
 
 
 class QHLine(QFrame):
@@ -155,11 +156,12 @@ class MainWindow(QMainWindow):
         self.sample_record_current_label = None
         self.flash_json_data = None
         self.last_falsh_save_dir = "./"
-        data_xlsx_path = CONFIG.get("data_xlsx_path")
+        data_xlsx_path = CONFIG.get("data_xlsx_path", f"data/{uuid.uuid4().hex}.xlsx")
         if os.path.isfile(data_xlsx_path):
             self.data_xlsx_path = data_xlsx_path
         else:
             self.data_xlsx_path = f"data/{uuid.uuid4().hex}.xlsx"
+            logger.debug(f"create new data xlsx file | {self.data_xlsx_path}")
             CONFIG["data_xlsx_path"] = os.path.abspath(self.data_xlsx_path)
             try:
                 with open(CONFIG_PATH, "w", encoding="utf-8") as f:
@@ -631,7 +633,7 @@ class MainWindow(QMainWindow):
         self.matplot_timer_lbs = [QLabel(f"TT{i}", maximumWidth=40) for i in range(6)]
         self.matplot_timer = QTimer(self)
         self.matplot_timer.timeout.connect(self.update_matplot_timer)
-        self.matplot_timer_time = time.time()
+        self.matplot_timer_time_list = [time.time()] * 6
         self.barcode_scan_bt = QPushButton("扫码")
         self.barcode_scan_bt.setMaximumWidth(50)
         self.matplot_start_bt = QPushButton("测试")
@@ -1415,9 +1417,9 @@ class MainWindow(QMainWindow):
     def update_matplot_timer(self):
         for idx, lb in enumerate(self.matplot_timer_lbs):
             v = float(lb.text())
-            v = v - 0.5
+            v = v - TMER_INTERVAL / 1000
             if v > 0:
-                lb.setText(f"{v}")
+                lb.setText(f"{v:.1f}")
             else:
                 lb.setText("0")
 
@@ -1448,8 +1450,8 @@ class MainWindow(QMainWindow):
             if conf[-3] == 0 or conf[-1] == 0:
                 v = 0
             else:
-                v = conf[-1] * 10 + 12.5
-            self.matplot_timer_lbs[i].setText(f"{v}")
+                v = conf[-1] * 10 + 7.2 - (12 if self.debug_flag_cbs[2].isChecked() else 0)
+            self.matplot_timer_lbs[i].setText(f"{v:.1f}")
             self.sample_confs.append(SampleConf(conf[-3], conf[-2], conf[-1], self.matplot_conf_set_cs[i].currentText()))
         logger.debug(f"get matplot cnf | {conf}")
         self.sample_label = self.sample_db.build_label(
@@ -1463,8 +1465,8 @@ class MainWindow(QMainWindow):
             self._serialSendPack(0x03, conf)
         self.plot_graph.clear_plot()
         self.matplot_data.clear()
-        self.matplot_timer.start(500)
-        self.matplot_timer_time = time.time()
+        self.matplot_timer.start(TMER_INTERVAL)
+        self.matplot_timer_time_list = [time.time()] * 6
 
     def onCorrectMatplotStart(self):
         self.initBarcodeScan()
@@ -1486,7 +1488,6 @@ class MainWindow(QMainWindow):
         self.matplot_data.clear()
 
     def stop_matplot_timer(self):
-        logger.debug(f"time live for | {time.time() - self.matplot_timer_time:.2f} S")
         self.matplot_timer.stop()
         for idx, lb in enumerate(self.matplot_timer_lbs):
             lb.setText(f"TT{idx}")
@@ -1898,7 +1899,7 @@ class MainWindow(QMainWindow):
             self.sample_record_pre_bt.setText(f"序号[{cnt - 1}]")
         else:
             self.sample_record_plot_by_index(0)
-        if not check_file_permission(self.data_xlsx_path):
+        if not os.path.isfile(self.data_xlsx_path) or not check_file_permission(self.data_xlsx_path):
             dump_sample(self.sample_db.iter_all_data(), self.data_xlsx_path)
         else:
             insert_sample(self.sample_db.iter_from_label(), self.data_xlsx_path)
@@ -1908,6 +1909,7 @@ class MainWindow(QMainWindow):
     def updateMatplotData(self, info):
         length = info.content[6]
         channel = info.content[7]
+        logger.success(f"channel finish | {time.time() - self.matplot_timer_time_list[(channel - 1) % 6]:.2f} S")
         if len(info.content) - 9 == 2 * length:  # 普通采样 unsigned int
             data = tuple((struct.unpack("H", info.content[8 + i * 2 : 10 + i * 2])[0] for i in range(length)))
         elif len(info.content) - 9 == 4 * length:  # PD OD unsigned long
