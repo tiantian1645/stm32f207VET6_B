@@ -68,16 +68,19 @@ typedef struct {
 } sComm_Data_Sample;
 
 typedef enum {
-    eComm_Data_Outbound_CMD_CONF = 0x26,  /* 测试项信息帧 */
-    eComm_Data_Outbound_CMD_START = 0x27, /* 采样开始控制帧 */
-    eComm_Data_Outbound_CMD_STRAY = 0x28, /* 杂散光采集帧 */
-    eComm_Data_Outbound_CMD_TEST = 0x30,  /* 工装测试配置帧 */
+    eComm_Data_Outbound_CMD_CONF = 0x26,    /* 测试项信息帧 */
+    eComm_Data_Outbound_CMD_START = 0x27,   /* 采样开始控制帧 */
+    eComm_Data_Outbound_CMD_STRAY = 0x28,   /* 杂散光采集帧 */
+    eComm_Data_Outbound_CMD_TEST = 0x30,    /* 工装测试配置帧 */
+    eComm_Data_Outbound_CMD_LED_GET = 0x32, /* LED电压读取 */
+    eComm_Data_Outbound_CMD_LED_SET = 0x33, /* LED电压设置 */
 } eComm_Data_Outbound_CMD;
 
 typedef enum {
-    eComm_Data_Inbound_CMD_DATA = 0xB3,  /* 采集数据帧 */
-    eComm_Data_Inbound_CMD_OVER = 0x34,  /* 采集数据完成帧 */
-    eComm_Data_Inbound_CMD_ERROR = 0xB5, /* 错误信息帧 */
+    eComm_Data_Inbound_CMD_DATA = 0xB3,    /* 采集数据帧 */
+    eComm_Data_Inbound_CMD_OVER = 0x34,    /* 采集数据完成帧 */
+    eComm_Data_Inbound_CMD_ERROR = 0xB5,   /* 错误信息帧 */
+    eComm_Data_Inbound_CMD_LED_GET = 0x32, /* LED电压读取 */
 } eComm_Data_Inbound_CMD;
 
 /* Exported constants --------------------------------------------------------*/
@@ -126,6 +129,9 @@ BaseType_t comm_Data_Conf_Sem_Wait(uint32_t timeout);
 BaseType_t comm_Data_Conf_Sem_Give(void);
 BaseType_t comm_Data_Conf_Sem_Give_FromISR(void);
 
+BaseType_t comm_Data_Conf_LED_Voltage_Get_FromISR(void);
+BaseType_t comm_Data_Conf_LED_Voltage_Set_FromISR(uint8_t * pData);
+
 BaseType_t comm_Data_Sample_Owari(void);
 
 uint8_t gComm_Data_Sample_PD_WH_Idx_Get(void);
@@ -142,7 +148,7 @@ uint8_t comm_Data_Sample_Data_Correct(uint8_t channel, uint8_t * pBuffer, uint8_
 void gComm_Data_Correct_Flag_Mark(void);
 void gComm_Data_Correct_Flag_Clr(void);
 uint8_t gComm_Data_Correct_Flag_Check(void);
-BaseType_t comm_Data_Sample_Send_Conf_Correct(uint8_t * pData, eComm_Data_Sample_Radiant wave, uint8_t point_num);
+BaseType_t comm_Data_Sample_Send_Conf_Correct(uint8_t * pData, eComm_Data_Sample_Radiant wave, uint8_t point_num, uint8_t cmd_type);
 eComm_Data_Sample_Radiant comm_Data_Get_Correct_Wave(void);
 
 uint8_t comm_Data_Get_Corretc_Stage(uint8_t channel);

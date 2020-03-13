@@ -704,21 +704,32 @@ BaseType_t comm_Data_Sample_Send_Conf_TV_FromISR(uint8_t * pData)
  * @param  wave 波长配置  405不做定标
  * @param  pData 缓存指针
  * @param  point_num 点数
+ * @param  cmd_type 命令类型 (eComm_Data_Outbound_CMD_CONF, eComm_Data_Outbound_CMD_TEST)
  * @retval pdPASS 提交成功 pdFALSE 提交失败
  */
-BaseType_t comm_Data_Sample_Send_Conf_Correct(uint8_t * pData, eComm_Data_Sample_Radiant wave, uint8_t point_num)
+BaseType_t comm_Data_Sample_Send_Conf_Correct(uint8_t * pData, eComm_Data_Sample_Radiant wave, uint8_t point_num, uint8_t cmd_type)
 {
     uint8_t i, sendLength;
 
     gComm_Data_Sample_Max_Point_Clear(); /* 清除最大点数 */
     for (i = 0; i < 6; ++i) {
-        pData[0 + 3 * i] = eComm_Data_Sample_Assay_Continuous; /* 测试方法 */
-        pData[1 + 3 * i] = wave;                               /* 测试波长 */
-        pData[2 + 3 * i] = point_num;                          /* 测试点数 point_num */
-        gComm_Data_Sample_Max_Point_Update(pData[2 + 3 * i]);  /* 更新最大点数 */
+        if (wave == eComm_Data_Sample_Radiant_405 && i > 0) { /* 通道2～6没有405 */
+            pData[0 + 3 * i] = eComm_Data_Sample_Assay_None;  /* 测试方法 */
+            pData[2 + 3 * i] = 0;                             /* 测试点数 point_num */
+        } else {
+            pData[0 + 3 * i] = eComm_Data_Sample_Assay_Continuous; /* 测试方法 */
+            pData[2 + 3 * i] = point_num;                          /* 测试点数 point_num */
+        }
+        pData[1 + 3 * i] = wave;                              /* 测试波长 */
+        gComm_Data_Sample_Max_Point_Update(pData[2 + 3 * i]); /* 更新最大点数 */
     }
     gComm_Data_Correct_wave = wave;
-    sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 18); /* 构造工装测试配置包 */
+    if (cmd_type == eComm_Data_Outbound_CMD_CONF) {
+        sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 18); /* 构造普通测试配置包 */
+    } else if (cmd_type == eComm_Data_Outbound_CMD_TEST) {
+        pData[18] = 2;                                                                     /* PD */
+        sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_TEST, pData, 19); /* 构造工装测试配置包 */
+    }
     return comm_Data_SendTask_QueueEmit(pData, sendLength, 50);
 }
 
@@ -790,6 +801,34 @@ BaseType_t comm_Data_Sample_Send_Clear_Conf_FromISR(void)
     }
 
     sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 18); /* 构造测试配置包 */
+    return comm_Data_SendTask_QueueEmit_FromISR(pData, sendLength);
+}
+
+/**
+ * @brief  采样板LED电压获取 中断版本
+ * @note   采样板LED电压获取
+ * @param  None
+ * @retval pdPASS 提交成功 pdFALSE 提交失败
+ */
+BaseType_t comm_Data_Conf_LED_Voltage_Get_FromISR(void)
+{
+    uint8_t sendLength, pData[8];
+
+    sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_LED_GET, pData, 0); /* 构造测试配置包 */
+    return comm_Data_SendTask_QueueEmit_FromISR(pData, sendLength);
+}
+
+/**
+ * @brief  采样板LED电压设置 中断版本
+ * @note   采样板LED电压设置
+ * @param  None
+ * @retval pdPASS 提交成功 pdFALSE 提交失败
+ */
+BaseType_t comm_Data_Conf_LED_Voltage_Set_FromISR(uint8_t * pData)
+{
+    uint8_t sendLength;
+
+    sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_LED_SET, pData, 6); /* 构造测试配置包 */
     return comm_Data_SendTask_QueueEmit_FromISR(pData, sendLength);
 }
 
@@ -1275,6 +1314,8 @@ void comm_Data_ISR_Deal(void)
             if (gComm_Data_Sample_PD_WH_Idx_Get() == 1) {     /* 当前检测白物质 */
                 comm_Data_sample_Start_PD();                  /* 启动PD定时器 */
             }
+        } else if (gComm_Data_Lamp_BP_Flag_Check()) {
+            motor_Sample_Info_From_ISR(eMotorNotifyValue_LAMP_BP); /* 通知电机任务杂散光测试完成 */
         }
     }
 }

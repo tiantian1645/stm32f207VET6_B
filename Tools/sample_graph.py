@@ -1,8 +1,10 @@
+from bisect import bisect_left
+from collections import namedtuple
+from itertools import chain
+
 import loguru
 import pyqtgraph as pg
-from collections import namedtuple
 import stackprinter
-from bisect import bisect_left
 from numpy import ones, vstack
 from numpy.linalg import lstsq
 from PyQt5 import QtCore
@@ -146,12 +148,13 @@ class SampleGraph:
                 if data_conf.data is not None and index >= 0 and index < len(data_conf.data):
                     value = data_conf.data[index]
                     if isinstance(value, int):
-                        lds.append(f"<span style='font-size: 12pt; color: #{data_conf.color}'>{data_conf.name}={value:d}</span>")
+                        lds.append(f"<span style='font-size: 12pt; color: #{data_conf.color}'>{data_conf.name}={value:d}</span>,   ")
                     elif isinstance(value, float):
-                        lds.append(f"<span style='font-size: 12pt; color: #{data_conf.color}'>{data_conf.name}={value:.2f}</span>")
+                        lds.append(f"<span style='font-size: 12pt; color: #{data_conf.color}'>{data_conf.name}={value:.2f}</span>,   ")
                 else:
-                    lds.append(f"<span style='font-size: 12pt; color: #{data_conf.color}'>{data_conf.name}=null</span>")
-            label_data = ",   ".join(lds)
+                    lds.append(f"<span style='font-size: 12pt; color: #{data_conf.color}'>{data_conf.name}=null</span>,   ")
+            lds = list(chain(*[lds[i : i + 12] + [" <br> "] if len(lds[i : i + 12]) == 12 else lds[i : i + 12] for i in range(0, len(lds), 12)]))
+            label_data = "".join(lds)
             label_text = f"{label_data}  ({label_point})"
             self.label.setText(label_text)
             # logger.debug(f"label text | {label_text}")

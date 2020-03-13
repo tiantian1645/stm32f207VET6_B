@@ -720,7 +720,7 @@ static void motor_Task(void * argument)
     BaseType_t xResult = pdFALSE;
     uint32_t xNotifyValue, cnt = 0;
     sMotor_Fun mf;
-    uint8_t buffer[30];
+    uint8_t buffer[32];
     TickType_t xTick;
     eBarcodeState barcode_result;
     float temperature;
@@ -776,10 +776,11 @@ static void motor_Task(void * argument)
             case eMotor_Fun_Debug_Scan:                                                         /* 扫码电机 */
                 barcode_Scan_Bantch((uint8_t)(mf.fun_param_1 >> 8), (uint8_t)(mf.fun_param_1)); /* 位置掩码 扫码使能掩码 */
                 break;
-            case eMotor_Fun_Sample_Start:               /* 准备测试 */
-                xTick = xTaskGetTickCount();            /* 记录总体准备起始时间 */
-                comm_Data_Conf_Sem_Wait(0);             /* 清除配置信息信号量 */
-                led_Mode_Set(eLED_Mode_Kirakira_Green); /* LED 绿灯闪烁 */
+            case eMotor_Fun_Sample_Start:                         /* 准备测试 */
+                xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0); /* 清空通知 */
+                xTick = xTaskGetTickCount();                      /* 记录总体准备起始时间 */
+                comm_Data_Conf_Sem_Wait(0);                       /* 清除配置信息信号量 */
+                led_Mode_Set(eLED_Mode_Kirakira_Green);           /* LED 绿灯闪烁 */
 
                 temperature = temp_Get_Temp_Data_BTM();         /* 读取下加热体温度 */
                 if (temperature < 36.7 || temperature > 37.3) { /* 不在范围内 */
@@ -790,7 +791,6 @@ static void motor_Task(void * argument)
                     error_Emit(eError_Temp_TOP_Not_In_Range);   /* 上报提示 */
                 }
 
-                xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0);    /* 清空通知 */
                 if (protocol_Debug_SampleBarcode() == 0) {           /* 非调试模式 */
                     motor_Tray_Move_By_Index(eTrayIndex_1);          /* 扫码位置 */
                     barcode_result = barcode_Scan_QR();              /* 扫描二维条码 */
@@ -1005,22 +1005,22 @@ static void motor_Task(void * argument)
                 } else if (protocol_Debug_SampleBarcode() == 0) { /* 非调试模式 */
                     motor_Tray_Move_By_Index(eTrayIndex_2);       /* 出仓 */
                 }
-                white_Motor_PD();                                                              /* 运动白板电机 PD位置 清零位置 */
-                comm_Data_Sample_Send_Conf_Correct(buffer, eComm_Data_Sample_Radiant_610, 12); /* 配置 610 波长 */
-                white_Motor_WH();                                                              /* 运动白板电机 白物质位置 */
-                gStorgeIllumineCnt_Clr();                                                      /* 清除标记 */
-                motor_Sample_Deal();                                                           /* 启动采样并控制白板电机 */
-                motor_Wait_Stroge_Correct(3000);                                               /* 等待设置存储完成 */
-                storgeTaskNotification(eStorgeNotifyConf_Dump_Params, eComm_Out);              /* 通知存储任务 保存参数 */
-                gStorgeTaskInfoLockWait(3000);                                                 /* 等待参数保存完毕 */
-                comm_Data_Sample_Send_Conf_Correct(buffer, eComm_Data_Sample_Radiant_550, 12); /* 配置 550 波长 */
-                white_Motor_WH();                                                              /* 运动白板电机 白物质位置 */
-                gStorgeIllumineCnt_Clr();                                                      /* 清除标记 */
-                motor_Sample_Deal();                                                           /* 启动采样并控制白板电机 */
-                motor_Wait_Stroge_Correct(3000);                                               /* 等待设置存储完成 */
-                storgeTaskNotification(eStorgeNotifyConf_Dump_Params, eComm_Out);              /* 通知存储任务 保存参数 */
-                gStorgeTaskInfoLockWait(3000);                                                 /* 等待参数保存完毕 */
-                motor_Sample_Owari_Correct();                                                  /* 清理 */
+                white_Motor_PD(); /* 运动白板电机 PD位置 清零位置 */
+                comm_Data_Sample_Send_Conf_Correct(buffer, eComm_Data_Sample_Radiant_610, 12, eComm_Data_Outbound_CMD_CONF); /* 配置 610 波长 */
+                white_Motor_WH();                                                 /* 运动白板电机 白物质位置 */
+                gStorgeIllumineCnt_Clr();                                         /* 清除标记 */
+                motor_Sample_Deal();                                              /* 启动采样并控制白板电机 */
+                motor_Wait_Stroge_Correct(3000);                                  /* 等待设置存储完成 */
+                storgeTaskNotification(eStorgeNotifyConf_Dump_Params, eComm_Out); /* 通知存储任务 保存参数 */
+                gStorgeTaskInfoLockWait(3000);                                    /* 等待参数保存完毕 */
+                comm_Data_Sample_Send_Conf_Correct(buffer, eComm_Data_Sample_Radiant_550, 12, eComm_Data_Outbound_CMD_CONF); /* 配置 550 波长 */
+                white_Motor_WH();                                                 /* 运动白板电机 白物质位置 */
+                gStorgeIllumineCnt_Clr();                                         /* 清除标记 */
+                motor_Sample_Deal();                                              /* 启动采样并控制白板电机 */
+                motor_Wait_Stroge_Correct(3000);                                  /* 等待设置存储完成 */
+                storgeTaskNotification(eStorgeNotifyConf_Dump_Params, eComm_Out); /* 通知存储任务 保存参数 */
+                gStorgeTaskInfoLockWait(3000);                                    /* 等待参数保存完毕 */
+                motor_Sample_Owari_Correct();                                     /* 清理 */
 
                 comm_Data_Sample_Owari();                   /* 上送采样结束报文 */
                 if (protocol_Debug_SampleBarcode() == 0) {  /* 非调试模式 */
@@ -1029,29 +1029,32 @@ static void motor_Task(void * argument)
                 gComm_Data_Correct_Flag_Clr(); /* 退出定标状态 */
                 break;
             case eMotor_Fun_Lamp_BP:
-                gComm_Data_Lamp_BP_Flag_Mark();              /* 标记灯BP状态 */
-                comm_Data_Sample_Send_Clear_Conf();          /* 清除配置 */
-                if (protocol_Debug_SampleMotorTray() == 0) { /* 非调试模式 */
-                    motor_Tray_Move_By_Index(eTrayIndex_0);  /* 入仓 */
-                    heat_Motor_Down();                       /* 砸下上加热体 */
-                } else {                                     /* 非调试模式 */
-                    motor_Tray_Move_By_Index(eTrayIndex_2);  /* 出仓 */
+                xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0); /* 清空通知 */
+                gComm_Data_Lamp_BP_Flag_Mark();                   /* 标记灯BP状态 */
+                comm_Data_Sample_Send_Clear_Conf();               /* 清除配置 */
+                if (protocol_Debug_SampleMotorTray() == 0) {      /* 非调试模式 */
+                    motor_Tray_Move_By_Index(eTrayIndex_0);       /* 入仓 */
+                    heat_Motor_Down();                            /* 砸下上加热体 */
+                } else {                                          /* 非调试模式 */
+                    motor_Tray_Move_By_Index(eTrayIndex_2);       /* 出仓 */
                 }
-                white_Motor_PD(); /* 运动白板电机 白物质位置 */
-                for (buffer[29] = eComm_Data_Sample_Radiant_610; buffer[29] <= eComm_Data_Sample_Radiant_405; ++buffer[29]) {
-                    comm_Data_Sample_Send_Conf_Correct(buffer, buffer[29], 6); /* 配置波长 点数 */
+                for (buffer[31] = eComm_Data_Sample_Radiant_610; buffer[31] <= eComm_Data_Sample_Radiant_405; ++buffer[31]) {
+                    comm_Data_Sample_Send_Conf_Correct(buffer, buffer[31], 6, eComm_Data_Outbound_CMD_TEST); /* 配置波长 点数 */
                     vTaskDelay(500);
                     for (cnt = 0; cnt < 6; ++cnt) {
-                        comm_Data_ISR_Tran(0); /* 采集白板 */
-                        vTaskDelay(2000);
-                        comm_Data_ISR_Tran(1); /* 采集PD */
-                        vTaskDelay(2000);
+                        white_Motor_WH();                                                   /* 运动白板电机 白物质位置 */
+                        comm_Data_ISR_Tran(0);                                              /* 采集白板 */
+                        xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(2000)); /* 等待通知 */
+                        white_Motor_PD();                                                   /* 运动白板电机 PD位置 */
+                        comm_Data_ISR_Tran(1);                                              /* 采集PD */
+                        xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(2000)); /* 等待通知 */
                     }
-                    vTaskDelay(1000);
+                    white_Motor_WH(); /* 运动白板电机 白物质位置 */
+                    vTaskDelay(2000);
                     comm_Data_Sample_Send_Clear_Conf();
-                    vTaskDelay(1000);
+                    vTaskDelay(2000);
                 }
-                comm_Data_Sample_Owari();
+                comm_Data_Sample_Owari();               /* 发送完成采样报文 */
                 gComm_Data_Lamp_BP_Flag_Clr();          /* 清除灯BP状态 */
                 motor_Tray_Move_By_Index(eTrayIndex_2); /* 出仓 */
                 break;

@@ -1,9 +1,8 @@
 # http://doc.qt.io/qt-5/qt.html
 
-import simplejson
 import os
-import re
 import queue
+import re
 import struct
 import sys
 import time
@@ -16,13 +15,16 @@ from hashlib import sha256
 from math import log10, nan
 from urllib.request import urlretrieve
 
-from loguru import logger
 import numpy as np
 import pyperclip
+import qtmodern.styles
+import qtmodern.windows
 import serial
 import serial.tools.list_ports
+import simplejson
 import stackprinter
-from PyQt5.QtCore import Qt, QThreadPool, QTimer, QMutex
+from loguru import logger
+from PyQt5.QtCore import QMutex, Qt, QThreadPool, QTimer
 from PyQt5.QtGui import QFont, QIcon, QPalette
 from PyQt5.QtWidgets import (
     QApplication,
@@ -54,17 +56,15 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
 from bytes_helper import bytes2Float, bytesPuttyPrint
 from dc201_pack import DC201_PACK, DC201_ParamInfo, DC201ErrorCode, write_firmware_pack_BL, write_firmware_pack_FC
-import qtmodern.styles
-import qtmodern.windows
+from deal_openpyxl import ILLU_CC_DataInfo, TEMP_CC_DataInfo, check_file_permission, dump_CC, dump_sample, insert_sample, load_CC
+from mengy_color_table import ColorGreens, ColorPurples, ColorReds
 from qt_modern_dialog import ModernDialog, ModernMessageBox
 from qt_serial import SerialRecvWorker, SerialSendWorker
-from sample_data import MethodEnum, SampleDB, WaveEnum, SAMPLE_SET_INFOS
-from sample_graph import SampleGraph, TemperatureGraph, CC_Graph
-from mengy_color_table import ColorReds, ColorGreens, ColorPurples
-from deal_openpyxl import TEMP_CC_DataInfo, ILLU_CC_DataInfo, dump_CC, load_CC, dump_sample, insert_sample, check_file_permission
-
+from sample_data import SAMPLE_SET_INFOS, MethodEnum, SampleDB, WaveEnum
+from sample_graph import CC_Graph, SampleGraph, TemperatureGraph
 
 BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
 TEMPERAUTRE_NAMES = ("下加热体:", "上加热体:")
@@ -236,6 +236,7 @@ class MainWindow(QMainWindow):
         self.createBarcode()
         self.createMotor()
         self.createSerial()
+        self.create_Sample_LED()
         self.createMatplot()
         self.createStatusBar()
         self.createSysConf()
@@ -250,7 +251,10 @@ class MainWindow(QMainWindow):
         right_ly.addWidget(self.barcode_gb)
         right_ly.addWidget(self.motor_gb)
         right_ly.addWidget(self.sys_conf_gb)
-        right_ly.addWidget(self.serial_gb)
+        temp_ly = QHBoxLayout()
+        temp_ly.addWidget(self.serial_gb)
+        temp_ly.addWidget(self.sample_led_gb)
+        right_ly.addLayout(temp_ly)
 
         layout.addLayout(right_ly, stretch=0)
         layout.addWidget(self.matplot_wg, stretch=1)
@@ -1056,10 +1060,10 @@ class MainWindow(QMainWindow):
     def sample_record_parse_raw_data(self, total, raw_data, last_sd=None):
         data = []
         data_len = len(raw_data)
-        c_data = []
+        log10_data = []
         if total == 0:
             logger.error(f"sample data total error | {total}")
-            return data, c_data
+            return data, log10_data
         if data_len / total == 2:
             for i in range(0, data_len, 2):
                 data.append(struct.unpack("H", raw_data[i : i + 2])[0])
@@ -1070,18 +1074,18 @@ class MainWindow(QMainWindow):
                 for i in range(0, data_len, 4):
                     ld = struct.unpack("I", last_sd.raw_data[i : i + 4])[0]
                     if data[i // 4] == 0 or ld / data[i // 4] <= 0:
-                        c_data.append(nan)
+                        log10_data.append(nan)
                     else:
-                        c_data.append(log10(ld / data[i // 4]) * 10000)
+                        log10_data.append(log10(ld / data[i // 4]) * 10000)
         else:
             logger.error(f"sample data length error | {data_len}")
-        return data, c_data
+        return data, log10_data
 
     def sample_record_plot_by_index(self, idx):
         label = self.sample_db.get_label_by_index(idx)
         self.sample_record_current_label = label
         if label is None:
-            logger.error("hit the label limit")
+            logger.warning("hit the label limit")
             cnt = self.sample_db.get_label_cnt()
             self.sample_record_idx_sp.setRange(0, cnt - 1)
             self.sample_record_pre_bt.setText(f"序号[{cnt - 1}]")
@@ -1126,6 +1130,7 @@ class MainWindow(QMainWindow):
         if label is None:
             return
         sds = sorted(label.sample_datas, key=lambda x: x.channel)
+        logger.debug(f"sds length | {len(sds)}")
         msg = ModernMessageBox(self)
         msg.setTextInteractionFlags(Qt.TextSelectableByMouse)
         msg.setIcon(QMessageBox.Information)
@@ -1134,16 +1139,19 @@ class MainWindow(QMainWindow):
         last_sd = None
         for i, sd in enumerate(sds):
             if last_sd and last_sd.channel == sd.channel and len(last_sd.raw_data) / sd.total == 4:
-                real_data, c_data = self.sample_record_parse_raw_data(sd.total, sd.raw_data, last_sd)
-                last_sd = None
+                if label.name.startswith("Lamp BP") and i % 2 == 0:
+                    last_sd = None
+                real_data, log10_data = self.sample_record_parse_raw_data(sd.total, sd.raw_data, last_sd)
             else:
-                real_data, c_data = self.sample_record_parse_raw_data(sd.total, sd.raw_data)
+                real_data, log10_data = self.sample_record_parse_raw_data(sd.total, sd.raw_data)
             if len(real_data) == 0:
                 continue
             if last_sd and last_sd.channel != sd.channel:
                 data_infos.append("=" * 24)
+            last_sd = sd
             if label.name.startswith("Lamp BP"):
-                wave_name = WAVE_NAMES[i % 3]
+                g = i // (len(sds) // 13)
+                wave_name = WAVE_NAMES[(g - 3) % 2 if g > 2 else g % 3]
             elif label.name.startswith("Correct "):
                 wave_name = WAVE_NAMES[i % 2]
             else:
@@ -1163,13 +1171,15 @@ class MainWindow(QMainWindow):
                 )
             else:
                 data_infos.append(f"通道 {sd.channel} | {wave_name} | {data_format_list(real_data)} | (cv = {cv:.4f}, std = {std:.4f}, mean = {mean:.4f})")
-            if c_data:
-                ys = np.array(c_data, dtype=np.float)
+            if log10_data:
+                ys = np.array(log10_data, dtype=np.float)
                 std = np.std(ys)
                 mean = np.mean(ys)
                 cv = std / mean
-                data_infos.append(f"通道 {sd.channel} | {wave_name} | {data_format_list(c_data, float)} | (cv = {cv:.4f}, std = {std:.4f}, mean = {mean:.4f})")
-            last_sd = sd
+                data_infos.append(
+                    f" PD  {sd.channel} | {wave_name} | {data_format_list(log10_data, float)} | (cv = {cv:.4f}, std = {std:.4f}, mean = {mean:.4f})"
+                )
+        logger.debug(f"data_infos length | {len(data_infos)}")
         # https://stackoverflow.com/a/10977872
         font = QFont("Consolas")
         font.setFixedPitch(True)
@@ -1193,21 +1203,62 @@ class MainWindow(QMainWindow):
     def onSampleRecordReadBySp(self, value):
         self.sample_record_plot_by_index(value)
 
+    def updateSampleLED(self, info):
+        for i, sp in enumerate(self.sample_led_sps):
+            sp.setValue(int.from_bytes(info.content[6 + i * 2 : 8 + i * 2], byteorder="little"))
+            self._setColor(sp)
+
+    def onSampleLED_Read(self, event=None):
+        self._serialSendPack(0x32)
+
+    def keyPressEvent(self, event):
+        key = event.key()
+        if not self.sample_led_write_bt.isEnabled():
+            if (
+                (key == Qt.Key_Up and self.sample_led_write_bt_flag in (0x00, 0x01))
+                or (key == Qt.Key_Down and self.sample_led_write_bt_flag in (0x03, 0x07))
+                or (key == Qt.Key_Left and self.sample_led_write_bt_flag in (0x0F, 0x1F))
+                or (key == Qt.Key_Right and self.sample_led_write_bt_flag in (0x3F, 0x7F))
+            ):
+                self.sample_led_write_bt_flag = (self.sample_led_write_bt_flag << 1) + 1
+                if self.sample_led_write_bt_flag == 0xFF:
+                    self.sample_led_write_bt.setEnabled(True)
+            else:
+                self.sample_led_write_bt_flag = 0
+            logger.debug(f"keyPressEvent | 0X{key:x} | {self.sample_led_write_bt_flag:08b}")
+
+    def onSampleLED_Write(self, event=None):
+        data = bytearray()
+        for idx, sp in enumerate(self.sample_led_sps):
+            self._setColor(sp, nfg="red")
+            data += struct.pack("H", sp.value())
+        self._serialSendPack(0x33, data)
+        QTimer.singleShot(1000, self.onSampleLED_Read)
+
+    def create_Sample_LED(self):
+        self.sample_led_gb = QGroupBox("采样板LED")
+        sample_led_ly = QGridLayout(self.sample_led_gb)
+        self.sample_led_sps = [QSpinBox(minimum=400, maximum=2200, maximumWidth=60) for _ in range(3)]
+        for idx, sp in enumerate(self.sample_led_sps):
+            sample_led_ly.addWidget(sp, 0, 2 * idx, 1, 2)
+        self.sample_led_read_bt = QPushButton("读取", clicked=self.onSampleLED_Read)
+        self.sample_led_write_bt = QPushButton("写入", clicked=self.onSampleLED_Write, enabled=False)
+        self.sample_led_write_bt_flag = 0
+        sample_led_ly.addWidget(self.sample_led_read_bt, 1, 0, 1, 3)
+        sample_led_ly.addWidget(self.sample_led_write_bt, 1, 3, 1, 3)
+
     def createSerial(self):
         self.serial_gb = QGroupBox("串口")
-        serial_ly = QHBoxLayout(self.serial_gb)
+        serial_ly = QGridLayout(self.serial_gb)
         serial_ly.setContentsMargins(3, 3, 3, 3)
         serial_ly.setSpacing(0)
         self.serial_switch_bt = QPushButton("打开串口")
-        self.serial_switch_bt.setMaximumWidth(75)
         self.serial_refresh_bt = QPushButton("刷新")
-        self.serial_refresh_bt.setMaximumWidth(75)
         self.serial_post_co = QComboBox()
-        self.serial_post_co.setMaximumWidth(75)
         self.serialRefreshPort()
-        serial_ly.addWidget(self.serial_post_co)
-        serial_ly.addWidget(self.serial_refresh_bt)
-        serial_ly.addWidget(self.serial_switch_bt)
+        serial_ly.addWidget(self.serial_post_co, 0, 0, 1, 1)
+        serial_ly.addWidget(self.serial_refresh_bt, 0, 1, 1, 1)
+        serial_ly.addWidget(self.serial_switch_bt, 1, 0, 1, 2)
         self.serial_refresh_bt.clicked.connect(self.onSerialRefresh)
         self.serial_switch_bt.setCheckable(True)
         self.serial_switch_bt.clicked.connect(self.onSerialSwitch)
@@ -1323,6 +1374,8 @@ class MainWindow(QMainWindow):
             self.updateTemperautreRaw(info)
         elif cmd_type == 0xDF:
             self.udpateDeviceIDLabel(info)
+        elif cmd_type == 0x32:
+            self.updateSampleLED(info)
 
     def onSerialSendWorkerResult(self, write_result):
         result, write_data, info = write_result
@@ -2423,7 +2476,7 @@ class MainWindow(QMainWindow):
         storge_ly = QHBoxLayout()
         storge_ly.setContentsMargins(3, 3, 3, 3)
         storge_ly.setSpacing(3)
-        self.storge_gb = QGroupBox("存储")
+        self.storge_gb = QWidget()
         self.storge_gb.setLayout(QGridLayout())
         self.storge_gb.layout().setContentsMargins(3, 3, 3, 3)
         self.storge_gb.layout().setSpacing(3)
@@ -2433,18 +2486,16 @@ class MainWindow(QMainWindow):
         self.storge_flash_read_bt.setMaximumWidth(100)
         self.storge_gb.layout().addWidget(self.storge_id_card_dialog_bt, 0, 0)
         self.storge_gb.layout().addWidget(self.storge_flash_read_bt, 0, 1)
-        self.debug_flag_gb = QGroupBox("调试")
+
+        self.debug_flag_gb = QWidget()
         debug_flag_ly = QGridLayout(self.debug_flag_gb)
         debug_flag_ly.setSpacing(3)
         debug_flag_ly.setContentsMargins(3, 3, 3, 3)
         self.debug_flag_cbs = (QCheckBox("温度"), QCheckBox("告警"), QCheckBox("扫码"), QCheckBox("托盘"), QCheckBox("原值"))
         for i, cb in enumerate(self.debug_flag_cbs):
-            debug_flag_ly.addWidget(cb, i // 3, i % 3)
-        storge_ly.addStretch(1)
+            debug_flag_ly.addWidget(cb, i // 6, i % 6)
         storge_ly.addWidget(self.storge_gb)
-        storge_ly.addStretch(1)
         storge_ly.addWidget(self.debug_flag_gb)
-        storge_ly.addStretch(1)
 
         self.storge_id_card_dialog_bt.clicked.connect(self.onID_CardDialogShow)
         self.storge_flash_read_bt.clicked.connect(self.onOutFlashDialogShow)
@@ -2510,7 +2561,8 @@ class MainWindow(QMainWindow):
 if __name__ == "__main__":
 
     def trap_exc_during_debug(exc_type, exc_value, exc_traceback):
-        logger.error(f"sys execpt hook\n{traceback.format_exception(exc_type, exc_value, exc_traceback)}")
+        t = "\n".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
+        logger.error(f"sys execpt hook\n{t}")
 
     sys.excepthook = trap_exc_during_debug
     try:

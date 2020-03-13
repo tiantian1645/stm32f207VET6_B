@@ -187,7 +187,8 @@ class SampleDB:
         if label is None:
             label = self.session.query(Label).filter(Label.sample_datas.__ne__(None)).order_by(desc(Label.id))[0]
         self._i32 = None
-        for sample_data in label.sample_datas:
+        sample_data_len = len(label.sample_datas)
+        for idx, sample_data in enumerate(label.sample_datas):
             # no data
             if sample_data.total == 0 or len(sample_data.raw_data) == 0:
                 continue
@@ -198,7 +199,10 @@ class SampleDB:
             else:
                 sample_method = f"error-method-{sample_data.method.value}"
             if 0 < sample_data.wave.value <= len(WAVES):
-                sample_wave = WAVES[sample_data.wave.value - 1]
+                if sample_data_len == 26:
+                    sample_wave = WAVES[idx // 12]
+                else:
+                    sample_wave = WAVES[sample_data.wave.value - 1]
             else:
                 sample_wave = f"error-wave-{sample_data.wave.value}"
 

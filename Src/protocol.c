@@ -1231,6 +1231,12 @@ static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length)
                 error_Emit_FromISR(eError_Out_Flash_Write_Failed);
             }
             break;
+        case eProtocolEmitPack_Client_CMD_SP_LED_GET:
+            comm_Data_Conf_LED_Voltage_Get_FromISR();
+            break;
+        case eProtocolEmitPack_Client_CMD_SP_LED_SET:
+            comm_Data_Conf_LED_Voltage_Set_FromISR(&pInBuff[6]);
+            break;
         default:
             error_Emit_FromISR(eError_Comm_Out_Unknow_CMD);
             break;
@@ -1331,6 +1337,12 @@ static void protocol_Parse_Main_Fun_ISR(uint8_t * pInBuff, uint16_t length)
                 error_Emit_FromISR(eError_Out_Flash_Write_Failed);
             }
             break;
+        case eProtocolEmitPack_Client_CMD_SP_LED_GET:
+            comm_Data_Conf_LED_Voltage_Get_FromISR();
+            break;
+        case eProtocolEmitPack_Client_CMD_SP_LED_SET:
+            comm_Data_Conf_LED_Voltage_Set_FromISR(&pInBuff[6]);
+            break;
         default:
             error_Emit_FromISR(eError_Comm_Main_Unknow_CMD);
             break;
@@ -1411,6 +1423,10 @@ static void protocol_Parse_Data_Fun_ISR(uint8_t * pInBuff, uint16_t length)
             break;
         case eComm_Data_Inbound_CMD_ERROR: /* 采集板错误信息帧 */
             comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_ERR, &pInBuff[6], 2);
+            comm_Out_SendTask_QueueEmitWithModify_FromISR(pInBuff, data_length + 7); /* 修改帧号ID后转发 */
+            break;
+        case eComm_Data_Inbound_CMD_LED_GET:
+            comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_LED_Get, &pInBuff[6], length - 7); /* 转发至外串口 */
             break;
         default:
             error_Emit_FromISR(eError_Comm_Data_Unknow_CMD);
