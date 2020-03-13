@@ -84,6 +84,10 @@ static uint8_t gComm_Data_Sample_Pair_Cnt = 0;
 static uint8_t gComm_Data_Sample_PD_WH_Idx = 0xFF;
 
 static uint8_t gComm_Data_Stary_test_Falg = 0;
+static eComm_Data_Sample_Radiant gComm_Data_SP_LED_Flag = 0;
+static sComm_LED_Voltage gComm_LED_Voltage = {0, 0, 0};
+static int16_t gComm_Data_LED_Voltage_Interval = 100;
+static uint8_t gComm_Data_LED_Voltage_Points = 1;
 
 static uint8_t gComm_Data_Correct_Flag = 0; /* 定标状态标志 */
 static eComm_Data_Sample_Radiant gComm_Data_Correct_wave = eComm_Data_Sample_Radiant_550;
@@ -426,6 +430,228 @@ void comm_Data_Stary_Test_Clear(void)
 uint8_t comm_Data_Stary_Test_Is_Running(void)
 {
     return (gComm_Data_Stary_test_Falg == 1) ? (1) : (0);
+}
+
+/**
+ * @brief  LED电压校正标志 标记
+ * @param  None
+ * @retval None
+ */
+void gComm_Data_SP_LED_Flag_Mark(eComm_Data_Sample_Radiant radiant)
+{
+    gComm_Data_SP_LED_Flag = radiant;
+}
+
+/**
+ * @brief  LED电压校正标志 清除
+ * @param  None
+ * @retval None
+ */
+void gComm_Data_SP_LED_Flag_Clr(void)
+{
+    gComm_Data_SP_LED_Flag = 0;
+}
+
+/**
+ * @brief  LED电压校正 读取
+ * @param  None
+ * @retval 1 正在测试 0 已经结束
+ */
+eComm_Data_Sample_Radiant comm_Data_SP_LED_Is_Running(void)
+{
+    return gComm_Data_SP_LED_Flag;
+}
+
+/**
+ * @brief  LED电压值获取
+ * @param  None
+ * @retval 0 操作成功 1 操作失败
+ */
+uint8_t comm_Data_Get_LED_Voltage()
+{
+    comm_Data_Conf_LED_Voltage_Get();
+    vTaskDelay(600);
+    return 0;
+}
+
+/**
+ * @brief  LED电压值设置
+ * @param  None
+ * @retval 0 操作成功 1 操作失败
+ */
+uint8_t comm_Data_Set_LED_Voltage(eComm_Data_Sample_Radiant radiant, uint16_t voltage)
+{
+    uint8_t buffer[14];
+
+    switch (radiant) {
+        case eComm_Data_Sample_Radiant_610:
+            gComm_LED_Voltage.led_voltage_610 = voltage;
+            break;
+        case eComm_Data_Sample_Radiant_550:
+            gComm_LED_Voltage.led_voltage_550 = voltage;
+            break;
+        case eComm_Data_Sample_Radiant_405:
+            gComm_LED_Voltage.led_voltage_405 = voltage;
+            break;
+        default:
+            return 1;
+    }
+    memcpy(buffer, (uint8_t *)(&gComm_LED_Voltage), sizeof(sComm_LED_Voltage));
+    comm_Data_Conf_LED_Voltage_Set(buffer);
+    vTaskDelay(1500);
+    return 0;
+}
+
+/**
+ * @brief  等待采样板数据
+ * @param  mask 通道掩码 0x01->通道1 0x3F->通道1～6
+ * @param  timeout 超时时间 毫秒
+ * @retval 0 等待时间内接收完成 1 超时
+ */
+uint8_t comm_Data_Wait_Data(uint8_t mask, uint32_t timeout)
+{
+    uint8_t i, check;
+    TickType_t xTick;
+
+    xTick = xTaskGetTickCount();
+    do {
+        check = 1;
+        for (i = 0; i < ARRAY_LEN(gComm_Data_Samples); ++i) {
+            if (((1 << i) & mask) && gComm_Data_Samples[i].num == 0) {
+                check = 0;
+            }
+        }
+        if (check) {
+            return 0;
+        }
+        vTaskDelay(200);
+    } while (check == 0 && xTick + timeout < xTaskGetTickCount());
+    return 1;
+}
+
+/**
+ * @brief  电压增量间隔 获取
+ * @param  None
+ * @retval 电压增量间隔
+ */
+int16_t gComm_Data_LED_Voltage_Interval_Get(void)
+{
+    return gComm_Data_LED_Voltage_Interval;
+}
+
+/**
+ * @brief  电压增量间隔 设置
+ * @param  interval 间隔值 毫伏
+ * @retval None
+ */
+void gComm_Data_LED_Voltage_Interval_Set(int16_t interval)
+{
+    gComm_Data_LED_Voltage_Interval = interval;
+}
+
+/**
+ * @brief  电压校正测试点数 获取
+ * @param  None
+ * @retval 电压校正测试点数
+ */
+uint8_t gComm_Data_LED_Voltage_Points_Get(void)
+{
+    return gComm_Data_LED_Voltage_Points;
+}
+
+/**
+ * @brief  电压校正测试点数 设置
+ * @param  points 测试点数
+ * @retval None
+ */
+void gComm_Data_LED_Voltage_Points_Set(uint8_t points)
+{
+    gComm_Data_LED_Voltage_Points = points;
+}
+
+/**
+ * @brief  检查LED测试数据
+ * @param  radiant 波长
+ * @note   白板PD值应在 1000万～1400万之间
+ * @note   根据测试值调整电压增量间隔 gComm_Data_LED_Voltage_Interval
+ * @retval 0 符合 1 不符合
+ */
+uint8_t comm_Data_Check_LED(eComm_Data_Sample_Radiant radiant)
+{
+    uint8_t i, j, result;
+    uint32_t sums[6] = {0, 0, 0, 0, 0, 0}, temp_32, min, max, bias_1300;
+    static uint32_t last_bias_1300 = 0xFFFFFFFF;
+
+    /* 计算总和 */
+    for (i = 0; i < ARRAY_LEN(gComm_Data_Samples); ++i) {
+        if (gComm_Data_Samples[i].data_type != 4) { /* 非32位整型 */
+            return 2;                               /* 数据类型错误 */
+        }
+        for (j = 0; j < gComm_Data_Samples[i].num; j++) {
+            memcpy((uint8_t *)(&temp_32), &gComm_Data_Samples[i].raw_datas[4 * j], 4);
+            sums[i] += temp_32;
+        }
+    }
+
+    /*均值判断处理 */
+    min = 0xFFFFFFFF;
+    max = 0;
+    result = 0;
+    for (i = 0; i < ARRAY_LEN(gComm_Data_Samples); ++i) {
+        temp_32 = sums[i] / gComm_Data_Samples[i].num;
+        if (result == 0 && (temp_32 < 10000000 || temp_32 > 14000000)) {
+            result = 1;
+        }
+        if (temp_32 > max) {
+            max = temp_32;
+        }
+        if (temp_32 < min) {
+            min = temp_32;
+        }
+        if (temp_32 >= 13000000) {
+            bias_1300 += temp_32 - 13000000;
+        } else {
+            bias_1300 += 13000000 - temp_32;
+        }
+    }
+
+    /* 调整电压增量间隔 */
+    if (result == 0) {
+        if (bias_1300 < last_bias_1300) {             /* 更加接近1300万 */
+            result = 1;                               /* 继续增大电压 */
+            gComm_Data_LED_Voltage_Interval_Set(15);  /* 间隔调至 +15 毫伏 */
+            last_bias_1300 = bias_1300;               /* 历史值记录 */
+            gComm_Data_LED_Voltage_Points_Set(3);     /* 点数设为 3 */
+        } else {                                      /* 过冲回退 */
+            gComm_Data_LED_Voltage_Interval_Set(-15); /* 间隔调至 -15 毫伏 */
+            last_bias_1300 = 0xFFFFFFFF;              /* 初始化历史值 */
+            gComm_Data_LED_Voltage_Points_Set(1);     /* 点数设为 1 */
+            return 0;
+        }
+    } else {                                          /* 最大值或最小值越限 */
+        if (last_bias_1300 < 0xFFFFFFFF) {            /* 已处于接近1300万状态 */
+            gComm_Data_LED_Voltage_Interval_Set(-15); /* 间隔调至 -15 毫伏 */
+            last_bias_1300 = 0xFFFFFFFF;              /* 初始化历史值 */
+            gComm_Data_LED_Voltage_Points_Set(1);     /* 点数设为 1 */
+            return 0;
+        }
+        if (max < 8000000) {
+            if (radiant == eComm_Data_Sample_Radiant_405) {
+                gComm_Data_LED_Voltage_Interval_Set(300);
+            } else {
+                gComm_Data_LED_Voltage_Interval_Set(200);
+            }
+        } else if (max < 12000000) {
+            if (radiant == eComm_Data_Sample_Radiant_405) {
+                gComm_Data_LED_Voltage_Interval_Set(40);
+            } else {
+                gComm_Data_LED_Voltage_Interval_Set(100);
+            }
+        } else {
+            gComm_Data_LED_Voltage_Interval_Set(20);
+        }
+    }
+    return result;
 }
 
 /**
@@ -805,6 +1031,20 @@ BaseType_t comm_Data_Sample_Send_Clear_Conf_FromISR(void)
 }
 
 /**
+ * @brief  采样板LED电压获取
+ * @note   采样板LED电压获取
+ * @param  None
+ * @retval pdPASS 提交成功 pdFALSE 提交失败
+ */
+BaseType_t comm_Data_Conf_LED_Voltage_Get(void)
+{
+    uint8_t sendLength, pData[8];
+
+    sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_LED_GET, pData, 0); /* 构造测试配置包 */
+    return comm_Data_SendTask_QueueEmit(pData, sendLength, 50);
+}
+
+/**
  * @brief  采样板LED电压获取 中断版本
  * @note   采样板LED电压获取
  * @param  None
@@ -819,9 +1059,23 @@ BaseType_t comm_Data_Conf_LED_Voltage_Get_FromISR(void)
 }
 
 /**
+ * @brief  采样板LED电压设置
+ * @note   采样板LED电压设置
+ * @param  * pData 电压配置数组地址 uint16_t array[3]
+ * @retval pdPASS 提交成功 pdFALSE 提交失败
+ */
+BaseType_t comm_Data_Conf_LED_Voltage_Set(uint8_t * pData)
+{
+    uint8_t sendLength;
+
+    sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_LED_SET, pData, 6); /* 构造测试配置包 */
+    return comm_Data_SendTask_QueueEmit(pData, sendLength, 50);
+}
+
+/**
  * @brief  采样板LED电压设置 中断版本
  * @note   采样板LED电压设置
- * @param  None
+ * @param  * pData 电压配置数组地址 uint16_t array[3]
  * @retval pdPASS 提交成功 pdFALSE 提交失败
  */
 BaseType_t comm_Data_Conf_LED_Voltage_Set_FromISR(uint8_t * pData)
@@ -888,7 +1142,6 @@ BaseType_t comm_Data_Conf_Sem_Give_FromISR(void)
  */
 uint8_t comm_Data_Sample_Data_Fetch(uint8_t channel, uint8_t * pBuffer, uint8_t * pLength)
 {
-
     if (channel < 1 || channel > 6) { /* 检查通道编码 */
         *pLength = 0;
         return 1;
@@ -904,14 +1157,18 @@ uint8_t comm_Data_Sample_Data_Fetch(uint8_t channel, uint8_t * pBuffer, uint8_t 
 /**
  * @brief  采样数据记录
  * @param  channel 通道索引 1～6 pBuffer 数据输入指针 length 数据输入长度
+ * @param  replace 0 不替换 1 替换
  * @retval 变换结果 0 u16 1 u32 2 数据长度不匹配 3 通道索引异常
  */
-uint8_t comm_Data_Sample_Data_Commit(uint8_t channel, uint8_t * pBuffer, uint8_t length)
+uint8_t comm_Data_Sample_Data_Commit(uint8_t channel, uint8_t * pBuffer, uint8_t length, uint8_t replace)
 {
     uint8_t result;
 
     if (channel < 1 || channel > 6) { /* 检查通道编码 */
         return 3;
+    }
+    if (replace == 0 && gComm_Data_Samples[channel - 1].num > 0) {
+        return 4;
     }
 
     gComm_Data_Samples[channel - 1].num = pBuffer[6]; /* 数据个数 u16 | u32 */

@@ -27,7 +27,7 @@
 #include "temperature.h"
 #include "heater.h"
 
-/* Extern variables ----------------------------------------------------------*/
+/* Extern variables -----cnt-----------------------------------------------------*/
 extern TIM_HandleTypeDef htim6;
 extern TIM_HandleTypeDef htim7;
 
@@ -725,6 +725,7 @@ static void motor_Task(void * argument)
     eBarcodeState barcode_result;
     float temperature;
     sBarcodeCorrectInfoUnit correct_info;
+    eComm_Data_Sample_Radiant radiant = eComm_Data_Sample_Radiant_610;
 
     led_Mode_Set(eLED_Mode_Keep_Green);    /* LED 绿灯常亮 */
     motor_OPT_Status_Init_Wait_Complete(); /* 等待光耦结果完成 */
@@ -842,8 +843,9 @@ static void motor_Task(void * argument)
                 if (protocol_Debug_SampleBarcode() == 0) {             /* 非调试模式 */
                     vTaskDelayUntil(&xTick, pdMS_TO_TICKS(15 * 1000)); /* 等待补全20秒 */
                 }
-                motor_Sample_Deal();  /* 启动采样并控制白板电机 */
-                motor_Sample_Owari(); /* 清理 */
+                comm_Data_RecordInit(); /* 初始化数据记录 */
+                motor_Sample_Deal();    /* 启动采样并控制白板电机 */
+                motor_Sample_Owari();   /* 清理 */
                 break;
             case eMotor_Fun_SYK:            /* 交错 */
                 if (heat_Motor_Up() != 0) { /* 抬起上加热体电机 失败 */
@@ -1057,6 +1059,35 @@ static void motor_Task(void * argument)
                 comm_Data_Sample_Owari();               /* 发送完成采样报文 */
                 gComm_Data_Lamp_BP_Flag_Clr();          /* 清除灯BP状态 */
                 motor_Tray_Move_By_Index(eTrayIndex_2); /* 出仓 */
+                break;
+            case eMotor_Fun_SP_LED:
+                xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0);                                                    /* 清空通知 */
+                gComm_Data_SP_LED_Flag_Mark(radiant);                                                                /* 标记校正采样板LED电压状态 */
+                comm_Data_Get_LED_Voltage();                                                                         /* 获取采样板LED电压配置 */
+                for (radiant = eComm_Data_Sample_Radiant_610; radiant <= eComm_Data_Sample_Radiant_405; ++radiant) { /* 逐个波长校正 */
+                    cnt = 400;                                                                                       /* 初始化电压值 */
+                    comm_Data_Set_LED_Voltage(radiant, cnt);                                                         /* 设置初始化电压值 */
+                    while (cnt < 2200) {                                                                             /* 循环测试-检测-调整电压 */
+                        comm_Data_RecordInit();                                                                      /* 初始化数据记录 */
+                        gComm_Data_SP_LED_Flag_Mark(radiant);                                                        /* 标记校正采样板LED电压状态 */
+                        comm_Data_Sample_Send_Conf_Correct(buffer, radiant,                                          /* 配置波长 */
+                                                           gComm_Data_LED_Voltage_Points_Get(),                      /* 点数 */
+                                                           eComm_Data_Outbound_CMD_TEST);                            /* 上送 PD 值 */
+                        white_Motor_PD();                                                                            /* 运动白板电机 PD位置 */
+                        white_Motor_WH();                                                                            /* 运动白板电机 白板位置 */
+                        motor_Sample_Deal();                                                                         /* 启动采样并控制白板电机 */
+                        white_Motor_WH();                                                                            /* 运动白板电机 白板位置 */
+                        comm_Data_Wait_Data((radiant == eComm_Data_Sample_Radiant_405) ? (0x3F) : (0x01), 1200);     /* 等待采样结果上送 */
+                        if (comm_Data_Check_LED(radiant) == 0) {                                                     /* 检查采样值 */
+                            cnt += gComm_Data_LED_Voltage_Interval_Get();                                            /* 回退电压值 */
+                            comm_Data_Set_LED_Voltage(radiant, cnt);                                                 /* 调整电压值 */
+                            break;                                                                                   /* 合格即跳出 */
+                        }
+                        cnt += gComm_Data_LED_Voltage_Interval_Get(); /* 增加电压值 */
+                        comm_Data_Set_LED_Voltage(radiant, cnt);      /* 调整电压值 */
+                    }
+                }
+                gComm_Data_SP_LED_Flag_Clr(); /* 清除校正采样板LED电压状态 */
                 break;
             default:
                 break;

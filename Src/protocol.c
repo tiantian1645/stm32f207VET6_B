@@ -1115,6 +1115,9 @@ static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length)
                 } else if (pInBuff[6] == 1) {
                     motor_fun.fun_type = eMotor_Fun_Lamp_BP; /* 灯BP */
                     motor_Emit_FromISR(&motor_fun);          /* 提交到任务队列 */
+                } else if (pInBuff[6] == 2) {
+                    motor_fun.fun_type = eMotor_Fun_SP_LED; /* LED校正 */
+                    motor_Emit_FromISR(&motor_fun);         /* 提交到任务队列 */
                 }
             } else {
                 error_Emit_FromISR(eError_Comm_Out_Param_Error);
@@ -1390,18 +1393,19 @@ uint8_t protocol_Parse_Data_ISR(uint8_t * pInBuff, uint16_t length)
  */
 static void protocol_Parse_Data_Fun_ISR(uint8_t * pInBuff, uint16_t length)
 {
-
     uint8_t data_length, type;
     uint16_t i;
 
-    switch (pInBuff[5]) {                                                                                                       /* 进一步处理 功能码 */
-        case eComm_Data_Inbound_CMD_DATA:                                                                                       /* 采集数据帧 */
-            if (gComm_Data_Correct_Flag_Check()) {                                                                              /* 处于定标状态 */
-                stroge_Conf_CC_O_Data_From_B3(pInBuff + 6);                                                                     /* 修改测量点 */
-                comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7);      /* 转发至外串口 */
-            } else {                                                                                                            /* 未出于定标状态 */
-                type = comm_Data_Sample_Data_Commit(pInBuff[7], pInBuff, length);                                               /* 采样数据记录 */
-                if (protocol_Debug_SampleRawData() || type > 0 || gComm_Data_Lamp_BP_Flag_Check()) {                            /* 选择原始数据 */
+    switch (pInBuff[5]) {                                                                                                  /* 进一步处理 功能码 */
+        case eComm_Data_Inbound_CMD_DATA:                                                                                  /* 采集数据帧 */
+            if (gComm_Data_Correct_Flag_Check()) {                                                                         /* 处于定标状态 */
+                stroge_Conf_CC_O_Data_From_B3(pInBuff + 6);                                                                /* 修改测量点 */
+                comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7); /* 转发至外串口 */
+            } else if (comm_Data_SP_LED_Is_Running()) {                                                                    /* 处于LED校正状态 */
+                comm_Data_Sample_Data_Commit(pInBuff[7], pInBuff, length, 0);                        /* 不允许替换 先白板后反应区 */
+            } else {                                                                                 /* 未出于定标状态 */
+                type = comm_Data_Sample_Data_Commit(pInBuff[7], pInBuff, length, 1);                 /* 采样数据记录 */
+                if (protocol_Debug_SampleRawData() || type > 0 || gComm_Data_Lamp_BP_Flag_Check()) { /* 选择原始数据 */
                     comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7); /* 构造数据包 */
                     comm_Out_SendTask_QueueEmitWithModify_FromISR(pInBuff + 6, length);                                         /* 修改帧号ID后转发 */
                     if (type > 0 || gComm_Data_Lamp_BP_Flag_Check()) { /* u32类型 或 处于灯BP状态 */

@@ -83,6 +83,12 @@ typedef enum {
     eComm_Data_Inbound_CMD_LED_GET = 0x32, /* LED电压读取 */
 } eComm_Data_Inbound_CMD;
 
+typedef struct {
+    uint16_t led_voltage_610;
+    uint16_t led_voltage_550;
+    uint16_t led_voltage_405;
+} sComm_LED_Voltage;
+
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/
@@ -105,6 +111,14 @@ BaseType_t comm_Data_Send_ACK_Give_From_ISR(uint8_t packIndex);
 
 uint8_t gComm_Data_Sample_Max_Point_Get(void);
 void gComm_Data_Sample_Max_Point_Clear(void);
+
+void comm_Data_RecordInit(void);
+uint8_t comm_Data_Get_LED_Voltage();
+uint8_t comm_Data_Set_LED_Voltage(eComm_Data_Sample_Radiant radiant, uint16_t voltage);
+uint8_t comm_Data_Check_LED(eComm_Data_Sample_Radiant radiant);
+uint8_t comm_Data_Wait_Data(uint8_t mask, uint32_t timeout);
+int16_t gComm_Data_LED_Voltage_Interval_Get(void);
+uint8_t gComm_Data_LED_Voltage_Points_Get(void);
 
 uint8_t comm_Data_Sample_Start(void);
 uint8_t comm_Data_sample_Start_PD(void);
@@ -129,7 +143,9 @@ BaseType_t comm_Data_Conf_Sem_Wait(uint32_t timeout);
 BaseType_t comm_Data_Conf_Sem_Give(void);
 BaseType_t comm_Data_Conf_Sem_Give_FromISR(void);
 
+BaseType_t comm_Data_Conf_LED_Voltage_Get(void);
 BaseType_t comm_Data_Conf_LED_Voltage_Get_FromISR(void);
+BaseType_t comm_Data_Conf_LED_Voltage_Set(uint8_t * pData);
 BaseType_t comm_Data_Conf_LED_Voltage_Set_FromISR(uint8_t * pData);
 
 BaseType_t comm_Data_Sample_Owari(void);
@@ -142,7 +158,7 @@ void comm_Data_Stary_Test_Clear(void);
 uint8_t comm_Data_Stary_Test_Is_Running(void);
 
 uint8_t comm_Data_Sample_Data_Fetch(uint8_t channel, uint8_t * pBuffer, uint8_t * pLength);
-uint8_t comm_Data_Sample_Data_Commit(uint8_t channel, uint8_t * pBuffer, uint8_t length);
+uint8_t comm_Data_Sample_Data_Commit(uint8_t channel, uint8_t * pBuffer, uint8_t length, uint8_t replcae);
 uint8_t comm_Data_Sample_Data_Correct(uint8_t channel, uint8_t * pBuffer, uint8_t * pLength);
 
 void gComm_Data_Correct_Flag_Mark(void);
@@ -157,6 +173,10 @@ void comm_Data_Set_Corretc_Stage(uint8_t channel, uint8_t idx);
 void gComm_Data_Lamp_BP_Flag_Mark(void);
 void gComm_Data_Lamp_BP_Flag_Clr(void);
 uint8_t gComm_Data_Lamp_BP_Flag_Check(void);
+
+void gComm_Data_SP_LED_Flag_Mark(eComm_Data_Sample_Radiant radiant);
+void gComm_Data_SP_LED_Flag_Clr(void);
+eComm_Data_Sample_Radiant comm_Data_SP_LED_Is_Running(void);
 
 void comm_Data_GPIO_Init(void);
 void comm_Data_Board_Reset(void);

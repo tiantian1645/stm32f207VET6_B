@@ -649,6 +649,8 @@ class MainWindow(QMainWindow):
         self.matplot_period_tv_cb.stateChanged.connect(lambda x: self.matplot_period_tv_cb.setText(("&NL", "&OD", "&PD")[x]))
         self.lamp_bp_bt = QPushButton("BP", maximumWidth=30)
         self.lamp_bp_bt.clicked.connect(self.onLampBP)
+        self.lamp_sl_bt = QPushButton("SL", maximumWidth=30)
+        self.lamp_sl_bt.clicked.connect(self.onLampSL)
         self.lamp_ag_cb = QCheckBox("AG", maximumWidth=60)
         for i in range(7):
             self.motor_scan_bts[i].setMaximumWidth(45)
@@ -694,6 +696,7 @@ class MainWindow(QMainWindow):
                 temp_ly.addWidget(self.matplot_cancel_bt)
                 temp_ly.addWidget(self.matplot_period_tv_cb)
                 temp_ly.addWidget(self.lamp_bp_bt)
+                temp_ly.addWidget(self.lamp_sl_bt)
                 temp_ly.addWidget(self.lamp_ag_cb)
                 barcode_ly.addLayout(temp_ly, i, 2, 1, 6)
         self.sample_record_idx_sp = QSpinBox()
@@ -2447,6 +2450,9 @@ class MainWindow(QMainWindow):
             data = [struct.unpack("H", info.content[8 + 2 * i : 10 + 2 * i])[0] for i in range(info.content[6])]
             logger.debug(f"DebugTest Data channel {self.debugtest_cnt} | {data}")
             self.debugtest_bt.setToolTip(f"{data}")
+
+    def onLampSL(self):
+        self._serialSendPack(0xDC, (2,))
 
     def onLampBP(self):
         self._serialSendPack(0xDC, (1,))
