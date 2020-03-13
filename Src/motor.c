@@ -27,7 +27,7 @@
 #include "temperature.h"
 #include "heater.h"
 
-/* Extern variables -----cnt-----------------------------------------------------*/
+/* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim6;
 extern TIM_HandleTypeDef htim7;
 
