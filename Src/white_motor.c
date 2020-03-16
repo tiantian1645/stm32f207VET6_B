@@ -274,12 +274,17 @@ uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout)
     return 2;
 }
 
-uint8_t white_Motor_Toggle(uint32_t timeout)
+/**
+ * @brief  白板电机位置翻转
+ * @param  None
+ * @retval white_Motor_Run 运动结果 0 正常 1 PWM启动失败 2 运动超时 3 白板位置异常 4 PD位置异常
+ */
+uint8_t white_Motor_Toggle(void)
 {
     if (white_Motor_Position_Is_In()) {
-        return white_Motor_Run(eMotorDir_FWD, timeout);
+        return white_Motor_WH();
     }
-    return white_Motor_Run(eMotorDir_REV, timeout);
+    return white_Motor_PD();
 }
 
 /**

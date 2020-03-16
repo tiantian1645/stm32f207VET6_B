@@ -1236,7 +1236,7 @@ class MainWindow(QMainWindow):
             self._setColor(sp, nfg="red")
             data += struct.pack("H", sp.value())
         self._serialSendPack(0x33, data)
-        QTimer.singleShot(1000, self.onSampleLED_Read)
+        QTimer.singleShot(800, self.onSampleLED_Read)
 
     def create_Sample_LED(self):
         self.sample_led_gb = QGroupBox("采样板LED")
