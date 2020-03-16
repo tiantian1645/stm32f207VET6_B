@@ -18,16 +18,16 @@ extern TIM_HandleTypeDef htim1;
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
-#define HEAT_MOTOR_UP_PCS_MAX 36000
-#define HEAT_MOTOR_UP_PCS_MIN 32000
+#define HEAT_MOTOR_UP_PCS_MAX 40000
+#define HEAT_MOTOR_UP_PCS_MIN 36000
 #define HEAT_MOTOR_UP_PCS_UNT 20
 #define HEAT_MOTOR_UP_PCS_SUM 110
-#define HEAT_MOTOR_UP_PCS_GAP (200)
+#define HEAT_MOTOR_UP_PCS_GAP (((HEAT_MOTOR_UP_PCS_MAX) - (HEAT_MOTOR_UP_PCS_MIN)) / (HEAT_MOTOR_UP_PCS_SUM))
 
-#define HEAT_MOTOR_DOWN_PCS_MAX 28000
-#define HEAT_MOTOR_DOWN_PCS_MIN 24000
+#define HEAT_MOTOR_DOWN_PCS_MAX 36000
+#define HEAT_MOTOR_DOWN_PCS_MIN 32000
 #define HEAT_MOTOR_DOWN_PCS_UNT 24
-#define HEAT_MOTOR_DOWN_PCS_SUM 80
+#define HEAT_MOTOR_DOWN_PCS_SUM 84
 #define HEAT_MOTOR_DOWN_PCS_GAP (((HEAT_MOTOR_DOWN_PCS_MAX) - (HEAT_MOTOR_DOWN_PCS_MIN)) / (HEAT_MOTOR_DOWN_PCS_SUM))
 /* Private variables ---------------------------------------------------------*/
 static eMotorDir gHeat_Motor_Dir = eMotorDir_FWD;
