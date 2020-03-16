@@ -498,7 +498,7 @@ uint8_t comm_Data_Set_LED_Voltage(eComm_Data_Sample_Radiant radiant, uint16_t vo
     }
     memcpy(buffer, (uint8_t *)(&gComm_LED_Voltage), sizeof(sComm_LED_Voltage));
     comm_Data_Conf_LED_Voltage_Set(buffer);
-    vTaskDelay(1500);
+    vTaskDelay(600);
     return 0;
 }
 
