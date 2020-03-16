@@ -651,7 +651,9 @@ void motor_Sample_Owari(void)
     heater_Overshoot_Flag_Set(eHeater_TOP, 0);   /* 取消上加热体过冲加热标志 */
     white_Motor_WH();                            /* 运动白板电机 白板位置 */
     heat_Motor_Up();                             /* 采样结束 抬起加热体电机 */
-    motor_Tray_Move_By_Index(eTrayIndex_2);      /* 出仓 */
+    if (protocol_Debug_SampleMotorTray() == 0) { /* 非托盘电机调试 */
+        motor_Tray_Move_By_Index(eTrayIndex_2);  /* 出仓 */
+    }
     barcode_Motor_Run_By_Index(eBarcodeIndex_0); /* 复位 */
     barcode_Motor_Run_By_Index(eBarcodeIndex_6); /* 二维码位置就位 */
     gComm_Data_Sample_Max_Point_Clear();         /* 清除需要测试点数 */
@@ -792,8 +794,10 @@ static void motor_Task(void * argument)
                     error_Emit(eError_Temp_TOP_Not_In_Range);   /* 上报提示 */
                 }
 
-                if (protocol_Debug_SampleBarcode() == 0) {           /* 非调试模式 */
-                    motor_Tray_Move_By_Index(eTrayIndex_1);          /* 扫码位置 */
+                if (protocol_Debug_SampleBarcode() == 0) { /* 非调试模式 */
+                    if (protocol_Debug_SampleMotorTray() == 0) {
+                        motor_Tray_Move_By_Index(eTrayIndex_1); /* 扫码位置 */
+                    }
                     barcode_result = barcode_Scan_QR();              /* 扫描二维条码 */
                     if (barcode_result == eBarcodeState_Interrupt) { /* 中途打断 */
                         motor_Sample_Owari();                        /* 清理 */
@@ -1043,9 +1047,9 @@ static void motor_Task(void * argument)
                         xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(2000)); /* 等待通知 */
                     }
                     white_Motor_WH(); /* 运动白板电机 白物质位置 */
-                    vTaskDelay(2000);
+                    vTaskDelay(1000);
                     comm_Data_Sample_Send_Clear_Conf();
-                    vTaskDelay(2000);
+                    vTaskDelay(1000);
                 }
                 comm_Data_Sample_Owari();               /* 发送完成采样报文 */
                 motor_Tray_Move_By_Index(eTrayIndex_2); /* 出仓 */
