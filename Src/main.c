@@ -1181,11 +1181,17 @@ static void MX_GPIO_Init(void)
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(OPTSW_OUT2_GPIO_Port, &GPIO_InitStruct);
 
-    /*Configure GPIO pins : OPTSW_OUT3_Pin OPTSW_OUT4_Pin OPTSW_OUT5_Pin OPTSW_OUT0_Pin
-                             OPTSW_OUT1_Pin */
-    GPIO_InitStruct.Pin = OPTSW_OUT3_Pin | OPTSW_OUT4_Pin | OPTSW_OUT5_Pin | OPTSW_OUT0_Pin | OPTSW_OUT1_Pin;
+    /*Configure GPIO pins : OPTSW_OUT3_Pin OPTSW_OUT4_Pin OPTSW_OUT0_Pin OPTSW_OUT1_Pin */
+    GPIO_InitStruct.Pin = OPTSW_OUT3_Pin | OPTSW_OUT4_Pin | OPTSW_OUT0_Pin | OPTSW_OUT1_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
     GPIO_InitStruct.Pull = GPIO_PULLUP;
+    HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+    /*Configure GPIO pins : PE5 PE7 PE8 PE11
+                             STEP_NFLG2_Pin */
+    GPIO_InitStruct.Pin = GPIO_PIN_5 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_11 | STEP_NFLG2_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
     /*Configure GPIO pins : STEP_NCS1_Pin BC_AIM_WK_N_Pin FAN_EN_Pin LED_RUN_Pin */
@@ -1209,12 +1215,6 @@ static void MX_GPIO_Init(void)
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-    /*Configure GPIO pins : PE7 PE8 PE11 STEP_NFLG2_Pin */
-    GPIO_InitStruct.Pin = GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_11 | STEP_NFLG2_Pin;
-    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
-
     /*Configure GPIO pins : STEP_NRST_Pin STEP_NCS2_Pin STEP_DIR2_Pin BC_TRIG_N_Pin */
     GPIO_InitStruct.Pin = STEP_NRST_Pin | STEP_NCS2_Pin | STEP_DIR2_Pin | BC_TRIG_N_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -1237,8 +1237,8 @@ static void MX_GPIO_Init(void)
     HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
     /*Configure GPIO pins : MOT_NBUSY1_Pin MOT_NFLG2_Pin MOT_NFLG1_Pin MOT_NBUSY2_Pin
-                             PD14 PD0 PD1 FRONT_RESET_Pin */
-    GPIO_InitStruct.Pin = MOT_NBUSY1_Pin | MOT_NFLG2_Pin | MOT_NFLG1_Pin | MOT_NBUSY2_Pin | GPIO_PIN_14 | GPIO_PIN_0 | GPIO_PIN_1 | FRONT_RESET_Pin;
+                             PD14 OPTSW_OUT5_Pin OPTSW_OUT6_Pin FRONT_RESET_Pin */
+    GPIO_InitStruct.Pin = MOT_NBUSY1_Pin | MOT_NFLG2_Pin | MOT_NFLG1_Pin | MOT_NBUSY2_Pin | GPIO_PIN_14 | OPTSW_OUT5_Pin | OPTSW_OUT6_Pin | FRONT_RESET_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);

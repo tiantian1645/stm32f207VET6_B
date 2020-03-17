@@ -30,13 +30,12 @@ typedef struct {
 #define TEMP_NTC_TA (TEMP_NTC_TK + 25) /* 25摄氏度换算成热力学温度 */
 #define TEMP_NTC_S 4095                /* 12位ADC 转换最大值 */
 
-#define TEMP_NTC_TOP_NUM 6
-#define TEMP_NTC_BTM_NUM 2
+#define TEMP_NTC_TOP_NUM 2
+#define TEMP_NTC_BTM_NUM 1
 
 /* Private macro -------------------------------------------------------------*/
-const eTemp_NTC_Index TEMP_NTC_TOP_IDXS[TEMP_NTC_TOP_NUM] = {eTemp_NTC_Index_0, eTemp_NTC_Index_1, eTemp_NTC_Index_2,
-                                                             eTemp_NTC_Index_3, eTemp_NTC_Index_4, eTemp_NTC_Index_5};
-const eTemp_NTC_Index TEMP_NTC_BTM_IDXS[TEMP_NTC_BTM_NUM] = {eTemp_NTC_Index_6, eTemp_NTC_Index_7};
+const eTemp_NTC_Index TEMP_NTC_TOP_IDXS[TEMP_NTC_TOP_NUM] = {eTemp_NTC_Index_0, eTemp_NTC_Index_1};
+const eTemp_NTC_Index TEMP_NTC_BTM_IDXS[TEMP_NTC_BTM_NUM] = {eTemp_NTC_Index_6};
 
 #define TEMP_NTC_ENV_1 eTemp_NTC_Index_8
 

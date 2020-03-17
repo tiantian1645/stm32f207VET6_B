@@ -74,7 +74,7 @@ void soft_timer_Heater_Call_Back(TimerHandle_t xTimer)
     } else { /* 温度过冲被停止 */
         btm_cnt = 0;
         btm_flag = 0;
-        if (heater_BTM_Setpoint_Get() != HEATER_BTM_DEFAULT_SETPOINT) {
+        if (heater_BTM_Setpoint_Get() != HEATER_BTM_DEFAULT_SETPOINT && heater_BTM_Setpoint_Get() < 40) {
             heater_BTM_Setpoint_Set(HEATER_BTM_DEFAULT_SETPOINT); /* 恢复下加热体目标温度 */
         }
     }
@@ -107,7 +107,7 @@ void soft_timer_Heater_Call_Back(TimerHandle_t xTimer)
     } else { /* 温度过冲被停止 */
         top_cnt = 0;
         top_flag = 0;
-        if (heater_TOP_Setpoint_Get() != HEATER_TOP_DEFAULT_SETPOINT) {
+        if (heater_TOP_Setpoint_Get() != HEATER_TOP_DEFAULT_SETPOINT && heater_TOP_Setpoint_Get() < 40) {
             heater_TOP_Setpoint_Set(HEATER_TOP_DEFAULT_SETPOINT); /* 恢复上加热体目标温度 */
         }
     }

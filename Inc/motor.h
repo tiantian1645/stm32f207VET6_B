@@ -87,9 +87,9 @@ typedef enum {
 } eMotorNotifyValue;
 
 typedef enum {
-    eMotor_OPT_Status_ON = 0,
-    eMotor_OPT_Status_OFF = 1,
-    eMotor_OPT_Status_None = 0xFF,
+    eMotor_OPT_Status_ON = 0,      /* 光耦通路 */
+    eMotor_OPT_Status_OFF = 1,     /* 光耦被遮挡 */
+    eMotor_OPT_Status_None = 0xFF, /* 初始状态 */
 } eMotor_OPT_Status;
 
 typedef enum {
@@ -97,8 +97,8 @@ typedef enum {
     eMotor_OPT_Index_Tray,
     eMotor_OPT_Index_Tray_Scan,
     eMotor_OPT_Index_Heater,
-    eMotor_OPT_Index_White,
-    eMotor_OPT_Index_QR,
+    eMotor_OPT_Index_White_In,
+    eMotor_OPT_Index_White_Out,
     eMotor_OPT_Index_NUM,
 } eMotor_OPT_Index;
 
@@ -135,7 +135,8 @@ void motor_OPT_Status_Update(void);
 eMotor_OPT_Status motor_OPT_Status_Get(eMotor_OPT_Index idx);
 
 eMotor_OPT_Status motor_OPT_Status_Get_Tray(void);
-eMotor_OPT_Status motor_OPT_Status_Get_White(void);
+eMotor_OPT_Status motor_OPT_Status_Get_White_In(void);
+eMotor_OPT_Status motor_OPT_Status_Get_White_Out(void);
 
 void gMotorPressureStopBits_Set(eMotor_Fun fun, uint8_t b);
 void gMotorPressureStopBits_Clear(void);

@@ -87,8 +87,6 @@ void reset_Tim1(void);
 #define OPTSW_OUT3_GPIO_Port GPIOE
 #define OPTSW_OUT4_Pin GPIO_PIN_4
 #define OPTSW_OUT4_GPIO_Port GPIOE
-#define OPTSW_OUT5_Pin GPIO_PIN_5
-#define OPTSW_OUT5_GPIO_Port GPIOE
 #define BUZZ_ON_Pin GPIO_PIN_6
 #define BUZZ_ON_GPIO_Port GPIOE
 #define STEP_NCS1_Pin GPIO_PIN_13
@@ -181,6 +179,10 @@ void reset_Tim1(void);
 #define LED_RUN_GPIO_Port GPIOC
 #define MCU_TXD_Pin GPIO_PIN_12
 #define MCU_TXD_GPIO_Port GPIOC
+#define OPTSW_OUT5_Pin GPIO_PIN_0
+#define OPTSW_OUT5_GPIO_Port GPIOD
+#define OPTSW_OUT6_Pin GPIO_PIN_1
+#define OPTSW_OUT6_GPIO_Port GPIOD
 #define MCU_RXD_Pin GPIO_PIN_2
 #define MCU_RXD_GPIO_Port GPIOD
 #define FRONT_RESET_Pin GPIO_PIN_3

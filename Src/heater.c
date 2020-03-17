@@ -272,7 +272,7 @@ uint8_t heater_BTM_Output_Is_Live(void)
 void heater_BTM_Output_Init(void)
 {
     // Prepare PID controller for operation
-    pid_ctrl_init(&gHeater_BTM_PID_Conf, HEATER_BTM_SAMPLE, &btm_input, &btm_output, &btm_setpoint, 1200000, 4800, 4800);
+    pid_ctrl_init(&gHeater_BTM_PID_Conf, HEATER_BTM_SAMPLE, &btm_input, &btm_output, &btm_setpoint, 600000, 1200, 1200);
     // Set controler output limits from 0 to 200
     pid_ctrl_limits(&gHeater_BTM_PID_Conf, 0, HEATER_BTM_ARR);
     // Allow PID to compute and change output
@@ -290,7 +290,7 @@ void heater_BTM_Output_Keep_Deal(void)
     if (pid_ctrl_need_compute(&gHeater_BTM_PID_Conf)) {
         // Read process feedback
         btm_input = temp_Get_Temp_Data_BTM();
-        if (btm_input > HEATER_BTM_DEFAULT_SETPOINT + 1) {
+        if (btm_input > *(gHeater_BTM_PID_Conf.setpoint) + 2) {
             heater_BTM_Output_Ctl(0);
         } else {
             // Compute new PID output value
@@ -359,7 +359,7 @@ HAL_TIM_StateTypeDef heater_TOP_Output_Is_Live(void)
 void heater_TOP_Output_Init(void)
 {
     // Prepare PID controller for operation
-    pid_ctrl_init(&gHeater_TOP_PID_Conf, HEATER_TOP_SAMPLE, &top_input, &top_output, &top_setpoint, 600000, 1000, 2000);
+    pid_ctrl_init(&gHeater_TOP_PID_Conf, HEATER_TOP_SAMPLE, &top_input, &top_output, &top_setpoint, 480000, 1200, 3600);
     // Set controler output limits from 0 to 200
     pid_ctrl_limits(&gHeater_TOP_PID_Conf, 0, HEATER_TOP_ARR);
     // Allow PID to compute and change output
@@ -377,7 +377,7 @@ void heater_TOP_Output_Keep_Deal(void)
     if (pid_ctrl_need_compute(&gHeater_TOP_PID_Conf)) {
         // Read process feedback
         top_input = temp_Get_Temp_Data_TOP();
-        if (top_input > HEATER_TOP_DEFAULT_SETPOINT + 1) {
+        if (top_input > *(gHeater_TOP_PID_Conf.setpoint) + 2) {
             heater_TOP_Output_Ctl(0);
         } else {
             // Compute new PID output value

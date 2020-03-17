@@ -62,8 +62,6 @@ static void motor_Tray_Move_By_Index(eTrayIndex index);
 static eMotor_OPT_Status motor_OPT_Status_Get_Scan(void);
 static eMotor_OPT_Status motor_OPT_Status_Get_Tray_Scan(void);
 static eMotor_OPT_Status motor_OPT_Status_Get_Heater(void);
-//
-static eMotor_OPT_Status motor_OPT_Status_Get_QR(void);
 
 static void motor_Self_Check_Motor_White(uint8_t * pBuffer);
 static void motor_Self_Check_Motor_Heater(uint8_t * pBuffer);
@@ -74,8 +72,8 @@ static void motor_Self_Check_Scan(uint8_t * pBuffer);
 static void motor_Stary_Test(void);
 
 /* Private constants ---------------------------------------------------------*/
-const eMotor_OPT_Status (*gOPT_Status_Get_Funs[])(void) = {motor_OPT_Status_Get_Scan,   motor_OPT_Status_Get_Tray,  motor_OPT_Status_Get_Tray_Scan,
-                                                           motor_OPT_Status_Get_Heater, motor_OPT_Status_Get_White, motor_OPT_Status_Get_QR};
+const eMotor_OPT_Status (*gOPT_Status_Get_Funs[])(void) = {motor_OPT_Status_Get_Scan,   motor_OPT_Status_Get_Tray,     motor_OPT_Status_Get_Tray_Scan,
+                                                           motor_OPT_Status_Get_Heater, motor_OPT_Status_Get_White_In, motor_OPT_Status_Get_White_Out};
 
 /* Private user code ---------------------------------------------------------*/
 /**
@@ -135,7 +133,7 @@ static eMotor_OPT_Status motor_OPT_Status_Get_Heater(void)
  * @param  None
  * @retval 光耦状态
  */
-eMotor_OPT_Status motor_OPT_Status_Get_White(void)
+eMotor_OPT_Status motor_OPT_Status_Get_White_In(void)
 {
     if (HAL_GPIO_ReadPin(OPTSW_OUT4_GPIO_Port, OPTSW_OUT4_Pin) == GPIO_PIN_RESET) {
         return eMotor_OPT_Status_OFF;
@@ -144,11 +142,11 @@ eMotor_OPT_Status motor_OPT_Status_Get_White(void)
 }
 
 /**
- * @brief  软定时器光耦状态硬件读取 二维条码遮挡
+ * @brief  软定时器光耦状态硬件读取 白板电机
  * @param  None
  * @retval 光耦状态
  */
-static eMotor_OPT_Status motor_OPT_Status_Get_QR(void)
+eMotor_OPT_Status motor_OPT_Status_Get_White_Out(void)
 {
     if (HAL_GPIO_ReadPin(OPTSW_OUT5_GPIO_Port, OPTSW_OUT5_Pin) == GPIO_PIN_RESET) {
         return eMotor_OPT_Status_OFF;
