@@ -1241,7 +1241,7 @@ class MainWindow(QMainWindow):
     def create_Sample_LED(self):
         self.sample_led_gb = QGroupBox("采样板LED")
         sample_led_ly = QGridLayout(self.sample_led_gb)
-        self.sample_led_sps = [QSpinBox(minimum=400, maximum=2200, maximumWidth=60) for _ in range(3)]
+        self.sample_led_sps = [QSpinBox(minimum=10, maximum=2200, maximumWidth=60) for _ in range(3)]
         for idx, sp in enumerate(self.sample_led_sps):
             sample_led_ly.addWidget(sp, 0, 2 * idx, 1, 2)
         self.sample_led_read_bt = QPushButton("读取", clicked=self.onSampleLED_Read)

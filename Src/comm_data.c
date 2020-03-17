@@ -598,6 +598,9 @@ uint8_t comm_Data_Check_LED(eComm_Data_Sample_Radiant radiant)
     max = 0;
     result = 0;
     for (i = 0; i < ARRAY_LEN(gComm_Data_Samples); ++i) {
+    	if (gComm_Data_Samples[i].num == 0) {
+    		continue;
+    	}
         temp_32 = sums[i] / gComm_Data_Samples[i].num;
         if (result == 0 && (temp_32 < 10000000 || temp_32 > 14000000)) {
             result = 1;
@@ -617,38 +620,90 @@ uint8_t comm_Data_Check_LED(eComm_Data_Sample_Radiant radiant)
 
     /* 调整电压增量间隔 */
     if (result == 0) {
-        if (bias_1300 < last_bias_1300) {             /* 更加接近1300万 */
-            result = 1;                               /* 继续增大电压 */
-            gComm_Data_LED_Voltage_Interval_Set(15);  /* 间隔调至 +15 毫伏 */
-            last_bias_1300 = bias_1300;               /* 历史值记录 */
-            gComm_Data_LED_Voltage_Points_Set(3);     /* 点数设为 3 */
-        } else {                                      /* 过冲回退 */
-            gComm_Data_LED_Voltage_Interval_Set(-15); /* 间隔调至 -15 毫伏 */
-            last_bias_1300 = 0xFFFFFFFF;              /* 初始化历史值 */
-            gComm_Data_LED_Voltage_Points_Set(1);     /* 点数设为 1 */
+        if (bias_1300 < last_bias_1300) { /* 更加接近1300万 */
+            result = 1;                   /* 继续增大电压 */
+            switch (radiant) {
+                case eComm_Data_Sample_Radiant_610:
+                    gComm_Data_LED_Voltage_Interval_Set(1);
+                    break;
+                case eComm_Data_Sample_Radiant_550:
+                    gComm_Data_LED_Voltage_Interval_Set(20);
+                    break;
+                case eComm_Data_Sample_Radiant_405:
+                    gComm_Data_LED_Voltage_Interval_Set(5);
+                    break;
+            }
+            last_bias_1300 = bias_1300;           /* 历史值记录 */
+            gComm_Data_LED_Voltage_Points_Set(1); /* 点数设为 3 */
+        } else {                                  /* 过冲回退 */
+            switch (radiant) {
+                case eComm_Data_Sample_Radiant_610:
+                    gComm_Data_LED_Voltage_Interval_Set(-1);
+                    break;
+                case eComm_Data_Sample_Radiant_550:
+                    gComm_Data_LED_Voltage_Interval_Set(-20);
+                    break;
+                case eComm_Data_Sample_Radiant_405:
+                    gComm_Data_LED_Voltage_Interval_Set(-5);
+                    break;
+            }
+            last_bias_1300 = 0xFFFFFFFF;          /* 初始化历史值 */
+            gComm_Data_LED_Voltage_Points_Set(1); /* 点数设为 1 */
             return 0;
         }
     } else {                                          /* 最大值或最小值越限 */
         if (last_bias_1300 < 0xFFFFFFFF) {            /* 已处于接近1300万状态 */
-            gComm_Data_LED_Voltage_Interval_Set(-15); /* 间隔调至 -15 毫伏 */
+            switch (radiant) {
+                case eComm_Data_Sample_Radiant_610:
+                    gComm_Data_LED_Voltage_Interval_Set(-1);
+                    break;
+                case eComm_Data_Sample_Radiant_550:
+                    gComm_Data_LED_Voltage_Interval_Set(-20);
+                    break;
+                case eComm_Data_Sample_Radiant_405:
+                    gComm_Data_LED_Voltage_Interval_Set(-5);
+                    break;
+            }
             last_bias_1300 = 0xFFFFFFFF;              /* 初始化历史值 */
             gComm_Data_LED_Voltage_Points_Set(1);     /* 点数设为 1 */
             return 0;
         }
         if (max < 8000000) {
-            if (radiant == eComm_Data_Sample_Radiant_405) {
-                gComm_Data_LED_Voltage_Interval_Set(300);
-            } else {
-                gComm_Data_LED_Voltage_Interval_Set(200);
+            switch (radiant) {
+                case eComm_Data_Sample_Radiant_610:
+                    gComm_Data_LED_Voltage_Interval_Set(4);
+                    break;
+                case eComm_Data_Sample_Radiant_550:
+                    gComm_Data_LED_Voltage_Interval_Set(80);
+                    break;
+                case eComm_Data_Sample_Radiant_405:
+                    gComm_Data_LED_Voltage_Interval_Set(20);
+                    break;
             }
         } else if (max < 12000000) {
-            if (radiant == eComm_Data_Sample_Radiant_405) {
-                gComm_Data_LED_Voltage_Interval_Set(40);
-            } else {
-                gComm_Data_LED_Voltage_Interval_Set(100);
+            switch (radiant) {
+                case eComm_Data_Sample_Radiant_610:
+                    gComm_Data_LED_Voltage_Interval_Set(2);
+                    break;
+                case eComm_Data_Sample_Radiant_550:
+                    gComm_Data_LED_Voltage_Interval_Set(40);
+                    break;
+                case eComm_Data_Sample_Radiant_405:
+                    gComm_Data_LED_Voltage_Interval_Set(10);
+                    break;
             }
         } else {
-            gComm_Data_LED_Voltage_Interval_Set(20);
+            switch (radiant) {
+                case eComm_Data_Sample_Radiant_610:
+                    gComm_Data_LED_Voltage_Interval_Set(1);
+                    break;
+                case eComm_Data_Sample_Radiant_550:
+                    gComm_Data_LED_Voltage_Interval_Set(20);
+                    break;
+                case eComm_Data_Sample_Radiant_405:
+                    gComm_Data_LED_Voltage_Interval_Set(5);
+                    break;
+            }
         }
     }
     return result;
