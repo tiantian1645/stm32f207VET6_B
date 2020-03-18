@@ -598,9 +598,9 @@ uint8_t comm_Data_Check_LED(eComm_Data_Sample_Radiant radiant)
     max = 0;
     result = 0;
     for (i = 0; i < ARRAY_LEN(gComm_Data_Samples); ++i) {
-    	if (gComm_Data_Samples[i].num == 0) {
-    		continue;
-    	}
+        if (gComm_Data_Samples[i].num == 0) {
+            continue;
+        }
         temp_32 = sums[i] / gComm_Data_Samples[i].num;
         if (result == 0 && (temp_32 < 10000000 || temp_32 > 14000000)) {
             result = 1;
@@ -627,7 +627,7 @@ uint8_t comm_Data_Check_LED(eComm_Data_Sample_Radiant radiant)
                     gComm_Data_LED_Voltage_Interval_Set(1);
                     break;
                 case eComm_Data_Sample_Radiant_550:
-                    gComm_Data_LED_Voltage_Interval_Set(20);
+                    gComm_Data_LED_Voltage_Interval_Set(10);
                     break;
                 case eComm_Data_Sample_Radiant_405:
                     gComm_Data_LED_Voltage_Interval_Set(5);
@@ -641,7 +641,7 @@ uint8_t comm_Data_Check_LED(eComm_Data_Sample_Radiant radiant)
                     gComm_Data_LED_Voltage_Interval_Set(-1);
                     break;
                 case eComm_Data_Sample_Radiant_550:
-                    gComm_Data_LED_Voltage_Interval_Set(-20);
+                    gComm_Data_LED_Voltage_Interval_Set(-10);
                     break;
                 case eComm_Data_Sample_Radiant_405:
                     gComm_Data_LED_Voltage_Interval_Set(-5);
@@ -651,21 +651,21 @@ uint8_t comm_Data_Check_LED(eComm_Data_Sample_Radiant radiant)
             gComm_Data_LED_Voltage_Points_Set(1); /* 点数设为 1 */
             return 0;
         }
-    } else {                                          /* 最大值或最小值越限 */
-        if (last_bias_1300 < 0xFFFFFFFF) {            /* 已处于接近1300万状态 */
+    } else {                               /* 最大值或最小值越限 */
+        if (last_bias_1300 < 0xFFFFFFFF) { /* 已处于接近1300万状态 */
             switch (radiant) {
                 case eComm_Data_Sample_Radiant_610:
                     gComm_Data_LED_Voltage_Interval_Set(-1);
                     break;
                 case eComm_Data_Sample_Radiant_550:
-                    gComm_Data_LED_Voltage_Interval_Set(-20);
+                    gComm_Data_LED_Voltage_Interval_Set(-10);
                     break;
                 case eComm_Data_Sample_Radiant_405:
                     gComm_Data_LED_Voltage_Interval_Set(-5);
                     break;
             }
-            last_bias_1300 = 0xFFFFFFFF;              /* 初始化历史值 */
-            gComm_Data_LED_Voltage_Points_Set(1);     /* 点数设为 1 */
+            last_bias_1300 = 0xFFFFFFFF;          /* 初始化历史值 */
+            gComm_Data_LED_Voltage_Points_Set(1); /* 点数设为 1 */
             return 0;
         }
         if (max < 8000000) {
@@ -674,7 +674,7 @@ uint8_t comm_Data_Check_LED(eComm_Data_Sample_Radiant radiant)
                     gComm_Data_LED_Voltage_Interval_Set(4);
                     break;
                 case eComm_Data_Sample_Radiant_550:
-                    gComm_Data_LED_Voltage_Interval_Set(80);
+                    gComm_Data_LED_Voltage_Interval_Set(40);
                     break;
                 case eComm_Data_Sample_Radiant_405:
                     gComm_Data_LED_Voltage_Interval_Set(20);
@@ -686,7 +686,7 @@ uint8_t comm_Data_Check_LED(eComm_Data_Sample_Radiant radiant)
                     gComm_Data_LED_Voltage_Interval_Set(2);
                     break;
                 case eComm_Data_Sample_Radiant_550:
-                    gComm_Data_LED_Voltage_Interval_Set(40);
+                    gComm_Data_LED_Voltage_Interval_Set(20);
                     break;
                 case eComm_Data_Sample_Radiant_405:
                     gComm_Data_LED_Voltage_Interval_Set(10);
@@ -698,7 +698,7 @@ uint8_t comm_Data_Check_LED(eComm_Data_Sample_Radiant radiant)
                     gComm_Data_LED_Voltage_Interval_Set(1);
                     break;
                 case eComm_Data_Sample_Radiant_550:
-                    gComm_Data_LED_Voltage_Interval_Set(20);
+                    gComm_Data_LED_Voltage_Interval_Set(10);
                     break;
                 case eComm_Data_Sample_Radiant_405:
                     gComm_Data_LED_Voltage_Interval_Set(5);

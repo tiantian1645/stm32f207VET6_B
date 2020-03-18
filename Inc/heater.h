@@ -17,13 +17,16 @@
 #define HEATER_BTM_DEFAULT_SETPOINT (37)
 #define HEATER_TOP_DEFAULT_SETPOINT (37)
 
-#define HEATER_BTM_OVERSHOOT_LEVEL_TIMEOUT (4) /* 下加热体过冲目标温度持续时间 */
-#define HEATER_BTM_OVERSHOOT_TARGET (37.2)     /* 下加热体过冲目标温度 */
-#define HEATER_BTM_OVERSHOOT_TIMEOUT (30)      /* 下加热体过冲持续时间 */
+#define HEATER_BTM_OUTDOOR_SETPOINT (37.15)
+#define HEATER_TOP_OUTDOOR_SETPOINT (37.15)
+
+#define HEATER_BTM_OVERSHOOT_LEVEL_TIMEOUT (6) /* 下加热体过冲目标温度持续时间 */
+#define HEATER_BTM_OVERSHOOT_TARGET (37.3)     /* 下加热体过冲目标温度 */
+#define HEATER_BTM_OVERSHOOT_TIMEOUT (72)      /* 下加热体过冲持续时间 */
 
 #define HEATER_TOP_OVERSHOOT_LEVEL_TIMEOUT (6) /* 上加热体过冲目标温度持续时间 */
-#define HEATER_TOP_OVERSHOOT_TARGET (37.25)    /* 上加热体过冲目标温度 */
-#define HEATER_TOP_OVERSHOOT_TIMEOUT (30)      /* 上加热体过冲持续时间 */
+#define HEATER_TOP_OVERSHOOT_TARGET (37.3)     /* 上加热体过冲目标温度 */
+#define HEATER_TOP_OVERSHOOT_TIMEOUT (60)      /* 上加热体过冲持续时间 */
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum {
@@ -47,6 +50,9 @@ typedef enum {
 /* Exported functions prototypes ---------------------------------------------*/
 uint8_t heater_Overshoot_Flag_Get(eHeater_Index idx);
 void heater_Overshoot_Flag_Set(eHeater_Index idx, uint8_t flag);
+
+uint8_t heater_Outdoor_Flag_Get(eHeater_Index idx);
+void heater_Outdoor_Flag_Set(eHeater_Index idx, uint8_t flag);
 
 float heater_BTM_Setpoint_Get(void);
 void heater_BTM_Setpoint_Set(float setpoint);

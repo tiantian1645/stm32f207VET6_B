@@ -34,6 +34,7 @@ static sPID_Ctrl_Conf gHeater_BTM_PID_Conf;
 static sPID_Ctrl_Conf gHeater_TOP_PID_Conf;
 
 static uint8_t gHeater_Overshoot_Flag = 0;
+static uint8_t gHeater_Outdoor_Flag = 0;
 // Control loop input,output and setpoint variables
 static float btm_input = 0, btm_output = 0, btm_setpoint = HEATER_BTM_DEFAULT_SETPOINT;
 static float top_input = 0, top_output = 0, top_setpoint = HEATER_TOP_DEFAULT_SETPOINT;
@@ -66,6 +67,29 @@ void heater_Overshoot_Flag_Set(eHeater_Index idx, uint8_t flag)
         gHeater_Overshoot_Flag |= (1 << idx);
     } else {
         gHeater_Overshoot_Flag &= (0xFF - (1 << idx));
+    }
+}
+
+/**
+ * @brief  出仓加热调整标志 获取
+ * @retval gHeater_Outdoor_Flag
+ */
+uint8_t heater_Outdoor_Flag_Get(eHeater_Index idx)
+{
+    return ((gHeater_Outdoor_Flag & (1 << idx)) > 0) ? (1) : (0);
+}
+
+/**
+ * @brief  出仓加热调整标志 设置
+ * @param  flag 设置值
+ * @retval 参数数值
+ */
+void heater_Outdoor_Flag_Set(eHeater_Index idx, uint8_t flag)
+{
+    if (flag > 0) {
+        gHeater_Outdoor_Flag |= (1 << idx);
+    } else {
+        gHeater_Outdoor_Flag &= (0xFF - (1 << idx));
     }
 }
 

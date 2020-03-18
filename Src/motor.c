@@ -552,6 +552,19 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
         comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                  /* 转发至外串口但不允许阻塞 */
         return;
     }
+
+    switch (index) {
+        case eTrayIndex_2: /* 出仓方向使能温度调整 */
+            heater_Outdoor_Flag_Set(eHeater_BTM, 1);
+            heater_Outdoor_Flag_Set(eHeater_TOP, 1);
+            break;
+        case eTrayIndex_0: /* 入仓方向失能温度调整 */
+        case eTrayIndex_1: /* 入仓方向失能温度调整 */
+            heater_Outdoor_Flag_Set(eHeater_BTM, 0);
+            heater_Outdoor_Flag_Set(eHeater_TOP, 0);
+            break;
+    }
+
     /* 托盘保持力矩不足 托盘容易位置会发生变化 实际位置与驱动记录位置不匹配 每次移动托盘电机必须重置 */
     if ((index == eTrayIndex_0 && TRAY_MOTOR_IS_OPT_1 == 0)                        /* 从光耦外回到原点 */
         || (index == eTrayIndex_2 && TRAY_MOTOR_IS_OPT_1 && flag)) {               /* 或者 起点时上加热体砸下 从光耦处离开 */
@@ -746,8 +759,6 @@ static void motor_Task(void * argument)
                 };
                 motor_Tray_Move_By_Index(eTrayIndex_0); /* 入仓 */
                 heat_Motor_Down();                      /* 砸下上加热体 */
-                // heater_Overshoot_Flag_Set(eHeater_BTM, 1);           /* 下加热体过冲标志设置 */
-                // heater_Overshoot_Flag_Set(eHeater_TOP, 1);           /* 上加热体过冲标志设置 */
                 break;
             case eMotor_Fun_Out:                        /* 出仓 */
                 motor_Tray_Move_By_Index(eTrayIndex_2); /* 出仓 */
@@ -784,11 +795,11 @@ static void motor_Task(void * argument)
                 led_Mode_Set(eLED_Mode_Kirakira_Green);           /* LED 绿灯闪烁 */
 
                 temperature = temp_Get_Temp_Data_BTM();         /* 读取下加热体温度 */
-                if (temperature < 36.7 || temperature > 37.3) { /* 不在范围内 */
+                if (temperature < 36.8 || temperature > 37.5) { /* 不在范围内 */
                     error_Emit(eError_Temp_BTM_Not_In_Range);   /* 上报提示 */
                 }
                 temperature = temp_Get_Temp_Data_TOP();         /* 读取上加热体温度 */
-                if (temperature < 36.7 || temperature > 37.3) { /* 不在范围内 */
+                if (temperature < 36.8 || temperature > 37.5) { /* 不在范围内 */
                     error_Emit(eError_Temp_TOP_Not_In_Range);   /* 上报提示 */
                 }
 
@@ -1063,7 +1074,7 @@ static void motor_Task(void * argument)
                             cnt = 40; /* 初始化电压值 */
                             break;
                         case eComm_Data_Sample_Radiant_550:
-                            cnt = 600; /* 初始化电压值 */
+                            cnt = 300; /* 初始化电压值 */
                             break;
                         case eComm_Data_Sample_Radiant_405:
                             cnt = 100; /* 初始化电压值 */
@@ -1076,7 +1087,7 @@ static void motor_Task(void * argument)
                         comm_Data_Sample_Send_Conf_Correct(buffer, radiant,                                      /* 配置波长 */
                                                            gComm_Data_LED_Voltage_Points_Get(),                  /* 点数 */
                                                            eComm_Data_Outbound_CMD_TEST);                        /* 上送 PD 值 */
-                        vTaskDelay(300);																		 /* 等待回应报文 */
+                        vTaskDelay(300);                                                                         /* 等待回应报文 */
                         white_Motor_WH();                                                                        /* 运动白板电机 白板位置 */
                         motor_Sample_Deal();                                                                     /* 启动采样并控制白板电机 */
                         white_Motor_WH();                                                                        /* 运动白板电机 白板位置 */
