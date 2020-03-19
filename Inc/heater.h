@@ -17,16 +17,16 @@
 #define HEATER_BTM_DEFAULT_SETPOINT (37)
 #define HEATER_TOP_DEFAULT_SETPOINT (37)
 
-#define HEATER_BTM_OUTDOOR_SETPOINT (37.15)
-#define HEATER_TOP_OUTDOOR_SETPOINT (37.15)
+#define HEATER_BTM_OUTDOOR_SETPOINT (37.2)
+#define HEATER_TOP_OUTDOOR_SETPOINT (37.5)
 
-#define HEATER_BTM_OVERSHOOT_LEVEL_TIMEOUT (6) /* 下加热体过冲目标温度持续时间 */
-#define HEATER_BTM_OVERSHOOT_TARGET (37.3)     /* 下加热体过冲目标温度 */
-#define HEATER_BTM_OVERSHOOT_TIMEOUT (72)      /* 下加热体过冲持续时间 */
+#define HEATER_BTM_OVERSHOOT_LEVEL_TIMEOUT (12) /* 下加热体过冲目标温度持续时间 */
+#define HEATER_BTM_OVERSHOOT_TARGET (37.2)      /* 下加热体过冲目标温度 */
+#define HEATER_BTM_OVERSHOOT_TIMEOUT (72)       /* 下加热体过冲持续时间 */
 
-#define HEATER_TOP_OVERSHOOT_LEVEL_TIMEOUT (6) /* 上加热体过冲目标温度持续时间 */
-#define HEATER_TOP_OVERSHOOT_TARGET (37.3)     /* 上加热体过冲目标温度 */
-#define HEATER_TOP_OVERSHOOT_TIMEOUT (60)      /* 上加热体过冲持续时间 */
+#define HEATER_TOP_OVERSHOOT_LEVEL_TIMEOUT (12) /* 上加热体过冲目标温度持续时间 */
+#define HEATER_TOP_OVERSHOOT_TARGET (37.3)      /* 上加热体过冲目标温度 */
+#define HEATER_TOP_OVERSHOOT_TIMEOUT (72)       /* 上加热体过冲持续时间 */
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum {
