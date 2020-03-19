@@ -2550,6 +2550,11 @@ class MainWindow(QMainWindow):
             if error_code == i.value[0]:
                 logger.debug(f"hit error | {i.value[0]:05d} | {i.value[1]}")
                 return i.value[1]
+        for i in (DC201ErrorCode.eError_Comm_Main_UART, DC201ErrorCode.eError_Comm_Data_UART, DC201ErrorCode.eError_Comm_Out_UART):
+            if (error_code >> 10) > 0 and error_code & 0xFF == i.value[0]:
+                logger.debug(f"hit serial dma error | {i.value[0]:05d} | {i.value[1]}")
+                return f"{i.value[1]} | 硬件故障码 0x{(error_code >> 10):02X}"
+
         logger.error(f"unknow error code | {error_code}")
         return "Unknow Error Code"
 

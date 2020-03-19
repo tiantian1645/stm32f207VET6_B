@@ -325,17 +325,31 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef * huart)
  */
 void HAL_UART_ErrorCallback(UART_HandleTypeDef * huart)
 {
+    uint32_t error_code;
+
     switch ((uint32_t)(huart->Instance)) {
         case (uint32_t)USART1:
+            error_code = HAL_UART_GetError(huart);
             error_Emit_FromISR(eError_Comm_Main_UART);
+            if (error_code != HAL_UART_ERROR_NONE) {
+                error_Emit_FromISR((error_code << 10) | eError_Comm_Main_UART);
+            }
             comm_Main_DMA_RX_Restore();
             break;
         case (uint32_t)USART2:
+            error_code = HAL_UART_GetError(huart);
             error_Emit_FromISR(eError_Comm_Data_UART);
+            if (error_code != HAL_UART_ERROR_NONE) {
+                error_Emit_FromISR((error_code << 10) | eError_Comm_Data_UART);
+            }
             comm_Data_DMA_RX_Restore();
             break;
         case (uint32_t)UART5:
+            error_code = HAL_UART_GetError(huart);
             error_Emit_FromISR(eError_Comm_Out_UART);
+            if (error_code != HAL_UART_ERROR_NONE) {
+                error_Emit_FromISR((error_code << 10) | eError_Comm_Out_UART);
+            }
             comm_Out_DMA_RX_Restore();
             break;
     }
