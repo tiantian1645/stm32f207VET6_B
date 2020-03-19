@@ -24,6 +24,14 @@
 #define COMM_DATA_PD_TIMER_PRESCALER (54000 - 1) /* TIMER 7 主频切半 1 mS */
 #define COMM_DATA_PD_TIMER_PERIOD (500 - 1)      /* 500C 500 mS */
 
+#define COMM_DATA_LED_VOLTAGE_INIT_610 30
+#define COMM_DATA_LED_VOLTAGE_INIT_550 300
+#define COMM_DATA_LED_VOLTAGE_INIT_405 120
+
+#define COMM_DATA_LED_VOLTAGE_UNIT_610 1
+#define COMM_DATA_LED_VOLTAGE_UNIT_550 10
+#define COMM_DATA_LED_VOLTAGE_UNIT_405 5
+
 /* Exported types ------------------------------------------------------------*/
 /* 采集板串口 接收数据定义*/
 typedef struct {

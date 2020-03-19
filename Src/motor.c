@@ -1071,13 +1071,13 @@ static void motor_Task(void * argument)
                 for (radiant = eComm_Data_Sample_Radiant_610; radiant <= eComm_Data_Sample_Radiant_405; ++radiant) { /* 逐个波长校正 */
                     switch (radiant) {
                         case eComm_Data_Sample_Radiant_610:
-                            cnt = 40; /* 初始化电压值 */
+                            cnt = COMM_DATA_LED_VOLTAGE_INIT_610; /* 初始化电压值 */
                             break;
                         case eComm_Data_Sample_Radiant_550:
-                            cnt = 300; /* 初始化电压值 */
+                            cnt = COMM_DATA_LED_VOLTAGE_INIT_550; /* 初始化电压值 */
                             break;
                         case eComm_Data_Sample_Radiant_405:
-                            cnt = 100; /* 初始化电压值 */
+                            cnt = COMM_DATA_LED_VOLTAGE_INIT_405; /* 初始化电压值 */
                             break;
                     }
                     comm_Data_Set_LED_Voltage(radiant, cnt);                                                     /* 设置初始化电压值 */
