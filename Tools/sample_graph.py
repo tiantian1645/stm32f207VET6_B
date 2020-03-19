@@ -54,6 +54,35 @@ def take_closest(myList, myNumber):
         return before
 
 
+def line_equation_from_two_points(p1, p2):
+    x_coords, y_coords = zip(p1, p2)
+    A = vstack([x_coords, ones(len(x_coords))]).T
+    m, c = lstsq(A, y_coords, rcond=None)[0]
+    # logger.debug(f"Line Solution is y = {m}x + {c}")
+    return m, c
+
+
+def point_line_equation_map(channel_points, standard_points, origin_data):
+    if origin_data <= channel_points[1]:
+        p1 = (channel_points[0], standard_points[0])
+        p2 = (channel_points[1], standard_points[1])
+    elif origin_data > channel_points[-2]:
+        p1 = (channel_points[-2], standard_points[-2])
+        p2 = (channel_points[-1], standard_points[-1])
+    else:
+        for idx, c in enumerate(channel_points):
+            if origin_data > c:
+                p1 = (channel_points[idx], standard_points[idx])
+                p2 = (channel_points[idx + 1], standard_points[idx + 1])
+                break
+        else:
+            logger.error(f"could not find p1 p2 | origin_data {origin_data} | channel_points {channel_points}")
+            return origin_data
+    m, c = line_equation_from_two_points(p1, p2)
+    result = m * origin_data + c
+    return result
+
+
 class SampleGraph:
     def __init__(self, *args, **kwargs):
         self.win = pg.GraphicsLayoutWidget(*args, **kwargs)
@@ -220,13 +249,6 @@ class TemperatureGraph(SampleGraph):
 
 
 class CC_Graph(SampleGraph):
-    def line_equation_from_two_points(self, p1, p2):
-        x_coords, y_coords = zip(p1, p2)
-        A = vstack([x_coords, ones(len(x_coords))]).T
-        m, c = lstsq(A, y_coords, rcond=None)[0]
-        # logger.debug(f"Line Solution is y = {m}x + {c}")
-        return m, c
-
     def color_tuple_position(self, data_conf, sample):
         if sample <= data_conf.data[1]:
             p = 1
@@ -274,7 +296,7 @@ class CC_Graph(SampleGraph):
             cxs = []
             for i in range(6):
                 d0, d1 = self.plot_data_confs[i + 1].data[head : head + 2]
-                k, b = self.line_equation_from_two_points((d0, c0), (d1, c1))
+                k, b = line_equation_from_two_points((d0, c0), (d1, c1))
                 dx = d0 + (x - head) * (d1 - d0)
                 cx = k * dx + b
                 dxs.append(dx)

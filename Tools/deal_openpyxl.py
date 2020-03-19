@@ -14,11 +14,18 @@ SAMPLE_TITLES = ("索引", "日期", "标签", "控制板程序版本", "控制�
 
 
 ODD_STYLE = NamedStyle(name="odd")
-ODD_STYLE.fill = PatternFill(start_color="1ABC9C", end_color="76D7C4", fill_type="solid")
+ODD_STYLE.fill = PatternFill(start_color="bedede", end_color="bedede", fill_type="solid")
 ODD_STYLE.alignment = Alignment(horizontal="center", vertical="bottom", text_rotation=0, wrap_text=False, shrink_to_fit=False, indent=0)
 EVEN_STYLE = NamedStyle(name="even")
-EVEN_STYLE.fill = PatternFill(start_color="FFDDE1", end_color="EE9CA7", fill_type="solid")
+EVEN_STYLE.fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
 EVEN_STYLE.alignment = Alignment(horizontal="center", vertical="bottom", text_rotation=0, wrap_text=False, shrink_to_fit=False, indent=0)
+
+CC_STYLE = NamedStyle(name="cc")
+CC_STYLE.fill = PatternFill(start_color="3bee35", end_color="3bee35", fill_type="solid")
+CC_STYLE.alignment = Alignment(horizontal="center", vertical="bottom", text_rotation=0, wrap_text=False, shrink_to_fit=False, indent=0)
+OO_STYLE = NamedStyle(name="oo")
+OO_STYLE.fill = PatternFill(start_color="f9a0a0", end_color="f9a0a0", fill_type="solid")
+OO_STYLE.alignment = Alignment(horizontal="center", vertical="bottom", text_rotation=0, wrap_text=False, shrink_to_fit=False, indent=0)
 
 
 def dump_CC(data, file_path):
@@ -72,6 +79,13 @@ def load_CC(file_path):
         logger.error(f"load data from xlsx failed\n{stackprinter.format()}")
 
 
+def cc_get_pointes_info(cc, channel, wave):
+    for data in cc:
+        if isinstance(data, ILLU_CC_DataInfo) and data.wave == wave:
+            return data.channel_pointses[channel - 1], data.standard_points
+    return None, None
+
+
 def check_file_permission(file_path):
     if not os.path.isfile(file_path):
         return True
@@ -109,6 +123,8 @@ def dump_sample(sample_iter, file_path, title=None):
         wb = Workbook(write_only=True)
         wb.add_named_style(ODD_STYLE)
         wb.add_named_style(EVEN_STYLE)
+        wb.add_named_style(CC_STYLE)
+        wb.add_named_style(OO_STYLE)
         # title
         if title is None:
             title = f"Sheet{len(wb.sheetnames) + 1}"
@@ -147,7 +163,14 @@ def dump_sample(sample_iter, file_path, title=None):
             if si.label_id != last_label_id:
                 last_label_id = si.label_id
                 label_cnt += 1
+            if len(si.sample_datas) / si.sample_data_total == 3:
+                for cell in cells[-1 * si.sample_data_total :]:
+                    cell.style = CC_STYLE
+                for cell in cells[-2 * si.sample_data_total : -1 * si.sample_data_total]:
+                    cell.style = OO_STYLE
             for cell in cells:
+                if cell.style in ("cc", "oo"):
+                    continue
                 if label_cnt % 2 == 0:
                     cell.style = EVEN_STYLE
                 else:

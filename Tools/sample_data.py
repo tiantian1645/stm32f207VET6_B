@@ -11,9 +11,12 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 
 from bytes_helper import bytesPuttyPrint
+from sample_graph import point_line_equation_map
+from deal_openpyxl import load_CC, cc_get_pointes_info
 
 SapmleInfo = namedtuple(
-    "SapmleInfo", "label_id label_datetimne label_name label_version label_device_id sample_channel sample_method sample_set_info sample_wave sample_datas"
+    "SapmleInfo",
+    "label_id label_datetimne label_name label_version label_device_id sample_channel sample_method sample_set_info sample_wave sample_datas sample_data_total",
 )
 METHOD_NAMES = ("无项目", "速率法", "终点法", "两点终点法")
 WAVES = (610, 550, 405)
@@ -162,12 +165,14 @@ class SampleDB:
         except IndexError:
             return None
 
-    def _decode_raw_data(self, total, raw_data):
+    def _decode_raw_data(self, total, raw_data, channel, wave):
         if total == 0 or len(raw_data) == 0:
             return []
         elif len(raw_data) / total == 2:
             return [unpack("H", bytes((i)))[0] for i in divide(total, raw_data)]
         elif len(raw_data) / total == 4:
+            cc = load_CC("data/flash.xlsx")
+            cc_list = []
             result = [unpack("I", bytes((i)))[0] for i in divide(total, raw_data)]
             if self._i32 is None:
                 self._i32 = result[:]
@@ -175,11 +180,16 @@ class SampleDB:
                 new = result[: len(self._i32)]
                 for i, j in zip(self._i32, new):
                     if j != 0 and i / j > 0:
-                        result.append(log10(i / j) * 10000)
+                        origin_data = log10(i / j) * 10000
+                        result.append(origin_data)
+                        if cc:
+                            channel_points, standard_points = cc_get_pointes_info(cc, channel, (610, 550, 405)[(wave.value) - 1])
+                            cc_list.append(point_line_equation_map(channel_points, standard_points, origin_data))
                     else:
                         result.append(nan)
+                        cc_list.append(nan)
                 self._i32 = None
-            return result
+            return result + cc_list
         else:
             return []
 
@@ -193,7 +203,7 @@ class SampleDB:
             if sample_data.total == 0 or len(sample_data.raw_data) == 0:
                 continue
             else:
-                sample_datas = self._decode_raw_data(sample_data.total, sample_data.raw_data)
+                sample_datas = self._decode_raw_data(sample_data.total, sample_data.raw_data, sample_data.channel, sample_data.wave)
             if 0 < sample_data.method.value < len(METHOD_NAMES):
                 sample_method = METHOD_NAMES[sample_data.method.value]
             else:
@@ -205,7 +215,6 @@ class SampleDB:
                     sample_wave = WAVES[sample_data.wave.value - 1]
             else:
                 sample_wave = f"error-wave-{sample_data.wave.value}"
-
             yield SapmleInfo(
                 label_id=label.id,
                 label_datetimne=str(label.datetime),
@@ -217,6 +226,7 @@ class SampleDB:
                 sample_set_info=sample_data.set_info,
                 sample_wave=sample_wave,
                 sample_datas=sample_datas,
+                sample_data_total=sample_data.total,
             )
 
     def iter_all_data(self, start=0, num=2 ** 32):

@@ -64,7 +64,7 @@ from mengy_color_table import ColorGreens, ColorPurples, ColorReds
 from qt_modern_dialog import ModernDialog, ModernMessageBox
 from qt_serial import SerialRecvWorker, SerialSendWorker
 from sample_data import SAMPLE_SET_INFOS, MethodEnum, SampleDB, WaveEnum
-from sample_graph import CC_Graph, SampleGraph, TemperatureGraph
+from sample_graph import CC_Graph, SampleGraph, TemperatureGraph, point_line_equation_map
 
 BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
 TEMPERAUTRE_NAMES = ("下加热体:", "上加热体:")
@@ -1119,6 +1119,24 @@ class MainWindow(QMainWindow):
                 self.matplot_conf_set_cs[channel_idx].setCurrentIndex(name_idx)
                 self.matplot_conf_set_cs[channel_idx].blockSignals(False)
 
+    def correctSampleData(self, channel, wave, origin_data_list):
+        result = []
+        # data = self._getOutFlashParamCC_Data()
+        data = load_CC("data/flash.xlsx")
+        logger.debug(f"channel {repr(channel)} | wave {repr(wave)} | data | {data}")
+        if data is None:
+            data = self._getOutFlashParamCC_Data()
+        for d in data:
+            if isinstance(d, ILLU_CC_DataInfo) and d.wave == int(wave):
+                channel_points = d.channel_pointses[channel - 1]
+                result = [point_line_equation_map(channel_points, d.standard_points, origin_data) for origin_data in origin_data_list]
+                logger.info(f"{channel_points} -> {d.standard_points} | {result}")
+                break
+        else:
+            logger.warning(f"return origin data | {origin_data_list}")
+            result = [i for i in origin_data_list]
+        return result
+
     def onSampleLabelClick(self, event):
         def data_format_list(data, t=int):
             if t is int:
@@ -1179,8 +1197,10 @@ class MainWindow(QMainWindow):
                 std = np.std(ys)
                 mean = np.mean(ys)
                 cv = std / mean
+                log10_data_c = self.correctSampleData(sd.channel, wave_name, log10_data)
                 data_infos.append(
-                    f" PD  {sd.channel} | {wave_name} | {data_format_list(log10_data, float)} | (cv = {cv:.4f}, std = {std:.4f}, mean = {mean:.4f})"
+                    f"OD_o {sd.channel} | {wave_name} | {data_format_list(log10_data, float)} | (cv = {cv:.4f}, std = {std:.4f}, mean = {mean:.4f})\n"
+                    f"OD_c {sd.channel} | {wave_name} | {data_format_list(log10_data_c, float)}"
                 )
         logger.debug(f"data_infos length | {len(data_infos)}")
         # https://stackoverflow.com/a/10977872
@@ -2151,14 +2171,7 @@ class MainWindow(QMainWindow):
                 elif idx // 12 >= 3:
                     sp.setValue(self.out_flash_param_cc_sps[idx - 12 * ((idx + 12) // 24 * 2 - 1)].value())
 
-    def onOutFlashParamCC_Dump(self, event):
-        fd = QFileDialog()
-        file_path, _ = fd.getSaveFileName(filter="Excel 工作簿 (*.xlsx)", directory=os.path.join(self.last_falsh_save_dir, "flash.xlsx"))
-        if not file_path:
-            return
-        else:
-            if file_path:
-                self.last_falsh_save_dir = os.path.split(file_path)[0]
+    def _getOutFlashParamCC_Data(self):
         data = [
             TEMP_CC_DataInfo(
                 top=self.out_flash_param_temp_sps[0].value(), btm=self.out_flash_param_temp_sps[1].value(), env=self.out_flash_param_temp_sps[2].value()
@@ -2187,6 +2200,17 @@ class MainWindow(QMainWindow):
                 if wave == WAVE_NAMES[-1]:
                     break
             data.append(ILLU_CC_DataInfo(wave=wave, standard_points=standard_points, channel_pointses=channel_pointses))
+        return data
+
+    def onOutFlashParamCC_Dump(self, event):
+        fd = QFileDialog()
+        file_path, _ = fd.getSaveFileName(filter="Excel 工作簿 (*.xlsx)", directory=os.path.join(self.last_falsh_save_dir, "flash.xlsx"))
+        if not file_path:
+            return
+        else:
+            if file_path:
+                self.last_falsh_save_dir = os.path.split(file_path)[0]
+        data = self._getOutFlashParamCC_Data()
         dump_CC(data, file_path)
 
     def onOutFlashParamCC_Load(self, event):
