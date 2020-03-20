@@ -250,7 +250,7 @@ class ModernMessageBox(QDialog, ModernWidget):
         self.center()
         self.mih = None
         self.mah = None
-        logger.debug(f"self geometry | {self.geometry()}")
+        # logger.debug(f"self geometry | {self.geometry()}")
 
     def setupUi(self):
         self._createFrame()

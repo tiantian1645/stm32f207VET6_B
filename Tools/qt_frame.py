@@ -1368,7 +1368,7 @@ class MainWindow(QMainWindow):
         self.serial_switch_bt.setChecked(False)
 
     def onSerialRecvWorkerResult(self, info):
-        logger.info(f"emit from serial worker result signal | {info.text}")
+        # logger.info(f"emit from serial worker result signal | {info.text}")
         cmd_type = info.content[5]
         if cmd_type == 0x00:
             self.updateVersionLabelBootloader(info)
