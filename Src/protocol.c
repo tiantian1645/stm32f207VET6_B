@@ -1406,18 +1406,27 @@ static void protocol_Parse_Data_Fun_ISR(uint8_t * pInBuff, uint16_t length)
             } else {                                                                                 /* 未出于定标状态 */
                 type = comm_Data_Sample_Data_Commit(pInBuff[7], pInBuff, length, 1);                 /* 采样数据记录 */
                 if (protocol_Debug_SampleRawData() || type > 0 || gComm_Data_Lamp_BP_Flag_Check()) { /* 选择原始数据 */
-                    comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7); /* 构造数据包 */
-                    comm_Out_SendTask_QueueEmitWithModify_FromISR(pInBuff + 6, length);                                         /* 修改帧号ID后转发 */
+                    if (comm_Main_SendTask_Queue_GetWaiting_FromISR() < COMM_MAIN_SEND_QUEU_LENGTH - 12) {
+                        comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7); /* 构造数据包 */
+                        comm_Out_SendTask_QueueEmitWithModify_FromISR(pInBuff + 6, length); /* 修改帧号ID后转发 */
+                    } else {
+                        comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7); /* 构造数据包 */
+                    }
+
                     if (type > 0 || gComm_Data_Lamp_BP_Flag_Check()) { /* u32类型 或 处于灯BP状态 */
                         break;
                     }
                     for (i = 0; i < length; ++i) { /* 修正偏移 */
                         pInBuff[i] = pInBuff[i + 6];
                     }
-                }                                                                                                        /* 经过校正映射 */
-                comm_Data_Sample_Data_Correct(pInBuff[7], pInBuff, &data_length);                                        /* 投影校正 */
-                comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_SAMP_DATA, pInBuff, data_length); /* 构造数据包 */
-                comm_Out_SendTask_QueueEmitWithModify_FromISR(pInBuff, data_length + 7);                                 /* 修改帧号ID后转发 */
+                }                                                                 /* 经过校正映射 */
+                comm_Data_Sample_Data_Correct(pInBuff[7], pInBuff, &data_length); /* 投影校正 */
+                if (comm_Main_SendTask_Queue_GetWaiting_FromISR() < COMM_MAIN_SEND_QUEU_LENGTH - 12) {
+                    comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_SAMP_DATA, pInBuff, data_length); /* 构造数据包 */
+                    comm_Out_SendTask_QueueEmitWithModify_FromISR(pInBuff, data_length + 7);                                 /* 修改帧号ID后转发 */
+                } else {
+                    comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_SAMP_DATA, pInBuff, data_length); /* 构造数据包 */
+                }
             }
             break;
         case eComm_Data_Inbound_CMD_OVER:                         /* 采集数据完成帧 */

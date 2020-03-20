@@ -22,10 +22,6 @@ extern UART_HandleTypeDef huart5;
 #define COMM_MAIN_SERIAL_INDEX eSerialIndex_1
 #define COMM_MAIN_UART_HANDLE huart1
 
-#define COMM_MAIN_SEND_QUEU_LENGTH 14
-#define COMM_MAIN_ERROR_SEND_QUEU_LENGTH 16
-#define COMM_MAIN_ACK_SEND_QUEU_LENGTH 6
-
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
@@ -225,6 +221,16 @@ void comm_Main_Init(void)
 UBaseType_t comm_Main_SendTask_Queue_GetWaiting(void)
 {
     return uxQueueMessagesWaiting(comm_Main_SendQueue);
+}
+
+/**
+ * @brief  串口发送队列 未处理个数 中断版本
+ * @param  Npne
+ * @retval 串口发送队列 未处理个数
+ */
+UBaseType_t comm_Main_SendTask_Queue_GetWaiting_FromISR(void)
+{
+    return uxQueueMessagesWaitingFromISR(comm_Main_SendQueue);
 }
 
 /**

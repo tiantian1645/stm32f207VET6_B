@@ -18,6 +18,10 @@
 #define COMM_MAIN_SER_TX_RETRY_WT ((COMM_MAIN_SER_TX_RETRY_INT) / (COMM_MAIN_SER_TX_RETRY_WC))
 #define COMM_MAIN_SER_TX_RETRY_SUM ((COMM_MAIN_SER_TX_RETRY_NUM) * (COMM_MAIN_SER_TX_RETRY_INT))
 
+#define COMM_MAIN_SEND_QUEU_LENGTH 14
+#define COMM_MAIN_ERROR_SEND_QUEU_LENGTH 16
+#define COMM_MAIN_ACK_SEND_QUEU_LENGTH 6
+
 /* Exported types ------------------------------------------------------------*/
 /* 串口 1 接收数据定义*/
 typedef struct {
@@ -44,6 +48,7 @@ BaseType_t comm_Main_DMA_TX_Enter(uint32_t timeout);
 void comm_Main_DMA_TX_Error(void);
 
 UBaseType_t comm_Main_SendTask_Queue_GetWaiting(void);
+UBaseType_t comm_Main_SendTask_Queue_GetWaiting_FromISR(void);
 
 BaseType_t comm_Main_SendTask_ErrorInfoQueueEmit(uint16_t * pErrorCode, uint32_t timeout);
 BaseType_t comm_Main_SendTask_ErrorInfoQueueEmitFromISR(uint16_t * pErrorCode);
