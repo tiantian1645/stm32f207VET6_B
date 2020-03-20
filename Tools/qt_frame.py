@@ -2092,6 +2092,7 @@ class MainWindow(QMainWindow):
         self.out_flash_param_dump_bt = QPushButton("Dump", clicked=self.onOutFlashParamCC_Dump, maximumWidth=90)
         self.out_flash_param_load_bt = QPushButton("Load", clicked=self.onOutFlashParamCC_Load, maximumWidth=90)
         self.out_flash_param_debug_bt = QPushButton("Debug", clicked=self.onOutFlashParamCC_Debug, maximumWidth=90)
+        self.out_flash_param_check_bt = QPushButton("Check", clicked=self.onOutFlashParamCC_Check, maximumWidth=90)
 
         out_flash_param_temp_cc_wg = QGroupBox("温度校正参数")
         out_flash_param_temp_cc_ly = QGridLayout(out_flash_param_temp_cc_wg)
@@ -2150,6 +2151,7 @@ class MainWindow(QMainWindow):
         temp_ly.addWidget(self.out_flash_param_dump_bt)
         temp_ly.addWidget(self.out_flash_param_load_bt)
         temp_ly.addWidget(self.out_flash_param_debug_bt)
+        temp_ly.addWidget(self.out_flash_param_check_bt)
         out_flash_data_ly.addLayout(temp_ly)
 
         self.out_flash_data_dg = ModernDialog(self.out_flash_data_dg, self)
@@ -2249,6 +2251,37 @@ class MainWindow(QMainWindow):
             if idx % 12 < 6:
                 p_sp = self.out_flash_param_cc_sps[idx + 6]
                 sp.setValue(p_sp.value())
+
+    def onOutFlashParamCC_Check(self, event):
+        rank_list = []
+        temp = []
+        for idx, sp in enumerate(self.out_flash_param_cc_sps):
+            if idx % 12 == 0:
+                if temp:
+                    rank_list.append(temp[:])
+                temp.clear()
+            if idx % 12 >= 6:
+                temp.append(sp.value())
+        rank_list.append(temp[:])
+        logger.debug(f"get rank list. \n{rank_list}")
+        error_flag = False
+        for idx, rank in enumerate(rank_list):
+            if idx == 2:
+                continue
+            diff = list(map(lambda a, b: abs(a - b), rank[1:], rank[:-1]))
+            if any((d < 1600 for d in diff)):
+                error_flag = True
+                msg = ModernMessageBox(self)
+                msg.setIcon(QMessageBox.Warning)
+                msg.setWindowTitle(f"定标数据异常 | {idx + 1}")
+                msg.setText(f"{rank}\n{diff}")
+                msg.show()
+        if error_flag is False:
+            msg = ModernMessageBox(self)
+            msg.setIcon(QMessageBox.Information)
+            msg.setWindowTitle(f"定标数据正常")
+            msg.setText(f">1600")
+            msg.show()
 
     def updateFlashCC_Plot(self, refresh=True):
         logger.debug(f"refresh | {refresh} | self.flash_json_data is None {self.flash_json_data is None}")

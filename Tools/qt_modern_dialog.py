@@ -260,7 +260,7 @@ class ModernMessageBox(QDialog, ModernWidget):
 
         self.windowContent = QWidget(self.windowFrame)
         self.windowContent.setLayout(QVBoxLayout())
-        self.msgTextLabel = QLabel("\n".join(("Test Content") * 10))
+        self.msgTextLabel = QLabel("")
         self.msgTextLabel.setWordWrap(True)
         self.msgTextLabel.setMinimumWidth(100)
         self.msgDetailTextEdit = QTextEdit(self)
