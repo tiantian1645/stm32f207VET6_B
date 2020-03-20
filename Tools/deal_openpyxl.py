@@ -178,20 +178,25 @@ def dump_sample(sample_iter, file_path, title=None):
             sheet.append(cells)
         wb.save(find_new_file(file_path))
         logger.success("finish dump db to excel")
+        return wb, None
     except Exception as e:
         logger.error(f"dump sample data to xlsx failed\n{stackprinter.format()}")
-        return (repr(e), stackprinter.format())
+        return None, e
 
 
-def insert_sample(sample_iter, file_path):
+def insert_sample(sample_iter, file_path, base_wb=None):
     sample_list = [i for i in sample_iter]
     try:
-        if os.path.isfile(file_path):
-            wb = load_workbook(file_path)
-            new_flag = False
+        if base_wb is None:
+            if os.path.isfile(file_path):
+                wb = load_workbook(file_path)
+                new_flag = False
+            else:
+                wb = Workbook()
+                new_flag = True
         else:
-            wb = Workbook()
-            new_flag = True
+            wb = base_wb
+            new_flag = False
         if ODD_STYLE.name not in wb.style_names:
             wb.add_named_style(ODD_STYLE)
         if EVEN_STYLE.name not in wb.style_names:
@@ -248,9 +253,10 @@ def insert_sample(sample_iter, file_path):
                 cell.style = new_style
         wb.save(find_new_file(file_path))
         logger.success("finish insert db to excel")
+        return wb, None
     except Exception as e:
         logger.error(f"insert sample data to xlsx failed\n{stackprinter.format()}")
-        return (repr(e), stackprinter.format())
+        return None, e
 
 
 if __name__ == "__main__":

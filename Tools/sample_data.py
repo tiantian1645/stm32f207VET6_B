@@ -106,7 +106,7 @@ Label.sample_datas = relationship("SampleData", order_by=SampleData.id, back_pop
 
 
 class SampleDB:
-    def __init__(self, db_url="sqlite:///data/db.sqlite3", echo=False):
+    def __init__(self, db_url="sqlite:///data/db.sqlite3", echo=False, device_id=""):
         self.engine = create_engine(db_url, echo=echo)
         columns_names = [i[1] for i in self.engine.execute("PRAGMA table_info(sample_datas);").fetchall()]
         if columns_names and "set_info" not in columns_names:
@@ -119,6 +119,7 @@ class SampleDB:
         self.session = Session()
         logger.success(f"init db over | {db_url}")
         self._i32 = None
+        self.device_id = device_id
 
     def add_column(self, table_name, column):
         column_name = column.compile(dialect=self.engine.dialect)
@@ -171,7 +172,13 @@ class SampleDB:
         elif len(raw_data) / total == 2:
             return [unpack("H", bytes((i)))[0] for i in divide(total, raw_data)]
         elif len(raw_data) / total == 4:
-            cc = load_CC("data/flash.xlsx")
+            logger.debug("_decode_raw_data")
+            if not self.device_id:
+                cc = load_CC("data/flash.xlsx")
+            else:
+                cc = load_CC(f"data/flash_{self.device_id}.xlsx")
+                if not cc:
+                    cc = load_CC("data/flash.xlsx")
             cc_list = []
             result = [unpack("I", bytes((i)))[0] for i in divide(total, raw_data)]
             if self._i32 is None:

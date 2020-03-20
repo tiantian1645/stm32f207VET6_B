@@ -152,10 +152,11 @@ class MainWindow(QMainWindow):
         self.device_datetime = datetime.now()
         self.serial_recv_worker = None
         self.serial_send_worker = None
-        self.sample_db = SampleDB("sqlite:///data/db.sqlite3")
+        self.sample_db = SampleDB("sqlite:///data/db.sqlite3", device_id=self.device_id)
         self.sample_record_current_label = None
         self.flash_json_data = None
         self.last_falsh_save_dir = "./"
+        self.last_sample_wb = None
         data_xlsx_path = CONFIG.get("data_xlsx_path", f"data/{uuid.uuid4().hex}.xlsx")
         if os.path.isfile(data_xlsx_path):
             self.data_xlsx_path = data_xlsx_path
@@ -565,6 +566,7 @@ class MainWindow(QMainWindow):
             logger.error(f"udpateDeviceIDLabel no enough length | {len(raw_bytes)} | {info.text}")
             return
         self.device_id = "-".join([f"{struct.unpack('>I', raw_bytes[6 + 4 * i : 10 + 4 * i])[0]:08X}" for i in range(3)])
+        self.sample_db.device_id = self.device_id
         self.device_id_lb.setText(f"ID: {self.device_id}")
         date_str = f'{raw_bytes[26: 37].decode("ascii", errors="ignore")} - {raw_bytes[18: 26].decode("ascii", errors="ignore")}'
         self.device_datetime = datetime.strptime(date_str, "%b %d %Y - %H:%M:%S")
@@ -1122,7 +1124,12 @@ class MainWindow(QMainWindow):
     def correctSampleData(self, channel, wave, origin_data_list):
         result = []
         # data = self._getOutFlashParamCC_Data()
-        data = load_CC("data/flash.xlsx")
+        if not self.device_id:
+            data = load_CC("data/flash.xlsx")
+        else:
+            data = load_CC(f"data/flash_{self.device_id}.xlsx")
+            if data is None:
+                data = load_CC("data/flash.xlsx")
         logger.debug(f"channel {repr(channel)} | wave {repr(wave)} | data | {data}")
         if data is None:
             data = self._getOutFlashParamCC_Data()
@@ -1978,7 +1985,7 @@ class MainWindow(QMainWindow):
         if not os.path.isfile(self.data_xlsx_path) or not check_file_permission(self.data_xlsx_path):
             dump_sample(self.sample_db.iter_all_data(), self.data_xlsx_path)
         else:
-            insert_sample(self.sample_db.iter_from_label(), self.data_xlsx_path)
+            self.last_sample_wb, error = insert_sample(self.sample_db.iter_from_label(), self.data_xlsx_path, self.last_sample_wb)
         if self.lamp_ag_cb.isChecked():
             self.onMatplotStart(False, f"Aging {datetime.now().strftime('%Y%m%d%H%M%S')}")
 
@@ -2204,7 +2211,7 @@ class MainWindow(QMainWindow):
 
     def onOutFlashParamCC_Dump(self, event):
         fd = QFileDialog()
-        file_path, _ = fd.getSaveFileName(filter="Excel 工作簿 (*.xlsx)", directory=os.path.join(self.last_falsh_save_dir, "flash.xlsx"))
+        file_path, _ = fd.getSaveFileName(filter="Excel 工作簿 (*.xlsx)", directory=os.path.join(self.last_falsh_save_dir, f"flash_{self.device_id}.xlsx"))
         if not file_path:
             return
         else:
