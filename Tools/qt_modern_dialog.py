@@ -1,16 +1,15 @@
 # Qt Frameless Window resizing with QSizeGrip
 # https://gist.github.com/mgrady3/c04890e44e6c89ed38246d77d0d6e2f7
 
-from qtpy.QtCore import Qt, QMetaObject, Signal, Slot
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QToolButton, QLabel, QSizePolicy, QDialog, QDesktopWidget, QPushButton, QTextEdit, QSizeGrip
-
+import loguru
 from qtmodern._utils import QT_VERSION
 from qtmodern.windows import _FL_STYLESHEET
+from qtpy.QtCore import QMetaObject, Qt, QTimer, Signal, Slot
+from qtpy.QtWidgets import QDesktopWidget, QDialog, QHBoxLayout, QLabel, QPushButton, QSizeGrip, QSizePolicy, QTextEdit, QToolButton, QVBoxLayout, QWidget
 
 # _FL_STYLESHEET = join(dirname(abspath(__file__)), 'resources/frameless.qss')
 """ str: Frameless window stylesheet. """
 
-import loguru
 
 logger = loguru.logger
 
@@ -244,13 +243,23 @@ class ModernMessageBox(QDialog, ModernWidget):
             parent (QWidget, optional): Parent widget.
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, timeout=60):
         QDialog.__init__(self, parent)
         self.setupUi()
         self.center()
         self.mih = None
         self.mah = None
+        self.timeout = timeout
+        self.timer = QTimer(self)
+        self.timer.setInterval(1000)
+        self.timer.timeout.connect(self.timerInvoke)
+        self.timer.start()
         # logger.debug(f"self geometry | {self.geometry()}")
+
+    def timerInvoke(self):
+        self.timeout -= 1
+        if self.timeout < 0:
+            self.on_btnClose_clicked()
 
     def setupUi(self):
         self._createFrame()
@@ -312,23 +321,24 @@ class ModernMessageBox(QDialog, ModernWidget):
 
     @Slot()
     def on_btnMinimize_clicked(self):
-        ModernWidget.on_btnMinimize_clicked(self)
+        pass
 
     @Slot()
     def on_btnRestore_clicked(self):
-        ModernWidget.on_btnRestore_clicked(self)
+        pass
 
     @Slot()
     def on_btnMaximize_clicked(self):
-        ModernWidget.on_btnMaximize_clicked(self)
+        pass
 
     @Slot()
     def on_btnClose_clicked(self):
+        self.timer.stop()
         ModernWidget.on_btnClose_clicked(self)
 
     @Slot()
     def on_titleBar_doubleClicked(self):
-        ModernWidget.on_titleBar_doubleClicked(self)
+        pass
 
     def setWindowTitle(self, title):
         self.lblTitle.setText(title)

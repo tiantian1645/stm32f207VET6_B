@@ -156,7 +156,6 @@ class MainWindow(QMainWindow):
         self.sample_record_current_label = None
         self.flash_json_data = None
         self.last_falsh_save_dir = "./"
-        self.last_sample_wb = None
         data_xlsx_path = CONFIG.get("data_xlsx_path", f"data/{uuid.uuid4().hex}.xlsx")
         if os.path.isfile(data_xlsx_path):
             self.data_xlsx_path = data_xlsx_path
@@ -587,14 +586,14 @@ class MainWindow(QMainWindow):
             gr = rmo.groups()
             start = int(gr[0])
             num = int(gr[1]) if int(gr[1]) > 0 else 2 ** 32
-        fault = dump_sample(self.sample_db.iter_all_data(start, num), file_path)
+        _, fault = dump_sample(self.sample_db.iter_all_data(start, num), file_path)
         if fault:
             msg = ModernMessageBox(self)
             msg.setTextInteractionFlags(Qt.TextSelectableByMouse)
             msg.setIcon(QMessageBox.Warning)
             msg.setWindowTitle(f"保存失败 {file_path}")
-            msg.setText(fault[0])
-            msg.setDetailedText(fault[1])
+            msg.setText(str(fault))
+            msg.setDetailedText(repr(fault))
             msg.exec_()
 
     def onSampleSetChanged(self, item_idx, w_idx):
@@ -646,9 +645,9 @@ class MainWindow(QMainWindow):
         self.matplot_start_bt.setMaximumWidth(50)
         self.matplot_cancel_bt = QPushButton("取消")
         self.matplot_cancel_bt.setMaximumWidth(50)
-        self.matplot_period_tv_cb = QCheckBox("&NL", maximumWidth=30)
+        self.matplot_period_tv_cb = QCheckBox("&NL", maximumWidth=40)
         self.matplot_period_tv_cb.setTristate(True)
-        self.matplot_period_tv_cb.stateChanged.connect(lambda x: self.matplot_period_tv_cb.setText(("&NL", "&OD", "&PD")[x]))
+        self.matplot_period_tv_cb.stateChanged.connect(lambda x: self.matplot_period_tv_cb.setText(("&NL", "&PD", "&MX")[x]))
         self.lamp_bp_bt = QPushButton("BP", maximumWidth=30)
         self.lamp_bp_bt.clicked.connect(self.onLampBP)
         self.lamp_sl_bt = QPushButton("SL", maximumWidth=30)
@@ -1082,8 +1081,15 @@ class MainWindow(QMainWindow):
                         log10_data.append(nan)
                     else:
                         log10_data.append(log10(ld / data[i // 4]) * 10000)
+        elif data_len / total == 10:
+            for i in range(total):
+                data.append(struct.unpack("I", raw_data[i * 10 + 0 : i * 10 + 4])[0])
+            for i in range(total):
+                data.append(struct.unpack("I", raw_data[i * 10 + 4 : i * 10 + 8])[0])
+            for i in range(total):
+                data.append(struct.unpack("H", raw_data[i * 10 + 8 : i * 10 + 10])[0])
         else:
-            logger.error(f"sample data length error | {data_len}")
+            logger.error(f"sample data length error | {data_len} | {total}")
         return data, log10_data
 
     def sample_record_plot_by_index(self, idx):
@@ -1184,6 +1190,9 @@ class MainWindow(QMainWindow):
                 wave_name = WAVE_NAMES[i % 2]
             else:
                 wave_name = sd.wave.name[-3:]
+            if len(sd.raw_data) / sd.total == 10:
+                data_infos.append(f"通道 {sd.channel} | {wave_name} | {data_format_list(real_data)}")
+                continue
             ys = np.array(real_data, dtype=np.int32)
             std = np.std(ys)
             mean = np.mean(ys)
@@ -1526,10 +1535,15 @@ class MainWindow(QMainWindow):
         conf = []
         self.sample_confs = []
         self.sample_datas = []
+        check_state = self.matplot_period_tv_cb.checkState()
         for i in range(6):
             conf.append(self.matplot_conf_houhou_cs[i].currentIndex())
             conf.append(self.matplot_conf_wavelength_cs[i].currentIndex() + 1)
-            conf.append(self.matplot_conf_point_sps[i].value())
+            points_num = self.matplot_conf_point_sps[i].value()
+            if check_state == 2:
+                conf.append(points_num if points_num <= 24 else 24)
+            else:
+                conf.append(points_num)
             if conf[-3] == 0 or conf[-1] == 0:
                 v = 0
             else:
@@ -1542,7 +1556,7 @@ class MainWindow(QMainWindow):
         )
         self._serialSendPack(0x01)
         if self.matplot_period_tv_cb.isChecked():
-            conf.append(self.matplot_period_tv_cb.checkState())
+            conf.append(check_state if check_state != 2 else 3)
             self._serialSendPack(0x08, conf)
         else:
             self._serialSendPack(0x03, conf)
@@ -1985,7 +1999,7 @@ class MainWindow(QMainWindow):
         if not os.path.isfile(self.data_xlsx_path) or not check_file_permission(self.data_xlsx_path):
             dump_sample(self.sample_db.iter_all_data(), self.data_xlsx_path)
         else:
-            self.last_sample_wb, error = insert_sample(self.sample_db.iter_from_label(), self.data_xlsx_path, self.last_sample_wb)
+            insert_sample(self.sample_db.iter_from_label(), self.data_xlsx_path)
         if self.lamp_ag_cb.isChecked():
             self.onMatplotStart(False, f"Aging {datetime.now().strftime('%Y%m%d%H%M%S')}")
 
@@ -1997,6 +2011,14 @@ class MainWindow(QMainWindow):
             data = tuple((struct.unpack("H", info.content[8 + i * 2 : 10 + i * 2])[0] for i in range(length)))
         elif len(info.content) - 9 == 4 * length:  # PD OD unsigned long
             data = tuple((struct.unpack("I", info.content[8 + i * 4 : 12 + i * 4])[0] for i in range(length)))
+        elif len(info.content) - 9 == 10 * length:  # PD OD Sample  unsigned long unsigned long unsigned short
+            data = []
+            for i in range(length):
+                data.append(struct.unpack("I", info.content[8 + i * 10 + 0 : 8 + i * 10 + 4])[0])
+            for i in range(length):
+                data.append(struct.unpack("I", info.content[8 + i * 10 + 4 : 8 + i * 10 + 8])[0])
+            for i in range(length):
+                data.append(struct.unpack("H", info.content[8 + i * 10 + 8 : 8 + i * 10 + 10])[0])
         else:
             logger.error(f"error data length | {len(info.content)} --> {length} | {info.text}")
             return
@@ -2425,7 +2447,7 @@ class MainWindow(QMainWindow):
             return
         file_size = os.path.getsize(file_path)
         if file_size > 4096:
-            msg = ModernMessageBox(self)
+            msg = ModernMessageBox(self, timeout=5)
             msg.setIcon(QMessageBox.Warning)
             msg.setWindowTitle(f"文件大小异常 | {file_size}")
             msg.setText("只取头部4096字节数据")
@@ -2626,7 +2648,7 @@ class MainWindow(QMainWindow):
         error_code = struct.unpack("H", info.content[6:8])[0]
         error_content = self.getErrorContent(error_code)
         level = QMessageBox.Warning
-        msg = ModernMessageBox(self)
+        msg = ModernMessageBox(self, timeout=3)
         msg.setIcon(level)
         msg.setWindowTitle(f"故障信息 | {datetime.now()}")
         msg.setText(f"故障码 {error_code}\n{error_content}")

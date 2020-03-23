@@ -26,11 +26,11 @@
 
 #define COMM_DATA_LED_VOLTAGE_INIT_610 30
 #define COMM_DATA_LED_VOLTAGE_INIT_550 300
-#define COMM_DATA_LED_VOLTAGE_INIT_405 120
+#define COMM_DATA_LED_VOLTAGE_INIT_405 40
 
 #define COMM_DATA_LED_VOLTAGE_UNIT_610 1
 #define COMM_DATA_LED_VOLTAGE_UNIT_550 10
-#define COMM_DATA_LED_VOLTAGE_UNIT_405 5
+#define COMM_DATA_LED_VOLTAGE_UNIT_405 2
 
 /* Exported types ------------------------------------------------------------*/
 /* 采集板串口 接收数据定义*/

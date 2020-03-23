@@ -613,7 +613,7 @@ uint8_t comm_Data_Check_LED(eComm_Data_Sample_Radiant radiant)
             bias_1300 += 13000000 - temp_32;
         }
     }
-    if (min > 10000000 && max < 14000000) {
+    if (min > 6000000 && max < 14000000) {
         result = 0;
     } else {
         result = 1;
@@ -1214,17 +1214,17 @@ uint8_t comm_Data_Sample_Data_Fetch(uint8_t channel, uint8_t * pBuffer, uint8_t 
  * @brief  采样数据记录
  * @param  channel 通道索引 1～6 pBuffer 数据输入指针 length 数据输入长度
  * @param  replace 0 不替换 1 替换
- * @retval 变换结果 0 u16 1 u32 2 数据长度不匹配 3 通道索引异常
+ * @retval 变换结果 0 u16 1 u32 2 mix 3 数据长度不匹配 4 通道索引异常 5 替换异常
  */
 uint8_t comm_Data_Sample_Data_Commit(uint8_t channel, uint8_t * pBuffer, uint8_t length, uint8_t replace)
 {
     uint8_t result;
 
     if (channel < 1 || channel > 6) { /* 检查通道编码 */
-        return 3;
+        return 4;
     }
     if (replace == 0 && gComm_Data_Samples[channel - 1].num > 0) {
-        return 4;
+        return 5;
     }
 
     gComm_Data_Samples[channel - 1].num = pBuffer[6]; /* 数据个数 u16 | u32 */
@@ -1235,9 +1235,12 @@ uint8_t comm_Data_Sample_Data_Commit(uint8_t channel, uint8_t * pBuffer, uint8_t
     } else if (length - 9 == pBuffer[6] * 4) {         /* u32 */
         gComm_Data_Samples[channel - 1].data_type = 4; /* 数据类型标识 */
         result = 1;
+    } else if (length - 9 == pBuffer[6] * 10) {         /* 混合类型 */
+        gComm_Data_Samples[channel - 1].data_type = 10; /* 数据类型标识 */
+        result = 2;
     } else {                                           /* 异常长度 */
         gComm_Data_Samples[channel - 1].data_type = 1; /* 数据类型标识 */
-        result = 2;
+        result = 3;
     }
     memcpy(gComm_Data_Samples[channel - 1].raw_datas, pBuffer + 8, length - 9); /* 原封不动复制 */
     return result;

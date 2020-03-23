@@ -184,19 +184,15 @@ def dump_sample(sample_iter, file_path, title=None):
         return None, e
 
 
-def insert_sample(sample_iter, file_path, base_wb=None):
+def insert_sample(sample_iter, file_path):
     sample_list = [i for i in sample_iter]
     try:
-        if base_wb is None:
-            if os.path.isfile(file_path):
-                wb = load_workbook(file_path)
-                new_flag = False
-            else:
-                wb = Workbook()
-                new_flag = True
-        else:
-            wb = base_wb
+        if os.path.isfile(file_path):
+            wb = load_workbook(file_path)
             new_flag = False
+        else:
+            wb = Workbook()
+            new_flag = True
         if ODD_STYLE.name not in wb.style_names:
             wb.add_named_style(ODD_STYLE)
         if EVEN_STYLE.name not in wb.style_names:

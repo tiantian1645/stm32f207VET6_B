@@ -172,7 +172,6 @@ class SampleDB:
         elif len(raw_data) / total == 2:
             return [unpack("H", bytes((i)))[0] for i in divide(total, raw_data)]
         elif len(raw_data) / total == 4:
-            logger.debug("_decode_raw_data")
             if not self.device_id:
                 cc = load_CC("data/flash.xlsx")
             else:
@@ -197,6 +196,17 @@ class SampleDB:
                         cc_list.append(nan)
                 self._i32 = None
             return result + cc_list
+        elif len(raw_data) / total == 10:
+            pd_w = []
+            pd_r = []
+            od = []
+            for i in divide(total, raw_data):
+                b = bytes(i)
+                pd_w.append(unpack("I", b[0:4])[0])
+                pd_r.append(unpack("I", b[4:8])[0])
+                od.append(unpack("H", b[8:])[0])
+            result = pd_w + pd_r + od
+            return result
         else:
             return []
 
