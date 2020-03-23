@@ -1998,7 +1998,7 @@ class MainWindow(QMainWindow):
             self.sample_record_plot_by_index(0)
         if not os.path.isfile(self.data_xlsx_path) or not check_file_permission(self.data_xlsx_path):
             dump_sample(self.sample_db.iter_all_data(), self.data_xlsx_path)
-        else:
+        elif not self.lamp_ag_cb.isChecked():
             insert_sample(self.sample_db.iter_from_label(), self.data_xlsx_path)
         if self.lamp_ag_cb.isChecked():
             self.onMatplotStart(False, f"Aging {datetime.now().strftime('%Y%m%d%H%M%S')}")
