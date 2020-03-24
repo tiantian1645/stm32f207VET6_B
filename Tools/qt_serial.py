@@ -179,18 +179,22 @@ class SerialSendWorker(QRunnable):
                 return (True, write_data, info)
             else:
                 return (False, write_data, info)
-        return (False, write_data, info)
+        logger.debug(f"wait henji result | {bytesPuttyPrint(write_data)} -> {info.text} | {write_data[3] == info.content[6]}")
+        return (write_data[3] == info.content[6], write_data, info)
 
     @pyqtSlot()
     def run(self):
+        write_data = None
+        retry = 0
+        start_time = time.time()
         try:
-            start_time = time.time()
             while True:
                 # check stop
                 if self.stop:
                     break
                 # check write task
-                write_data = self.getWriteData(0.01)
+                if write_data is None:
+                    write_data = self.getWriteData(0.01)
                 if write_data is None:
                     continue
                 logger.debug(f"serial write data | {bytesPuttyPrint(write_data)}")
@@ -204,7 +208,16 @@ class SerialSendWorker(QRunnable):
                 else:
                     timeout = 2
                 wait_result = self.waitHenji(write_data, timeout)
+                if not wait_result[0] and wait_result[1][5] in (0x01, 0x03, 0x08) and retry < 3:
+                    retry += 1
+                    logger.error(f"could not get henji retry | {retry}")
+                    ba = bytearray(write_data)
+                    ba[3] += 1
+                    write_data = bytes(ba)
+                    continue
                 self.signals.result.emit(wait_result)
+                write_data = None
+                retry = 0
         except Exception:
             exctype, value = sys.exc_info()[:2]
             trace_back_text = stackprinter.format()
