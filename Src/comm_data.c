@@ -1214,35 +1214,48 @@ uint8_t comm_Data_Sample_Data_Fetch(uint8_t channel, uint8_t * pBuffer, uint8_t 
  * @brief  采样数据记录
  * @param  channel 通道索引 1～6 pBuffer 数据输入指针 length 数据输入长度
  * @param  replace 0 不替换 1 替换
- * @retval 变换结果 0 u16 1 u32 2 mix 3 数据长度不匹配 4 通道索引异常 5 替换异常
+ * @retval 变换结果 eComm_Data_Sample_Data
  */
-uint8_t comm_Data_Sample_Data_Commit(uint8_t channel, uint8_t * pBuffer, uint8_t length, uint8_t replace)
+eComm_Data_Sample_Data comm_Data_Sample_Data_Commit(uint8_t channel, uint8_t * pBuffer, uint8_t length, uint8_t replace)
 {
     uint8_t result;
+    uint16_t buffer16[20];
+    uint32_t input, output_32;
 
     if (channel < 1 || channel > 6) { /* 检查通道编码 */
-        return 4;
+        return eComm_Data_Sample_Data_ERROR;
     }
     if (replace == 0 && gComm_Data_Samples[channel - 1].num > 0) {
-        return 5;
+        return eComm_Data_Sample_Data_ERROR;
     }
 
     gComm_Data_Samples[channel - 1].num = pBuffer[6]; /* 数据个数 u16 | u32 */
 
-    if (length - 9 == pBuffer[6] * 2) {                /* u16 */
+    if (length == pBuffer[6] * 2) {                    /* u16 */
         gComm_Data_Samples[channel - 1].data_type = 2; /* 数据类型标识 */
-        result = 0;
-    } else if (length - 9 == pBuffer[6] * 4) {         /* u32 */
+        result = eComm_Data_Sample_Data_U16;
+    } else if (length == pBuffer[6] * 4) {             /* u32 */
         gComm_Data_Samples[channel - 1].data_type = 4; /* 数据类型标识 */
-        result = 1;
-    } else if (length - 9 == pBuffer[6] * 10) {         /* 混合类型 */
-        gComm_Data_Samples[channel - 1].data_type = 10; /* 数据类型标识 */
-        result = 2;
+        result = eComm_Data_Sample_Data_U32;
+    } else if (length == pBuffer[6] * 10) {                                     /* 混合类型 */
+        gComm_Data_Samples[channel - 1].data_type = 12;                         /* 数据类型标识 */
+        memcpy(gComm_Data_Samples[channel - 1].raw_datas, pBuffer + 8, length); /* 复制 */
+        for (result = 0; result < pBuffer[6]; ++result) {
+            input = *((uint16_t *)(pBuffer + 8 + 8 + 10 * result));                                            /* 实际采样值 */
+            sample_first_degree_cal(channel, gComm_Data_Samples[channel - 1].conf.radiant, input, &output_32); /* 线性投影 */
+            buffer16[result] = (uint16_t)(output_32);                                                          /* 存入缓存 */
+        }
+        for (result = 0; result < pBuffer[6]; ++result) {
+            memcpy(gComm_Data_Samples[channel - 1].raw_datas + 12 * result, pBuffer + 8 + 10 * result, 10);          /* 复制原始值 */
+            memcpy(gComm_Data_Samples[channel - 1].raw_datas + 12 * result + 10, (uint8_t *)(&buffer16[result]), 2); /* 补充校正值 */
+        }
+        memcpy(pBuffer + 8, gComm_Data_Samples[channel - 1].raw_datas, length / 10 * 12);
+        return eComm_Data_Sample_Data_MIX;
     } else {                                           /* 异常长度 */
         gComm_Data_Samples[channel - 1].data_type = 1; /* 数据类型标识 */
-        result = 3;
+        result = eComm_Data_Sample_Data_UNKNOW;
     }
-    memcpy(gComm_Data_Samples[channel - 1].raw_datas, pBuffer + 8, length - 9); /* 原封不动复制 */
+    memcpy(gComm_Data_Samples[channel - 1].raw_datas, pBuffer + 8, length); /* 原封不动复制 */
     return result;
 }
 

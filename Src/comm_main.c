@@ -234,6 +234,16 @@ UBaseType_t comm_Main_SendTask_Queue_GetWaiting_FromISR(void)
 }
 
 /**
+ * @brief  串口发送队列 空闲 中断版本
+ * @param  Npne
+ * @retval 串口发送队列 空闲
+ */
+UBaseType_t comm_Main_SendTask_Queue_GetFree_FromISR(void)
+{
+    return COMM_MAIN_SEND_QUEU_LENGTH - uxQueueMessagesWaitingFromISR(comm_Main_SendQueue);
+}
+
+/**
  * @brief  加入串口发送队列
  * @param  pData   数据指针
  * @param  length  数据长度

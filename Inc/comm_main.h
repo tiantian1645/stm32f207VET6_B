@@ -49,6 +49,7 @@ void comm_Main_DMA_TX_Error(void);
 
 UBaseType_t comm_Main_SendTask_Queue_GetWaiting(void);
 UBaseType_t comm_Main_SendTask_Queue_GetWaiting_FromISR(void);
+UBaseType_t comm_Main_SendTask_Queue_GetFree_FromISR(void);
 
 BaseType_t comm_Main_SendTask_ErrorInfoQueueEmit(uint16_t * pErrorCode, uint32_t timeout);
 BaseType_t comm_Main_SendTask_ErrorInfoQueueEmitFromISR(uint16_t * pErrorCode);

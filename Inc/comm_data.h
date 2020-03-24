@@ -97,6 +97,14 @@ typedef struct {
     uint16_t led_voltage_405;
 } sComm_LED_Voltage;
 
+typedef enum {
+    eComm_Data_Sample_Data_ERROR,
+    eComm_Data_Sample_Data_U16,
+    eComm_Data_Sample_Data_U32,
+    eComm_Data_Sample_Data_MIX,
+    eComm_Data_Sample_Data_UNKNOW,
+} eComm_Data_Sample_Data;
+
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/
@@ -166,7 +174,7 @@ void comm_Data_Stary_Test_Clear(void);
 uint8_t comm_Data_Stary_Test_Is_Running(void);
 
 uint8_t comm_Data_Sample_Data_Fetch(uint8_t channel, uint8_t * pBuffer, uint8_t * pLength);
-uint8_t comm_Data_Sample_Data_Commit(uint8_t channel, uint8_t * pBuffer, uint8_t length, uint8_t replcae);
+eComm_Data_Sample_Data comm_Data_Sample_Data_Commit(uint8_t channel, uint8_t * pBuffer, uint8_t length, uint8_t replcae);
 uint8_t comm_Data_Sample_Data_Correct(uint8_t channel, uint8_t * pBuffer, uint8_t * pLength);
 
 void gComm_Data_Correct_Flag_Mark(void);

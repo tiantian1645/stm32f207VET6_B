@@ -1393,8 +1393,9 @@ uint8_t protocol_Parse_Data_ISR(uint8_t * pInBuff, uint16_t length)
  */
 static void protocol_Parse_Data_Fun_ISR(uint8_t * pInBuff, uint16_t length)
 {
-    uint8_t data_length, type;
+    uint8_t data_length;
     uint16_t i;
+    eComm_Data_Sample_Data type;
 
     switch (pInBuff[5]) {                                                                                                  /* 进一步处理 功能码 */
         case eComm_Data_Inbound_CMD_DATA:                                                                                  /* 采集数据帧 */
@@ -1402,18 +1403,28 @@ static void protocol_Parse_Data_Fun_ISR(uint8_t * pInBuff, uint16_t length)
                 stroge_Conf_CC_O_Data_From_B3(pInBuff + 6);                                                                /* 修改测量点 */
                 comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7); /* 转发至外串口 */
             } else if (comm_Data_SP_LED_Is_Running()) {                                                                    /* 处于LED校正状态 */
-                comm_Data_Sample_Data_Commit(pInBuff[7], pInBuff, length, 0);                        /* 不允许替换 先白板后反应区 */
-            } else {                                                                                 /* 未出于定标状态 */
-                type = comm_Data_Sample_Data_Commit(pInBuff[7], pInBuff, length, 1);                 /* 采样数据记录 */
-                if (protocol_Debug_SampleRawData() || type > 0 || gComm_Data_Lamp_BP_Flag_Check()) { /* 选择原始数据 */
-                    if (comm_Main_SendTask_Queue_GetWaiting_FromISR() < COMM_MAIN_SEND_QUEU_LENGTH - 12) {
+                comm_Data_Sample_Data_Commit(pInBuff[7], pInBuff, length - 9, 0);        /* 不允许替换 先白板后反应区 */
+            } else {                                                                     /* 未出于定标状态 */
+                type = comm_Data_Sample_Data_Commit(pInBuff[7], pInBuff, length - 9, 1); /* 采样数据记录 */
+                if (type == eComm_Data_Sample_Data_MIX) {                                /* 混合数据类型 */
+                    length += pInBuff[6] * 2;                                            /* 补充长度  uin16_t */
+                    if (comm_Main_SendTask_Queue_GetFree_FromISR() > 1) {
+                        comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7); /* 构造数据包 */
+                        comm_Out_SendTask_QueueEmitWithModify_FromISR(pInBuff + 6, length); /* 修改帧号ID后转发 */
+                    } else {
+                        comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7); /* 构造数据包 */
+                    }
+                    break;
+                }
+                if (protocol_Debug_SampleRawData() || type != eComm_Data_Sample_Data_U16 || gComm_Data_Lamp_BP_Flag_Check()) { /* 选择原始数据 */
+                    if (comm_Main_SendTask_Queue_GetFree_FromISR() > 1) {
                         comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7); /* 构造数据包 */
                         comm_Out_SendTask_QueueEmitWithModify_FromISR(pInBuff + 6, length); /* 修改帧号ID后转发 */
                     } else {
                         comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7); /* 构造数据包 */
                     }
 
-                    if (type > 0 || gComm_Data_Lamp_BP_Flag_Check()) { /* u32类型 或 处于灯BP状态 */
+                    if (type != eComm_Data_Sample_Data_U16 || gComm_Data_Lamp_BP_Flag_Check()) { /* u32类型 或 处于灯BP状态 */
                         break;
                     }
                     for (i = 0; i < length; ++i) { /* 修正偏移 */
@@ -1421,7 +1432,7 @@ static void protocol_Parse_Data_Fun_ISR(uint8_t * pInBuff, uint16_t length)
                     }
                 }                                                                 /* 经过校正映射 */
                 comm_Data_Sample_Data_Correct(pInBuff[7], pInBuff, &data_length); /* 投影校正 */
-                if (comm_Main_SendTask_Queue_GetWaiting_FromISR() < COMM_MAIN_SEND_QUEU_LENGTH - 12) {
+                if (comm_Main_SendTask_Queue_GetFree_FromISR() > 1) {
                     comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_SAMP_DATA, pInBuff, data_length); /* 构造数据包 */
                     comm_Out_SendTask_QueueEmitWithModify_FromISR(pInBuff, data_length + 7);                                 /* 修改帧号ID后转发 */
                 } else {

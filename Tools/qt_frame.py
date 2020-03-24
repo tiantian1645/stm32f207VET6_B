@@ -1081,13 +1081,15 @@ class MainWindow(QMainWindow):
                         log10_data.append(nan)
                     else:
                         log10_data.append(log10(ld / data[i // 4]) * 10000)
-        elif data_len / total == 10:
+        elif data_len / total == 12:
             for i in range(total):
-                data.append(struct.unpack("I", raw_data[i * 10 + 0 : i * 10 + 4])[0])
+                data.append(struct.unpack("I", raw_data[i * 12 + 0 : i * 12 + 4])[0])
             for i in range(total):
-                data.append(struct.unpack("I", raw_data[i * 10 + 4 : i * 10 + 8])[0])
+                data.append(struct.unpack("I", raw_data[i * 12 + 4 : i * 12 + 8])[0])
             for i in range(total):
-                data.append(struct.unpack("H", raw_data[i * 10 + 8 : i * 10 + 10])[0])
+                data.append(struct.unpack("H", raw_data[i * 12 + 8 : i * 12 + 10])[0])
+            for i in range(total):
+                data.append(struct.unpack("H", raw_data[i * 12 + 10 : i * 12 + 12])[0])
         else:
             logger.error(f"sample data length error | {data_len} | {total}")
         return data, log10_data
@@ -1190,7 +1192,7 @@ class MainWindow(QMainWindow):
                 wave_name = WAVE_NAMES[i % 2]
             else:
                 wave_name = sd.wave.name[-3:]
-            if len(sd.raw_data) / sd.total == 10:
+            if len(sd.raw_data) / sd.total == 12:
                 data_infos.append(f"通道 {sd.channel} | {wave_name} | {data_format_list(real_data)}")
                 continue
             ys = np.array(real_data, dtype=np.int32)
@@ -1541,7 +1543,7 @@ class MainWindow(QMainWindow):
             conf.append(self.matplot_conf_wavelength_cs[i].currentIndex() + 1)
             points_num = self.matplot_conf_point_sps[i].value()
             if check_state == 2:
-                conf.append(points_num if points_num <= 24 else 24)
+                conf.append(points_num if points_num <= 20 else 20)
             else:
                 conf.append(points_num)
             if conf[-3] == 0 or conf[-1] == 0:
@@ -2011,14 +2013,17 @@ class MainWindow(QMainWindow):
             data = tuple((struct.unpack("H", info.content[8 + i * 2 : 10 + i * 2])[0] for i in range(length)))
         elif len(info.content) - 9 == 4 * length:  # PD OD unsigned long
             data = tuple((struct.unpack("I", info.content[8 + i * 4 : 12 + i * 4])[0] for i in range(length)))
-        elif len(info.content) - 9 == 10 * length:  # PD OD Sample  unsigned long unsigned long unsigned short
+        elif len(info.content) - 9 == 12 * length:  # PD OD Sample  unsigned long unsigned long unsigned short
             data = []
             for i in range(length):
-                data.append(struct.unpack("I", info.content[8 + i * 10 + 0 : 8 + i * 10 + 4])[0])
+                data.append(struct.unpack("I", info.content[8 + i * 12 + 0 : 8 + i * 12 + 4])[0])
             for i in range(length):
-                data.append(struct.unpack("I", info.content[8 + i * 10 + 4 : 8 + i * 10 + 8])[0])
+                data.append(struct.unpack("I", info.content[8 + i * 12 + 4 : 8 + i * 12 + 8])[0])
             for i in range(length):
-                data.append(struct.unpack("H", info.content[8 + i * 10 + 8 : 8 + i * 10 + 10])[0])
+                data.append(struct.unpack("H", info.content[8 + i * 12 + 8 : 8 + i * 12 + 10])[0])
+            for i in range(length):
+                data.append(struct.unpack("H", info.content[8 + i * 12 + 10 : 8 + i * 12 + 12])[0])
+            logger.debug(f"hit data | {data} | {bytesPuttyPrint(info.content)}")
         else:
             logger.error(f"error data length | {len(info.content)} --> {length} | {info.text}")
             return
