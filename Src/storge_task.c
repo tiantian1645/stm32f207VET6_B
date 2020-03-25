@@ -711,7 +711,7 @@ static void storge_Test_Flash(uint8_t * pBuffer)
         if (readCnt != 16) {
             pBuffer[1] = 1;
             comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
-            break;
+            return;
         }
         for (j = 0; j < 16; ++j) {
             pBuffer[2 + j] = 0xFF - pBuffer[2 + j];
@@ -720,7 +720,7 @@ static void storge_Test_Flash(uint8_t * pBuffer)
         if (wroteCnt != 16) {
             pBuffer[1] = 1;
             comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
-            break;
+            return;
         }
         for (j = 0; j < 16; ++j) {
             pBuffer[2 + j] = 0xFF - pBuffer[2 + j];
@@ -746,7 +746,7 @@ static void storge_Test_EEPROM(uint8_t * pBuffer)
         if (readCnt != 16) {
             pBuffer[1] = 1;
             comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
-            break;
+            return;
         }
         for (j = 0; j < 16; ++j) { /*  取反作测试数据 */
             pBuffer[2 + j] = 0xFF - pBuffer[2 + j];
@@ -755,13 +755,13 @@ static void storge_Test_EEPROM(uint8_t * pBuffer)
         if (wroteCnt != 16) {
             pBuffer[1] = 2;
             comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
-            break;
+            return;
         }
         readCnt = I2C_EEPROM_Read(cStorge_Test_EEPROM_Addrs[i], pBuffer + 2 + 16, 16, 1000); /* 回读数据 */
         if (readCnt != 16) {
             pBuffer[1] = 3;
             comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
-            break;
+            return;
         }
         for (j = 0; j < 16; ++j) { /* 二次取反数据 */
             pBuffer[2 + j] = 0xFF - pBuffer[2 + j];
@@ -771,7 +771,7 @@ static void storge_Test_EEPROM(uint8_t * pBuffer)
         if (memcmp(pBuffer + 2, pBuffer + 2 + 16, 16) != 0) {                             /* 对比结果 */
             pBuffer[1] = 4;
             comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
-            break;
+            return;
         }
     }
     pBuffer[1] = 0;
