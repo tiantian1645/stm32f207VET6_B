@@ -93,7 +93,9 @@ static uint8_t gComm_Data_Correct_Flag = 0; /* 定标状态标志 */
 static eComm_Data_Sample_Radiant gComm_Data_Correct_wave = eComm_Data_Sample_Radiant_550;
 static uint8_t gComm_Data_Correct_stages[6] = {0, 0, 0, 0, 0, 0}; /* 定标段索引 */
 
-static uint8_t gComm_Data_Lamp_BP_Flag = 0; /* 灯BP状态标志 */
+static uint8_t gComm_Data_Lamp_BP_Flag = 0;   /* 灯BP状态标志 */
+static uint8_t gComm_Data_AgingLoop_Mode = 0; /* 老化测试 配置状态 */
+
 /* Private constants ---------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -220,6 +222,26 @@ void gComm_Data_Lamp_BP_Flag_Clr(void)
 uint8_t gComm_Data_Lamp_BP_Flag_Check(void)
 {
     return (gComm_Data_Lamp_BP_Flag > 0) ? (1) : (0);
+}
+
+/**
+ * @brief  老化测试模式 读取
+ * @param  None
+ * @retval 老化测试模式
+ */
+uint8_t gComm_Data_AgingLoop_Mode_Get(void)
+{
+    return gComm_Data_AgingLoop_Mode;
+}
+
+/**
+ * @brief  老化测试模式 设置
+ * @param  mode 模式 0 为普通 1 为PD 2 为混合
+ * @retval None
+ */
+void gComm_Data_AgingLoop_Mode_Set(uint8_t mode)
+{
+    gComm_Data_AgingLoop_Mode = mode;
 }
 
 /**
@@ -935,6 +957,7 @@ BaseType_t comm_Data_Sample_Send_Conf(uint8_t * pData)
 {
     uint8_t sendLength;
 
+    gComm_Data_AgingLoop_Mode_Set(0);
     comm_Data_Sample_Apply_Conf(pData);
     sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 18); /* 构造测试配置包 */
     return comm_Data_SendTask_QueueEmit(pData, sendLength, 50);
@@ -949,6 +972,7 @@ BaseType_t comm_Data_Sample_Send_Conf_FromISR(uint8_t * pData)
 {
     uint8_t sendLength;
 
+    gComm_Data_AgingLoop_Mode_Set(0);
     comm_Data_Sample_Apply_Conf_FromISR(pData);
     sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 18); /* 构造测试配置包 */
     return comm_Data_SendTask_QueueEmit_FromISR(pData, sendLength);
@@ -963,6 +987,7 @@ BaseType_t comm_Data_Sample_Send_Conf_TV(uint8_t * pData)
 {
     uint8_t sendLength;
 
+    gComm_Data_AgingLoop_Mode_Set(pData[18]);
     comm_Data_Sample_Apply_Conf(pData);
     sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_TEST, pData, 19); /* 构造工装测试配置包 */
     return comm_Data_SendTask_QueueEmit(pData, sendLength, 50);
@@ -977,6 +1002,7 @@ BaseType_t comm_Data_Sample_Send_Conf_TV_FromISR(uint8_t * pData)
 {
     uint8_t sendLength;
 
+    gComm_Data_AgingLoop_Mode_Set(pData[18]);
     comm_Data_Sample_Apply_Conf_FromISR(pData);
     sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_TEST, pData, 19); /* 构造工装测试配置包 */
     return comm_Data_SendTask_QueueEmit_FromISR(pData, sendLength);
@@ -1008,9 +1034,11 @@ BaseType_t comm_Data_Sample_Send_Conf_Correct(uint8_t * pData, eComm_Data_Sample
     }
     gComm_Data_Correct_wave = wave;
     if (cmd_type == eComm_Data_Outbound_CMD_CONF) {
+        gComm_Data_AgingLoop_Mode_Set(0);
         sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 18); /* 构造普通测试配置包 */
     } else if (cmd_type == eComm_Data_Outbound_CMD_TEST) {
-        pData[18] = 2;                                                                     /* PD */
+        pData[18] = 2; /* PD */
+        gComm_Data_AgingLoop_Mode_Set(pData[18]);
         sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_TEST, pData, 19); /* 构造工装测试配置包 */
     }
     return comm_Data_SendTask_QueueEmit(pData, sendLength, 50);
@@ -1103,8 +1131,12 @@ BaseType_t comm_Data_Sample_Send_Conf_Re(void)
         pData[3 * i + 2] = gComm_Data_Samples[i].conf.points_num; /* 测试点数 */
         gComm_Data_Sample_Max_Point_Update(pData[3 * i + 2]);     /* 更新最大点数 */
     }
-
-    sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 18); /* 构造测试配置包 */
+    if (gComm_Data_AgingLoop_Mode_Get() == 0) {
+        sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 18); /* 构造测试配置包 */
+    } else {
+        pData[18] = gComm_Data_AgingLoop_Mode_Get();
+        sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_TEST, pData, 19); /* 构造工装测试配置包 */
+    }
     return comm_Data_SendTask_QueueEmit(pData, sendLength, 50);
 }
 
