@@ -154,6 +154,7 @@ BaseType_t comm_Data_Sample_Send_Conf(uint8_t * pData);
 BaseType_t comm_Data_Sample_Send_Conf_FromISR(uint8_t * pData);
 BaseType_t comm_Data_Sample_Send_Conf_TV(uint8_t * pData);
 BaseType_t comm_Data_Sample_Send_Conf_TV_FromISR(uint8_t * pData);
+BaseType_t comm_Data_Sample_Send_Conf_Re(void);
 
 BaseType_t comm_Data_Conf_Sem_Wait(uint32_t timeout);
 BaseType_t comm_Data_Conf_Sem_Give(void);

@@ -173,7 +173,7 @@ class SampleGraph:
             index = round(x)
             label_point = f"<span style='font-size: 12pt'>{x:0.1f}, <span style='font-size: 12pt'>{y:0.1f}"
             lds = []
-            for data_conf in self.plot_data_confs:
+            for data_conf in self.plot_data_confs[-24:]:
                 if data_conf.data is not None and index >= 0 and index < len(data_conf.data):
                     value = data_conf.data[index]
                     if isinstance(value, int):

@@ -138,6 +138,16 @@ uint8_t protocol_Debug_SampleRawData(void)
 }
 
 /**
+ * @brief  调试标志 老化测试
+ * @param  None
+ * @retval 1 使能 0 失能
+ */
+uint8_t protocol_Debug_AgingLoop(void)
+{
+    return protocol_Is_Debug(eProtocol_Debug_AgingLoop);
+}
+
+/**
  * @brief  调试模式标志 置位
  * @param  item 项目组别
  * @retval None
@@ -1172,11 +1182,15 @@ static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length)
             memcpy(pInBuff + 12 + strlen(__TIME__), (uint8_t *)__DATE__, strlen(__DATE__));
             comm_Out_SendTask_QueueEmitWithBuild_FromISR(0xDF, pInBuff, 12 + strlen(__TIME__) + strlen(__DATE__));
             break;
-        case eProtocolEmitPack_Client_CMD_START:            /* 开始测量帧 0x01 */
-            gComm_Data_Sample_Max_Point_Clear();            /* 清除最大点数 */
-            protocol_Temp_Upload_Pause();                   /* 暂停温度上送 */
-            comm_Data_GPIO_Init();                          /* 初始化通讯管脚 */
-            motor_fun.fun_type = eMotor_Fun_Sample_Start;   /* 开始测试 */
+        case eProtocolEmitPack_Client_CMD_START:           /* 开始测量帧 0x01 */
+            gComm_Data_Sample_Max_Point_Clear();           /* 清除最大点数 */
+            protocol_Temp_Upload_Pause();                  /* 暂停温度上送 */
+            comm_Data_GPIO_Init();                         /* 初始化通讯管脚 */
+            if (protocol_Debug_AgingLoop()) {              /* 老化测试 */
+                motor_fun.fun_type = eMotor_Fun_AgingLoop; /* 老化测试 */
+            } else {
+                motor_fun.fun_type = eMotor_Fun_Sample_Start; /* 普通测试 */
+            }
             if (motor_Emit_FromISR(&motor_fun) == 0) {      /* 提交到电机队列 */
                 comm_Data_Sample_Send_Clear_Conf_FromISR(); /* 清除采样板上配置信息 */
             }

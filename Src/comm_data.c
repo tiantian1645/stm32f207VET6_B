@@ -981,6 +981,7 @@ BaseType_t comm_Data_Sample_Send_Conf_TV_FromISR(uint8_t * pData)
     sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_TEST, pData, 19); /* 构造工装测试配置包 */
     return comm_Data_SendTask_QueueEmit_FromISR(pData, sendLength);
 }
+
 /**
  * @brief  发送采样配置 定标
  * @param  wave 波长配置  405不做定标
@@ -1084,6 +1085,27 @@ BaseType_t comm_Data_Sample_Send_Clear_Conf_FromISR(void)
 
     sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 18); /* 构造测试配置包 */
     return comm_Data_SendTask_QueueEmit_FromISR(pData, sendLength);
+}
+
+/**
+ * @brief  发送上次采样配置 中断版本
+ * @note   用于老化测试采样
+ * @param  None
+ * @retval pdPASS 提交成功 pdFALSE 提交失败
+ */
+BaseType_t comm_Data_Sample_Send_Conf_Re(void)
+{
+    uint8_t i, sendLength, pData[30];
+
+    for (i = 0; i < ARRAY_LEN(gComm_Data_Samples); ++i) {
+        pData[3 * i + 0] = gComm_Data_Samples[i].conf.assay;      /* 测试方法 */
+        pData[3 * i + 1] = gComm_Data_Samples[i].conf.radiant;    /* 测试波长 */
+        pData[3 * i + 2] = gComm_Data_Samples[i].conf.points_num; /* 测试点数 */
+        gComm_Data_Sample_Max_Point_Update(pData[3 * i + 2]);     /* 更新最大点数 */
+    }
+
+    sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 18); /* 构造测试配置包 */
+    return comm_Data_SendTask_QueueEmit(pData, sendLength, 50);
 }
 
 /**

@@ -1594,6 +1594,7 @@ class MainWindow(QMainWindow):
     def onMatplotCancel(self, event):
         self._serialSendPack(0x02)
         self.stop_matplot_timer()
+        self.debug_flag_cbs[5].setChecked(False)
 
     def onBootload(self, event):
         # self._serialSendPack(0x0F)
@@ -1870,7 +1871,8 @@ class MainWindow(QMainWindow):
                 self._setColor(self.selftest_motor_scan_m, nbg="green")
         elif item == 10:
             if result > 0:
-                logger.error(f"get raw byte in self check barcode | {bytesPuttyPrint(raw_bytes[9 : 9 + raw_bytes[8]])}")
+                if raw_bytes[8]:
+                    logger.error(f"get raw byte in self check barcode | {bytesPuttyPrint(raw_bytes[9 : 9 + raw_bytes[8]])}")
                 self._setColor(self.selftest_motor_scan_l, nbg="red")
                 text = bytesPuttyPrint(raw_bytes)
                 self.selftest_motor_scan_l.setText(text)
@@ -2000,10 +2002,18 @@ class MainWindow(QMainWindow):
             self.sample_record_plot_by_index(0)
         if not os.path.isfile(self.data_xlsx_path) or not check_file_permission(self.data_xlsx_path):
             dump_sample(self.sample_db.iter_all_data(), self.data_xlsx_path)
-        elif not self.lamp_ag_cb.isChecked():
+        elif (not self.lamp_ag_cb.isChecked()) and (not self.debug_flag_cbs[5].isChecked()):
             insert_sample(self.sample_db.iter_from_label(), self.data_xlsx_path)
         if self.lamp_ag_cb.isChecked():
             self.onMatplotStart(False, f"Aging {datetime.now().strftime('%Y%m%d%H%M%S')}")
+        if self.debug_flag_cbs[5].isChecked():
+            self.sample_record_lable_name = datetime.now().strftime("%Y%m%d%H%M%S")
+            logger.debug(f"create new label | {self.sample_record_lable_name}")
+            self.sample_label = self.sample_db.build_label(
+                name=self.sample_record_lable_name,
+                version=f"{self.version}.{datetime.strftime(self.device_datetime, '%Y%m%d.%H%M%S')}",
+                device_id=self.device_id,
+            )
 
     def updateMatplotData(self, info):
         length = info.content[6]
@@ -2586,10 +2596,11 @@ class MainWindow(QMainWindow):
 
         self.debug_flag_gb = QWidget()
         debug_flag_ly = QGridLayout(self.debug_flag_gb)
-        debug_flag_ly.setSpacing(3)
+        debug_flag_ly.setSpacing(0)
         debug_flag_ly.setContentsMargins(3, 3, 3, 3)
-        self.debug_flag_cbs = (QCheckBox("温度"), QCheckBox("告警"), QCheckBox("扫码"), QCheckBox("托盘"), QCheckBox("原值"))
+        self.debug_flag_cbs = (QCheckBox("温度"), QCheckBox("告警"), QCheckBox("扫码"), QCheckBox("托盘"), QCheckBox("原值"), QCheckBox("老化"))
         for i, cb in enumerate(self.debug_flag_cbs):
+            cb.setMaximumWidth(45)
             debug_flag_ly.addWidget(cb, i // 6, i % 6)
         storge_ly.addWidget(self.storge_gb)
         storge_ly.addWidget(self.debug_flag_gb)

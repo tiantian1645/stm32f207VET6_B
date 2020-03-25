@@ -858,6 +858,84 @@ static void motor_Task(void * argument)
                 motor_Sample_Deal();    /* 启动采样并控制白板电机 */
                 motor_Sample_Owari();   /* 清理 */
                 break;
+            case eMotor_Fun_AgingLoop: /* 老化测试 */
+                cnt = 0;
+                do {
+                    xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0); /* 清空通知 */
+                    xTick = xTaskGetTickCount();                      /* 记录总体准备起始时间 */
+                    comm_Data_Conf_Sem_Wait(0);                       /* 清除配置信息信号量 */
+                    led_Mode_Set(eLED_Mode_Kirakira_Green);           /* LED 绿灯闪烁 */
+                    temperature = temp_Get_Temp_Data_BTM();           /* 读取下加热体温度 */
+                    if (temperature < 36.8 || temperature > 37.5) {   /* 不在范围内 */
+                        error_Emit(eError_Temp_BTM_Not_In_Range);     /* 上报提示 */
+                    }
+                    temperature = temp_Get_Temp_Data_TOP();         /* 读取上加热体温度 */
+                    if (temperature < 36.8 || temperature > 37.8) { /* 不在范围内 */
+                        error_Emit(eError_Temp_TOP_Not_In_Range);   /* 上报提示 */
+                    }
+
+                    if (protocol_Debug_SampleBarcode() == 0) { /* 非调试模式 */
+                        if (protocol_Debug_SampleMotorTray() == 0) {
+                            motor_Tray_Move_By_Index(eTrayIndex_1); /* 扫码位置 */
+                        }
+                        barcode_result = barcode_Scan_QR();              /* 扫描二维条码 */
+                        if (barcode_result == eBarcodeState_Interrupt) { /* 中途打断 */
+                            motor_Sample_Owari();                        /* 清理 */
+                            break;                                       /* 提前结束 */
+                        }
+                    }
+
+                    heater_Overshoot_Flag_Set(eHeater_BTM, 1);   /* 下加热体过冲标志设置 */
+                    heater_Overshoot_Flag_Set(eHeater_TOP, 1);   /* 上加热体过冲标志设置 */
+                    if (protocol_Debug_SampleMotorTray() == 0) { /* 非调试模式 */
+                        motor_Tray_Move_By_Index(eTrayIndex_0);  /* 入仓 */
+                        heat_Motor_Down();                       /* 砸下上加热体 */
+                    }
+
+                    if (protocol_Debug_SampleBarcode() == 0) {           /* 非调试模式 */
+                        if (barcode_result == eBarcodeState_OK) {        /* 二维条码扫描成功 */
+                            barcode_Motor_Run_By_Index(eBarcodeIndex_0); /* 回归原点 */
+                        } else {
+                            /* tray_Move_By_Relative(eMotorDir_REV, 800, 500);  //进仓10毫米 */
+                            barcode_result = barcode_Scan_Bar();             /* 扫描一维条码 */
+                            if (barcode_result == eBarcodeState_Interrupt) { /* 中途打断 */
+                                motor_Sample_Owari();                        /* 清理 */
+                                break;                                       /* 提前结束 */
+                            }
+                        }
+                    }
+
+                    white_Motor_WH();                                            /* 运动白板电机 白物质位置 */
+                    white_Motor_WH();                                            /* 运动白板电机 白物质位置 */
+                    if (comm_Data_Conf_Sem_Wait(pdMS_TO_TICKS(800)) != pdPASS) { /* 等待配置信息 */
+                        if (cnt == 0) {                                          /* 首次配置信息 */
+                            error_Emit(eError_Comm_Data_Not_Conf);               /* 提交错误信息 采样配置信息未下达 */
+                            motor_Sample_Owari();                                /* 清理 */
+                            break;                                               /* 提前结束 */
+                        } else {
+                            comm_Data_Sample_Send_Conf_Re(); /* 使用上次配置信息 */
+                        }
+                    } else {                                           /* 配置信息下发完成 */
+                        if (gComm_Data_Sample_Max_Point_Get() == 0) {  /* 无效配置信息 */
+                            error_Emit(eError_Comm_Data_Invalid_Conf); /* 提交错误信息 采样配置信息无效 */
+                            motor_Sample_Owari();                      /* 清理 */
+                            break;                                     /* 提前结束 */
+                        }
+                    }
+                    if (barcode_Interrupt_Flag_Get()) { /* 中途打断 */
+                        motor_Sample_Owari();           /* 清理 */
+                        break;                          /* 提前结束 */
+                    }
+                    if (protocol_Debug_SampleBarcode() == 0) {             /* 非调试模式 */
+                        vTaskDelayUntil(&xTick, pdMS_TO_TICKS(15 * 1000)); /* 等待补全20秒 */
+                    }
+                    comm_Data_RecordInit(); /* 初始化数据记录 */
+                    motor_Sample_Deal();    /* 启动采样并控制白板电机 */
+                    motor_Sample_Owari();   /* 清理 */
+                    ++cnt;
+                } while (protocol_Debug_AgingLoop());
+                protocol_Debug_Clear(eProtocol_Debug_AgingLoop); /* 清除老化测试标志位 */
+                break;
             case eMotor_Fun_SYK:            /* 交错 */
                 if (heat_Motor_Up() != 0) { /* 抬起上加热体电机 失败 */
                     break;
