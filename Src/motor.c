@@ -71,6 +71,9 @@ static void motor_Self_Check_Scan(uint8_t * pBuffer);
 
 static void motor_Stary_Test(void);
 
+static void motor_Sample_Temperature_Check(void);
+static uint8_t motor_Sample_Barcode_Scan(void);
+
 /* Private constants ---------------------------------------------------------*/
 const eMotor_OPT_Status (*gOPT_Status_Get_Funs[])(void) = {motor_OPT_Status_Get_Scan,   motor_OPT_Status_Get_Tray,     motor_OPT_Status_Get_Tray_Scan,
                                                            motor_OPT_Status_Get_Heater, motor_OPT_Status_Get_White_In, motor_OPT_Status_Get_White_Out};
@@ -724,6 +727,67 @@ static void motor_Stary_Test(void)
 }
 
 /**
+ * @brief  测试过程中温度检查
+ * @param  None
+ * @retval None
+ */
+static void motor_Sample_Temperature_Check(void)
+{
+    float temperature;
+
+    temperature = temp_Get_Temp_Data_BTM();         /* 读取下加热体温度 */
+    if (temperature < 36.8 || temperature > 37.5) { /* 不在范围内 */
+        error_Emit(eError_Temp_BTM_Not_In_Range);   /* 上报提示 */
+    }
+    temperature = temp_Get_Temp_Data_TOP();         /* 读取上加热体温度 */
+    if (temperature < 36.8 || temperature > 37.8) { /* 不在范围内 */
+        error_Emit(eError_Temp_TOP_Not_In_Range);   /* 上报提示 */
+    }
+    heater_Overshoot_Flag_Set(eHeater_BTM, 1); /* 下加热体过冲标志设置 */
+    heater_Overshoot_Flag_Set(eHeater_TOP, 1); /* 上加热体过冲标志设置 */
+}
+
+/**
+ * @brief  测试过程中扫码处理
+ * @param  None
+ * @retval 0 正常 1 中途被打断
+ */
+static uint8_t motor_Sample_Barcode_Scan(void)
+{
+    eBarcodeState barcode_result;
+
+    if (protocol_Debug_SampleBarcode() == 0) { /* 非调试模式 */
+        if (protocol_Debug_SampleMotorTray() == 0) {
+            motor_Tray_Move_By_Index(eTrayIndex_1); /* 扫码位置 */
+        }
+        barcode_result = barcode_Scan_QR();              /* 扫描二维条码 */
+        if (barcode_result == eBarcodeState_Interrupt) { /* 中途打断 */
+            motor_Sample_Owari();                        /* 清理 */
+            return 1;                                    /* 提前结束 */
+        }
+    }
+    if (protocol_Debug_SampleMotorTray() == 0) { /* 非调试模式 */
+        motor_Tray_Move_By_Index(eTrayIndex_0);  /* 入仓 */
+        heat_Motor_Down();                       /* 砸下上加热体 */
+    }
+
+    if (protocol_Debug_SampleBarcode() == 0) {           /* 非调试模式 */
+        if (barcode_result == eBarcodeState_OK) {        /* 二维条码扫描成功 */
+            barcode_Motor_Run_By_Index(eBarcodeIndex_0); /* 回归原点 */
+        } else {
+            /* tray_Move_By_Relative(eMotorDir_REV, 800, 500);  //进仓10毫米 */
+            barcode_result = barcode_Scan_Bar();             /* 扫描一维条码 */
+            if (barcode_result == eBarcodeState_Interrupt) { /* 中途打断 */
+                motor_Sample_Owari();                        /* 清理 */
+                return 1;                                    /* 提前结束 */
+            }
+        }
+    }
+
+    return 0;
+}
+
+/**
  * @brief  电机任务
  * @param  argument: Not used
  * @retval None
@@ -735,8 +799,6 @@ static void motor_Task(void * argument)
     sMotor_Fun mf;
     uint8_t buffer[32];
     TickType_t xTick;
-    eBarcodeState barcode_result;
-    float temperature;
     sBarcodeCorrectInfoUnit correct_info;
     eComm_Data_Sample_Radiant radiant = eComm_Data_Sample_Radiant_610;
 
@@ -789,49 +851,15 @@ static void motor_Task(void * argument)
                 barcode_Scan_Bantch((uint8_t)(mf.fun_param_1 >> 8), (uint8_t)(mf.fun_param_1)); /* 位置掩码 扫码使能掩码 */
                 break;
             case eMotor_Fun_Sample_Start:                         /* 准备测试 */
+            	barcode_Interrupt_Flag_Clear();					  /* 清除打断标志 */
                 xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0); /* 清空通知 */
                 xTick = xTaskGetTickCount();                      /* 记录总体准备起始时间 */
                 comm_Data_Conf_Sem_Wait(0);                       /* 清除配置信息信号量 */
                 led_Mode_Set(eLED_Mode_Kirakira_Green);           /* LED 绿灯闪烁 */
 
-                temperature = temp_Get_Temp_Data_BTM();         /* 读取下加热体温度 */
-                if (temperature < 36.8 || temperature > 37.5) { /* 不在范围内 */
-                    error_Emit(eError_Temp_BTM_Not_In_Range);   /* 上报提示 */
-                }
-                temperature = temp_Get_Temp_Data_TOP();         /* 读取上加热体温度 */
-                if (temperature < 36.8 || temperature > 37.8) { /* 不在范围内 */
-                    error_Emit(eError_Temp_TOP_Not_In_Range);   /* 上报提示 */
-                }
-
-                if (protocol_Debug_SampleBarcode() == 0) { /* 非调试模式 */
-                    if (protocol_Debug_SampleMotorTray() == 0) {
-                        motor_Tray_Move_By_Index(eTrayIndex_1); /* 扫码位置 */
-                    }
-                    barcode_result = barcode_Scan_QR();              /* 扫描二维条码 */
-                    if (barcode_result == eBarcodeState_Interrupt) { /* 中途打断 */
-                        motor_Sample_Owari();                        /* 清理 */
-                        break;                                       /* 提前结束 */
-                    }
-                }
-
-                heater_Overshoot_Flag_Set(eHeater_BTM, 1);   /* 下加热体过冲标志设置 */
-                heater_Overshoot_Flag_Set(eHeater_TOP, 1);   /* 上加热体过冲标志设置 */
-                if (protocol_Debug_SampleMotorTray() == 0) { /* 非调试模式 */
-                    motor_Tray_Move_By_Index(eTrayIndex_0);  /* 入仓 */
-                    heat_Motor_Down();                       /* 砸下上加热体 */
-                }
-
-                if (protocol_Debug_SampleBarcode() == 0) {           /* 非调试模式 */
-                    if (barcode_result == eBarcodeState_OK) {        /* 二维条码扫描成功 */
-                        barcode_Motor_Run_By_Index(eBarcodeIndex_0); /* 回归原点 */
-                    } else {
-                        /* tray_Move_By_Relative(eMotorDir_REV, 800, 500);  //进仓10毫米 */
-                        barcode_result = barcode_Scan_Bar();             /* 扫描一维条码 */
-                        if (barcode_result == eBarcodeState_Interrupt) { /* 中途打断 */
-                            motor_Sample_Owari();                        /* 清理 */
-                            break;                                       /* 提前结束 */
-                        }
-                    }
+                motor_Sample_Temperature_Check();      /* 采样前温度检查 */
+                if (motor_Sample_Barcode_Scan() > 0) { /* 扫码处理 */
+                    break;                             /* 收到打断信息 提前结束 */
                 }
 
                 white_Motor_WH();                                            /* 运动白板电机 白物质位置 */
@@ -861,48 +889,15 @@ static void motor_Task(void * argument)
             case eMotor_Fun_AgingLoop: /* 老化测试 */
                 cnt = 0;
                 do {
+                	barcode_Interrupt_Flag_Clear();					  /* 清除打断标志 */
                     xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0); /* 清空通知 */
                     xTick = xTaskGetTickCount();                      /* 记录总体准备起始时间 */
                     comm_Data_Conf_Sem_Wait(0);                       /* 清除配置信息信号量 */
                     led_Mode_Set(eLED_Mode_Kirakira_Green);           /* LED 绿灯闪烁 */
-                    temperature = temp_Get_Temp_Data_BTM();           /* 读取下加热体温度 */
-                    if (temperature < 36.8 || temperature > 37.5) {   /* 不在范围内 */
-                        error_Emit(eError_Temp_BTM_Not_In_Range);     /* 上报提示 */
-                    }
-                    temperature = temp_Get_Temp_Data_TOP();         /* 读取上加热体温度 */
-                    if (temperature < 36.8 || temperature > 37.8) { /* 不在范围内 */
-                        error_Emit(eError_Temp_TOP_Not_In_Range);   /* 上报提示 */
-                    }
 
-                    if (protocol_Debug_SampleBarcode() == 0) { /* 非调试模式 */
-                        if (protocol_Debug_SampleMotorTray() == 0) {
-                            motor_Tray_Move_By_Index(eTrayIndex_1); /* 扫码位置 */
-                        }
-                        barcode_result = barcode_Scan_QR();              /* 扫描二维条码 */
-                        if (barcode_result == eBarcodeState_Interrupt) { /* 中途打断 */
-                            motor_Sample_Owari();                        /* 清理 */
-                            break;                                       /* 提前结束 */
-                        }
-                    }
-
-                    heater_Overshoot_Flag_Set(eHeater_BTM, 1);   /* 下加热体过冲标志设置 */
-                    heater_Overshoot_Flag_Set(eHeater_TOP, 1);   /* 上加热体过冲标志设置 */
-                    if (protocol_Debug_SampleMotorTray() == 0) { /* 非调试模式 */
-                        motor_Tray_Move_By_Index(eTrayIndex_0);  /* 入仓 */
-                        heat_Motor_Down();                       /* 砸下上加热体 */
-                    }
-
-                    if (protocol_Debug_SampleBarcode() == 0) {           /* 非调试模式 */
-                        if (barcode_result == eBarcodeState_OK) {        /* 二维条码扫描成功 */
-                            barcode_Motor_Run_By_Index(eBarcodeIndex_0); /* 回归原点 */
-                        } else {
-                            /* tray_Move_By_Relative(eMotorDir_REV, 800, 500);  //进仓10毫米 */
-                            barcode_result = barcode_Scan_Bar();             /* 扫描一维条码 */
-                            if (barcode_result == eBarcodeState_Interrupt) { /* 中途打断 */
-                                motor_Sample_Owari();                        /* 清理 */
-                                break;                                       /* 提前结束 */
-                            }
-                        }
+                    motor_Sample_Temperature_Check();      /* 采样前温度检查 */
+                    if (motor_Sample_Barcode_Scan() > 0) { /* 扫码处理 */
+                        break;                             /* 收到打断信息 提前结束 */
                     }
 
                     white_Motor_WH();                                            /* 运动白板电机 白物质位置 */
@@ -1075,11 +1070,10 @@ static void motor_Task(void * argument)
                 if (protocol_Debug_SampleBarcode() == 0) {  /* 非调试模式 */
                     motor_Tray_Move_By_Index(eTrayIndex_1); /* 扫码位置 */
                 }
-                led_Mode_Set(eLED_Mode_Kirakira_Red);                                                            /* LED 红灯闪烁 */
-                barcode_result = barcode_Scan_QR();                                                              /* 扫描二维条码 */
-                if (barcode_result != eBarcodeState_OK || barcode_Scan_Decode_Correct_Info_From_Result() != 0) { /* 扫码失败或者解析失败 */
-                    for (cnt = 1; cnt <= 6; ++cnt) {                                                             /* 定标段索引配置 */
-                        comm_Data_Set_Corretc_Stage(cnt, (cnt - 1 + mf.fun_param_1) % 6);                        /* 定标段索引 */
+                led_Mode_Set(eLED_Mode_Kirakira_Red);                                                               /* LED 红灯闪烁 */
+                if (barcode_Scan_QR() != eBarcodeState_OK || barcode_Scan_Decode_Correct_Info_From_Result() != 0) { /* 扫码失败或者解析失败 */
+                    for (cnt = 1; cnt <= 6; ++cnt) {                                                                /* 定标段索引配置 */
+                        comm_Data_Set_Corretc_Stage(cnt, (cnt - 1 + mf.fun_param_1) % 6);                           /* 定标段索引 */
                     }
                 } else {
                     for (cnt = 1; cnt <= 6; ++cnt) {                                                       /* 定标段索引配置 */

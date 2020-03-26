@@ -1307,6 +1307,7 @@ static void protocol_Parse_Main_Fun_ISR(uint8_t * pInBuff, uint16_t length)
             }
             break;
         case eProtocolEmitPack_Client_CMD_ABRUPT:             /* 仪器测量取消命令帧 0x02 */
+            barcode_Interrupt_Flag_Mark();                    /* 标记打断扫码 */
             comm_Data_Sample_Force_Stop_FromISR();            /* 强行停止采样定时器 */
             motor_Sample_Info_From_ISR(eMotorNotifyValue_BR); /* 提交打断信息 */
             break;
