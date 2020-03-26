@@ -3,11 +3,12 @@ import pathlib
 import re
 import shutil
 from datetime import datetime
+from pathlib import Path
 
 import stackprinter
 from git import Repo
+from intelhex import IntelHex
 from loguru import logger
-
 
 TARGET_DIR = "E:\\WebServer\\DC201\\程序\\控制板\\Application\\"
 REPO = Repo(search_parent_directories=True)
@@ -55,6 +56,20 @@ def check_archive():
     return check_by_diff(diff)
 
 
+def merge_hex_by_intelhex(bl_hex_path, app_hex_path, output_path):
+    origin = IntelHex(bl_hex_path)
+    new = IntelHex(app_hex_path)
+    origin.merge(new, overlap="ignore")
+    file_name = os.path.splitext(output_path)[0]
+    origin.tofile(f"{file_name}.hex", format="hex")
+    origin.tofile(f"{file_name}.bin", format="bin")
+    # https://python-intelhex.readthedocs.io/en/latest/part2-6.html
+    # origin = IntelHex(bl_hex_path)
+    # origin.merge(new, overlap="replace")
+    # origin.tofile(f"{file_name}_r.hex", format="hex")
+    # origin.tofile(f"{file_name}_r.bin", format="bin")
+
+
 def main():
     logger.debug(f"current path | {os.path.abspath('./')}")
     version_str = get_version_str()
@@ -77,6 +92,20 @@ def main():
         pathlib.Path(archive_dir).mkdir(parents=True, exist_ok=True)
         shutil.copyfile("../Debug/stm32f207VET6_B.bin", os.path.join(archive_dir, f"{name}.bin"))
         shutil.copyfile("../Debug/stm32f207VET6_B.hex", os.path.join(archive_dir, f"{name}.hex"))
+    # 合并 hex 文件
+    bl_hex_dir = os.path.join(Path(TARGET_DIR).parent, "Bootloader")
+    bl_hex_path = None
+    for dp, dns, fns in os.walk(bl_hex_dir, topdown=False):
+        for fn in fns:
+            file_path = os.path.join(dp, fn)
+            if file_path.endswith("hex"):
+                bl_hex_path = file_path
+                break
+    if bl_hex_path:
+        logger.info(f"find bootload hex path | {bl_hex_path}")
+        app_hex_path = "../Debug/stm32f207VET6_B.hex"
+        output_path = os.path.join(Path(TARGET_DIR).parent, "dc201_control_board_whole.hex")
+        merge_hex_by_intelhex(bl_hex_path, app_hex_path, output_path)
 
 
 if __name__ == "__main__":
