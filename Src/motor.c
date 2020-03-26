@@ -371,10 +371,8 @@ void motor_Sample_Deal(void)
     comm_Data_Sample_Start(); /* 启动定时器同步发包 开始采样 */
     for (;;) {
         xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(10000)); /* 等待任务通知 */
-        if (xResult != pdPASS ||                                                       /* 超时 */
-            xNotifyValue == eMotorNotifyValue_BR_ERR ||                                /* 收到中终止命令(异常) */
-            xNotifyValue == eMotorNotifyValue_BR) {                                    /* 收到中终止命令 */
-            if (xResult != pdPASS || xNotifyValue == eMotorNotifyValue_BR_ERR) {       /* 超时  */
+        if (xResult != pdPASS || xNotifyValue == eMotorNotifyValue_BR) {               /* 超时 或者 收到中终止命令 */
+            if (xResult != pdPASS) {                                                   /* 超时  */
                 error_Emit(eError_Sample_Incomlete);                                   /* 提交错误信息 */
             }
             break;
@@ -851,7 +849,7 @@ static void motor_Task(void * argument)
                 barcode_Scan_Bantch((uint8_t)(mf.fun_param_1 >> 8), (uint8_t)(mf.fun_param_1)); /* 位置掩码 扫码使能掩码 */
                 break;
             case eMotor_Fun_Sample_Start:                         /* 准备测试 */
-            	barcode_Interrupt_Flag_Clear();					  /* 清除打断标志 */
+                barcode_Interrupt_Flag_Clear();                   /* 清除打断标志 */
                 xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0); /* 清空通知 */
                 xTick = xTaskGetTickCount();                      /* 记录总体准备起始时间 */
                 comm_Data_Conf_Sem_Wait(0);                       /* 清除配置信息信号量 */
@@ -889,7 +887,7 @@ static void motor_Task(void * argument)
             case eMotor_Fun_AgingLoop: /* 老化测试 */
                 cnt = 0;
                 do {
-                	barcode_Interrupt_Flag_Clear();					  /* 清除打断标志 */
+                    barcode_Interrupt_Flag_Clear();                   /* 清除打断标志 */
                     xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0); /* 清空通知 */
                     xTick = xTaskGetTickCount();                      /* 记录总体准备起始时间 */
                     comm_Data_Conf_Sem_Wait(0);                       /* 清除配置信息信号量 */
