@@ -131,7 +131,7 @@ class QVLine(QFrame):
 class MainWindow(QMainWindow):
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
-        self.setWindowTitle("DC201 工装测试")
+        self.setWindowTitle("DC201 工装测试 v0.2")
         self.serial = serial.Serial(port=None, baudrate=115200, timeout=0.01)
         self.task_queue = queue.Queue()
         self.henji_queue = queue.Queue()
