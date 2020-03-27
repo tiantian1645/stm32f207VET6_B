@@ -541,6 +541,10 @@ static uint8_t storge_ParamLoadAll(void)
         if (length != 4) {
             return 2;
         }
+        if (read_data.u32 == 0xFFFFFFFF) {
+            read_data.u32 = 0;                                                      /* 初始化为0 */
+            spi_FlashWriteBuffer(STORGE_APP_PARAMS_ADDR + 4 * i, read_data.u8s, 4); /* 回写 */
+        }
         temp = storge_ParamWriteSingle(i, read_data.u8s, 4);
         if (temp != 0) {
             error = temp;
