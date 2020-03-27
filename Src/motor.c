@@ -1038,9 +1038,9 @@ static void motor_Task(void * argument)
                 } while (gMotorPressureStopBits_Get(mf.fun_type) == 0);
                 break;
             case eMotor_Fun_Self_Check: /* 自检测试 */
+                motor_Self_Check_Motor_Tray(buffer);
                 motor_Self_Check_Motor_White(buffer);
                 motor_Self_Check_Motor_Heater(buffer);
-                motor_Self_Check_Motor_Tray(buffer);
                 motor_Self_Check_Motor_Scan(buffer);
                 motor_Self_Check_Scan(buffer);
                 break;
@@ -1210,8 +1210,14 @@ static void motor_Self_Check_Motor_Heater(uint8_t * pBuffer)
 {
     heat_Motor_Down();                                                                       /* 推出光耦准备测试 */
     pBuffer[0] = eMotor_Fun_Self_Check_Motor_Heater - eMotor_Fun_Self_Check_Motor_White + 6; /* 自检测试 单项 上加热体电机 */
-    pBuffer[2] = heat_Motor_Up();                                                            /* 抬起上加热体*/
-    pBuffer[3] = heat_Motor_Down();                                                          /* 砸下上加热体 */
+    if (motor_OPT_Status_Get(eMotor_OPT_Index_Heater) == eMotor_OPT_Status_OFF) {
+        pBuffer[3] = heat_Motor_Down(); /* 砸下上加热体 */
+        pBuffer[2] = heat_Motor_Up();   /* 抬起上加热体*/
+    } else {
+        pBuffer[2] = heat_Motor_Up();   /* 抬起上加热体*/
+        pBuffer[3] = heat_Motor_Down(); /* 砸下上加热体 */
+    }
+
     if (pBuffer[2] == 0 && pBuffer[3] == 0) {
         pBuffer[1] = 0; /* 通过结论 */
     } else {

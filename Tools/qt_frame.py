@@ -1676,6 +1676,49 @@ class MainWindow(QMainWindow):
         self._serialSendPack(0xDC)
         QTimer.singleShot(3000, self._getStatus)
 
+    def onSelftest_temp_top_gb_Clicked(self, event):
+        self._clear_widget_style_sheet(self.selftest_temp_top_gb)
+        self._serialSendPack(0xDA, (0x01,))
+
+    def onSelftest_temp_btm_gb_Clicked(self, event):
+        self._clear_widget_style_sheet(self.selftest_temp_btm_gb)
+        self._serialSendPack(0xDA, (0x02,))
+
+    def onSelftest_temp_env_gb_Clicked(self, event):
+        self._clear_widget_style_sheet(self.selftest_temp_env_gb)
+        self._serialSendPack(0xDA, (0x03,))
+
+    def onSelftest_motor_heater_gb_Clicked(self, event):
+        self._clear_widget_style_sheet(self.selftest_motor_heater_gb)
+        self._serialSendPack(0xDA, (0x07,))
+
+    def onSelftest_motor_tray_gb_Clicked(self, event):
+        self._clear_widget_style_sheet(self.selftest_motor_tray_gb)
+        self._serialSendPack(0xDA, (0x08,))
+
+    def onSelftest_motor_white_gb_Clicked(self, event):
+        self._clear_widget_style_sheet(self.selftest_motor_white_gb)
+        self._serialSendPack(0xDA, (0x06,))
+
+    def onSelftest_motor_scan_m_Clicked(self, event):
+        self._setColor(self.selftest_motor_scan_m)
+        self._serialSendPack(0xDA, (0x09,))
+        self._clear_widget_style_sheet(self.selftest_motor_scan_gb)
+
+    def onSelftest_motor_scan_l_Clicked(self, event):
+        self._setColor(self.selftest_motor_scan_l)
+        self.selftest_motor_scan_l.setText("*" * 10)
+        self._serialSendPack(0xDA, (0x0A,))
+        self._clear_widget_style_sheet(self.selftest_motor_scan_gb)
+
+    def onSelftest_storge_lb_f_Clicked(self, event):
+        self._setColor(self.selftest_storge_lb_f)
+        self._serialSendPack(0xDA, (0x04,))
+
+    def onSelftest_storge_lb_c_Clicked(self, event):
+        self._setColor(self.selftest_storge_lb_c)
+        self._serialSendPack(0xDA, (0x05,))
+
     def createSelfCheckDialog(self):
         self.selftest_dg = QDialog(self)
         self.selftest_dg.resize(467, 181)
@@ -1689,25 +1732,25 @@ class MainWindow(QMainWindow):
         self.selftest_temp_top_gb.layout().setContentsMargins(3, 3, 3, 3)
         for lb in self.selftest_temp_lbs[0:6]:
             lb.setAlignment(Qt.AlignCenter)
+            lb.mouseReleaseEvent = self.onSelftest_temp_top_gb_Clicked
             self.selftest_temp_top_gb.layout().addWidget(lb)
         self.selftest_temp_btm_gb = QGroupBox("下加热体温度")
         self.selftest_temp_btm_gb.setLayout(QHBoxLayout())
         self.selftest_temp_btm_gb.layout().setContentsMargins(3, 3, 3, 3)
         for lb in self.selftest_temp_lbs[6:8]:
             lb.setAlignment(Qt.AlignCenter)
+            lb.mouseReleaseEvent = self.onSelftest_temp_btm_gb_Clicked
             self.selftest_temp_btm_gb.layout().addWidget(lb)
         self.selftest_temp_env_gb = QGroupBox("环境")
         self.selftest_temp_env_gb.setLayout(QHBoxLayout())
         self.selftest_temp_env_gb.layout().setContentsMargins(3, 3, 3, 3)
         for lb in self.selftest_temp_lbs[8:9]:
             lb.setAlignment(Qt.AlignCenter)
+            lb.mouseReleaseEvent = self.onSelftest_temp_env_gb_Clicked
             self.selftest_temp_env_gb.layout().addWidget(lb)
         selftest_temp_ly.addWidget(self.selftest_temp_top_gb, stretch=6)
         selftest_temp_ly.addWidget(self.selftest_temp_btm_gb, stretch=2)
         selftest_temp_ly.addWidget(self.selftest_temp_env_gb, stretch=1)
-        self.selftest_temp_top_gb.mousePressEvent = lambda x: [self._clear_widget_style_sheet(self.selftest_temp_top_gb), self._serialSendPack(0xDA, (0x01,))]
-        self.selftest_temp_btm_gb.mousePressEvent = lambda x: [self._clear_widget_style_sheet(self.selftest_temp_btm_gb), self._serialSendPack(0xDA, (0x02,))]
-        self.selftest_temp_env_gb.mousePressEvent = lambda x: [self._clear_widget_style_sheet(self.selftest_temp_env_gb), self._serialSendPack(0xDA, (0x03,))]
 
         selftest_motor_ly = QHBoxLayout()
         self.selftest_motor_lbs = [QLabel(t) for t in ("上", "下", "进", "出", "PD", "白")]
@@ -1716,24 +1759,29 @@ class MainWindow(QMainWindow):
         self.selftest_motor_heater_gb.layout().setContentsMargins(3, 3, 3, 3)
         for lb in self.selftest_motor_lbs[0:2]:
             lb.setAlignment(Qt.AlignCenter)
+            lb.mouseReleaseEvent = self.onSelftest_motor_heater_gb_Clicked
             self.selftest_motor_heater_gb.layout().addWidget(lb)
         self.selftest_motor_tray_gb = QGroupBox("托盘")
         self.selftest_motor_tray_gb.setLayout(QHBoxLayout())
         self.selftest_motor_tray_gb.layout().setContentsMargins(3, 3, 3, 3)
         for lb in self.selftest_motor_lbs[2:4]:
             lb.setAlignment(Qt.AlignCenter)
+            lb.mouseReleaseEvent = self.onSelftest_motor_tray_gb_Clicked
             self.selftest_motor_tray_gb.layout().addWidget(lb)
         self.selftest_motor_white_gb = QGroupBox("白板")
         self.selftest_motor_white_gb.setLayout(QHBoxLayout())
         self.selftest_motor_white_gb.layout().setContentsMargins(3, 3, 3, 3)
         for lb in self.selftest_motor_lbs[4:6]:
             lb.setAlignment(Qt.AlignCenter)
+            lb.mouseReleaseEvent = self.onSelftest_motor_white_gb_Clicked
             self.selftest_motor_white_gb.layout().addWidget(lb)
         self.selftest_motor_scan_gb = QGroupBox("扫码")
         self.selftest_motor_scan_gb.setLayout(QHBoxLayout())
         self.selftest_motor_scan_gb.layout().setContentsMargins(3, 3, 3, 3)
         self.selftest_motor_scan_m = QLabel("电机")
+        self.selftest_motor_scan_m.mouseReleaseEvent = self.onSelftest_motor_scan_m_Clicked
         self.selftest_motor_scan_l = QLabel("*" * 10)
+        self.selftest_motor_scan_l.mouseReleaseEvent = self.onSelftest_motor_scan_l_Clicked
         self.selftest_motor_scan_m.setAlignment(Qt.AlignCenter)
         self.selftest_motor_scan_l.setAlignment(Qt.AlignCenter)
         self.selftest_motor_scan_gb.layout().addWidget(self.selftest_motor_scan_m, stretch=1)
@@ -1743,28 +1791,12 @@ class MainWindow(QMainWindow):
         selftest_motor_ly.addWidget(self.selftest_motor_tray_gb, stretch=1)
         selftest_motor_ly.addWidget(self.selftest_motor_white_gb, stretch=1)
         selftest_motor_ly.addWidget(self.selftest_motor_scan_gb, stretch=3)
-        self.selftest_motor_heater_gb.mousePressEvent = lambda x: [
-            self._clear_widget_style_sheet(self.selftest_motor_heater_gb),
-            self._serialSendPack(0xDA, (0x07,)),
-        ]
-        self.selftest_motor_tray_gb.mousePressEvent = lambda x: [
-            self._clear_widget_style_sheet(self.selftest_motor_tray_gb),
-            self._serialSendPack(0xDA, (0x08,)),
-        ]
-        self.selftest_motor_white_gb.mousePressEvent = lambda x: [
-            self._clear_widget_style_sheet(self.selftest_motor_white_gb),
-            self._serialSendPack(0xDA, (0x06,)),
-        ]
-        self.selftest_motor_scan_m.mousePressEvent = lambda x: [self._setColor(self.selftest_motor_scan_m), self._serialSendPack(0xDA, (0x09,))]
-        self.selftest_motor_scan_l.mousePressEvent = lambda x: [
-            self._setColor(self.selftest_motor_scan_l),
-            self.selftest_motor_scan_l.setText("*" * 10),
-            self._serialSendPack(0xDA, (0x0A,)),
-        ]
 
         selftest_storge_ly = QHBoxLayout()
         self.selftest_storge_lb_f = QLabel("片外 Flash")
+        self.selftest_storge_lb_f.mouseReleaseEvent = self.onSelftest_storge_lb_f_Clicked
         self.selftest_storge_lb_c = QLabel("ID Code 卡")
+        self.selftest_storge_lb_c.mouseReleaseEvent = self.onSelftest_storge_lb_c_Clicked
         selftest_storge_gb = QGroupBox("存储")
         selftest_storge_gb.setLayout(QHBoxLayout())
         selftest_storge_gb.layout().setContentsMargins(3, 3, 3, 3)
@@ -1772,8 +1804,6 @@ class MainWindow(QMainWindow):
         self.selftest_storge_lb_c.setAlignment(Qt.AlignCenter)
         selftest_storge_gb.layout().addWidget(self.selftest_storge_lb_f)
         selftest_storge_gb.layout().addWidget(self.selftest_storge_lb_c)
-        self.selftest_storge_lb_f.mousePressEvent = lambda x: [self._setColor(self.selftest_storge_lb_f), self._serialSendPack(0xDA, (0x04,))]
-        self.selftest_storge_lb_c.mousePressEvent = lambda x: [self._setColor(self.selftest_storge_lb_c), self._serialSendPack(0xDA, (0x05,))]
         selftest_storge_ly.addWidget(selftest_storge_gb)
 
         selftest_dg_ly.addLayout(selftest_temp_ly)
@@ -1867,6 +1897,7 @@ class MainWindow(QMainWindow):
         elif item == 9:
             if result > 0:
                 self._setColor(self.selftest_motor_scan_m, nbg="red")
+                self.selftest_motor_scan_gb.setStyleSheet("QGroupBox:title {color: red};")
             else:
                 self._setColor(self.selftest_motor_scan_m, nbg="green")
         elif item == 10:
@@ -1874,15 +1905,18 @@ class MainWindow(QMainWindow):
                 if raw_bytes[8]:
                     logger.error(f"get raw byte in self check barcode | {bytesPuttyPrint(raw_bytes[9 : 9 + raw_bytes[8]])}")
                 self._setColor(self.selftest_motor_scan_l, nbg="red")
+                self.selftest_motor_scan_gb.setStyleSheet("QGroupBox:title {color: red};")
                 text = bytesPuttyPrint(raw_bytes)
                 self.selftest_motor_scan_l.setText(text)
             else:
-                self._setColor(self.selftest_motor_scan_l, nbg="green")
                 try:
                     text = raw_bytes[9 : 9 + raw_bytes[8]].decode()
                 except Exception:
                     text = bytesPuttyPrint(raw_bytes)
                     logger.warning(f"decode failed use bytes result | {text}")
+                else:
+                    self._setColor(self.selftest_motor_scan_l, nbg="green")
+                    self.selftest_motor_scan_gb.setStyleSheet("QGroupBox:title {color: green};")
                 self.selftest_motor_scan_l.setText(text)
 
     def onSelfCheck(self, event):
