@@ -37,9 +37,9 @@ typedef enum {
     eError_Comm_Out_Param_Error = 113,  /* 外串口报文参数异常 */
     eError_Temp_BTM_Not_In_Range = 114, /* 下加热体温度不在范围内 */
     eError_Temp_TOP_Not_In_Range = 115, /* 上加热体温度不在范围内 */
-    eError_Comm_Main_UART = 116,        /* 主串口DMA中断处理发生串口异常 */
-    eError_Comm_Data_UART = 117,        /* 采样板串口DMA中断处理发生串口异常 */
-    eError_Comm_Out_UART = 118,         /* 外串口DMA中断处理发生串口异常 */
+    eError_Comm_Main_UART = 116,        /* 主串口DMA中断处理发生串口异常 附加错误码 (硬件故障吗 << 10 + eError_Comm_Main_UART) */
+    eError_Comm_Data_UART = 117,        /* 采样板串口DMA中断处理发生串口异常 附加错误码 (硬件故障吗 << 10 + eError_Comm_Data_UART) */
+    eError_Comm_Out_UART = 118,         /* 外串口DMA中断处理发生串口异常 附加错误码 (硬件故障吗 << 10 + eError_Comm_Out_UART) */
     eError_Tray_Motor_Lose = 119,       /* 托盘出仓后无命令下托盘移动到扫码光耦处 */
     eError_Tray_ID_Code_Card_In = 120,  /* ID Code 卡插入 */
     eError_Tray_ID_Code_Card_Out = 121, /* ID Code 卡拔出 */
