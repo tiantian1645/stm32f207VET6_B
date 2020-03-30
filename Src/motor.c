@@ -1114,8 +1114,8 @@ static void motor_Task(void * argument)
                     motor_Tray_Move_By_Index(eTrayIndex_0);       /* 入仓 */
                     heat_Motor_Down();                            /* 砸下上加热体 */
                 }
-                for (buffer[31] = eComm_Data_Sample_Radiant_610; buffer[31] <= eComm_Data_Sample_Radiant_405; ++buffer[31]) {
-                    comm_Data_Sample_Send_Conf_Correct(buffer, buffer[31], 6, eComm_Data_Outbound_CMD_TEST); /* 配置波长 点数 */
+                for (radiant = eComm_Data_Sample_Radiant_610; radiant <= eComm_Data_Sample_Radiant_405; ++radiant) {
+                    comm_Data_Sample_Send_Conf_Correct(buffer, radiant, 6, eComm_Data_Outbound_CMD_TEST); /* 配置波长 点数 */
                     vTaskDelay(500);
                     for (cnt = 0; cnt < 6; ++cnt) {
                         white_Motor_WH();                                                   /* 运动白板电机 白物质位置 */
