@@ -1106,6 +1106,10 @@ static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length)
                         motor_Emit_FromISR(&motor_fun);                                          /* 提交到电机队列 */
                         break;
                 }
+            } else if (length == 9) {
+                motor_fun.fun_type = eMotor_Fun_Self_Check_Motor_White - 6 + pInBuff[6]; /* 整体自检测试 单项 */
+                motor_fun.fun_param_1 = pInBuff[7];                                      /* 自检参数 PD灯掩码 */
+                motor_Emit_FromISR(&motor_fun);                                          /* 提交到电机队列 */
             }
             break;
         case eProtocolEmitPack_Client_CMD_Debug_Motor_Fun: /* 电机功能 */
@@ -1417,12 +1421,12 @@ static void protocol_Parse_Data_Fun_ISR(uint8_t * pInBuff, uint16_t length)
             if (gComm_Data_Correct_Flag_Check()) {                                                                         /* 处于定标状态 */
                 stroge_Conf_CC_O_Data_From_B3(pInBuff + 6);                                                                /* 修改测量点 */
                 comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7); /* 转发至外串口 */
-            } else if (comm_Data_SP_LED_Is_Running()) {                                                                    /* 处于LED校正状态 */
-                comm_Data_Sample_Data_Commit(pInBuff[7], pInBuff, length - 9, 0);        /* 不允许替换 先白板后反应区 */
-            } else {                                                                     /* 未出于定标状态 */
-                type = comm_Data_Sample_Data_Commit(pInBuff[7], pInBuff, length - 9, 1); /* 采样数据记录 */
-                if (type == eComm_Data_Sample_Data_MIX) {                                /* 混合数据类型 */
-                    length += pInBuff[6] * 2;                                            /* 补充长度  uin16_t */
+            } else if (comm_Data_SP_LED_Is_Running() || gComm_Data_SelfCheck_PD_Flag_Get()) { /* 处于LED校正状态 或 自检测试 单项 PD */
+                comm_Data_Sample_Data_Commit(pInBuff[7], pInBuff, length - 9, 0);             /* 不允许替换 先白板后反应区 */
+            } else {                                                                          /* 未出于定标状态 */
+                type = comm_Data_Sample_Data_Commit(pInBuff[7], pInBuff, length - 9, 1);      /* 采样数据记录 */
+                if (type == eComm_Data_Sample_Data_MIX) {                                     /* 混合数据类型 */
+                    length += pInBuff[6] * 2;                                                 /* 补充长度  uin16_t */
                     if (comm_Main_SendTask_Queue_GetFree_FromISR() > 1) {
                         comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7); /* 构造数据包 */
                         comm_Out_SendTask_QueueEmitWithModify_FromISR(pInBuff + 6, length); /* 修改帧号ID后转发 */

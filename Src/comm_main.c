@@ -224,6 +224,16 @@ UBaseType_t comm_Main_SendTask_Queue_GetWaiting(void)
 }
 
 /**
+ * @brief  串口发送队列 空闲 中断版本
+ * @param  Npne
+ * @retval 串口发送队列 空闲
+ */
+UBaseType_t comm_Main_SendTask_Queue_GetFree(void)
+{
+    return uxQueueSpacesAvailable(comm_Main_SendQueue);
+}
+
+/**
  * @brief  串口发送队列 未处理个数 中断版本
  * @param  Npne
  * @retval 串口发送队列 未处理个数

@@ -85,6 +85,7 @@ static uint8_t gComm_Data_Sample_PD_WH_Idx = 0xFF;
 
 static uint8_t gComm_Data_Stary_test_Falg = 0;
 static eComm_Data_Sample_Radiant gComm_Data_SP_LED_Flag = 0;
+static eComm_Data_Sample_Radiant gComm_Data_SelfCheck_PD_Flag = 0;
 static sComm_LED_Voltage gComm_LED_Voltage = {0, 0, 0};
 static int16_t gComm_Data_LED_Voltage_Interval = 100;
 static uint8_t gComm_Data_LED_Voltage_Points = 1;
@@ -485,6 +486,36 @@ eComm_Data_Sample_Radiant comm_Data_SP_LED_Is_Running(void)
 }
 
 /**
+ * @brief  自检测试 单项 PD 标记
+ * @param  None
+ * @retval None
+ */
+void gComm_Data_SelfCheck_PD_Flag_Mark(eComm_Data_Sample_Radiant radiant)
+{
+    gComm_Data_SelfCheck_PD_Flag = radiant;
+}
+
+/**
+ * @brief  自检测试 单项 PD 清除
+ * @param  None
+ * @retval None
+ */
+void gComm_Data_SelfCheck_PD_Flag_Clr(void)
+{
+    gComm_Data_SelfCheck_PD_Flag = 0;
+}
+
+/**
+ * @brief  自检测试 单项 PD 读取
+ * @param  None
+ * @retval 1 正在测试 0 已经结束
+ */
+eComm_Data_Sample_Radiant gComm_Data_SelfCheck_PD_Flag_Get(void)
+{
+    return gComm_Data_SelfCheck_PD_Flag;
+}
+
+/**
  * @brief  LED电压值获取
  * @param  None
  * @retval 0 操作成功 1 操作失败
@@ -549,6 +580,29 @@ uint8_t comm_Data_Wait_Data(uint8_t mask, uint32_t timeout)
         vTaskDelay(200);
     } while (check == 0 && xTick + timeout < xTaskGetTickCount());
     return 1;
+}
+
+/**
+ * @brief  复制采样板数据 PD
+ * @param  mask 通道掩码 0x01->通道1 0x3F->通道1～6
+ * @param  pBuffer
+ * @retval 0 正常 1 数量过长
+ */
+uint8_t comm_Data_Copy_Data_U32(uint8_t mask, uint32_t * pBuffer)
+{
+    uint8_t i;
+
+    for (i = 0; i < ARRAY_LEN(gComm_Data_Samples); ++i) {
+        if (((1 << i) & mask) == 0) {
+            continue;
+        }
+        if (gComm_Data_Samples[i].num == 0) {
+            return 1;
+        }
+        memcpy((uint8_t *)(pBuffer), &gComm_Data_Samples[i].raw_datas[0], 4);
+        ++pBuffer;
+    }
+    return 0;
 }
 
 /**

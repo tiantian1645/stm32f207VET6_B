@@ -1719,6 +1719,21 @@ class MainWindow(QMainWindow):
         self._setColor(self.selftest_storge_lb_c)
         self._serialSendPack(0xDA, (0x05,))
 
+    def onSelftest_lamp_610_gb_Clicked(self, event):
+        for lb in self.selftest_lamp_610_lbs:
+            self._setColor(lb)
+        self._serialSendPack(0xDA, (0x0B, 1))
+
+    def onSelftest_lamp_550_gb_Clicked(self, event):
+        for lb in self.selftest_lamp_550_lbs:
+            self._setColor(lb)
+        self._serialSendPack(0xDA, (0x0B, 2))
+
+    def onSelftest_lamp_405_gb_Clicked(self, event):
+        for lb in self.selftest_lamp_405_lbs:
+            self._setColor(lb)
+        self._serialSendPack(0xDA, (0x0B, 4))
+
     def createSelfCheckDialog(self):
         self.selftest_dg = QDialog(self)
         self.selftest_dg.resize(467, 181)
@@ -1806,9 +1821,40 @@ class MainWindow(QMainWindow):
         selftest_storge_gb.layout().addWidget(self.selftest_storge_lb_c)
         selftest_storge_ly.addWidget(selftest_storge_gb)
 
+        selftest_lamp_ly = QGridLayout()
+        self.selftest_lamp_610_gb = QGroupBox("610")
+        self.selftest_lamp_610_gb.setLayout(QHBoxLayout())
+        self.selftest_lamp_550_gb = QGroupBox("550")
+        self.selftest_lamp_550_gb.setLayout(QHBoxLayout())
+        self.selftest_lamp_405_gb = QGroupBox("405")
+        self.selftest_lamp_405_gb.setLayout(QHBoxLayout())
+
+        self.selftest_lamp_610_lbs = []
+        self.selftest_lamp_550_lbs = []
+        self.selftest_lamp_405_lbs = []
+        for i in range(6):
+            lb = QLabel(str(i + 1))
+            self.selftest_lamp_610_gb.layout().addWidget(lb, alignment=Qt.AlignCenter)
+            self.selftest_lamp_610_lbs.append(lb)
+        for i in range(6):
+            lb = QLabel(str(i + 1))
+            self.selftest_lamp_550_gb.layout().addWidget(lb, alignment=Qt.AlignCenter)
+            self.selftest_lamp_550_lbs.append(lb)
+        for i in range(1):
+            lb = QLabel(str(i + 1))
+            self.selftest_lamp_405_gb.layout().addWidget(lb, alignment=Qt.AlignCenter)
+            self.selftest_lamp_405_lbs.append(lb)
+        selftest_lamp_ly.addWidget(self.selftest_lamp_610_gb, 0, 0, 1, 6)
+        selftest_lamp_ly.addWidget(self.selftest_lamp_550_gb, 0, 6, 1, 6)
+        selftest_lamp_ly.addWidget(self.selftest_lamp_405_gb, 0, 12, 1, 1)
+        self.selftest_lamp_610_gb.mouseReleaseEvent = self.onSelftest_lamp_610_gb_Clicked
+        self.selftest_lamp_550_gb.mouseReleaseEvent = self.onSelftest_lamp_550_gb_Clicked
+        self.selftest_lamp_405_gb.mouseReleaseEvent = self.onSelftest_lamp_405_gb_Clicked
+
         selftest_dg_ly.addLayout(selftest_temp_ly)
         selftest_dg_ly.addLayout(selftest_motor_ly)
         selftest_dg_ly.addLayout(selftest_storge_ly)
+        selftest_dg_ly.addLayout(selftest_lamp_ly)
         self.selftest_dg = ModernDialog(self.selftest_dg, self)
 
     def updateSelfCheckDialog(self, info):
@@ -1918,6 +1964,22 @@ class MainWindow(QMainWindow):
                     self._setColor(self.selftest_motor_scan_l, nbg="green")
                     self.selftest_motor_scan_gb.setStyleSheet("QGroupBox:title {color: green};")
                 self.selftest_motor_scan_l.setText(text)
+        elif item == 11:
+            if len(raw_bytes) != 61:
+                logger.error(f"self check pd data length error | {bytesPuttyPrint(raw_bytes)}")
+            mask = raw_bytes[7]
+            values = []
+            for i in range(13):
+                value = struct.unpack("I", raw_bytes[8 + 4 * i: 8 + 4 * (i + 1)])[0]
+                logger.debug(f"get self check pd data | {i} | {value}")
+                values.append(value)
+            now = datetime.now()
+            if mask & 0x01:
+                self.selftest_lamp_610_gb.setToolTip(f"{[i for i in values[0:6]]}, {now}")
+            if mask & 0x02:
+                self.selftest_lamp_550_gb.setToolTip(f"{[i for i in values[6:12]]}, {now}")
+            if mask & 0x04:
+                self.selftest_lamp_405_gb.setToolTip(f"{[i for i in values[12:]]}, {now}")
 
     def onSelfCheck(self, event):
         button = event.button()

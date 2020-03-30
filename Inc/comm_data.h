@@ -133,6 +133,7 @@ uint8_t comm_Data_Get_LED_Voltage();
 uint8_t comm_Data_Set_LED_Voltage(eComm_Data_Sample_Radiant radiant, uint16_t voltage);
 uint8_t comm_Data_Check_LED(eComm_Data_Sample_Radiant radiant);
 uint8_t comm_Data_Wait_Data(uint8_t mask, uint32_t timeout);
+uint8_t comm_Data_Copy_Data_U32(uint8_t mask, uint32_t * pBuffer);
 int16_t gComm_Data_LED_Voltage_Interval_Get(void);
 uint8_t gComm_Data_LED_Voltage_Points_Get(void);
 
@@ -194,6 +195,10 @@ uint8_t gComm_Data_Lamp_BP_Flag_Check(void);
 void gComm_Data_SP_LED_Flag_Mark(eComm_Data_Sample_Radiant radiant);
 void gComm_Data_SP_LED_Flag_Clr(void);
 eComm_Data_Sample_Radiant comm_Data_SP_LED_Is_Running(void);
+
+void gComm_Data_SelfCheck_PD_Flag_Mark(eComm_Data_Sample_Radiant radiant);
+void gComm_Data_SelfCheck_PD_Flag_Clr(void);
+eComm_Data_Sample_Radiant gComm_Data_SelfCheck_PD_Flag_Get(void);
 
 void comm_Data_GPIO_Init(void);
 void comm_Data_Board_Reset(void);

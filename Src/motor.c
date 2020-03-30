@@ -68,6 +68,7 @@ static void motor_Self_Check_Motor_Heater(uint8_t * pBuffer);
 static void motor_Self_Check_Motor_Tray(uint8_t * pBuffer);
 static void motor_Self_Check_Motor_Scan(uint8_t * pBuffer);
 static void motor_Self_Check_Scan(uint8_t * pBuffer);
+static void motor_Self_Check_PD(uint8_t * pBuffer, uint8_t mask);
 
 static void motor_Stary_Test(void);
 
@@ -795,7 +796,7 @@ static void motor_Task(void * argument)
     BaseType_t xResult = pdFALSE;
     uint32_t xNotifyValue, cnt = 0;
     sMotor_Fun mf;
-    uint8_t buffer[32];
+    uint8_t buffer[64];
     TickType_t xTick;
     sBarcodeCorrectInfoUnit correct_info;
     eComm_Data_Sample_Radiant radiant = eComm_Data_Sample_Radiant_610;
@@ -1043,6 +1044,12 @@ static void motor_Task(void * argument)
                 motor_Self_Check_Motor_Heater(buffer);
                 motor_Self_Check_Motor_Scan(buffer);
                 motor_Self_Check_Scan(buffer);
+                motor_Tray_Move_By_Index(eTrayIndex_0); /* 入仓 */
+                if (TRAY_MOTOR_IS_OPT_1) {
+                    heat_Motor_Down();
+                }
+                motor_Self_Check_PD(buffer, 0x07);
+                motor_Tray_Move_By_Index(eTrayIndex_2); /* 出仓 */
                 break;
             case eMotor_Fun_Self_Check_Motor_White: /* 自检测试 单项 白板电机 */
                 motor_Self_Check_Motor_White(buffer);
@@ -1060,6 +1067,7 @@ static void motor_Task(void * argument)
                 motor_Self_Check_Scan(buffer);
                 break;
             case eMotor_Fun_Self_Check_PD: /* 自检测试 单项 PD */
+                motor_Self_Check_PD(buffer, 0x07 & mf.fun_param_1);
                 break;
             case eMotor_Fun_Stary_Test: /* 杂散光测试 */
                 motor_Stary_Test();     /* 杂散光测试 */
@@ -1161,7 +1169,7 @@ static void motor_Task(void * argument)
                         white_Motor_WH();                                                                        /* 运动白板电机 白板位置 */
                         motor_Sample_Deal();                                                                     /* 启动采样并控制白板电机 */
                         white_Motor_WH();                                                                        /* 运动白板电机 白板位置 */
-                        comm_Data_Wait_Data((radiant == eComm_Data_Sample_Radiant_405) ? (0x3F) : (0x01), 1200); /* 等待采样结果上送 */
+                        comm_Data_Wait_Data((radiant != eComm_Data_Sample_Radiant_405) ? (0x3F) : (0x01), 1200); /* 等待采样结果上送 */
                         if (comm_Data_Check_LED(radiant) == 0) {                                                 /* 检查采样值 */
                             cnt += gComm_Data_LED_Voltage_Interval_Get();                                        /* 回退电压值 */
                             comm_Data_Set_LED_Voltage(radiant, cnt);                                             /* 调整电压值 */
@@ -1198,7 +1206,12 @@ static void motor_Self_Check_Motor_White(uint8_t * pBuffer)
     } else {
         pBuffer[1] = 1; /* 故障结论 */
     }
-    comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 4);
+    if (comm_Main_SendTask_Queue_GetFree() > 0) {
+        comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 4);
+        comm_Out_SendTask_QueueEmitWithModify(pBuffer, 4 + 7, 0); /* 转发至外串口但不允许阻塞 */
+    } else {
+        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 4);
+    }
 }
 
 /**
@@ -1223,7 +1236,12 @@ static void motor_Self_Check_Motor_Heater(uint8_t * pBuffer)
     } else {
         pBuffer[1] = 1; /* 故障结论 */
     }
-    comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 4);
+    if (comm_Main_SendTask_Queue_GetFree() > 0) {
+        comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 4);
+        comm_Out_SendTask_QueueEmitWithModify(pBuffer, 4 + 7, 0); /* 转发至外串口但不允许阻塞 */
+    } else {
+        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 4);
+    }
 }
 
 /**
@@ -1246,7 +1264,12 @@ static void motor_Self_Check_Motor_Tray(uint8_t * pBuffer)
     } else {
         pBuffer[1] = 1; /* 故障结论 */
     }
-    comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 4);
+    if (comm_Main_SendTask_Queue_GetFree() > 0) {
+        comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 4);
+        comm_Out_SendTask_QueueEmitWithModify(pBuffer, 4 + 7, 0); /* 转发至外串口但不允许阻塞 */
+    } else {
+        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 4);
+    }
 }
 
 /**
@@ -1266,7 +1289,12 @@ static void motor_Self_Check_Motor_Scan(uint8_t * pBuffer)
     } else {
         pBuffer[1] = 1; /* 故障结论 */
     }
-    comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 4);
+    if (comm_Main_SendTask_Queue_GetFree() > 0) {
+        comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 4);
+        comm_Out_SendTask_QueueEmitWithModify(pBuffer, 4 + 7, 0); /* 转发至外串口但不允许阻塞 */
+    } else {
+        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 4);
+    }
 }
 
 /**
@@ -1281,5 +1309,53 @@ static void motor_Self_Check_Scan(uint8_t * pBuffer)
     pBuffer[0] = eMotor_Fun_Self_Check_Scan - eMotor_Fun_Self_Check_Motor_White + 6; /* 自检测试 单项 扫码头 */
     barcode_Motor_Run_By_Index(eBarcodeIndex_0);                                     /* 移动到初始位置 */
     pBuffer[1] = barcode_Read_From_Serial(pBuffer + 2, pBuffer + 3, 10, 1000);       /* 读取扫码结果 长度为10 */
-    comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, pBuffer[2] + 3);
+    if (comm_Main_SendTask_Queue_GetFree() > 0) {
+        comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, pBuffer[2] + 3);
+        comm_Out_SendTask_QueueEmitWithModify(pBuffer, pBuffer[2] + 3 + 7, 0); /* 转发至外串口但不允许阻塞 */
+    } else {
+        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, pBuffer[2] + 3);
+    }
+}
+
+/**
+ * @brief  自检测试 单项 PD
+ * @param  pBuffer   数据指针
+ * @param  mask 掩码 0～7
+ * @retval None
+ */
+static void motor_Self_Check_PD(uint8_t * pBuffer, uint8_t mask)
+{
+    eComm_Data_Sample_Radiant radiant;
+    uint32_t record[13] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+    for (radiant = eComm_Data_Sample_Radiant_610; radiant <= eComm_Data_Sample_Radiant_405; ++radiant) { /* 逐个波长校正 */
+        if (((1 << (radiant - 1)) & mask) == 0) {                                                        /* 非测试项 */
+            continue;
+        }
+        gComm_Data_SelfCheck_PD_Flag_Mark(radiant);
+        comm_Data_RecordInit();                                                                  /* 初始化数据记录 */
+        gComm_Data_SP_LED_Flag_Mark(radiant);                                                    /* 标记校正采样板LED电压状态 */
+        comm_Data_Sample_Send_Conf_Correct(pBuffer, radiant,                                     /* 配置波长 */
+                                           1,                                                    /* 点数 */
+                                           eComm_Data_Outbound_CMD_TEST);                        /* 上送 PD 值 */
+        vTaskDelay(300);                                                                         /* 等待回应报文 */
+        white_Motor_WH();                                                                        /* 运动白板电机 白板位置 */
+        motor_Sample_Deal();                                                                     /* 启动采样并控制白板电机 */
+        white_Motor_WH();                                                                        /* 运动白板电机 白板位置 */
+        comm_Data_Wait_Data((radiant != eComm_Data_Sample_Radiant_405) ? (0x3F) : (0x01), 1200); /* 等待采样结果上送 */
+        comm_Data_Copy_Data_U32((radiant != eComm_Data_Sample_Radiant_405) ? (0x3F) : (0x01),
+                                &record[(radiant - eComm_Data_Sample_Radiant_610) * 6]); /* 复制测试数据 */
+    }
+
+    gComm_Data_SelfCheck_PD_Flag_Clr();                                            /* 清除自检测试 单项 PD状态 */
+    pBuffer[0] = eMotor_Fun_Self_Check_PD - eMotor_Fun_Self_Check_Motor_White + 6; /* 自检测试 单项 PD */
+    ;
+    pBuffer[1] = mask; /* 掩码值 */
+    memcpy(&pBuffer[2], (uint8_t *)(record), ARRAY_LEN(record) * 4);
+    if (comm_Main_SendTask_Queue_GetFree() > 0) {
+        comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 54); /* 上报主串口 */
+        comm_Out_SendTask_QueueEmitWithModify(pBuffer, 54 + 7, 0);                                              /* 转发至外串口但不允许阻塞 */
+    } else {
+        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 54); /* 上报主串口 */
+    }
 }
