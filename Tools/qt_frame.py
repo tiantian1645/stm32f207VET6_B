@@ -100,6 +100,7 @@ except Exception:
     logger.error(f"load conf failed \n{stackprinter.format()}")
     CONFIG = dict()
     CONFIG["log"] = dict(rotation="4 MB", retention=16)
+    CONFIG["pd_criterion"] = {"610": [6000000, 14000000], "550": [6000000, 14000000], "405": [6000000, 14000000]}
     try:
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
             simplejson.dump(CONFIG, f)
@@ -1970,16 +1971,28 @@ class MainWindow(QMainWindow):
             mask = raw_bytes[7]
             values = []
             for i in range(13):
-                value = struct.unpack("I", raw_bytes[8 + 4 * i: 8 + 4 * (i + 1)])[0]
+                value = struct.unpack("I", raw_bytes[8 + 4 * i : 8 + 4 * (i + 1)])[0]
                 logger.debug(f"get self check pd data | {i} | {value}")
                 values.append(value)
             now = datetime.now()
             if mask & 0x01:
                 self.selftest_lamp_610_gb.setToolTip(f"{[i for i in values[0:6]]}, {now}")
+                mi, ma = (min(CONFIG["pd_criterion"]["610"]), max(CONFIG["pd_criterion"]["610"]))
+                for idx, v in enumerate(values[0:6]):
+                    if v > ma or v < mi:
+                        self._setColor(self.selftest_lamp_610_lbs[idx], nbg="red")
             if mask & 0x02:
                 self.selftest_lamp_550_gb.setToolTip(f"{[i for i in values[6:12]]}, {now}")
+                mi, ma = (min(CONFIG["pd_criterion"]["550"]), max(CONFIG["pd_criterion"]["550"]))
+                for idx, v in enumerate(values[6:12]):
+                    if v > ma or v < mi:
+                        self._setColor(self.selftest_lamp_550_lbs[idx], nbg="red")
             if mask & 0x04:
                 self.selftest_lamp_405_gb.setToolTip(f"{[i for i in values[12:]]}, {now}")
+                mi, ma = (min(CONFIG["pd_criterion"]["405"]), max(CONFIG["pd_criterion"]["405"]))
+                for idx, v in enumerate(values[12:]):
+                    if v > ma or v < mi:
+                        self._setColor(self.selftest_lamp_405_lbs[idx], nbg="red")
 
     def onSelfCheck(self, event):
         button = event.button()
