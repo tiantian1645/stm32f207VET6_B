@@ -1101,6 +1101,8 @@ static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length)
                     case 5:                                                                        /* ID Code 卡 */
                         storgeTaskNotification_FromISR(eStorgeNotifyConf_Test_ID_Card, eComm_Out); /* 通知存储任务 */
                         break;
+                    case 0x0B:                        /* PD */
+                        motor_fun.fun_param_1 = 0x07; /* 默认全部波长 */
                     default:
                         motor_fun.fun_type = eMotor_Fun_Self_Check_Motor_White - 6 + pInBuff[6]; /* 整体自检测试 单项 */
                         motor_Emit_FromISR(&motor_fun);                                          /* 提交到电机队列 */
@@ -1364,6 +1366,44 @@ static void protocol_Parse_Main_Fun_ISR(uint8_t * pInBuff, uint16_t length)
             break;
         case eProtocolEmitPack_Client_CMD_SP_LED_SET:
             comm_Data_Conf_LED_Voltage_Set_FromISR(&pInBuff[6]);
+            break;
+        case eProtocolEmitPack_Client_CMD_Debug_Self_Check: /* 自检测试 */
+            if (length == 7) {
+                protocol_Self_Check_Temp_TOP_FromISR(pInBuff);
+                protocol_Self_Check_Temp_BTM_FromISR(pInBuff);
+                protocol_Self_Check_Temp_ENV_FromISR(pInBuff);
+                motor_fun.fun_type = eMotor_Fun_Self_Check;                            /* 整体自检测试 */
+                motor_Emit_FromISR(&motor_fun);                                        /* 提交到电机队列 */
+                storgeTaskNotification_FromISR(eStorgeNotifyConf_Test_All, eComm_Out); /* 通知存储任务 */
+            } else if (length == 8) {                                                  /* 单向测试结果 */
+                switch (pInBuff[6]) {
+                    case 1: /* 上加热体温度结果 */
+                        protocol_Self_Check_Temp_TOP_FromISR(pInBuff);
+                        break;
+                    case 2: /* 下加热体温度结果 */
+                        protocol_Self_Check_Temp_BTM_FromISR(pInBuff);
+                        break;
+                    case 3: /* 环境温度结果 */
+                        protocol_Self_Check_Temp_ENV_FromISR(pInBuff);
+                        break;
+                    case 4:                                                                      /* 外部Flash */
+                        storgeTaskNotification_FromISR(eStorgeNotifyConf_Test_Flash, eComm_Out); /* 通知存储任务 */
+                        break;
+                    case 5:                                                                        /* ID Code 卡 */
+                        storgeTaskNotification_FromISR(eStorgeNotifyConf_Test_ID_Card, eComm_Out); /* 通知存储任务 */
+                        break;
+                    case 0x0B:                        /* PD */
+                        motor_fun.fun_param_1 = 0x07; /* 默认全部波长 */
+                    default:
+                        motor_fun.fun_type = eMotor_Fun_Self_Check_Motor_White - 6 + pInBuff[6]; /* 整体自检测试 单项 */
+                        motor_Emit_FromISR(&motor_fun);                                          /* 提交到电机队列 */
+                        break;
+                }
+            } else if (length == 9) {
+                motor_fun.fun_type = eMotor_Fun_Self_Check_Motor_White - 6 + pInBuff[6]; /* 整体自检测试 单项 */
+                motor_fun.fun_param_1 = pInBuff[7];                                      /* 自检参数 PD灯掩码 */
+                motor_Emit_FromISR(&motor_fun);                                          /* 提交到电机队列 */
+            }
             break;
         default:
             error_Emit_FromISR(eError_Comm_Main_Unknow_CMD);

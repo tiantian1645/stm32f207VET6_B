@@ -722,7 +722,7 @@ static void storge_Test_Flash(uint8_t * pBuffer)
         }
         wroteCnt = spi_FlashWriteBuffer(cStorge_Test_Flash_Addrs[i], pBuffer + 2, 16);
         if (wroteCnt != 16) {
-            pBuffer[1] = 1;
+            pBuffer[1] = 2;
             comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
             return;
         }
