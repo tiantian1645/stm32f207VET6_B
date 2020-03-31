@@ -15,6 +15,11 @@ extern TIM_HandleTypeDef htim1;
 /* Private includes ----------------------------------------------------------*/
 
 /* Private typedef -----------------------------------------------------------*/
+typedef enum {
+    eWhite_Motor_In_Finish,
+    eWhite_Motor_Out_Finish,
+    eWhite_Motor_Undone,
+} eWhite_Motor_Status;
 
 /* Private define ------------------------------------------------------------*/
 
@@ -22,21 +27,21 @@ extern TIM_HandleTypeDef htim1;
 #define WHITE_MOTOR_PD_PCS_MAX 40000 /* 启动初速 max 60000 min 21000 */
 #define WHITE_MOTOR_PD_PCS_MIN 14000 /* 最高速度 min 12345 */
 #define WHITE_MOTOR_PD_PCS_UNT 8
-#define WHITE_MOTOR_PD_PCS_SUM 315
+#define WHITE_MOTOR_PD_PCS_SUM 322
 #define WHITE_MOTOR_PD_PCS_PATCH 6
 #define WHITE_MOTOR_PD_PCS_GAP (1000)
 
 #define WHITE_MOTOR_WH_PCS_MAX 48000
 #define WHITE_MOTOR_WH_PCS_MIN 32000
 #define WHITE_MOTOR_WH_PCS_UNT 8
-#define WHITE_MOTOR_WH_PCS_SUM 309
+#define WHITE_MOTOR_WH_PCS_SUM 317
 #define WHITE_MOTOR_WH_PCS_GAP (800)
 
 /* Private variables ---------------------------------------------------------*/
 static eMotorDir gWhite_Motor_Dir = eMotorDir_FWD;
 static uint32_t gWhite_Motor_Position = 0xFFFFFFFF;
 static uint32_t gWhite_Motor_SRC_Buffer[3] = {0, 0, 0};
-
+static eWhite_Motor_Status gWhite_Motor_Status = eWhite_Motor_Undone;
 /* Private constants ---------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -46,6 +51,16 @@ static void gWhite_Motor_Position_Dec(uint32_t position);
 static void gWhite_Motor_Position_Clr(void);
 
 /* Private user code ---------------------------------------------------------*/
+
+eWhite_Motor_Status gWhite_Motor_Status_Get(void)
+{
+    return gWhite_Motor_Status;
+}
+
+void gWhite_Motor_Status_Set(eWhite_Motor_Status status)
+{
+    gWhite_Motor_Status = status;
+}
 
 /**
  * @brief  白板电机方向 获取
@@ -105,7 +120,7 @@ void white_Motor_Deactive(void)
  */
 uint8_t white_Motor_Position_Is_In(void)
 {
-    if (motor_OPT_Status_Get_White_In() == eMotor_OPT_Status_OFF) {
+    if (motor_OPT_Status_Get_White_In() == eMotor_OPT_Status_OFF && gWhite_Motor_Status_Get() == eWhite_Motor_In_Finish) {
         return 1;
     }
     return 0;
@@ -119,10 +134,8 @@ uint8_t white_Motor_Position_Is_In(void)
  */
 uint8_t white_Motor_Position_Is_Out(void)
 {
-    if (motor_OPT_Status_Get_White_Out() == eMotor_OPT_Status_OFF) {
-        return 1;
-    }
-    return 0;
+    return (gWhite_Motor_Position_Get() != 0xFFFFFFFF) && (gWhite_Motor_Status_Get() == eWhite_Motor_Out_Finish) &&
+           (motor_OPT_Status_Get_White_In() == eMotor_OPT_Status_ON);
 }
 
 /**
@@ -203,7 +216,6 @@ uint8_t white_Motor_Wait_Stop(uint32_t timeout)
             do {
                 if (white_Motor_Position_Is_Out()) {
                     white_Motor_Deactive();
-                    PWM_AW_Stop();
                     return 0;
                 }
                 vTaskDelay(1);
@@ -238,6 +250,7 @@ uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout)
     m_drv8824_Clear_Flag();                                    /* 清理故障标志 */
     m_drv8824_SetDir(dir);                                     /* 运动方向设置 硬件管脚 */
     gWhite_Motor_Dir_Set(dir);                                 /* 运动方向设置 目标方向 */
+    gWhite_Motor_Status_Set(eWhite_Motor_Undone);              /* 状态记录初始化 */
     gPWM_TEST_AW_CNT_Clear();                                  /* PWM数目清零 */
     if (HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1) != HAL_OK) {  /* 启动PWM输出 */
         m_drv8824_release();
@@ -251,7 +264,7 @@ uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout)
         return 0;
     }
     m_drv8824_release();
-    if (dir == eMotorDir_FWD && white_Motor_Position_Is_Out() == 0) {
+    if (dir == eMotorDir_FWD && (white_Motor_Position_Is_In() || gWhite_Motor_Status_Get() == eWhite_Motor_Undone)) {
         error_Emit(eError_Motor_White_Timeout_WH);
         return 3;
     } else if (dir == eMotorDir_REV && white_Motor_Position_Is_In() == 0) {
@@ -292,6 +305,7 @@ uint8_t white_Motor_PWM_Gen_In(void)
 
     if (patch >= WHITE_MOTOR_PD_PCS_PATCH) {
         PWM_AW_Stop();
+        gWhite_Motor_Status_Set(eWhite_Motor_In_Finish);
         return 0;
     }
 
@@ -323,6 +337,7 @@ uint8_t white_Motor_PWM_Gen_Out(void)
 
     if (cnt > WHITE_MOTOR_WH_PCS_SUM) { /* 停止输出 */
         PWM_AW_Stop();
+        gWhite_Motor_Status_Set(eWhite_Motor_Out_Finish);
         return 0;
     } else {
         gWhite_Motor_SRC_Buffer[0] = (WHITE_MOTOR_WH_PCS_MAX - WHITE_MOTOR_WH_PCS_MIN > WHITE_MOTOR_WH_PCS_GAP * cnt)
@@ -357,7 +372,7 @@ void whilte_Motor_Init(void)
         white_Motor_PD();
     }
     white_Motor_WH();
-    if (motor_OPT_Status_Get_White_Out() == eMotor_OPT_Status_ON) {
+    if (motor_OPT_Status_Get_White_In() == eMotor_OPT_Status_OFF) {
         white_Motor_WH();
     }
 }

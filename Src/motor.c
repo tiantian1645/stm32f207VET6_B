@@ -861,9 +861,9 @@ static void motor_Task(void * argument)
                     break;                             /* 收到打断信息 提前结束 */
                 }
 
+                white_Motor_PD();                                            /* 运动白板电机 PD位置 */
                 white_Motor_WH();                                            /* 运动白板电机 白物质位置 */
-                white_Motor_WH();                                            /* 运动白板电机 白物质位置 */
-                if (comm_Data_Conf_Sem_Wait(pdMS_TO_TICKS(800)) != pdPASS) { /* 等待配置信息 */
+                if (comm_Data_Conf_Sem_Wait(pdMS_TO_TICKS(400)) != pdPASS) { /* 等待配置信息 */
                     error_Emit(eError_Comm_Data_Not_Conf);                   /* 提交错误信息 采样配置信息未下达 */
                     motor_Sample_Owari();                                    /* 清理 */
                     break;                                                   /* 提前结束 */

@@ -8,7 +8,7 @@
 /* Private includes ----------------------------------------------------------*/
 
 /* Exported macro ------------------------------------------------------------*/
-#define WHITE_MOTOR_RUN_PD_TIMEOUT 400 /* 关联 COMM_DATA_PD_TIMER_PERIOD */
+#define WHITE_MOTOR_RUN_PD_TIMEOUT 450 /* 关联 COMM_DATA_PD_TIMER_PERIOD */
 #define WHITE_MOTOR_RUN_WH_TIMEOUT 1000
 
 #define white_Motor_PD() white_Motor_Run(eMotorDir_REV, WHITE_MOTOR_RUN_PD_TIMEOUT)
@@ -24,7 +24,7 @@ eMotorDir gWhite_Motor_Dir_Get(void);
 void white_Motor_Active(void);
 void white_Motor_Deactive(void);
 
-uint8_t white_Motor_Position_Is_Out(void);
+uint8_t white_Motor_Position_Is_Down(void);
 uint8_t white_Motor_Position_Is_In(void);
 uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout);
 uint8_t white_Motor_Toggle();
