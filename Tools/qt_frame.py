@@ -13,8 +13,8 @@ from datetime import datetime
 from functools import partial
 from hashlib import sha256
 from math import log10, nan
-from urllib.request import urlretrieve
 
+import requests
 import numpy as np
 import pyperclip
 import qtmodern.styles
@@ -1633,17 +1633,27 @@ class MainWindow(QMainWindow):
         self.upgbl_dg.exec_()
 
     def onUpgBLDialog(self, event):
+        terminal = False
         if event is True:
             file_path = self.upgbl_dg_lb.text()
             if file_path.startswith("http") and file_path.endswith("bin"):
+                if os.path.isfile("temp_bootloader.bin"):
+                    os.remove("temp_bootloader.bin")
                 try:
-                    if os.path.isfile("temp_bootloader.bin"):
-                        os.remove("temp_bootloader.bin")
-                    file_path = urlretrieve(file_path, "temp_bootloader.bin")[0]
-                    self.upgbl_dg_lb.setText(file_path)
+                    resp = requests.get(file_path, timeout=10)
+                    if resp.status_code != 200:
+                        terminal = True
                 except Exception as e:
                     self.upgbl_dg_lb.setText(f"url 处理异常 | {repr(e)}")
-                    file_path = ""
+                    terminal = True
+                if terminal:
+                    self.upgbl_dg_bt.setChecked(False)
+                    self.upgbl_dg.setWindowTitle("固件升级")
+                    return
+                file_path = "temp_bootloader.bin"
+                self.upgbl_dg_lb.setText(file_path)
+                with open("temp_bootloader.bin", "wb") as f:
+                    f.write(resp.content)
             if os.path.isfile(file_path):
                 self.upgbl_dg_bt.setEnabled(False)
                 self.bl_wrote_size = 0
@@ -1825,24 +1835,30 @@ class MainWindow(QMainWindow):
         selftest_lamp_ly = QGridLayout()
         self.selftest_lamp_610_gb = QGroupBox("610")
         self.selftest_lamp_610_gb.setLayout(QHBoxLayout())
+        self.selftest_lamp_610_gb.layout().setContentsMargins(0, 3, 0, 3)
+        self.selftest_lamp_610_gb.layout().setSpacing(5)
         self.selftest_lamp_550_gb = QGroupBox("550")
         self.selftest_lamp_550_gb.setLayout(QHBoxLayout())
+        self.selftest_lamp_610_gb.layout().setContentsMargins(0, 3, 0, 3)
+        self.selftest_lamp_610_gb.layout().setSpacing(5)
         self.selftest_lamp_405_gb = QGroupBox("405")
         self.selftest_lamp_405_gb.setLayout(QHBoxLayout())
+        self.selftest_lamp_610_gb.layout().setContentsMargins(0, 3, 0, 3)
+        self.selftest_lamp_610_gb.layout().setSpacing(5)
 
         self.selftest_lamp_610_lbs = []
         self.selftest_lamp_550_lbs = []
         self.selftest_lamp_405_lbs = []
         for i in range(6):
-            lb = QLabel(str(i + 1))
+            lb = QLabel(f"{i + 1:^5d}")
             self.selftest_lamp_610_gb.layout().addWidget(lb, alignment=Qt.AlignCenter)
             self.selftest_lamp_610_lbs.append(lb)
         for i in range(6):
-            lb = QLabel(str(i + 1))
+            lb = QLabel(f"{i + 1:^5d}")
             self.selftest_lamp_550_gb.layout().addWidget(lb, alignment=Qt.AlignCenter)
             self.selftest_lamp_550_lbs.append(lb)
         for i in range(1):
-            lb = QLabel(str(i + 1))
+            lb = QLabel(f"{i + 1:^5d}")
             self.selftest_lamp_405_gb.layout().addWidget(lb, alignment=Qt.AlignCenter)
             self.selftest_lamp_405_lbs.append(lb)
         selftest_lamp_ly.addWidget(self.selftest_lamp_610_gb, 0, 0, 1, 6)
@@ -2051,17 +2067,27 @@ class MainWindow(QMainWindow):
         self.upgrade_dg.exec_()
 
     def onUpgradeDialog(self, event):
+        terminal = False
         if event is True:
             file_path = self.upgrade_dg_lb.text()
             if file_path.startswith("http") and file_path.endswith("bin"):
+                if os.path.isfile("temp_application.bin"):
+                    os.remove("temp_application.bin")
                 try:
-                    if os.path.isfile("temp_application.bin"):
-                        os.remove("temp_application.bin")
-                    file_path = urlretrieve(file_path, "temp_application.bin")[0]
-                    self.upgrade_dg_lb.setText(file_path)
+                    resp = requests.get(file_path, timeout=10)
+                    if resp.status_code != 200:
+                        terminal = True
                 except Exception as e:
                     self.upgrade_dg_lb.setText(f"url 处理异常 | {repr(e)}")
-                    file_path = ""
+                    terminal = True
+                if terminal:
+                    self.upgrade_dg_bt.setChecked(False)
+                    self.upgrade_dg.setWindowTitle("固件升级")
+                    return
+                file_path = "temp_application.bin"
+                self.upgrade_dg_lb.setText(file_path)
+                with open("temp_application.bin", "wb") as f:
+                    f.write(resp.content)
             if os.path.isfile(file_path):
                 self.upgrade_dg_bt.setEnabled(False)
                 self._serialSendPack(0x0F)
