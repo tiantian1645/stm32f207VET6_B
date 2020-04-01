@@ -28,6 +28,18 @@ OO_STYLE.fill = PatternFill(start_color="f9a0a0", end_color="f9a0a0", fill_type=
 OO_STYLE.alignment = Alignment(horizontal="center", vertical="bottom", text_rotation=0, wrap_text=False, shrink_to_fit=False, indent=0)
 
 
+DEFAULT_CC_DATA = []
+for t_idx, title in enumerate((610, 550, 405)):
+    standard_points = tuple(0 for i in range(6))
+    channel_pointses = []
+    cn = 6 if t_idx != 2 else 1
+    for row_idx in range(cn):
+        channel_pointses.append(tuple(0 for column_idx in range(6)))
+    DEFAULT_CC_DATA.append(ILLU_CC_DataInfo(wave=title, standard_points=standard_points, channel_pointses=tuple(channel_pointses)))
+DEFAULT_CC_DATA.append(TEMP_CC_DataInfo(top=0, btm=0, env=0))
+DEFAULT_CC_DATA = tuple(DEFAULT_CC_DATA)
+
+
 def dump_CC(data, file_path):
     wb = Workbook(write_only=True)
     sheets = [wb.create_sheet(f"{title}") for title in (610, 550, 405, "温度")]
@@ -61,6 +73,8 @@ def dump_CC(data, file_path):
 
 
 def load_CC(file_path):
+    if not os.path.isfile(file_path):
+        return None
     try:
         wb = load_workbook(file_path, read_only=True)
         data = []
@@ -77,6 +91,7 @@ def load_CC(file_path):
         return tuple(data)
     except Exception:
         logger.error(f"load data from xlsx failed\n{stackprinter.format()}")
+        return None
 
 
 def cc_get_pointes_info(cc, channel, wave):

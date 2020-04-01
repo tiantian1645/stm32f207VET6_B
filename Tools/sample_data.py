@@ -12,7 +12,7 @@ from sqlalchemy.orm import relationship, sessionmaker
 
 from bytes_helper import bytesPuttyPrint
 from sample_graph import point_line_equation_map
-from deal_openpyxl import load_CC, cc_get_pointes_info
+from deal_openpyxl import load_CC, cc_get_pointes_info, DEFAULT_CC_DATA
 
 SapmleInfo = namedtuple(
     "SapmleInfo",
@@ -172,12 +172,15 @@ class SampleDB:
         elif len(raw_data) / total == 2:
             return [unpack("H", bytes((i)))[0] for i in divide(total, raw_data)]
         elif len(raw_data) / total == 4:
+            cc = None
             if not self.device_id:
                 cc = load_CC("data/flash.xlsx")
             else:
                 cc = load_CC(f"data/flash_{self.device_id}.xlsx")
                 if not cc:
                     cc = load_CC("data/flash.xlsx")
+            if cc is None:
+                cc = DEFAULT_CC_DATA
             cc_list = []
             result = [unpack("I", bytes((i)))[0] for i in divide(total, raw_data)]
             if self._i32 is None:
