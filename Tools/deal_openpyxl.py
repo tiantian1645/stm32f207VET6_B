@@ -79,15 +79,21 @@ def load_CC(file_path):
         wb = load_workbook(file_path, read_only=True)
         data = []
         for t_idx, title in enumerate((610, 550, 405)):
-            sheet = wb[f"{title}"]
+            sheet_name = f"{title}"
+            if sheet_name not in wb.sheetnames:
+                return DEFAULT_CC_DATA
+            sheet = wb[sheet_name]
             standard_points = tuple(sheet.cell(column=2 + i, row=2).value for i in range(6))
             channel_pointses = []
             cn = 6 if t_idx != 2 else 1
             for row_idx in range(cn):
                 channel_pointses.append(tuple(sheet.cell(column=column_idx + 2, row=3 + row_idx).value for column_idx in range(6)))
             data.append(ILLU_CC_DataInfo(wave=title, standard_points=standard_points, channel_pointses=tuple(channel_pointses)))
-        sheet = wb["温度"]
-        data.append(TEMP_CC_DataInfo(top=sheet.cell(column=1, row=2).value, btm=sheet.cell(column=2, row=2).value, env=sheet.cell(column=3, row=2).value))
+        if "温度" in wb.sheetnames:
+            sheet = wb["温度"]
+            data.append(TEMP_CC_DataInfo(top=sheet.cell(column=1, row=2).value, btm=sheet.cell(column=2, row=2).value, env=sheet.cell(column=3, row=2).value))
+        else:
+            data.append(TEMP_CC_DataInfo(top=0, btm=0, env=0))
         return tuple(data)
     except Exception:
         logger.error(f"load data from xlsx failed\n{stackprinter.format()}")
