@@ -102,6 +102,12 @@ typedef enum {
     eMotor_OPT_Index_NUM,
 } eMotor_OPT_Index;
 
+typedef enum {
+    eMotor_Sampl_Comm_None,
+    eMotor_Sampl_Comm_Main,
+    eMotor_Sampl_Comm_Out,
+} eMotor_Sampl_Comm;
+
 /* Exported define -----------------------------------------------------------*/
 #define motor_Status_Set_Position(__RUNSTATUS__, __POSITION__) ((__RUNSTATUS__)->position = (__POSITION__))
 #define motor_Status_Set_TickInit(__RUNSTATUS__, __TICKINIT__) ((__RUNSTATUS__)->tick_init = (__TICKINIT__))
@@ -140,6 +146,10 @@ eMotor_OPT_Status motor_OPT_Status_Get_White_Out(void);
 
 void gMotorPressureStopBits_Set(eMotor_Fun fun, uint8_t b);
 void gMotorPressureStopBits_Clear(void);
+
+eMotor_Sampl_Comm gMotor_Sampl_Comm_Get(void);
+void gMotor_Sampl_Comm_Set(eMotor_Sampl_Comm b);
+void gMotor_Sampl_Comm_Init(void);
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/

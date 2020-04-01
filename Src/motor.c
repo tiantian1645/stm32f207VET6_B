@@ -51,9 +51,10 @@ typedef struct {
 xQueueHandle motor_Fun_Queue_Handle = NULL; /* 电机功能队列 */
 xTaskHandle motor_Task_Handle = NULL;       /* 电机任务句柄 */
 
-static sMotor_OPT_Record gMotor_OPT_Records[eMotor_OPT_Index_NUM]; /* 光耦记录 */
-static uint8_t gMotorPressureStopBits = 0xFF;                      /* 压力测试停止标志位 */
-static uint8_t gMotorTempStableWaiting = 0;                        /* 启动时等待温度稳定标志位 */
+static sMotor_OPT_Record gMotor_OPT_Records[eMotor_OPT_Index_NUM];   /* 光耦记录 */
+static uint8_t gMotorPressureStopBits = 0xFF;                        /* 压力测试停止标志位 */
+static uint8_t gMotorTempStableWaiting = 0;                          /* 启动时等待温度稳定标志位 */
+static eMotor_Sampl_Comm gMotor_Sampl_Comm = eMotor_Sampl_Comm_None; /* 采样时指令来源 */
 
 /* Private function prototypes -----------------------------------------------*/
 static void motor_Task(void * argument);
@@ -269,6 +270,34 @@ void gMotorTempStableWaiting_Clear(void)
 uint8_t gMotorTempStableWaiting_Check(void)
 {
     return (gMotorTempStableWaiting > 0) ? (1) : (0);
+}
+
+/**
+ * @brief  采样时指令来源 读取
+ * @retval 1 停止 0 继续
+ */
+eMotor_Sampl_Comm gMotor_Sampl_Comm_Get(void)
+{
+    return gMotor_Sampl_Comm;
+}
+
+/**
+ * @brief  采样时指令来源 设置
+ * @param  b eMotor_Sampl_Comm
+ * @retval None
+ */
+void gMotor_Sampl_Comm_Set(eMotor_Sampl_Comm b)
+{
+    gMotor_Sampl_Comm = b;
+}
+
+/**
+ * @brief  采样时指令来源 复位
+ * @retval None
+ */
+void gMotor_Sampl_Comm_Init(void)
+{
+    gMotor_Sampl_Comm_Set(eMotor_Sampl_Comm_None);
 }
 
 /**
@@ -651,6 +680,7 @@ void motor_Sample_Owari_Correct(void)
     protocol_Temp_Upload_Resume();               /* 恢复温度上送 */
     led_Mode_Set(eLED_Mode_Keep_Green);          /* LED 绿灯常亮 */
     comm_Data_GPIO_Init();                       /* 初始化通讯管脚 */
+    gMotor_Sampl_Comm_Init();                    /* 复位来源标记 */
 }
 
 /**
@@ -675,6 +705,7 @@ void motor_Sample_Owari(void)
     barcode_Interrupt_Flag_Clear();              /* 清除打断标志位 */
     comm_Data_Sample_Owari();                    /* 上送采样结束报文 */
     comm_Data_GPIO_Init();                       /* 初始化通讯管脚 */
+    gMotor_Sampl_Comm_Init();                    /* 复位来源标记 */
 }
 
 /**

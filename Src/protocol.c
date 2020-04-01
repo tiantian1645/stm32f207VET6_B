@@ -1197,11 +1197,15 @@ static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length)
             } else {
                 motor_fun.fun_type = eMotor_Fun_Sample_Start; /* 普通测试 */
             }
-            if (motor_Emit_FromISR(&motor_fun) == 0) {      /* 提交到电机队列 */
-                comm_Data_Sample_Send_Clear_Conf_FromISR(); /* 清除采样板上配置信息 */
+            if (motor_Emit_FromISR(&motor_fun) == 0) {        /* 提交到电机队列 */
+                comm_Data_Sample_Send_Clear_Conf_FromISR();   /* 清除采样板上配置信息 */
+                gMotor_Sampl_Comm_Set(eMotor_Sampl_Comm_Out); /* 标记来源为外串口 */
             }
             break;
-        case eProtocolEmitPack_Client_CMD_ABRUPT:             /* 仪器测量取消命令帧 0x02 */
+        case eProtocolEmitPack_Client_CMD_ABRUPT:                   /* 仪器测量取消命令帧 0x02 */
+            if (gMotor_Sampl_Comm_Get() != eMotor_Sampl_Comm_Out) { /* 与启动测试命令来源不同 */
+                break;
+            }
             barcode_Interrupt_Flag_Mark();                    /* 标记打断扫码 */
             comm_Data_Sample_Force_Stop_FromISR();            /* 强行停止采样定时器 */
             motor_Sample_Info_From_ISR(eMotorNotifyValue_BR); /* 提交打断信息 */
@@ -1302,17 +1306,21 @@ static void protocol_Parse_Main_Fun_ISR(uint8_t * pInBuff, uint16_t length)
     sMotor_Fun motor_fun;
     float temp;
 
-    switch (pInBuff[5]) {                                   /* 进一步处理 功能码 */
-        case eProtocolEmitPack_Client_CMD_START:            /* 开始测量帧 0x01 */
-            gComm_Data_Sample_Max_Point_Clear();            /* 清除最大点数 */
-            protocol_Temp_Upload_Pause();                   /* 暂停温度上送 */
-            comm_Data_GPIO_Init();                          /* 初始化通讯管脚 */
-            motor_fun.fun_type = eMotor_Fun_Sample_Start;   /* 开始测试 */
-            if (motor_Emit_FromISR(&motor_fun) == pdTRUE) { /* 提交到电机队列 */
-                comm_Data_Sample_Send_Clear_Conf_FromISR(); /* 清除采样板上配置信息 */
+    switch (pInBuff[5]) {                                      /* 进一步处理 功能码 */
+        case eProtocolEmitPack_Client_CMD_START:               /* 开始测量帧 0x01 */
+            gComm_Data_Sample_Max_Point_Clear();               /* 清除最大点数 */
+            protocol_Temp_Upload_Pause();                      /* 暂停温度上送 */
+            comm_Data_GPIO_Init();                             /* 初始化通讯管脚 */
+            motor_fun.fun_type = eMotor_Fun_Sample_Start;      /* 开始测试 */
+            if (motor_Emit_FromISR(&motor_fun) == 0) {         /* 提交到电机队列 */
+                comm_Data_Sample_Send_Clear_Conf_FromISR();    /* 清除采样板上配置信息 */
+                gMotor_Sampl_Comm_Set(eMotor_Sampl_Comm_Main); /* 标记来源为主串口 */
             }
             break;
-        case eProtocolEmitPack_Client_CMD_ABRUPT:             /* 仪器测量取消命令帧 0x02 */
+        case eProtocolEmitPack_Client_CMD_ABRUPT:                    /* 仪器测量取消命令帧 0x02 */
+            if (gMotor_Sampl_Comm_Get() != eMotor_Sampl_Comm_Main) { /* 与启动测试命令来源不同 */
+                break;
+            }
             barcode_Interrupt_Flag_Mark();                    /* 标记打断扫码 */
             comm_Data_Sample_Force_Stop_FromISR();            /* 强行停止采样定时器 */
             motor_Sample_Info_From_ISR(eMotorNotifyValue_BR); /* 提交打断信息 */
