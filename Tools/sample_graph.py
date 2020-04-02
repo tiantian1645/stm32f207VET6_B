@@ -71,9 +71,9 @@ def point_line_equation_map(channel_points, standard_points, origin_data):
         p2 = (channel_points[-1], standard_points[-1])
     else:
         for idx, c in enumerate(channel_points):
-            if origin_data > c:
-                p1 = (channel_points[idx], standard_points[idx])
-                p2 = (channel_points[idx + 1], standard_points[idx + 1])
+            if origin_data < c:
+                p1 = (channel_points[idx - 1], standard_points[idx - 1])
+                p2 = (channel_points[idx], standard_points[idx])
                 break
         else:
             logger.error(f"could not find p1 p2 | origin_data {origin_data} | channel_points {channel_points}")
