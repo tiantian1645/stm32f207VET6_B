@@ -772,7 +772,7 @@ static void storge_Test_EEPROM(uint8_t * pBuffer)
             pBuffer[2 + j + 16] = 0xFF - pBuffer[2 + j + 16];
         }
         wroteCnt = I2C_EEPROM_Write(cStorge_Test_EEPROM_Addrs[i], pBuffer + 2, 16, 1000); /* 写回原始数据 */
-        if (memcmp(pBuffer + 2, pBuffer + 2 + 16, 16) != 0) {                             /* 对比结果 */
+        if (wroteCnt != 16 || memcmp(pBuffer + 2, pBuffer + 2 + 16, 16) != 0) {           /* 对比结果 */
             pBuffer[1] = 4;
             comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
             return;

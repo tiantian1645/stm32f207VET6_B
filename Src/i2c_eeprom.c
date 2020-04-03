@@ -159,5 +159,8 @@ uint16_t I2C_EEPROM_Write(uint16_t memAddr, uint8_t * pOutBuff, uint16_t length,
         error_Emit(eError_ID_Card_Not_Insert);                              /* 提交错误信息 */
         wroteCnt = 0;
     }
+    if (wroteCnt > 0) { /* 写操作后需要适当延时 */
+        vTaskDelay(10);
+    }
     return wroteCnt;
 }
