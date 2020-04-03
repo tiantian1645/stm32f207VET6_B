@@ -2127,7 +2127,6 @@ class MainWindow(QMainWindow):
         for k in sorted(self.matplot_data.keys()):
             v = self.matplot_data.get(k, [0])
             records.append(f"{k} | {v}")
-        pyperclip.copy("\n".join(records))
         cnt = self.sample_db.get_label_cnt()
         if cnt > 1:
             self.sample_record_idx_sp.setRange(0, cnt - 1)
@@ -2149,6 +2148,10 @@ class MainWindow(QMainWindow):
                 version=f"{self.version}.{datetime.strftime(self.device_datetime, '%Y%m%d.%H%M%S')}",
                 device_id=self.device_id,
             )
+        try:
+            pyperclip.copy("\n".join(records))
+        except Exception:
+            pass
 
     def updateMatplotData(self, info):
         length = info.content[6]
