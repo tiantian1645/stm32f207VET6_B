@@ -618,7 +618,7 @@ void protocol_Temp_Upload_Deal(void)
  * @param  pBuffer 数据指针
  * @retval 0 正常 1 异常 2 过高 3 过低
  **/
-void protocol_Self_Check_Temp_TOP(uint8_t * pBuffer)
+void protocol_Self_Check_Temp_TOP(uint8_t * pBuffer, eProtocol_COMM_Index idx)
 {
     float temp;
     uint8_t result = 0, i;
@@ -641,7 +641,11 @@ void protocol_Self_Check_Temp_TOP(uint8_t * pBuffer)
 
     pBuffer[0] = 1;
     pBuffer[1] = result;
-    comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 26);
+    if (idx == eComm_Out) {
+        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 26);
+    } else if (idx == eComm_Main) {
+        comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 26);
+    }
 }
 
 /**
@@ -649,7 +653,7 @@ void protocol_Self_Check_Temp_TOP(uint8_t * pBuffer)
  * @param  pBuffer 数据指针
  * @retval 0 正常 1 异常 2 过高 3 过低
  **/
-void protocol_Self_Check_Temp_TOP_FromISR(uint8_t * pBuffer)
+void protocol_Self_Check_Temp_TOP_FromISR(uint8_t * pBuffer, eProtocol_COMM_Index idx)
 {
     float temp;
     uint8_t result = 0, i;
@@ -672,7 +676,11 @@ void protocol_Self_Check_Temp_TOP_FromISR(uint8_t * pBuffer)
 
     pBuffer[0] = 1;
     pBuffer[1] = result;
-    comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 26);
+    if (idx == eComm_Out) {
+        comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 26);
+    } else if (idx == eComm_Main) {
+        comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 26);
+    }
 }
 
 /**
@@ -680,7 +688,7 @@ void protocol_Self_Check_Temp_TOP_FromISR(uint8_t * pBuffer)
  * @param  pBuffer 数据指针
  * @retval 0 正常 1 异常 2 过高 3 过低
  **/
-void protocol_Self_Check_Temp_BTM(uint8_t * pBuffer)
+void protocol_Self_Check_Temp_BTM(uint8_t * pBuffer, eProtocol_COMM_Index idx)
 {
     float temp;
     uint8_t result = 0, i;
@@ -703,7 +711,11 @@ void protocol_Self_Check_Temp_BTM(uint8_t * pBuffer)
 
     pBuffer[0] = 2;
     pBuffer[1] = result;
-    comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 10);
+    if (idx == eComm_Out) {
+        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 10);
+    } else if (idx == eComm_Main) {
+        comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 10);
+    }
 }
 
 /**
@@ -711,7 +723,7 @@ void protocol_Self_Check_Temp_BTM(uint8_t * pBuffer)
  * @param  pBuffer 数据指针
  * @retval 0 正常 1 异常 2 过高 3 过低
  **/
-void protocol_Self_Check_Temp_BTM_FromISR(uint8_t * pBuffer)
+void protocol_Self_Check_Temp_BTM_FromISR(uint8_t * pBuffer, eProtocol_COMM_Index idx)
 {
     float temp;
     uint8_t result = 0, i;
@@ -734,7 +746,11 @@ void protocol_Self_Check_Temp_BTM_FromISR(uint8_t * pBuffer)
 
     pBuffer[0] = 2;
     pBuffer[1] = result;
-    comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 10);
+    if (idx == eComm_Out) {
+        comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 10);
+    } else if (idx == eComm_Main) {
+        comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 10);
+    }
 }
 
 /**
@@ -742,7 +758,7 @@ void protocol_Self_Check_Temp_BTM_FromISR(uint8_t * pBuffer)
  * @param  pBuffer 数据指针
  * @retval 0 正常 1 异常 2 过高 3 过低
  **/
-void protocol_Self_Check_Temp_ENV(uint8_t * pBuffer)
+void protocol_Self_Check_Temp_ENV(uint8_t * pBuffer, eProtocol_COMM_Index idx)
 {
     float temp;
     uint8_t result = 0, i;
@@ -765,7 +781,11 @@ void protocol_Self_Check_Temp_ENV(uint8_t * pBuffer)
 
     pBuffer[0] = 3;
     pBuffer[1] = result;
-    comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 6);
+    if (idx == eComm_Out) {
+        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 6);
+    } else if (idx == eComm_Main) {
+        comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 6);
+    }
 }
 
 /**
@@ -773,7 +793,7 @@ void protocol_Self_Check_Temp_ENV(uint8_t * pBuffer)
  * @param  pBuffer 数据指针
  * @retval 0 正常 1 异常 2 过高 3 过低
  **/
-void protocol_Self_Check_Temp_ENV_FromISR(uint8_t * pBuffer)
+void protocol_Self_Check_Temp_ENV_FromISR(uint8_t * pBuffer, eProtocol_COMM_Index idx)
 {
     float temp;
     uint8_t result = 0, i;
@@ -796,7 +816,11 @@ void protocol_Self_Check_Temp_ENV_FromISR(uint8_t * pBuffer)
 
     pBuffer[0] = 3;
     pBuffer[1] = result;
-    comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 6);
+    if (idx == eComm_Out) {
+        comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 6);
+    } else if (idx == eComm_Main) {
+        comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 6);
+    }
 }
 
 /**
@@ -1078,22 +1102,22 @@ static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length)
             break;
         case eProtocolEmitPack_Client_CMD_Debug_Self_Check: /* 自检测试 */
             if (length == 7) {
-                protocol_Self_Check_Temp_TOP_FromISR(pInBuff);
-                protocol_Self_Check_Temp_BTM_FromISR(pInBuff);
-                protocol_Self_Check_Temp_ENV_FromISR(pInBuff);
+                protocol_Self_Check_Temp_TOP_FromISR(pInBuff, eComm_Out);
+                protocol_Self_Check_Temp_BTM_FromISR(pInBuff, eComm_Out);
+                protocol_Self_Check_Temp_ENV_FromISR(pInBuff, eComm_Out);
                 motor_fun.fun_type = eMotor_Fun_Self_Check;                            /* 整体自检测试 */
                 motor_Emit_FromISR(&motor_fun);                                        /* 提交到电机队列 */
                 storgeTaskNotification_FromISR(eStorgeNotifyConf_Test_All, eComm_Out); /* 通知存储任务 */
             } else if (length == 8) {                                                  /* 单向测试结果 */
                 switch (pInBuff[6]) {
                     case 1: /* 上加热体温度结果 */
-                        protocol_Self_Check_Temp_TOP_FromISR(pInBuff);
+                        protocol_Self_Check_Temp_TOP_FromISR(pInBuff, eComm_Out);
                         break;
                     case 2: /* 下加热体温度结果 */
-                        protocol_Self_Check_Temp_BTM_FromISR(pInBuff);
+                        protocol_Self_Check_Temp_BTM_FromISR(pInBuff, eComm_Out);
                         break;
                     case 3: /* 环境温度结果 */
-                        protocol_Self_Check_Temp_ENV_FromISR(pInBuff);
+                        protocol_Self_Check_Temp_ENV_FromISR(pInBuff, eComm_Out);
                         break;
                     case 4:                                                                      /* 外部Flash */
                         storgeTaskNotification_FromISR(eStorgeNotifyConf_Test_Flash, eComm_Out); /* 通知存储任务 */
@@ -1377,28 +1401,28 @@ static void protocol_Parse_Main_Fun_ISR(uint8_t * pInBuff, uint16_t length)
             break;
         case eProtocolEmitPack_Client_CMD_Debug_Self_Check: /* 自检测试 */
             if (length == 7) {
-                protocol_Self_Check_Temp_TOP_FromISR(pInBuff);
-                protocol_Self_Check_Temp_BTM_FromISR(pInBuff);
-                protocol_Self_Check_Temp_ENV_FromISR(pInBuff);
-                motor_fun.fun_type = eMotor_Fun_Self_Check;                            /* 整体自检测试 */
-                motor_Emit_FromISR(&motor_fun);                                        /* 提交到电机队列 */
-                storgeTaskNotification_FromISR(eStorgeNotifyConf_Test_All, eComm_Out); /* 通知存储任务 */
-            } else if (length == 8) {                                                  /* 单向测试结果 */
+                protocol_Self_Check_Temp_TOP_FromISR(pInBuff, eComm_Main);
+                protocol_Self_Check_Temp_BTM_FromISR(pInBuff, eComm_Main);
+                protocol_Self_Check_Temp_ENV_FromISR(pInBuff, eComm_Main);
+                motor_fun.fun_type = eMotor_Fun_Self_Check;                             /* 整体自检测试 */
+                motor_Emit_FromISR(&motor_fun);                                         /* 提交到电机队列 */
+                storgeTaskNotification_FromISR(eStorgeNotifyConf_Test_All, eComm_Main); /* 通知存储任务 */
+            } else if (length == 8) {                                                   /* 单向测试结果 */
                 switch (pInBuff[6]) {
                     case 1: /* 上加热体温度结果 */
-                        protocol_Self_Check_Temp_TOP_FromISR(pInBuff);
+                        protocol_Self_Check_Temp_TOP_FromISR(pInBuff, eComm_Main);
                         break;
                     case 2: /* 下加热体温度结果 */
-                        protocol_Self_Check_Temp_BTM_FromISR(pInBuff);
+                        protocol_Self_Check_Temp_BTM_FromISR(pInBuff, eComm_Main);
                         break;
                     case 3: /* 环境温度结果 */
-                        protocol_Self_Check_Temp_ENV_FromISR(pInBuff);
+                        protocol_Self_Check_Temp_ENV_FromISR(pInBuff, eComm_Main);
                         break;
-                    case 4:                                                                      /* 外部Flash */
-                        storgeTaskNotification_FromISR(eStorgeNotifyConf_Test_Flash, eComm_Out); /* 通知存储任务 */
+                    case 4:                                                                       /* 外部Flash */
+                        storgeTaskNotification_FromISR(eStorgeNotifyConf_Test_Flash, eComm_Main); /* 通知存储任务 */
                         break;
-                    case 5:                                                                        /* ID Code 卡 */
-                        storgeTaskNotification_FromISR(eStorgeNotifyConf_Test_ID_Card, eComm_Out); /* 通知存储任务 */
+                    case 5:                                                                         /* ID Code 卡 */
+                        storgeTaskNotification_FromISR(eStorgeNotifyConf_Test_ID_Card, eComm_Main); /* 通知存储任务 */
                         break;
                     case 0x0B:                        /* PD */
                         motor_fun.fun_param_1 = 0x07; /* 默认全部波长 */

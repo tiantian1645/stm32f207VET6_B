@@ -53,8 +53,8 @@ static void storge_ParamInit(void);
 static uint8_t storge_ParamDump(void);
 static uint8_t storge_ParamLoadAll(void);
 
-static void storge_Test_Flash(uint8_t * pBuffer);
-static void storge_Test_EEPROM(uint8_t * pBuffer);
+static void storge_Test_Flash(uint8_t * pBuffer, eProtocol_COMM_Index idx);
+static void storge_Test_EEPROM(uint8_t * pBuffer, eProtocol_COMM_Index idx);
 /* Private user code ---------------------------------------------------------*/
 
 /**
@@ -482,14 +482,27 @@ static void storgeTask(void * argument)
                 }
                 break;
             case eStorgeNotifyConf_Test_Flash:
-                storge_Test_Flash(buff);
+                if (ulNotifyValue & eStorgeNotifyConf_COMM_Main) {
+                    storge_Test_Flash(buff, eComm_Main);
+                } else if (ulNotifyValue & eStorgeNotifyConf_COMM_Out) {
+                    storge_Test_Flash(buff, eComm_Out);
+                }
                 break;
             case eStorgeNotifyConf_Test_ID_Card:
-                storge_Test_EEPROM(buff);
+                if (ulNotifyValue & eStorgeNotifyConf_COMM_Main) {
+                    storge_Test_EEPROM(buff, eComm_Main);
+                } else if (ulNotifyValue & eStorgeNotifyConf_COMM_Out) {
+                    storge_Test_EEPROM(buff, eComm_Out);
+                }
                 break;
             case eStorgeNotifyConf_Test_All:
-                storge_Test_Flash(buff);
-                storge_Test_EEPROM(buff);
+                if (ulNotifyValue & eStorgeNotifyConf_COMM_Main) {
+                    storge_Test_Flash(buff, eComm_Main);
+                    storge_Test_EEPROM(buff, eComm_Main);
+                } else if (ulNotifyValue & eStorgeNotifyConf_COMM_Out) {
+                    storge_Test_Flash(buff, eComm_Out);
+                    storge_Test_EEPROM(buff, eComm_Out);
+                }
             default:
                 break;
         }
@@ -705,7 +718,7 @@ uint16_t storge_ParamRead(eStorgeParamIndex idx, uint16_t num, uint8_t * pBuff)
  * @param  pBuffer 缓存指针
  * @retval None
  */
-static void storge_Test_Flash(uint8_t * pBuffer)
+static void storge_Test_Flash(uint8_t * pBuffer, eProtocol_COMM_Index idx)
 {
     uint8_t i, j, readCnt, wroteCnt;
 
@@ -714,7 +727,11 @@ static void storge_Test_Flash(uint8_t * pBuffer)
         readCnt = spi_FlashReadBuffer(cStorge_Test_Flash_Addrs[i], pBuffer + 2, 16);
         if (readCnt != 16) {
             pBuffer[1] = 1;
-            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+            if (idx == eComm_Out) {
+                comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+            } else if (idx == eComm_Main) {
+                comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+            }
             return;
         }
         for (j = 0; j < 16; ++j) {
@@ -723,7 +740,11 @@ static void storge_Test_Flash(uint8_t * pBuffer)
         wroteCnt = spi_FlashWriteBuffer(cStorge_Test_Flash_Addrs[i], pBuffer + 2, 16);
         if (wroteCnt != 16) {
             pBuffer[1] = 2;
-            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+            if (idx == eComm_Out) {
+                comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+            } else if (idx == eComm_Main) {
+                comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+            }
             return;
         }
         for (j = 0; j < 16; ++j) {
@@ -732,7 +753,11 @@ static void storge_Test_Flash(uint8_t * pBuffer)
         wroteCnt = spi_FlashWriteBuffer(cStorge_Test_Flash_Addrs[i], pBuffer + 2, 16);
     }
     pBuffer[1] = 0;
-    comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+    if (idx == eComm_Out) {
+        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+    } else if (idx == eComm_Main) {
+        comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+    }
 }
 
 /**
@@ -740,7 +765,7 @@ static void storge_Test_Flash(uint8_t * pBuffer)
  * @param  pBuffer 缓存指针
  * @retval None
  */
-static void storge_Test_EEPROM(uint8_t * pBuffer)
+static void storge_Test_EEPROM(uint8_t * pBuffer, eProtocol_COMM_Index idx)
 {
     uint8_t i, j, readCnt, wroteCnt;
 
@@ -749,7 +774,11 @@ static void storge_Test_EEPROM(uint8_t * pBuffer)
         readCnt = I2C_EEPROM_Read(cStorge_Test_EEPROM_Addrs[i], pBuffer + 2, 16, 1000); /* 首次读出数据 */
         if (readCnt != 16) {
             pBuffer[1] = 1;
-            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+            if (idx == eComm_Out) {
+                comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+            } else if (idx == eComm_Main) {
+                comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+            }
             return;
         }
         for (j = 0; j < 16; ++j) { /*  取反作测试数据 */
@@ -758,13 +787,21 @@ static void storge_Test_EEPROM(uint8_t * pBuffer)
         wroteCnt = I2C_EEPROM_Write(cStorge_Test_EEPROM_Addrs[i], pBuffer + 2, 16, 1000); /* 写入数据 */
         if (wroteCnt != 16) {
             pBuffer[1] = 2;
-            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+            if (idx == eComm_Out) {
+                comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+            } else if (idx == eComm_Main) {
+                comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+            }
             return;
         }
         readCnt = I2C_EEPROM_Read(cStorge_Test_EEPROM_Addrs[i], pBuffer + 2 + 16, 16, 1000); /* 回读数据 */
         if (readCnt != 16) {
             pBuffer[1] = 3;
-            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+            if (idx == eComm_Out) {
+                comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+            } else if (idx == eComm_Main) {
+                comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+            }
             return;
         }
         for (j = 0; j < 16; ++j) { /* 二次取反数据 */
@@ -774,12 +811,20 @@ static void storge_Test_EEPROM(uint8_t * pBuffer)
         wroteCnt = I2C_EEPROM_Write(cStorge_Test_EEPROM_Addrs[i], pBuffer + 2, 16, 1000); /* 写回原始数据 */
         if (wroteCnt != 16 || memcmp(pBuffer + 2, pBuffer + 2 + 16, 16) != 0) {           /* 对比结果 */
             pBuffer[1] = 4;
-            comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+            if (idx == eComm_Out) {
+                comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+            } else if (idx == eComm_Main) {
+                comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+            }
             return;
         }
     }
     pBuffer[1] = 0;
-    comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+    if (idx == eComm_Out) {
+        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+    } else if (idx == eComm_Main) {
+        comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 2);
+    }
 }
 
 uint8_t stroge_Conf_CC_O_Data(uint8_t * pBuffer)
