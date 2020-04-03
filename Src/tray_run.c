@@ -20,7 +20,6 @@
 /* Private macro -------------------------------------------------------------*/
 #define TRAY_MOTOR_IS_BUSY (dSPIN_Busy_SW()) /* 托盘电机忙碌位读取 */
 #define TRAY_MOTOR_IS_FLAG (dSPIN_Flag())    /* 托盘电机标志脚读取 */
-#define TRAY_PATCH (24)
 
 /* Private variables ---------------------------------------------------------*/
 static sMotorRunStatus gTray_Motor_Run_Status;
@@ -212,20 +211,12 @@ eTrayState tray_Motor_Leave_On_OPT(void)
  */
 eTrayState tray_Motor_Leave_On_OPT_2(void)
 {
-    TickType_t xTick;
-
     while (xTaskGetTickCount() - motor_Status_Get_TickInit(&gTray_Motor_Run_Status) < motor_CMD_Info_Get_Tiemout(&gTray_Motor_Run_CMD_Info)) { /* 超时等待 */
         if (TRAY_MOTOR_IS_BUSY == 0 || TRAY_MOTOR_IS_OPT_2) {                               /* 已配置硬件检测停车 电机驱动空闲状态 */
             tray_Motor_Brake();                                                             /* 刹车 */
             tray_Motor_Deal_Status();                                                       /* 状态脚处理 */
             motor_Status_Set_Position(&gTray_Motor_Run_Status, tray_Motor_Read_Position()); /* 更新电机状态步数记录 */
             tray_Motor_Brake();                                                             /* 刹车 */
-            dSPIN_Move(FWD, 1200);                                                          /* 扫码光耦补偿 */
-            xTick = xTaskGetTickCount();                                                    /* 计时起点 */
-            do {
-                vTaskDelay(100);
-            } while (TRAY_MOTOR_IS_BUSY && (xTaskGetTickCount() - xTick < 500));
-            tray_Motor_Brake(); /* 刹车 */
             return eTrayState_OK;
         }
         vTaskDelay(5); /* 延时 */
@@ -316,11 +307,6 @@ eTrayState tray_Motor_Run(void)
         do {
             vTaskDelay(100);
         } while (TRAY_MOTOR_IS_BUSY && (xTaskGetTickCount() - xTick < 2500));
-        dSPIN_Move(FWD, TRAY_PATCH); /* 弥补偏差 */
-        xTick = xTaskGetTickCount();
-        do {
-            vTaskDelay(100);
-        } while (TRAY_MOTOR_IS_BUSY && (xTaskGetTickCount() - xTick < 200));
     }
 
     result = gTray_Motor_Run_CMD_Info.pfLeave(); /* 出口回调 */
@@ -396,11 +382,6 @@ eTrayState tray_Motor_Init(void)
     do {
         vTaskDelay(100);
     } while (TRAY_MOTOR_IS_BUSY && (xTaskGetTickCount() - xTick < 2500));
-    dSPIN_Move(FWD, TRAY_PATCH); /* 弥补偏差 */
-    xTick = xTaskGetTickCount();
-    do {
-        vTaskDelay(100);
-    } while (TRAY_MOTOR_IS_BUSY && (xTaskGetTickCount() - xTick < 200));
     m_l6470_release(); /* 释放SPI总线资源*/
     return eTrayState_OK;
 }

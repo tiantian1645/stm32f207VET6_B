@@ -15,7 +15,7 @@
 /* 条码索引 32细分步下标准 */
 typedef enum {
     eTrayIndex_0 = 0,     /* 原点位置 */
-    eTrayIndex_1 = 5600,  /* 扫码位置 光耦定位 */
+    eTrayIndex_1 = 4400,  /* 扫码位置 光耦定位 */
     eTrayIndex_2 = 26400, /* 加样位置 */
 } eTrayIndex;
 
