@@ -58,7 +58,7 @@ from PyQt5.QtWidgets import (
 )
 
 from bytes_helper import bytes2Float, bytesPuttyPrint
-from dc201_pack import DC201_PACK, DC201_ParamInfo, DC201ErrorCode, write_firmware_pack_BL, write_firmware_pack_FC
+from dc201_pack import DC201_PACK, DC201_ParamInfo, DC201ErrorCode, write_firmware_pack_BL, write_firmware_pack_FC, parse_1440
 from deal_openpyxl import ILLU_CC_DataInfo, TEMP_CC_DataInfo, check_file_permission, dump_CC, dump_sample, insert_sample, load_CC
 from mengy_color_table import ColorGreens, ColorPurples, ColorReds
 from qt_modern_dialog import ModernDialog, ModernMessageBox
@@ -1082,6 +1082,13 @@ class MainWindow(QMainWindow):
                         log10_data.append(nan)
                     else:
                         log10_data.append(log10(ld / data[i // 4]) * 10000)
+        elif data_len / total == 10:
+            for i in range(total):
+                data.append(struct.unpack("I", raw_data[i * 10 + 0 : i * 10 + 4])[0])
+            for i in range(total):
+                data.append(struct.unpack("I", raw_data[i * 10 + 4 : i * 10 + 8])[0])
+            for i in range(total):
+                data.append(struct.unpack("H", raw_data[i * 10 + 8 : i * 10 + 10])[0])
         elif data_len / total == 12:
             for i in range(total):
                 data.append(struct.unpack("I", raw_data[i * 12 + 0 : i * 12 + 4])[0])
@@ -2161,6 +2168,15 @@ class MainWindow(QMainWindow):
             data = tuple((struct.unpack("H", info.content[8 + i * 2 : 10 + i * 2])[0] for i in range(length)))
         elif len(info.content) - 9 == 4 * length:  # PD OD unsigned long
             data = tuple((struct.unpack("I", info.content[8 + i * 4 : 12 + i * 4])[0] for i in range(length)))
+        elif len(info.content) - 9 == 10 * length:  # PD OD Sample  unsigned long unsigned long unsigned short
+            data = []
+            for i in range(length):
+                data.append(struct.unpack("I", info.content[8 + i * 10 + 0 : 8 + i * 10 + 4])[0])
+            for i in range(length):
+                data.append(struct.unpack("I", info.content[8 + i * 10 + 4 : 8 + i * 10 + 8])[0])
+            for i in range(length):
+                data.append(struct.unpack("H", info.content[8 + i * 10 + 8 : 8 + i * 10 + 10])[0])
+            logger.debug(f"hit data | {data} | {bytesPuttyPrint(info.content)}")
         elif len(info.content) - 9 == 12 * length:  # PD OD Sample  unsigned long unsigned long unsigned short
             data = []
             for i in range(length):
@@ -2242,8 +2258,8 @@ class MainWindow(QMainWindow):
         out_flash_data_ly = QVBoxLayout(self.out_flash_data_dg)
         self.out_flash_data_te = QTextEdit()
         out_flash_temp_ly = QHBoxLayout()
-        self.out_flash_data_addr = QSpinBox(minimum=0, maximum=8 * 2 ** 20, maximumWidth=90, value=4096)
-        self.out_flash_data_num = QSpinBox(minimum=0, maximum=8 * 2 ** 20, maximumWidth=90, value=636)
+        self.out_flash_data_addr = QSpinBox(minimum=0, maximum=8 * 2 ** 20, maximumWidth=90, value=4096, singleStep=4096)
+        self.out_flash_data_num = QSpinBox(minimum=0, maximum=8 * 2 ** 20, maximumWidth=90, value=636, singleStep=1440 * 6 - 636)
         self.out_flash_data_read_bt = QPushButton("读取", clicked=self.onOutFlashRead, maximumWidth=90)
 
         out_flash_temp_ly.addWidget(QLabel("地址", maximumWidth=60))
@@ -2665,6 +2681,10 @@ class MainWindow(QMainWindow):
         logger.debug(f"Out Flash Raw Data | {start} | {length}\n{raw_text}")
         if self.out_flash_start == 0x1000 and self.out_flash_length == 636:
             info = DC201_ParamInfo(self.out_flash_data[: start + length])
+            plain_text = f"{info}\n{'=' * 100}\nraw bytes:\n{raw_text}"
+            self.out_flash_data_te.setPlainText(plain_text)
+        elif self.out_flash_start == 0x2000 and start + length == 1440 * 6:
+            info = parse_1440(self.out_flash_data[: start + length])
             plain_text = f"{info}\n{'=' * 100}\nraw bytes:\n{raw_text}"
             self.out_flash_data_te.setPlainText(plain_text)
         else:

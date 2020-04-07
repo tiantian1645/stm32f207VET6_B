@@ -1491,7 +1491,7 @@ static void protocol_Parse_Data_Fun_ISR(uint8_t * pInBuff, uint16_t length)
     switch (pInBuff[5]) {                                                                                                  /* 进一步处理 功能码 */
         case eComm_Data_Inbound_CMD_DATA:                                                                                  /* 采集数据帧 */
             if (gComm_Data_Correct_Flag_Check()) {                                                                         /* 处于定标状态 */
-                stroge_Conf_CC_O_Data_From_B3(pInBuff + 6);                                                                /* 修改测量点 */
+                stroge_Conf_CC_O_Data_From_B3(pInBuff + 6, length - 9);                                                    /* 修改测量点 */
                 comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_SAMP_DATA, &pInBuff[6], length - 7); /* 转发至外串口 */
             } else if (comm_Data_SP_LED_Is_Running() || gComm_Data_SelfCheck_PD_Flag_Get()) { /* 处于LED校正状态 或 自检测试 单项 PD */
                 comm_Data_Sample_Data_Commit(pInBuff[7], pInBuff, length - 9, 0);             /* 不允许替换 先白板后反应区 */

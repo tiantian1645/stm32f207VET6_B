@@ -1,5 +1,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include <math.h>
 #include "comm_out.h"
 #include "comm_main.h"
 #include "comm_data.h"
@@ -27,6 +28,7 @@
      eStorgeNotifyConf_Test_Flash + eStorgeNotifyConf_Test_ID_Card + eStorgeNotifyConf_Test_All)
 
 #define STORGE_APP_PARAMS_ADDR (0x1000) /* Sector 1 */
+#define STORGE_APP_CREDEG_ADDR (0x2000) /* Sector 2 */
 #define STORGE_APP_APRAM_PART_NUM (56)  /* 单次操作最大数目 */
 /* Private typedef -----------------------------------------------------------*/
 typedef struct {
@@ -895,7 +897,7 @@ void storge_Param_CC_Illumine_CC_Sort(uint32_t * pBuffer, uint8_t length)
  * @note   数据量最少要求12个 取后7个中去除2个极值后平均值
  * @retval 浮点值
  */
-float storge_Param_CC_Illumine_CC_Filter(uint8_t * pBuffer)
+float storge_Param_CC_Illumine_CC_Filter(uint8_t * pBuffer, uint8_t length)
 {
     uint8_t i;
     uint16_t temp;
@@ -906,7 +908,11 @@ float storge_Param_CC_Illumine_CC_Filter(uint8_t * pBuffer)
     }
 
     for (i = pBuffer[0] - 7; i < pBuffer[0]; ++i) {
-        memcpy(&temp, pBuffer + 2 * i + 2, 2); /* 采样点数据 */
+        if (length == pBuffer[0] * 2) {                 /* uint16_t */
+            memcpy(&temp, pBuffer + 2 * i + 2, 2);      /* 采样点数据 */
+        } else if (length == pBuffer[0] * 10) {         /* mix */
+            memcpy(&temp, pBuffer + 10 * i + 2 + 8, 2); /* 采样点数据 */
+        }
         if (temp > max) {
             max = temp;
         }
@@ -992,6 +998,7 @@ uint8_t storge_Conf_CC_Insert(uint8_t channel, eComm_Data_Sample_Radiant wave, u
 /**
  * @brief  报文解析处理
  * @param  pBuffer 报文 起始指针指向数据区
+ * @param  length 数据区长度
  * @retval 校正实际值设置 结果
  * @note   当前定标第1段 则依次写入 C1-S1 C2-S2 C3-S3 C4-S4 C5-S5 C6-S6
  * @note   当前定标第2段 则依次写入 C2-S1 C3-S2 C4-S3 C5-S4 C6-S5 C1-S6
@@ -1000,12 +1007,18 @@ uint8_t storge_Conf_CC_Insert(uint8_t channel, eComm_Data_Sample_Radiant wave, u
  * @note   当前定标第5段 则依次写入 C5-S1 C6-S2 C1-S3 C2-S4 C3-S5 C4-S6
  * @note   当前定标第6段 则依次写入 C6-S1 C1-S2 C2-S3 C3-S4 C4-S5 C5-S6
  */
-uint8_t stroge_Conf_CC_O_Data_From_B3(uint8_t * pBuffer)
+uint8_t stroge_Conf_CC_O_Data_From_B3(uint8_t * pBuffer, uint8_t length)
 {
-    return storge_Conf_CC_Insert(                                                      /* 写入校正实际值 */
-                                 pBuffer[1],                                           /* 数据区第一字节 通道号 1～6 */
-                                 comm_Data_Get_Correct_Wave(),                         /* 当前测试的波长 */
-                                 comm_Data_Get_Corretc_Stage(pBuffer[1]),              /* 当前通道的校正段索引 */
-                                 (uint32_t)storge_Param_CC_Illumine_CC_Filter(pBuffer) /* 滤波后的平均值 */
-    );
+    uint8_t result, stage;
+    eComm_Data_Sample_Radiant wave;
+    uint32_t v32, addr;
+
+    stage = comm_Data_Get_Corretc_Stage(pBuffer[1]);                     /* 当前通道的校正段索引 */
+    wave = comm_Data_Get_Correct_Wave();                                 /* 当前测试的波长 */
+    v32 = (uint32_t)storge_Param_CC_Illumine_CC_Filter(pBuffer, length); /* 滤波后的平均值 */
+    result = storge_Conf_CC_Insert(pBuffer[1], wave, stage, v32);        /* 写入校正点 */
+
+    addr = STORGE_APP_CREDEG_ADDR + (1440 * (pBuffer[1] - 1)) + 240 * stage + 120 * (wave - eComm_Data_Sample_Radiant_610); /* 计算偏移地址 */
+    spi_FlashWriteBuffer(addr, pBuffer + 2, length);                                                                        /* 保存原始数据 */
+    return result;
 }

@@ -1091,7 +1091,11 @@ BaseType_t comm_Data_Sample_Send_Conf_Correct(uint8_t * pData, eComm_Data_Sample
         gComm_Data_AgingLoop_Mode_Set(0);
         sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_CONF, pData, 18); /* 构造普通测试配置包 */
     } else if (cmd_type == eComm_Data_Outbound_CMD_TEST) {
-        pData[18] = 2; /* PD */
+        if (gComm_Data_Correct_Flag_Check()) { /* 定标状态 */
+            pData[18] = 3;                     /* MIX */
+        } else {
+            pData[18] = 2; /* PD */
+        }
         gComm_Data_AgingLoop_Mode_Set(pData[18]);
         sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_TEST, pData, 19); /* 构造工装测试配置包 */
     }
