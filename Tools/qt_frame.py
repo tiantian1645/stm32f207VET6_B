@@ -96,11 +96,14 @@ CONFIG = dict()
 try:
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
         CONFIG = simplejson.load(f)
+    if "pd_criterion" not in CONFIG.keys() or "sh_criterion" not in CONFIG.keys():
+        raise ValueError("lost key")
 except Exception:
     logger.error(f"load conf failed \n{stackprinter.format()}")
     CONFIG = dict()
     CONFIG["log"] = dict(rotation="4 MB", retention=16)
     CONFIG["pd_criterion"] = {"610": [6000000, 14000000], "550": [6000000, 14000000], "405": [6000000, 14000000]}
+    CONFIG["sh_criterion"] = {"610": (1434, 3080, 4882, 6894, 8818, 10578), "550": (2181, 3943, 5836, 7989, 10088, 12032), "405": (0, 0, 0, 0, 0, 0)}
     try:
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
             simplejson.dump(CONFIG, f)
@@ -132,7 +135,7 @@ class QVLine(QFrame):
 class MainWindow(QMainWindow):
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
-        self.setWindowTitle("DC201 工装测试 v0.2")
+        self.setWindowTitle("DC201 工装测试 v0.21")
         self.serial = serial.Serial(port=None, baudrate=115200, timeout=0.01)
         self.task_queue = queue.Queue()
         self.henji_queue = queue.Queue()
@@ -2300,7 +2303,7 @@ class MainWindow(QMainWindow):
 
         out_flash_param_od_cc_wg = QGroupBox("OD校正参数")
         out_flash_param_od_cc_ly = QVBoxLayout(out_flash_param_od_cc_wg)
-        self.out_flash_param_cc_sps = [QDoubleSpinBox(self, minimum=0, maximum=99999999, decimals=0, value=i) for i in range(156)]
+        self.out_flash_param_cc_sps = [QDoubleSpinBox(self, minimum=0, maximum=99999999, decimals=0, value=0) for i in range(156)]
         for i in range(6):
             if i == 0:
                 pp = 3
@@ -2363,11 +2366,12 @@ class MainWindow(QMainWindow):
         """预设标准点"""
         for idx, sp in enumerate(self.out_flash_param_cc_sps):
             if idx % 12 < 6:
-                if idx // 12 < 2:
-                    if sp.value() < 200:
-                        sp.setValue(500 + (idx % 12) * 2000)
+                if idx // 12 == 0:
+                    sp.setValue(CONFIG.get("sh_criterion", {}).get("610", 0)[idx % 6])
+                elif idx // 12 == 1:
+                    sp.setValue(CONFIG.get("sh_criterion", {}).get("550", 0)[idx % 6])
                 elif idx // 12 == 2:
-                    sp.setValue(0)
+                    sp.setValue(CONFIG.get("sh_criterion", {}).get("405", 0)[idx % 6])
                 elif idx // 12 >= 3:
                     sp.setValue(self.out_flash_param_cc_sps[idx - 12 * ((idx + 12) // 24 * 2 - 1)].value())
 
