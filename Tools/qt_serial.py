@@ -117,8 +117,9 @@ class SerialRecvWorker(QRunnable):
             logger.error(f"serial recv worker run excpetion \n{trace_back_text}")
             self.signals.error.emit((exctype, value, trace_back_text))
         finally:
-            logger.info(f"serial recv worker total run | {time.time() - start_time:.2f} S")
-            self.signals.finished.emit()
+            if self.stop:
+                logger.info(f"serial recv worker total run | {time.time() - start_time:.2f} S")
+                self.signals.finished.emit()
 
 
 class SerialSendWorker(QRunnable):
@@ -224,5 +225,6 @@ class SerialSendWorker(QRunnable):
             logger.error(f"serial send worker run excpetion \n{trace_back_text}")
             self.signals.error.emit((exctype, value, trace_back_text))
         finally:
-            logger.info(f"serial send worker total run | {time.time() - start_time:.2f} S")
-            self.signals.finished.emit()
+            if self.stop:
+                logger.info(f"serial send worker total run | {time.time() - start_time:.2f} S")
+                self.signals.finished.emit()
