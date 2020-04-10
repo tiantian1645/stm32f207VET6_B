@@ -65,6 +65,7 @@ from qt_modern_dialog import ModernDialog, ModernMessageBox
 from qt_serial import SerialRecvWorker, SerialSendWorker
 from sample_data import SAMPLE_SET_INFOS, MethodEnum, SampleDB, WaveEnum
 from sample_graph import CC_Graph, SampleGraph, TemperatureGraph, point_line_equation_map
+from version import VERSION
 
 BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
 TEMPERAUTRE_NAMES = ("下加热体:", "上加热体:")
@@ -135,7 +136,7 @@ class QVLine(QFrame):
 class MainWindow(QMainWindow):
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
-        self.setWindowTitle("DC201 工装测试 v0.21")
+        self.setWindowTitle(f"DC201 工装测试 {VERSION}")
         self.serial = serial.Serial(port=None, baudrate=115200, timeout=0.01)
         self.task_queue = queue.Queue()
         self.henji_queue = queue.Queue()
