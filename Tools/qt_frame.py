@@ -1310,6 +1310,7 @@ class MainWindow(QMainWindow):
         self.serial_refresh_bt.clicked.connect(self.onSerialRefresh)
         self.serial_switch_bt.setCheckable(True)
         self.serial_switch_bt.clicked.connect(self.onSerialSwitch)
+        self.sample_record_lable_name = None
 
     def serialRefreshPort(self):
         self.serial_post_co.clear()
@@ -2126,6 +2127,8 @@ class MainWindow(QMainWindow):
 
     def onSampleOver(self):
         self.stop_matplot_timer()
+        if not self.sample_record_lable_name:
+            return
         if self.sample_record_lable_name.startswith("Correct "):
             logger.success("correct sample over read flash back")
             self.onOutFlashParamRead()
