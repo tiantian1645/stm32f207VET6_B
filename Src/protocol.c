@@ -1349,7 +1349,10 @@ static void protocol_Parse_Main_Fun_ISR(uint8_t * pInBuff, uint16_t length)
             comm_Data_Sample_Force_Stop_FromISR();            /* 强行停止采样定时器 */
             motor_Sample_Info_From_ISR(eMotorNotifyValue_BR); /* 提交打断信息 */
             break;
-        case eProtocolEmitPack_Client_CMD_CONFIG:            /* 测试项信息帧 0x03 */
+        case eProtocolEmitPack_Client_CMD_CONFIG:                    /* 测试项信息帧 0x03 */
+            if (gMotor_Sampl_Comm_Get() != eMotor_Sampl_Comm_Main) { /* 与启动测试命令来源不同 */
+                break;
+            }
             comm_Data_Sample_Send_Conf_FromISR(&pInBuff[6]); /* 发送测试配置 */
             break;
         case eProtocolEmitPack_Client_CMD_FORWARD: /* 打开托盘帧 0x04 */
