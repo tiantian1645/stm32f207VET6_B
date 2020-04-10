@@ -1,4 +1,5 @@
 import os
+from itertools import product
 from uuid import uuid4
 from collections import namedtuple
 
@@ -11,7 +12,7 @@ from openpyxl.styles import Alignment, NamedStyle, PatternFill
 TEMP_CC_DataInfo = namedtuple("TEMP_CC_DataInfo", "top btm env")
 ILLU_CC_DataInfo = namedtuple("ILLU_CC_DataInfo", "wave standard_points channel_pointses")
 SAMPLE_TITLES = ("索引", "日期", "标签", "控制板程序版本", "控制板芯片ID", "通道", "项目", "方法", "波长")
-
+CORRECT_HEADS = ("通道", "标点")
 
 ODD_STYLE = NamedStyle(name="odd")
 ODD_STYLE.fill = PatternFill(start_color="bedede", end_color="bedede", fill_type="solid")
@@ -274,6 +275,56 @@ def insert_sample(sample_iter, file_path):
     except Exception as e:
         logger.error(f"insert sample data to xlsx failed\n{stackprinter.format()}")
         return None, e
+
+
+def dump_correct_record(correct_list, file_path):
+    try:
+        wb = Workbook(write_only=True)
+        wb.add_named_style(ODD_STYLE)
+        wb.add_named_style(EVEN_STYLE)
+        wb.add_named_style(CC_STYLE)
+        wb.add_named_style(OO_STYLE)
+        sheet_610 = wb.create_sheet(f"610")
+        sheet_550 = wb.create_sheet(f"550")
+
+        for i in range(36):
+            n = ord("C") - ord("A") + i + 1
+            c = ""
+            while n > 0:
+                n, remainder = divmod(n - 1, 26)
+                c = chr(65 + remainder) + c
+            sheet_610.column_dimensions[c].width = 11
+            sheet_550.column_dimensions[c].width = 11
+
+        cells = [WriteOnlyCell(sheet_610, value=i) for i in CORRECT_HEADS] + [
+            WriteOnlyCell(sheet_610, value=f"{i}-{j+1}") for i, j in product(("白物质", "反应区", "OD"), list(range(12)))
+        ]
+        for cell in cells:
+            cell.alignment = Alignment(horizontal="center", vertical="bottom", text_rotation=0, wrap_text=False, shrink_to_fit=False, indent=0)
+        sheet_610.append(cells)
+
+        cells = [WriteOnlyCell(sheet_550, value=i) for i in CORRECT_HEADS] + [
+            WriteOnlyCell(sheet_550, value=f"{i}-{j+1}") for i, j in product(("白物质", "反应区", "OD"), list(range(12)))
+        ]
+        for cell in cells:
+            cell.alignment = Alignment(horizontal="center", vertical="bottom", text_rotation=0, wrap_text=False, shrink_to_fit=False, indent=0)
+        sheet_550.append(cells)
+
+        for cu in correct_list:
+            if cu.wave == 610:
+                sheet = sheet_610
+            elif cu.wave == 550:
+                sheet = sheet_550
+            else:
+                continue
+            cells = [WriteOnlyCell(sheet, value=i) for i in (cu.channel, cu.stage)] + [
+                WriteOnlyCell(sheet, value=i) for i in (cu.white_pd + cu.react_pd + cu.od)
+            ]
+            sheet.append(cells)
+        wb.save(find_new_file(file_path))
+        logger.success("finish dump correct flash data")
+    except Exception:
+        logger.error(f"dump_correct_record failed\n{stackprinter.format()}")
 
 
 if __name__ == "__main__":

@@ -22,6 +22,8 @@ BaseInfo = namedtuple("BaseInfo", "imi raw")
 ParamInfo = namedtuple("ParamInfo", "cc_temp_top cc_temp_btm cc_temp_env cc_ts")
 IlluminateInfo = namedtuple("IlluminateInfo", "channel wave pairs")
 
+CorrectFlashUnit = namedtuple("CorrectFlashUnit", "channel stage wave white_pd react_pd od")
+
 TEST_BIN_PATH = r"C:\Users\Administrator\STM32CubeIDE\workspace_1.0.2\stm32F207VET6_Bootloader_APP\Debug\stm32F207VET6_Bootloader_APP.bin"
 REAL_BIN_PATH = r"C:\Users\Administrator\STM32CubeIDE\workspace_1.0.2\stm32f207VET6_B\Debug\stm32f207VET6_B.bin"
 BL_PATH = r"C:\Users\Administrator\STM32CubeIDE\workspace_1.0.2\stm23F207VET6_Bootloader\Debug\stm23F207VET6_Bootloader.bin"
@@ -405,6 +407,7 @@ class DC201_PACK:
 
 def parse_1440(data):
     result_list = []
+    correct_list = []
     for start in range(6):
         title = f"通道-{start+1}"
         content_list = []
@@ -412,21 +415,22 @@ def parse_1440(data):
             for j in range(2):  # Wave 610 550
                 data_wh = []
                 data_rc = []
-                data_pd = []
+                data_od = []
                 addr = 1440 * start + 240 * i + 120 * j
                 for d in range(12):  # Points num
                     data_wh.append(struct.unpack("I", data[addr + d * 10 + 0 : addr + d * 10 + 4])[0])
                     data_rc.append(struct.unpack("I", data[addr + d * 10 + 4 : addr + d * 10 + 8])[0])
-                    data_pd.append(struct.unpack("H", data[addr + d * 10 + 8 : addr + d * 10 + 10])[0])
+                    data_od.append(struct.unpack("H", data[addr + d * 10 + 8 : addr + d * 10 + 10])[0])
                 data_wh_str = f"白物质 -{data_wh}"
                 data_rc_str = f"反应区 -{data_rc}"
-                data_pd_str = f"OD -{data_pd}"
-                content_str = f"通道-{start+1} - 定标点 {i + 1} - {[610, 550][j]}\n{data_wh_str}\n{data_rc_str}\n{data_pd_str}\n++++\n"
+                data_od_str = f"OD -{data_od}"
+                content_str = f"通道-{start+1} - 定标点 {i + 1} - {[610, 550][j]}\n{data_wh_str}\n{data_rc_str}\n{data_od_str}\n++++\n"
                 content_list.append(content_str)
+                correct_list.append(CorrectFlashUnit(channel=start + 1, stage=i + 1, wave=[610, 550][j], white_pd=data_wh, react_pd=data_rc, od=data_od))
             content_list.append("\n********\n")
         body = "\n".join(content_list)
         result_list.append(f"{title}\n\n{body}")
-    return "\n\n===============================================================\n\n".join(result_list)
+    return "\n\n===============================================================\n\n".join(result_list), correct_list
 
 
 if __name__ == "__main__":

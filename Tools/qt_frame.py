@@ -3,7 +3,9 @@
 import os
 import queue
 import re
+import socket
 import struct
+import subprocess
 import sys
 import time
 import traceback
@@ -14,11 +16,11 @@ from functools import partial
 from hashlib import sha256
 from math import log10, nan
 
-import requests
 import numpy as np
 import pyperclip
 import qtmodern.styles
 import qtmodern.windows
+import requests
 import serial
 import serial.tools.list_ports
 import simplejson
@@ -58,8 +60,8 @@ from PyQt5.QtWidgets import (
 )
 
 from bytes_helper import bytes2Float, bytesPuttyPrint
-from dc201_pack import DC201_PACK, DC201_ParamInfo, DC201ErrorCode, write_firmware_pack_BL, write_firmware_pack_FC, parse_1440
-from deal_openpyxl import ILLU_CC_DataInfo, TEMP_CC_DataInfo, check_file_permission, dump_CC, dump_sample, insert_sample, load_CC
+from dc201_pack import DC201_PACK, DC201_ParamInfo, DC201ErrorCode, parse_1440, write_firmware_pack_BL, write_firmware_pack_FC
+from deal_openpyxl import ILLU_CC_DataInfo, TEMP_CC_DataInfo, check_file_permission, dump_CC, dump_correct_record, dump_sample, insert_sample, load_CC
 from mengy_color_table import ColorGreens, ColorPurples, ColorReds
 from qt_modern_dialog import ModernDialog, ModernMessageBox
 from qt_serial import SerialRecvWorker, SerialSendWorker
@@ -161,18 +163,11 @@ class MainWindow(QMainWindow):
         self.sample_record_current_label = None
         self.flash_json_data = None
         self.last_falsh_save_dir = "./"
-        data_xlsx_path = CONFIG.get("data_xlsx_path", f"data/{uuid.uuid4().hex}.xlsx")
-        if os.path.isfile(data_xlsx_path):
-            self.data_xlsx_path = data_xlsx_path
-        else:
-            self.data_xlsx_path = f"data/{uuid.uuid4().hex}.xlsx"
-            logger.debug(f"create new data xlsx file | {self.data_xlsx_path}")
-            CONFIG["data_xlsx_path"] = os.path.abspath(self.data_xlsx_path)
-            try:
-                with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-                    simplejson.dump(CONFIG, f, sort_keys=True, indent=4 * " ")
-            except Exception:
-                logger.error(f"could not update CONFIG | {CONFIG}")
+        try:
+            current_machine_id = subprocess.check_output("wmic csproduct get uuid").decode().split("\n")[1].strip()
+        except Exception:
+            current_machine_id = uuid.uuid3(uuid.NAMESPACE_DNS, socket.gethostname())
+        self.data_xlsx_path = f"data/{current_machine_id}.xlsx"
         logger.debug(f"self.data_xlsx_path | {os.path.abspath(self.data_xlsx_path)}")
         self.initUI()
         self.center()
@@ -2146,7 +2141,7 @@ class MainWindow(QMainWindow):
         else:
             self.sample_record_plot_by_index(0)
         if not os.path.isfile(self.data_xlsx_path) or not check_file_permission(self.data_xlsx_path):
-            dump_sample(self.sample_db.iter_all_data(), self.data_xlsx_path)
+            dump_sample(self.sample_db.iter_all_data(num=100), self.data_xlsx_path)
         elif (not self.lamp_ag_cb.isChecked()) and (not self.debug_flag_cbs[5].isChecked()):
             insert_sample(self.sample_db.iter_from_label(), self.data_xlsx_path)
         if self.lamp_ag_cb.isChecked():
@@ -2689,9 +2684,12 @@ class MainWindow(QMainWindow):
             plain_text = f"{info}\n{'=' * 100}\nraw bytes:\n{raw_text}"
             self.out_flash_data_te.setPlainText(plain_text)
         elif self.out_flash_start == 0x2000 and start + length == 1440 * 6:
-            info = parse_1440(self.out_flash_data[: start + length])
+            info, correct_list = parse_1440(self.out_flash_data[: start + length])
             plain_text = f"{info}\n{'=' * 100}\nraw bytes:\n{raw_text}"
             self.out_flash_data_te.setPlainText(plain_text)
+            for cu in correct_list:
+                logger.debug(cu)
+            dump_correct_record(correct_list, f"data/correct_{self.device_id}.xlsx")
         else:
             self.out_flash_data_te.setPlainText(raw_text)
 
