@@ -1175,7 +1175,6 @@ static void motor_Task(void * argument)
                 break;
             case eMotor_Fun_SP_LED:
                 xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0);                                                    /* 清空通知 */
-                gComm_Data_SP_LED_Flag_Mark(radiant);                                                                /* 标记校正采样板LED电压状态 */
                 comm_Data_Get_LED_Voltage();                                                                         /* 获取采样板LED电压配置 */
                 for (radiant = eComm_Data_Sample_Radiant_610; radiant <= eComm_Data_Sample_Radiant_405; ++radiant) { /* 逐个波长校正 */
                     switch (radiant) {
@@ -1363,9 +1362,8 @@ static void motor_Self_Check_PD(uint8_t * pBuffer, uint8_t mask)
         if (((1 << (radiant - 1)) & mask) == 0) {                                                        /* 非测试项 */
             continue;
         }
-        gComm_Data_SelfCheck_PD_Flag_Mark(radiant);
+        gComm_Data_SelfCheck_PD_Flag_Mark(radiant);                                              /* 标记自检测试 单项 PD状态 */
         comm_Data_RecordInit();                                                                  /* 初始化数据记录 */
-        gComm_Data_SP_LED_Flag_Mark(radiant);                                                    /* 标记校正采样板LED电压状态 */
         comm_Data_Sample_Send_Conf_Correct(pBuffer, radiant,                                     /* 配置波长 */
                                            1,                                                    /* 点数 */
                                            eComm_Data_Outbound_CMD_TEST);                        /* 上送 PD 值 */
