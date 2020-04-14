@@ -243,6 +243,16 @@ void gMotorPressureStopBits_Clear(void)
 }
 
 /**
+ * @brief  压力测试停止标志位 复归
+ * @param  None
+ * @retval None
+ */
+uint8_t gMotorPressure_IsDoing(void)
+{
+    return gMotorPressureStopBits != 0xFF;
+}
+
+/**
  * @brief  温度稳定等待标志位 标记
  * @param  None
  * @retval None
@@ -571,6 +581,7 @@ uint8_t motor_Emit_FromISR(sMotor_Fun * pFun_type)
 static void motor_Tray_Move_By_Index(eTrayIndex index)
 {
     uint8_t buffer[8], flag = 0;
+    uint32_t timeout;
 
     if (heat_Motor_Position_Is_Up() == 0) {
         flag = 1; /* 上加热体电机处于砸下状态 */
@@ -596,6 +607,12 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
             break;
     }
 
+    if (gMotorPressure_IsDoing()) {
+        timeout = 0;
+    } else {
+        timeout = COMM_MAIN_SER_TX_RETRY_SUM;
+    }
+
     /* 托盘保持力矩不足 托盘容易位置会发生变化 实际位置与驱动记录位置不匹配 每次移动托盘电机必须重置 */
     if ((index == eTrayIndex_0 && TRAY_MOTOR_IS_OPT_1 == 0)                        /* 从光耦外回到原点 */
         || (index == eTrayIndex_2 && TRAY_MOTOR_IS_OPT_1 && flag)) {               /* 或者 起点时上加热体砸下 从光耦处离开 */
@@ -605,23 +622,23 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
             tray_Move_By_Index(eTrayIndex_0, 5000);                                /* 复归到原点 */
             tray_Move_By_Index(eTrayIndex_2, 5000);                                /* 出仓 */
         }
-        if (tray_Move_By_Index(eTrayIndex_1, 5000) != eTrayState_OK) {                            /* 运动托盘电机 */
-            buffer[0] = 0x00;                                                                     /* 托盘电机运动失败 */
-            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
-            comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                  /* 转发至外串口但不允许阻塞 */
+        if (tray_Move_By_Index(eTrayIndex_1, 5000) != eTrayState_OK) {                                /* 运动托盘电机 */
+            buffer[0] = 0x00;                                                                         /* 托盘电机运动失败 */
+            comm_Main_SendTask_QueueEmitWithBuild(eProtocolRespPack_Client_DISH, buffer, 1, timeout); /* 上报失败报文 */
+            comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                      /* 转发至外串口但不允许阻塞 */
         }
         return;
-    } else {                                                                                      /* 其他情况需要回到原点 */
-        tray_Motor_Init();                                                                        /* 托盘电机初始化 */
-        if (tray_Motor_Reset_Pos() != 0) {                                                        /* 重置托盘电机位置 */
-            buffer[0] = 0x00;                                                                     /* 托盘电机运动失败 */
-            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
-            comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                  /* 转发至外串口但不允许阻塞 */
+    } else {                                                                                          /* 其他情况需要回到原点 */
+        tray_Motor_Init();                                                                            /* 托盘电机初始化 */
+        if (tray_Motor_Reset_Pos() != 0) {                                                            /* 重置托盘电机位置 */
+            buffer[0] = 0x00;                                                                         /* 托盘电机运动失败 */
+            comm_Main_SendTask_QueueEmitWithBuild(eProtocolRespPack_Client_DISH, buffer, 1, timeout); /* 上报失败报文 */
+            comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                      /* 转发至外串口但不允许阻塞 */
             return;
         }
         if (index == eTrayIndex_0) {
             buffer[0] = 0x01;
-            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, buffer, 1);
+            comm_Main_SendTask_QueueEmitWithBuild(eProtocolRespPack_Client_DISH, buffer, 1, timeout);
             comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0); /* 转发至外串口但不允许阻塞 */
             return;
         }
@@ -629,18 +646,18 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
     if (tray_Move_By_Index(index, 5000) == eTrayState_OK) { /* 运动托盘电机 */
         if (index == eTrayIndex_0) {                        /* 托盘在检测位置 */
             buffer[0] = 0x01;
-            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, buffer, 1);
+            comm_Main_SendTask_QueueEmitWithBuild(eProtocolRespPack_Client_DISH, buffer, 1, timeout);
             comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0); /* 转发至外串口但不允许阻塞 */
         } else if (index == eTrayIndex_2) {                      /* 托盘在加样位置 */
             buffer[0] = 0x02;
-            comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, buffer, 1);
+            comm_Main_SendTask_QueueEmitWithBuild(eProtocolRespPack_Client_DISH, buffer, 1, timeout);
             comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0); /* 转发至外串口但不允许阻塞 */
         }
         return;
     } else {
-        buffer[0] = 0x00;                                                                     /* 托盘电机运动失败 */
-        comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolRespPack_Client_DISH, buffer, 1); /* 上报失败报文 */
-        comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                  /* 转发至外串口但不允许阻塞 */
+        buffer[0] = 0x00;                                                                         /* 托盘电机运动失败 */
+        comm_Main_SendTask_QueueEmitWithBuild(eProtocolRespPack_Client_DISH, buffer, 1, timeout); /* 上报失败报文 */
+        comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0);                                      /* 转发至外串口但不允许阻塞 */
         return;
     }
 }
