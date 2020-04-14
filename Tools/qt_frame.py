@@ -936,7 +936,7 @@ class MainWindow(QMainWindow):
 
     def onMotorTrayScan(self, event):
         self._serialSendPack(0xD0, (2, 0))
-        self._serialSendPack(0xD0, (1, 1))
+        QTimer.singleShot(1500, lambda: self._serialSendPack(0xD0, (1, 1)))
 
     def onMotorTrayOut(self, event):
         self._serialSendPack(0x04)
