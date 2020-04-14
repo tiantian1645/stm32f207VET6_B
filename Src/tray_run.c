@@ -424,7 +424,7 @@ eTrayState tray_Move_By_Index(eTrayIndex index, uint32_t timeout)
             motor_CMD_Info_Set_Step(&gTray_Motor_Run_CMD_Info, 0xFFFFFF);
             break;
         case eTrayIndex_1:
-            tray_Motor_Calculate(0);                                                           /* 计算运动距离 及方向 32细分转8细分 */
+            tray_Motor_Calculate((index >> 5) << 3);                                                           /* 计算运动距离 及方向 32细分转8细分 */
             motor_CMD_Info_Set_PF_Leave(&gTray_Motor_Run_CMD_Info, tray_Motor_Leave_On_OPT_2); /* 等待驱动状态位空闲 */
             break;
         case eTrayIndex_2:
