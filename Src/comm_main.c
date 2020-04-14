@@ -55,10 +55,14 @@ static sProcol_COMM_ACK_Record gComm_Main_ACK_Records[COMM_MAIN_SEND_QUEU_LENGTH
 static sComm_Main_SendInfo gComm_Main_SendInfo;         /* 提交发送任务到队列用缓存 */
 static sComm_Main_SendInfo gComm_Main_SendInfo_FromISR; /* 提交发送任务到队列用缓存 中断用 */
 
+/* 串口发送阻塞标志 */
+static uint8_t gComm_Mian_Block_Flag = 1;
+
 /* Private constants ---------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
 static void comm_Main_Send_Task(void * argument);
+static uint8_t gComm_Mian_Block_Is_Enable(void);
 
 /* Private user code ---------------------------------------------------------*/
 
@@ -215,7 +219,7 @@ void comm_Main_Init(void)
 
 /**
  * @brief  串口发送队列 未处理个数
- * @param  Npne
+ * @param  None
  * @retval 串口发送队列 未处理个数
  */
 UBaseType_t comm_Main_SendTask_Queue_GetWaiting(void)
@@ -225,7 +229,7 @@ UBaseType_t comm_Main_SendTask_Queue_GetWaiting(void)
 
 /**
  * @brief  串口发送队列 空闲 中断版本
- * @param  Npne
+ * @param  None
  * @retval 串口发送队列 空闲
  */
 UBaseType_t comm_Main_SendTask_Queue_GetFree(void)
@@ -235,7 +239,7 @@ UBaseType_t comm_Main_SendTask_Queue_GetFree(void)
 
 /**
  * @brief  串口发送队列 未处理个数 中断版本
- * @param  Npne
+ * @param  None
  * @retval 串口发送队列 未处理个数
  */
 UBaseType_t comm_Main_SendTask_Queue_GetWaiting_FromISR(void)
@@ -245,12 +249,42 @@ UBaseType_t comm_Main_SendTask_Queue_GetWaiting_FromISR(void)
 
 /**
  * @brief  串口发送队列 空闲 中断版本
- * @param  Npne
+ * @param  None
  * @retval 串口发送队列 空闲
  */
 UBaseType_t comm_Main_SendTask_Queue_GetFree_FromISR(void)
 {
     return COMM_MAIN_SEND_QUEU_LENGTH - uxQueueMessagesWaitingFromISR(comm_Main_SendQueue);
+}
+
+/**
+ * @brief  串口发送阻塞标志 读取
+ * @param  None
+ * @retval 串口发送阻塞标志
+ */
+static uint8_t gComm_Mian_Block_Is_Enable(void)
+{
+    return (gComm_Mian_Block_Flag > 0);
+}
+
+/**
+ * @brief  串口发送阻塞标志 置一
+ * @param  flag 标志
+ * @retval None
+ */
+void gComm_Mian_Block_Enable(void)
+{
+    gComm_Mian_Block_Flag = 1;
+}
+
+/**
+ * @brief  串口发送阻塞标志 清零
+ * @param  flag 标志
+ * @retval None
+ */
+void gComm_Mian_Block_Disable(void)
+{
+    gComm_Mian_Block_Flag = 0;
 }
 
 /**
@@ -276,7 +310,7 @@ BaseType_t comm_Main_SendTask_QueueEmit(uint8_t * pData, uint8_t length, uint32_
 
     xResult = xQueueSendToBack(comm_Main_SendQueue, &gComm_Main_SendInfo, pdMS_TO_TICKS(timeout));
     serialSourceFlagsSet(eSerial_Source_COMM_Main_Send_Buffer_Bit);
-    if (xResult != pdPASS) {
+    if (xResult != pdPASS && gComm_Mian_Block_Is_Enable()) {
         error_Emit(eError_Comm_Main_Busy);
     }
     return xResult;
@@ -324,6 +358,25 @@ BaseType_t comm_Main_SendTask_QueueEmitWithBuild(uint8_t cmdType, uint8_t * pDat
     length = buildPackOrigin(eComm_Main, cmdType, pData, length);
     xResult = comm_Main_SendTask_QueueEmit(pData, length, timeout);
     return xResult;
+}
+
+/**
+ * @brief  加入串口发送队列
+ * @param  pData   数据指针
+ * @param  length  数据长度
+ * @retval 加入发送队列结果
+ */
+BaseType_t comm_Main_SendTask_QueueEmitWithBuildCover(uint8_t cmdType, uint8_t * pData, uint8_t length)
+{
+    uint32_t timeout = 0;
+
+    if (gComm_Mian_Block_Is_Enable()) {
+        timeout = COMM_MAIN_SER_TX_RETRY_SUM;
+    } else {
+        timeout = 0;
+    }
+
+    return comm_Main_SendTask_QueueEmitWithBuild(cmdType, pData, length, timeout);
 }
 
 /**

@@ -60,8 +60,9 @@ BaseType_t comm_Main_SendTask_ACK_QueueEmitFromISR(uint8_t * pPackIndex);
 BaseType_t comm_Main_SendTask_QueueEmit(uint8_t * pdata, uint8_t length, uint32_t timeout);
 #define comm_Main_SendTask_QueueEmitCover(pdata, length) comm_Main_SendTask_QueueEmit((pdata), (length), (COMM_MAIN_SER_TX_RETRY_SUM))
 BaseType_t comm_Main_SendTask_QueueEmitWithBuild(uint8_t cmdType, uint8_t * pData, uint8_t length, uint32_t timeout);
-#define comm_Main_SendTask_QueueEmitWithBuildCover(cmdType, pdata, length)                                                                                     \
-    comm_Main_SendTask_QueueEmitWithBuild((cmdType), (pdata), (length), (COMM_MAIN_SER_TX_RETRY_SUM))
+void gComm_Mian_Block_Enable(void);
+void gComm_Mian_Block_Disable(void);
+BaseType_t comm_Main_SendTask_QueueEmitWithBuildCover(uint8_t cmdType, uint8_t * pData, uint8_t length);
 
 BaseType_t comm_Main_SendTask_QueueEmitWithBuild_FromISR(uint8_t cmdType, uint8_t * pData, uint8_t length);
 
