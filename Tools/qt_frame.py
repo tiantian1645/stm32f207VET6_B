@@ -1151,8 +1151,9 @@ class MainWindow(QMainWindow):
         for d in data:
             if isinstance(d, ILLU_CC_DataInfo) and d.wave == int(wave):
                 channel_points = d.channel_pointses[channel - 1]
-                result = [point_line_equation_map(channel_points, d.standard_points, origin_data) for origin_data in origin_data_list]
-                logger.info(f"{channel_points} -> {d.standard_points} | {result}")
+                standard_points = d.standard_pointses[channel - 1]
+                result = [point_line_equation_map(channel_points, standard_points, origin_data) for origin_data in origin_data_list]
+                logger.info(f"{channel_points} -> {standard_points} | {result}")
                 break
         else:
             logger.warning(f"return origin data | {origin_data_list}")
@@ -2395,14 +2396,16 @@ class MainWindow(QMainWindow):
                     pairs.append((theo, test))
                 chanel_d[f"CH-{c+1}"][WAVE_NAMES[w]] = pairs
         for wave in WAVE_NAMES:
-            standard_points = [chanel_d["CH-1"][wave][i][0] for i in range(6)]
+            standard_pointses = []
             channel_pointses = []
             for c in range(6):
                 channel_points = [chanel_d[f"CH-{c + 1}"][wave][i][1] for i in range(6)]
                 channel_pointses.append(channel_points)
+                standard_points = [chanel_d[f"CH-{c + 1}"][wave][i][0] for i in range(6)]
+                standard_pointses.append(standard_points)
                 if wave == WAVE_NAMES[-1]:
                     break
-            data.append(ILLU_CC_DataInfo(wave=wave, standard_points=standard_points, channel_pointses=channel_pointses))
+            data.append(ILLU_CC_DataInfo(wave=wave, standard_pointses=standard_pointses, channel_pointses=channel_pointses))
         return data
 
     def onOutFlashParamCC_Dump(self, event):
@@ -2431,9 +2434,10 @@ class MainWindow(QMainWindow):
                 self.out_flash_param_temp_sps[2].setValue(d.env)
             elif isinstance(d, ILLU_CC_DataInfo):
                 w_idx = WAVE_NAMES.index(str(d.wave))
-                for i in range(6):  # stage
-                    for start in (w_idx * 12 + 24 * i + (12 if i > 0 else 0) for i in range(len(d.channel_pointses))):
-                        self.out_flash_param_cc_sps[start + i].setValue(d.standard_points[i])
+                for c_idx, standard_points in enumerate(d.standard_pointses):
+                    start = w_idx * 12 + 24 * c_idx + (12 if c_idx > 0 else 0)
+                    for i in range(6):
+                        self.out_flash_param_cc_sps[start + i].setValue(standard_points[i])
 
                 for c_idx, channel_points in enumerate(d.channel_pointses):
                     start = w_idx * 12 + 24 * c_idx + (12 if c_idx > 0 else 0)
@@ -2491,25 +2495,28 @@ class MainWindow(QMainWindow):
             self.flash_json_data = data
         else:
             data = self.flash_json_data
-        xs = []
+        xss = []
         yss = []
         for d in data:
             if isinstance(d, ILLU_CC_DataInfo):
                 if d.wave != int(self.flash_plot_wave):
                     continue
-                xs = d.standard_points
+                xss = d.standard_pointses
                 yss = d.channel_pointses
                 break
         self.flash_plot_graph.clear_plot()
         self.flash_plot_graph.plot_data_new(name="标准值", color="DAEDF0")
         for i in range(6):
-            self.flash_plot_graph.plot_data_new(name=f"CH-{i + 1}")
-        for x in xs:
-            self.flash_plot_graph.plot_data_update(0, x)
+            self.flash_plot_graph.plot_data_new(name=f"SCH-{i + 1}")
+            self.flash_plot_graph.plot_data_new(name=f"RCH-{i + 1}")
+        for i, xs in enumerate(xss):
+            logger.debug(f"load xs | {i} | {xs}")
+            for x in xs:
+                self.flash_plot_graph.plot_data_update(i * 2 + 0, x)
         for i, ys in enumerate(yss):
             logger.debug(f"load ys | {i} | {ys}")
             for y in ys:
-                self.flash_plot_graph.plot_data_update(i + 1, y)
+                self.flash_plot_graph.plot_data_update(i * 2 + 1, y)
         self.flash_json_data = data
 
     def updateFlashCC_PlotSelectWave(self):

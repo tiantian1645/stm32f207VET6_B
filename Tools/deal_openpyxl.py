@@ -10,7 +10,7 @@ from openpyxl.cell import WriteOnlyCell
 from openpyxl.styles import Alignment, NamedStyle, PatternFill
 
 TEMP_CC_DataInfo = namedtuple("TEMP_CC_DataInfo", "top btm env")
-ILLU_CC_DataInfo = namedtuple("ILLU_CC_DataInfo", "wave standard_points channel_pointses")
+ILLU_CC_DataInfo = namedtuple("ILLU_CC_DataInfo", "wave standard_pointses channel_pointses")
 SAMPLE_TITLES = ("索引", "日期", "标签", "控制板程序版本", "控制板芯片ID", "通道", "项目", "方法", "波长")
 CORRECT_HEADS = ("通道", "标点")
 
@@ -31,12 +31,13 @@ OO_STYLE.alignment = Alignment(horizontal="center", vertical="bottom", text_rota
 
 DEFAULT_CC_DATA = []
 for t_idx, title in enumerate((610, 550, 405)):
-    standard_points = tuple(0 for i in range(6))
+    standard_pointses = []
     channel_pointses = []
     cn = 6 if t_idx != 2 else 1
     for row_idx in range(cn):
         channel_pointses.append(tuple(0 for column_idx in range(6)))
-    DEFAULT_CC_DATA.append(ILLU_CC_DataInfo(wave=title, standard_points=standard_points, channel_pointses=tuple(channel_pointses)))
+        standard_pointses.append(tuple(0 for column_idx in range(6)))
+    DEFAULT_CC_DATA.append(ILLU_CC_DataInfo(wave=title, standard_pointses=standard_pointses, channel_pointses=tuple(channel_pointses)))
 DEFAULT_CC_DATA.append(TEMP_CC_DataInfo(top=0, btm=0, env=0))
 DEFAULT_CC_DATA = tuple(DEFAULT_CC_DATA)
 
@@ -58,11 +59,12 @@ def dump_CC(data, file_path):
         for d in data:
             if isinstance(d, ILLU_CC_DataInfo):
                 sheet = wb[f"{d.wave}"]
-                cells = [WriteOnlyCell(sheet, value="理论值")] + [WriteOnlyCell(sheet, value=sp) for sp in d.standard_points]
-                sheet.append(cells)
-                for row_idx, cps in enumerate(d.channel_pointses):
-                    cells = [WriteOnlyCell(sheet, value=f"通道-{row_idx + 1}")] + [WriteOnlyCell(sheet, value=cp) for cp in cps]
-                    sheet.append(cells)
+                for row_idx, sc_ps in enumerate(zip(d.standard_pointses, d.channel_pointses)):
+                    sps, cps = sc_ps
+                    cells_s = [WriteOnlyCell(sheet, value=f"通道-{row_idx + 1}-标准值")] + [WriteOnlyCell(sheet, value=sp) for sp in sps]
+                    sheet.append(cells_s)
+                    cells_c = [WriteOnlyCell(sheet, value=f"通道-{row_idx + 1}-实际值")] + [WriteOnlyCell(sheet, value=cp) for cp in cps]
+                    sheet.append(cells_c)
             elif isinstance(d, TEMP_CC_DataInfo):
                 sheet = wb["温度"]
                 cells = (WriteOnlyCell(sheet, value=d.top), WriteOnlyCell(sheet, value=d.btm), WriteOnlyCell(sheet, value=d.env))
@@ -84,12 +86,13 @@ def load_CC(file_path):
             if sheet_name not in wb.sheetnames:
                 return DEFAULT_CC_DATA
             sheet = wb[sheet_name]
-            standard_points = tuple(sheet.cell(column=2 + i, row=2).value for i in range(6))
+            standard_pointses = []
             channel_pointses = []
             cn = 6 if t_idx != 2 else 1
             for row_idx in range(cn):
-                channel_pointses.append(tuple(sheet.cell(column=column_idx + 2, row=3 + row_idx).value for column_idx in range(6)))
-            data.append(ILLU_CC_DataInfo(wave=title, standard_points=standard_points, channel_pointses=tuple(channel_pointses)))
+                standard_pointses.append(tuple(sheet.cell(column=column_idx + 2, row=2 + 2 * row_idx).value for column_idx in range(6)))
+                channel_pointses.append(tuple(sheet.cell(column=column_idx + 2, row=3 + 2 * row_idx).value for column_idx in range(6)))
+            data.append(ILLU_CC_DataInfo(wave=title, standard_pointses=tuple(standard_pointses), channel_pointses=tuple(channel_pointses)))
         if "温度" in wb.sheetnames:
             sheet = wb["温度"]
             data.append(TEMP_CC_DataInfo(top=sheet.cell(column=1, row=2).value, btm=sheet.cell(column=2, row=2).value, env=sheet.cell(column=3, row=2).value))
@@ -104,7 +107,7 @@ def load_CC(file_path):
 def cc_get_pointes_info(cc, channel, wave):
     for data in cc:
         if isinstance(data, ILLU_CC_DataInfo) and data.wave == wave:
-            return data.channel_pointses[channel - 1], data.standard_points
+            return data.channel_pointses[channel - 1], data.standard_pointses[channel - 1]
     return None, None
 
 
@@ -332,7 +335,14 @@ if __name__ == "__main__":
     data = (
         ILLU_CC_DataInfo(
             wave=610,
-            standard_points=(30, 31, 32, 33, 34, 35),
+            standard_pointses=(
+                (3100, 4200, 5300, 6400, 7500, 8600),
+                (3101, 4201, 5301, 6401, 7501, 8601),
+                (3102, 4202, 5302, 6402, 7502, 8602),
+                (3103, 4203, 5303, 6403, 7503, 8603),
+                (3104, 4204, 5304, 6404, 7504, 8604),
+                (3105, 4205, 5305, 6405, 7505, 8605),
+            ),
             channel_pointses=(
                 (1100, 2200, 3300, 4400, 5500, 6600),
                 (1101, 2201, 3301, 4401, 5501, 6601),
@@ -344,7 +354,14 @@ if __name__ == "__main__":
         ),
         ILLU_CC_DataInfo(
             wave=550,
-            standard_points=(26, 27, 28, 29, 10, 11),
+            standard_pointses=(
+                (1200, 2300, 3400, 4500, 5600, 6700),
+                (1201, 2301, 3401, 4501, 5601, 6701),
+                (1202, 2302, 3402, 4502, 5602, 6702),
+                (1203, 2303, 3403, 4503, 5603, 6703),
+                (1204, 2304, 3404, 4504, 5604, 6704),
+                (1205, 2305, 3405, 4505, 5605, 6705),
+            ),
             channel_pointses=(
                 (7100, 8200, 9300, 10400, 11500, 12600),
                 (7101, 8201, 9301, 10401, 11501, 12601),
@@ -354,7 +371,7 @@ if __name__ == "__main__":
                 (7105, 8205, 9305, 10405, 11505, 12605),
             ),
         ),
-        ILLU_CC_DataInfo(wave=405, standard_points=(13, 14, 15, 16, 17, 18), channel_pointses=((18100, 17200, 16300, 15400, 14500, 13600),)),
+        ILLU_CC_DataInfo(wave=405, standard_pointses=((181, 172, 163, 154, 145, 136),), channel_pointses=((18100, 17200, 16300, 15400, 14500, 13600),)),
         TEMP_CC_DataInfo(top=1, btm=2, env=6),
     )
     dump_CC(data, file_path)
