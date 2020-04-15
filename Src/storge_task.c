@@ -29,7 +29,8 @@
 
 #define STORGE_APP_PARAMS_ADDR (0x1000) /* Sector 1 */
 #define STORGE_APP_CREDEG_ADDR (0x2000) /* Sector 2 */
-#define STORGE_APP_APRAM_PART_NUM (56)  /* 单次操作最大数目 */
+#define STORGE_APP_CREDEG_ADDR_405 ((STORGE_APP_CREDEG_ADDR) + 8640)
+#define STORGE_APP_APRAM_PART_NUM (56) /* 单次操作最大数目 */
 /* Private typedef -----------------------------------------------------------*/
 typedef struct {
     uint32_t addr;                   /* 操作地址 */
@@ -1018,7 +1019,12 @@ uint8_t stroge_Conf_CC_O_Data_From_B3(uint8_t * pBuffer, uint8_t length)
     v32 = (uint32_t)storge_Param_CC_Illumine_CC_Filter(pBuffer, length); /* 滤波后的平均值 */
     result = storge_Conf_CC_Insert(pBuffer[1], wave, stage, v32);        /* 写入校正点 */
 
-    addr = STORGE_APP_CREDEG_ADDR + (1440 * (pBuffer[1] - 1)) + 240 * stage + 120 * (wave - eComm_Data_Sample_Radiant_610); /* 计算偏移地址 */
-    spi_FlashWriteBuffer(addr, pBuffer + 2, length);                                                                        /* 保存原始数据 */
+    if (wave == eComm_Data_Sample_Radiant_405 && pBuffer[1] - 1 == 0) { /* 405 另行存储 */
+        addr = STORGE_APP_CREDEG_ADDR_405 + 120 * stage;                /* 计算偏移地址 */
+        spi_FlashWriteBuffer(addr, pBuffer + 2, length);                /* 保存原始数据 */
+    } else {
+        addr = STORGE_APP_CREDEG_ADDR + (1440 * (pBuffer[1] - 1)) + 240 * stage + 120 * (wave - eComm_Data_Sample_Radiant_610); /* 计算偏移地址 */
+        spi_FlashWriteBuffer(addr, pBuffer + 2, length);                                                                        /* 保存原始数据 */
+    }
     return result;
 }

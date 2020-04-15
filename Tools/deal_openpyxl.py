@@ -289,6 +289,7 @@ def dump_correct_record(correct_list, file_path):
         wb.add_named_style(OO_STYLE)
         sheet_610 = wb.create_sheet(f"610")
         sheet_550 = wb.create_sheet(f"550")
+        sheet_405 = wb.create_sheet(f"405")
 
         for i in range(36):
             n = ord("C") - ord("A") + i + 1
@@ -298,26 +299,23 @@ def dump_correct_record(correct_list, file_path):
                 c = chr(65 + remainder) + c
             sheet_610.column_dimensions[c].width = 11
             sheet_550.column_dimensions[c].width = 11
+            sheet_405.column_dimensions[c].width = 11
 
-        cells = [WriteOnlyCell(sheet_610, value=i) for i in CORRECT_HEADS] + [
-            WriteOnlyCell(sheet_610, value=f"{i}-{j+1}") for i, j in product(("白物质", "反应区", "OD"), list(range(12)))
-        ]
-        for cell in cells:
-            cell.alignment = Alignment(horizontal="center", vertical="bottom", text_rotation=0, wrap_text=False, shrink_to_fit=False, indent=0)
-        sheet_610.append(cells)
-
-        cells = [WriteOnlyCell(sheet_550, value=i) for i in CORRECT_HEADS] + [
-            WriteOnlyCell(sheet_550, value=f"{i}-{j+1}") for i, j in product(("白物质", "反应区", "OD"), list(range(12)))
-        ]
-        for cell in cells:
-            cell.alignment = Alignment(horizontal="center", vertical="bottom", text_rotation=0, wrap_text=False, shrink_to_fit=False, indent=0)
-        sheet_550.append(cells)
+        for sheet in (sheet_610, sheet_550, sheet_405):
+            cells = [WriteOnlyCell(sheet, value=i) for i in CORRECT_HEADS] + [
+                WriteOnlyCell(sheet, value=f"{i}-{j+1}") for i, j in product(("白物质", "反应区", "OD"), list(range(12)))
+            ]
+            for cell in cells:
+                cell.alignment = Alignment(horizontal="center", vertical="bottom", text_rotation=0, wrap_text=False, shrink_to_fit=False, indent=0)
+            sheet.append(cells)
 
         for cu in correct_list:
             if cu.wave == 610:
                 sheet = sheet_610
             elif cu.wave == 550:
                 sheet = sheet_550
+            elif cu.wave == 405:
+                sheet = sheet_405
             else:
                 continue
             cells = [WriteOnlyCell(sheet, value=i) for i in (cu.channel, cu.stage)] + [

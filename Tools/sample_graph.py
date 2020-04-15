@@ -182,7 +182,7 @@ class SampleGraph:
                         lds.append(f"<span style='font-size: 12pt; color: #{data_conf.color}'>{data_conf.name}={value:.2f}</span>,   ")
                 else:
                     lds.append(f"<span style='font-size: 12pt; color: #{data_conf.color}'>{data_conf.name}=null</span>,   ")
-            lds = list(chain(*[lds[i : i + 12] + [" <br> "] if len(lds[i : i + 12]) == 12 else lds[i : i + 12] for i in range(0, len(lds), 12)]))
+            lds = list(chain(*[lds[i : i + 6] + [" <br> "] if len(lds[i : i + 6]) == 6 else lds[i : i + 6] for i in range(0, len(lds), 6)]))
             label_data = "".join(lds)
             label_text = f"{label_data}  ({label_point})"
             self.label.setText(label_text)

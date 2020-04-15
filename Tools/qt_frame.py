@@ -1197,7 +1197,7 @@ class MainWindow(QMainWindow):
                 g = i // (len(sds) // 13)
                 wave_name = WAVE_NAMES[(g - 3) % 2 if g > 2 else g % 3]
             elif label.name.startswith("Correct "):
-                wave_name = WAVE_NAMES[i % 2]
+                wave_name = WAVE_NAMES[(i - 3) % 2] if i >= 3 else WAVE_NAMES[i % 3]
             else:
                 wave_name = sd.wave.name[-3:]
             if len(sd.raw_data) / sd.total == 12:
@@ -2262,7 +2262,7 @@ class MainWindow(QMainWindow):
         self.out_flash_data_te = QTextEdit()
         out_flash_temp_ly = QHBoxLayout()
         self.out_flash_data_addr = QSpinBox(minimum=0, maximum=8 * 2 ** 20, maximumWidth=90, value=4096, singleStep=4096)
-        self.out_flash_data_num = QSpinBox(minimum=0, maximum=8 * 2 ** 20, maximumWidth=90, value=636, singleStep=1440 * 6 - 636)
+        self.out_flash_data_num = QSpinBox(minimum=0, maximum=8 * 2 ** 20, maximumWidth=90, value=636, singleStep=1440 * 6 + 120 * 6 - 636)
         self.out_flash_data_read_bt = QPushButton("读取", clicked=self.onOutFlashRead, maximumWidth=90)
 
         out_flash_temp_ly.addWidget(QLabel("地址", maximumWidth=60))
@@ -2693,7 +2693,7 @@ class MainWindow(QMainWindow):
             info = DC201_ParamInfo(self.out_flash_data[: start + length])
             plain_text = f"{info}\n{'=' * 100}\nraw bytes:\n{raw_text}"
             self.out_flash_data_te.setPlainText(plain_text)
-        elif self.out_flash_start == 0x2000 and start + length == 1440 * 6:
+        elif self.out_flash_start == 0x2000 and start + length == 1440 * 6 + 120 * 6:
             info, correct_list = parse_1440(self.out_flash_data[: start + length])
             plain_text = f"{info}\n{'=' * 100}\nraw bytes:\n{raw_text}"
             self.out_flash_data_te.setPlainText(plain_text)

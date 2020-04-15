@@ -427,6 +427,21 @@ def parse_1440(data):
                 content_str = f"通道-{start+1} - 定标点 {i + 1} - {[610, 550][j]}\n{data_wh_str}\n{data_rc_str}\n{data_od_str}\n++++\n"
                 content_list.append(content_str)
                 correct_list.append(CorrectFlashUnit(channel=start + 1, stage=i + 1, wave=[610, 550][j], white_pd=data_wh, react_pd=data_rc, od=data_od))
+            if start == 0:
+                data_wh = []
+                data_rc = []
+                data_od = []
+                addr = 1440 * 6 + 120 * i
+                for d in range(12):  # Points num
+                    data_wh.append(struct.unpack("I", data[addr + d * 10 + 0 : addr + d * 10 + 4])[0])
+                    data_rc.append(struct.unpack("I", data[addr + d * 10 + 4 : addr + d * 10 + 8])[0])
+                    data_od.append(struct.unpack("H", data[addr + d * 10 + 8 : addr + d * 10 + 10])[0])
+                data_wh_str = f"白物质 -{data_wh}"
+                data_rc_str = f"反应区 -{data_rc}"
+                data_od_str = f"OD -{data_od}"
+                content_str = f"通道-{start+1} - 定标点 {i + 1} - {405}\n{data_wh_str}\n{data_rc_str}\n{data_od_str}\n++++\n"
+                content_list.append(content_str)
+                correct_list.append(CorrectFlashUnit(channel=start + 1, stage=i + 1, wave=405, white_pd=data_wh, react_pd=data_rc, od=data_od))
             content_list.append("\n********\n")
         body = "\n".join(content_list)
         result_list.append(f"{title}\n\n{body}")
