@@ -2797,7 +2797,7 @@ class MainWindow(QMainWindow):
         self.debugtest_bt.setMaximumWidth(50)
         self.debugtest_sp = QSpinBox()
         self.debugtest_sp.setMaximumWidth(35)
-        self.debugtest_sp.setRange(1, 6)
+        self.debugtest_sp.setRange(1, 12)
         self.debugtest_cnt = 0
         boot_ly.addWidget(self.upgrade_bt)
         boot_ly.addWidget(self.bootload_bt)

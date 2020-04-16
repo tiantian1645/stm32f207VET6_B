@@ -1125,7 +1125,11 @@ static void motor_Task(void * argument)
                 led_Mode_Set(eLED_Mode_Kirakira_Red);                                                               /* LED 红灯闪烁 */
                 if (barcode_Scan_QR() != eBarcodeState_OK || barcode_Scan_Decode_Correct_Info_From_Result() != 0) { /* 扫码失败或者解析失败 */
                     for (cnt = 1; cnt <= 6; ++cnt) {                                                                /* 定标段索引配置 */
-                        comm_Data_Set_Corretc_Stage(cnt, (cnt - 1 + mf.fun_param_1) % 6);                           /* 定标段索引 */
+                        if (mf.fun_param_1 < 6) {
+                            comm_Data_Set_Corretc_Stage(cnt, (cnt - 1 + mf.fun_param_1) % 6); /* 定标段索引 循环单条 */
+                        } else {
+                            comm_Data_Set_Corretc_Stage(cnt, mf.fun_param_1 - 6); /* 定标段索引 整条 */
+                        }
                     }
                 } else {
                     for (cnt = 1; cnt <= 6; ++cnt) {                                                       /* 定标段索引配置 */
