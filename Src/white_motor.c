@@ -24,12 +24,12 @@ typedef enum {
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
-#define WHITE_MOTOR_PD_PCS_MAX 40000 /* 启动初速 max 60000 min 21000 */
+#define WHITE_MOTOR_PD_PCS_MAX 42000 /* 启动初速 max 60000 min 21000 */
 #define WHITE_MOTOR_PD_PCS_MIN 14000 /* 最高速度 min 12345 */
 #define WHITE_MOTOR_PD_PCS_UNT 8
 #define WHITE_MOTOR_PD_PCS_SUM 322
 #define WHITE_MOTOR_PD_PCS_PATCH 6
-#define WHITE_MOTOR_PD_PCS_GAP (1000)
+#define WHITE_MOTOR_PD_PCS_GAP (800)
 
 #define WHITE_MOTOR_WH_PCS_MAX 48000
 #define WHITE_MOTOR_WH_PCS_MIN 32000
