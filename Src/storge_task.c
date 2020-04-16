@@ -986,10 +986,6 @@ uint8_t storge_Conf_CC_Insert(uint8_t channel, eComm_Data_Sample_Radiant wave, u
 {
     eStorgeParamIndex idx;
 
-    if (wave == eComm_Data_Sample_Radiant_405) { /* 剔除405 不进行校正 */
-        return 0;
-    }
-
     idx = storge_Param_Illumine_CC_Get_Index(channel, wave);          /* 根据通道和波长 得出校正参数实际值索引 */
     storge_Param_Illumine_CC_Set_Single(idx + stage_index, avg_data); /* 设置校正实际值 */
     gStorgeIllumineCnt_Inc();                                         /* 校正通道数计数自增 */
