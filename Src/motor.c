@@ -635,6 +635,7 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
             comm_Out_SendTask_QueueEmitWithModify(buffer, 8, 0); /* 转发至外串口但不允许阻塞 */
             return;
         }
+        vTaskDelay(100);
     }
     if (tray_Move_By_Index(index, 5000) == eTrayState_OK) { /* 运动托盘电机 */
         if (index == eTrayIndex_0) {                        /* 托盘在检测位置 */
@@ -703,10 +704,10 @@ void motor_Sample_Owari(void)
     heater_Overshoot_Flag_Set(eHeater_BTM, 0);   /* 取消下加热体过冲加热标志 */
     heater_Overshoot_Flag_Set(eHeater_TOP, 0);   /* 取消上加热体过冲加热标志 */
     white_Motor_WH();                            /* 运动白板电机 白板位置 */
-    heat_Motor_Up();                             /* 采样结束 抬起加热体电机 */
     if (protocol_Debug_SampleMotorTray() == 0) { /* 非托盘电机调试 */
         motor_Tray_Move_By_Index(eTrayIndex_2);  /* 出仓 */
     }
+    heat_Motor_Up();                             /* 采样结束 抬起加热体电机 */
     barcode_Motor_Run_By_Index(eBarcodeIndex_0); /* 复位 */
     barcode_Motor_Run_By_Index(eBarcodeIndex_6); /* 二维码位置就位 */
     gComm_Data_Sample_Max_Point_Clear();         /* 清除需要测试点数 */
