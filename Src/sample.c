@@ -126,6 +126,11 @@ uint8_t sample_first_degree_cal(uint8_t channel, uint8_t wave, uint32_t input, u
             *pOutput = input;                                      /* 不经投影 */
             return 0;                                              /* 提前返回 */
         }
+        storge_ParamReadSingle(norm_start + 0 + i, read_data.u8s); /* 遍历每个标准点 */
+        if (read_data.u32 == 0) {                                  /* 存在零值标准点 */
+            *pOutput = input;                                      /* 不经投影 */
+            return 0;                                              /* 提前返回 */
+        }
     }
 
     /* below point 0 or point 1 */                                    /* x <- P0 or x <- P1*/
