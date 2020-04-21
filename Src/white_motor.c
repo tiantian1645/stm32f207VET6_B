@@ -42,6 +42,8 @@ static eMotorDir gWhite_Motor_Dir = eMotorDir_FWD;
 static uint32_t gWhite_Motor_Position = 0xFFFFFFFF;
 static uint32_t gWhite_Motor_SRC_Buffer[3] = {0, 0, 0};
 static eWhite_Motor_Status gWhite_Motor_Status = eWhite_Motor_Undone;
+static uint8_t gWhite_Motor_PD_Failed_Flag = 0; /* PD方向运动失败标志 此标志用于重新清零白板电机位置 白板方向实际距离大于PD方向距离时 PD方向将永远不可达 */
+
 /* Private constants ---------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
@@ -90,6 +92,36 @@ void gWhite_Motor_Dir_Set(eMotorDir dir)
 uint32_t gWhite_Motor_Position_Get(void)
 {
     return gWhite_Motor_Position;
+}
+
+/**
+ * @brief  白板电机PD方向运动失败标志 使置位
+ * @param  None
+ * @retval None
+ */
+void gWhite_Motor_PD_Failed_Flag_Mark(void)
+{
+    gWhite_Motor_PD_Failed_Flag = 1;
+}
+
+/**
+ * @brief  白板电机PD方向运动失败标志 清零
+ * @param  None
+ * @retval None
+ */
+void gWhite_Motor_PD_Failed_Flag_Clr(void)
+{
+    gWhite_Motor_PD_Failed_Flag = 0;
+}
+
+/**
+ * @brief  白板电机PD方向运动失败标志 获取
+ * @param  None
+ * @retval gWhite_Motor_PD_Failed_Flag
+ */
+uint8_t gWhite_Motor_PD_Failed_Flag_Get(void)
+{
+    return gWhite_Motor_PD_Failed_Flag;
 }
 
 /**
@@ -228,28 +260,26 @@ uint8_t white_Motor_Wait_Stop(uint32_t timeout)
 }
 
 /**
- * @brief  白板电机运动PWM输出
+ * @brief  白板电机 PD位置
  * @param  None
- * @retval 运动结果 0 正常 1 PWM启动失败 2 运动超时 3 白板位置异常 4 PD位置异常
+ * @note   此操作为复归
+ * @retval 运动结果 0 正常 1 PWM启动失败 2 运动超时 3 位置异常
  */
-uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout)
+uint8_t white_Motor_PD()
 {
     error_Emit(eError_Motor_White_Debug);
+
     if (white_Motor_Position_Is_In()) { /* 光耦被遮挡 处于收起状态 */
         white_Motor_Deactive();
         gWhite_Motor_Position_Clr(); /* 清空位置记录 */
-        if (dir == eMotorDir_REV) {  /* 仍然收到向上运动指令 */
-            return 0;
-        }
-    } else if (dir == eMotorDir_FWD && white_Motor_Position_Is_Out()) { /* 向下运动指令 但已运动步数超过极限位置98% */
         return 0;
     }
 
     gWhite_Motor_Position_Rst();                               /* 重置位置记录置非法值 0xFFFFFFFF */
     m_drv8824_Index_Switch(eM_DRV8824_Index_0, portMAX_DELAY); /* 等待PWM资源 */
     m_drv8824_Clear_Flag();                                    /* 清理故障标志 */
-    m_drv8824_SetDir(dir);                                     /* 运动方向设置 硬件管脚 */
-    gWhite_Motor_Dir_Set(dir);                                 /* 运动方向设置 目标方向 */
+    m_drv8824_SetDir(eMotorDir_REV);                           /* 运动方向设置 硬件管脚 */
+    gWhite_Motor_Dir_Set(eMotorDir_REV);                       /* 运动方向设置 目标方向 */
     gWhite_Motor_Status_Set(eWhite_Motor_Undone);              /* 状态记录初始化 */
     gPWM_TEST_AW_CNT_Clear();                                  /* PWM数目清零 */
     if (HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1) != HAL_OK) {  /* 启动PWM输出 */
@@ -259,17 +289,58 @@ uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout)
 
     PWM_AW_IRQ_CallBcak();
 
-    if (white_Motor_Wait_Stop(timeout) == 0) {
+    if (white_Motor_Wait_Stop(WHITE_MOTOR_RUN_PD_TIMEOUT) == 0) {
+        m_drv8824_release();
+        gWhite_Motor_PD_Failed_Flag_Clr();
+        return 0;
+    }
+    m_drv8824_release();
+    if (white_Motor_Position_Is_In() == 0) {
+        error_Emit(eError_Motor_White_Timeout_PD);
+        gWhite_Motor_PD_Failed_Flag_Mark();
+        return 3;
+    }
+    return 2;
+}
+
+/**
+ * @brief  白板电机 白板位置
+ * @param  None
+ * @retval 运动结果 0 正常 1 PWM启动失败 2 运动超时 3 位置异常
+ */
+uint8_t white_Motor_WH()
+{
+    error_Emit(eError_Motor_White_Debug);
+
+    if (gWhite_Motor_PD_Failed_Flag_Get()) {    /* PD方向运动异常 清零位置 */
+        white_Motor_PD();
+    } else if (white_Motor_Position_Is_Out()) { /* 已完成白板位置运动 */
+        white_Motor_Deactive();
+        return 0;
+    }
+
+    gWhite_Motor_Position_Rst();                               /* 重置位置记录置非法值 0xFFFFFFFF */
+    m_drv8824_Index_Switch(eM_DRV8824_Index_0, portMAX_DELAY); /* 等待PWM资源 */
+    m_drv8824_Clear_Flag();                                    /* 清理故障标志 */
+    m_drv8824_SetDir(eMotorDir_FWD);                           /* 运动方向设置 硬件管脚 */
+    gWhite_Motor_Dir_Set(eMotorDir_FWD);                       /* 运动方向设置 目标方向 */
+    gWhite_Motor_Status_Set(eWhite_Motor_Undone);              /* 状态记录初始化 */
+    gPWM_TEST_AW_CNT_Clear();                                  /* PWM数目清零 */
+    if (HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1) != HAL_OK) {  /* 启动PWM输出 */
+        m_drv8824_release();
+        return 1;
+    }
+
+    PWM_AW_IRQ_CallBcak();
+
+    if (white_Motor_Wait_Stop(WHITE_MOTOR_RUN_WH_TIMEOUT) == 0) {
         m_drv8824_release();
         return 0;
     }
     m_drv8824_release();
-    if (dir == eMotorDir_FWD && (white_Motor_Position_Is_In() || gWhite_Motor_Status_Get() == eWhite_Motor_Undone)) {
+    if (white_Motor_Position_Is_In() || gWhite_Motor_Status_Get() == eWhite_Motor_Undone) {
         error_Emit(eError_Motor_White_Timeout_WH);
         return 3;
-    } else if (dir == eMotorDir_REV && white_Motor_Position_Is_In() == 0) {
-        error_Emit(eError_Motor_White_Timeout_PD);
-        return 4;
     }
     return 2;
 }
@@ -277,7 +348,7 @@ uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout)
 /**
  * @brief  白板电机位置翻转
  * @param  None
- * @retval white_Motor_Run 运动结果 0 正常 1 PWM启动失败 2 运动超时 3 白板位置异常 4 PD位置异常
+ * @retval 运动结果 0 正常 1 PWM启动失败 2 运动超时 3 位置异常
  */
 uint8_t white_Motor_Toggle(void)
 {

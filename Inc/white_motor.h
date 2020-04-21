@@ -11,9 +11,6 @@
 #define WHITE_MOTOR_RUN_PD_TIMEOUT 450 /* 关联 COMM_DATA_PD_TIMER_PERIOD */
 #define WHITE_MOTOR_RUN_WH_TIMEOUT 1000
 
-#define white_Motor_PD() white_Motor_Run(eMotorDir_REV, WHITE_MOTOR_RUN_PD_TIMEOUT)
-#define white_Motor_WH() white_Motor_Run(eMotorDir_FWD, WHITE_MOTOR_RUN_WH_TIMEOUT)
-
 /* Exported types ------------------------------------------------------------*/
 
 /* Exported constants --------------------------------------------------------*/
@@ -26,13 +23,15 @@ void white_Motor_Deactive(void);
 
 uint8_t white_Motor_Position_Is_Down(void);
 uint8_t white_Motor_Position_Is_In(void);
-uint8_t white_Motor_Run(eMotorDir dir, uint32_t timeout);
 uint8_t white_Motor_Toggle();
 uint8_t white_Motor_Wait_Stop(uint32_t timeout);
 uint8_t white_Motor_PWM_Gen_In(void);
 uint8_t white_Motor_PWM_Gen_Out(void);
 
 void whilte_Motor_Init(void);
+
+uint8_t white_Motor_PD(void);
+uint8_t white_Motor_WH(void);
 /* Private defines -----------------------------------------------------------*/
 
 #endif
