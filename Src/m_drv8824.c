@@ -227,9 +227,9 @@ uint8_t m_drv8824_Clear_Flag(void)
     switch (gMDRV8824Index) {
         case eM_DRV8824_Index_0:
             if (m_drv8824_Get_Flag()) {
-                HAL_GPIO_WritePin(STEP_NCS1_GPIO_Port, STEP_NCS1_Pin, GPIO_PIN_RESET);
+                HAL_GPIO_WritePin(STEP_NRST_GPIO_Port, STEP_NRST_Pin, GPIO_PIN_RESET);
                 HAL_Delay(1);
-                HAL_GPIO_WritePin(STEP_NCS1_GPIO_Port, STEP_NCS1_Pin, GPIO_PIN_SET);
+                HAL_GPIO_WritePin(STEP_NRST_GPIO_Port, STEP_NRST_Pin, GPIO_PIN_SET);
                 HAL_Delay(1);
                 if (m_drv8824_Get_Flag()) {
                     return 2;
@@ -240,9 +240,9 @@ uint8_t m_drv8824_Clear_Flag(void)
             break;
         case eM_DRV8824_Index_1:
             if (m_drv8824_Get_Flag()) {
-                HAL_GPIO_WritePin(STEP_NCS2_GPIO_Port, STEP_NCS2_Pin, GPIO_PIN_RESET);
+                HAL_GPIO_WritePin(STEP_NRST_GPIO_Port, STEP_NRST_Pin, GPIO_PIN_RESET);
                 HAL_Delay(1);
-                HAL_GPIO_WritePin(STEP_NCS2_GPIO_Port, STEP_NCS2_Pin, GPIO_PIN_SET);
+                HAL_GPIO_WritePin(STEP_NRST_GPIO_Port, STEP_NRST_Pin, GPIO_PIN_SET);
                 HAL_Delay(1);
                 if (m_drv8824_Get_Flag()) {
                     return 2;
