@@ -61,7 +61,7 @@ from PyQt5.QtWidgets import (
 
 from bytes_helper import bytes2Float, bytesPuttyPrint
 from dc201_pack import DC201_PACK, DC201_ParamInfo, DC201ErrorCode, parse_1440, write_firmware_pack_BL, write_firmware_pack_FC
-from deal_openpyxl import ILLU_CC_DataInfo, TEMP_CC_DataInfo, check_file_permission, dump_CC, dump_correct_record, dump_sample, insert_sample, load_CC
+from deal_openpyxl import ILLU_CC_DataInfo, TEMP_CC_DataInfo, check_file_permission, dump_CC, dump_correct_record, dump_sample, load_CC  # insert_sample
 from mengy_color_table import ColorGreens, ColorPurples, ColorReds
 from qt_modern_dialog import ModernDialog, ModernMessageBox
 from qt_serial import SerialRecvWorker, SerialSendWorker
@@ -641,9 +641,9 @@ class MainWindow(QMainWindow):
         self.matplot_timer_time_list = [time.time()] * 6
         self.barcode_scan_bt = QPushButton("扫码")
         self.barcode_scan_bt.setMaximumWidth(50)
-        self.matplot_start_bt = QPushButton("测试")
+        self.matplot_start_bt = QPushButton("测试(R)", shortcut="Ctrl+R")
         self.matplot_start_bt.setMaximumWidth(50)
-        self.matplot_cancel_bt = QPushButton("取消")
+        self.matplot_cancel_bt = QPushButton("取消(N)", shortcut="Ctrl+N")
         self.matplot_cancel_bt.setMaximumWidth(50)
         self.matplot_period_tv_cb = QCheckBox("&NL", maximumWidth=40)
         self.matplot_period_tv_cb.setTristate(True)
@@ -762,21 +762,21 @@ class MainWindow(QMainWindow):
         self.motor_gb = QGroupBox("电机控制")
         motor_ly = QGridLayout(self.motor_gb)
 
-        self.motor_heater_up_bt = QPushButton("上加热体抬升")
+        self.motor_heater_up_bt = QPushButton("上加热体抬升(U)", shortcut="Ctrl+U")
         self.motor_heater_up_bt.setMaximumWidth(120)
-        self.motor_heater_down_bt = QPushButton("上加热体下降")
+        self.motor_heater_down_bt = QPushButton("上加热体下降(D)", shortcut="Ctrl+D")
         self.motor_heater_down_bt.setMaximumWidth(120)
 
-        self.motor_white_pd_bt = QPushButton("白板PD位置")
+        self.motor_white_pd_bt = QPushButton("白板PD位置(P)", shortcut="Ctrl+P")
         self.motor_white_pd_bt.setMaximumWidth(120)
-        self.motor_white_od_bt = QPushButton("白物质位置")
+        self.motor_white_od_bt = QPushButton("白物质位置(W)", shortcut="Ctrl+W")
         self.motor_white_od_bt.setMaximumWidth(120)
 
-        self.motor_tray_in_bt = QPushButton("托盘进仓")
+        self.motor_tray_in_bt = QPushButton("托盘进仓(A-1)", shortcut="Alt+1")
         self.motor_tray_in_bt.setMaximumWidth(120)
-        self.motor_tray_scan_bt = QPushButton("托盘扫码")
+        self.motor_tray_scan_bt = QPushButton("托盘扫码(A-2)", shortcut="Alt+2")
         self.motor_tray_scan_bt.setMaximumWidth(120)
-        self.motor_tray_out_bt = QPushButton("托盘出仓")
+        self.motor_tray_out_bt = QPushButton("托盘出仓(A-3)", shortcut="Alt+3")
         self.motor_tray_out_bt.setMaximumWidth(120)
         self.motor_tray_debug_cb = QPushButton("电机调试")
         self.motor_tray_debug_cb.setMaximumWidth(120)
@@ -1302,7 +1302,7 @@ class MainWindow(QMainWindow):
         serial_ly.setContentsMargins(3, 3, 3, 3)
         serial_ly.setSpacing(0)
         self.serial_switch_bt = QPushButton("打开串口")
-        self.serial_refresh_bt = QPushButton("刷新")
+        self.serial_refresh_bt = QPushButton("刷新(F5)", shortcut="F5")
         self.serial_post_co = QComboBox()
         self.serialRefreshPort()
         serial_ly.addWidget(self.serial_post_co, 0, 0, 1, 1)
@@ -2147,7 +2147,8 @@ class MainWindow(QMainWindow):
         if not os.path.isfile(self.data_xlsx_path) or not check_file_permission(self.data_xlsx_path):
             dump_sample(self.sample_db.iter_all_data(num=100), self.data_xlsx_path)
         elif (not self.lamp_ag_cb.isChecked()) and (not self.debug_flag_cbs[5].isChecked()):
-            insert_sample(self.sample_db.iter_from_label(), self.data_xlsx_path)
+            # insert_sample(self.sample_db.iter_from_label(), self.data_xlsx_path)
+            dump_sample(self.sample_db.iter_all_data(num=100), self.data_xlsx_path)
         if self.lamp_ag_cb.isChecked():
             self.onMatplotStart(False, f"Aging {datetime.now().strftime('%Y%m%d%H%M%S')}")
         if self.debug_flag_cbs[5].isChecked():
