@@ -372,6 +372,7 @@ eTrayState tray_Motor_Init(void)
             vTaskDelay(100);
         } while (TRAY_MOTOR_IS_OPT_1 && xTaskGetTickCount() - xTick < 5000);
         tray_Motor_Brake(); /* 刹车 */
+        vTaskDelay(100);
     }
     if (TRAY_MOTOR_IS_FLAG) {
         tray_Motor_Deal_Status();
