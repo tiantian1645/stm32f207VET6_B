@@ -67,6 +67,7 @@ from qt_modern_dialog import ModernDialog, ModernMessageBox
 from qt_serial import SerialRecvWorker, SerialSendWorker
 from sample_data import SAMPLE_SET_INFOS, MethodEnum, SampleDB, WaveEnum
 from sample_graph import CC_Graph, SampleGraph, TemperatureGraph, point_line_equation_map
+from update import get_latest_app_bin
 from version import VERSION
 
 BARCODE_NAMES = ("B1", "B2", "B3", "B4", "B5", "B6", "QR")
@@ -2052,11 +2053,14 @@ class MainWindow(QMainWindow):
         if self.last_firm_path is not None and os.path.isfile(self.last_firm_path):
             self.upgrade_dg_lb.setText(self.last_firm_path)
             self.upgrade_dg.setWindowTitle(f"固件升级 | {self._getFileHash_SHA256(self.last_firm_path)}")
-        self.upgrade_dg_fb_bt = QPushButton("...")
+        self.upgrade_dg_fb_bt = QPushButton("...", maximumWidth=40)
+        self.upgrade_dg_ck_bt = QPushButton("检查", maximumWidth=40)
         upgrade_temp_ly.addWidget(self.upgrade_dg_lb)
         upgrade_temp_ly.addWidget(self.upgrade_dg_fb_bt)
+        upgrade_temp_ly.addWidget(self.upgrade_dg_ck_bt)
         self.upgrade_dg_ly.addLayout(upgrade_temp_ly)
         self.upgrade_dg_fb_bt.clicked.connect(self.onUpgradeDialogFileSelect)
+        self.upgrade_dg_ck_bt.clicked.connect(self.onUPgradeDialogCheck)
 
         upgrade_temp_ly = QHBoxLayout()
         self.upgrade_pr = QProgressBar(self)
@@ -2125,6 +2129,24 @@ class MainWindow(QMainWindow):
             self.upgrade_dg_lb.setText(file_path)
             self.last_firm_path = file_path
             self.upgrade_dg.setWindowTitle(f"固件升级 | {self._getFileHash_SHA256(file_path)}")
+
+    def onUPgradeDialogCheck(self, event):
+        content, filename, datetime_obj, version = get_latest_app_bin()
+        if filename:
+            total_seconds = (datetime_obj - self.device_datetime).total_seconds()
+            logger.debug(f"{self.device_datetime} | {datetime_obj} | {total_seconds}")
+            if total_seconds < 10:
+                self.upgrade_dg.setWindowTitle(f"固件升级 | 无可更新版本")
+                return
+            r_file_path = f"data/{filename}"
+            with open(r_file_path, "wb") as f:
+                f.write(content)
+            file_path = os.path.abspath(r_file_path)
+            self.upgrade_dg_lb.setText(file_path)
+            self.last_firm_path = file_path
+            self.upgrade_dg.setWindowTitle(f"固件升级 | {self._getFileHash_SHA256(file_path)}")
+        else:
+            self.upgrade_dg.setWindowTitle(f"固件升级 | 检查失败")
 
     def onSampleOver(self):
         self.stop_matplot_timer()
