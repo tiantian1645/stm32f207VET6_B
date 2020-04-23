@@ -47,7 +47,7 @@ class SerialRecvWorker(QRunnable):
         self.stop = True
 
     def _str_Henji(self):
-        logger.debug(f"self.need_henji {self.need_henji}")
+        # logger.debug(f"self.need_henji {self.need_henji}")
         if len(self.need_henji) > 0:
             return ", ".join(f"0x{i:02X}" for i in self.need_henji)
         else:
@@ -64,7 +64,7 @@ class SerialRecvWorker(QRunnable):
     def setNeedHenji(self, write_data):
         self._find_Henji(write_data)
         self.temp_wrote = write_data
-        logger.info(f"response setNeedHenji | write cmd 0x{write_data[5]:02X} | {self._str_Henji()}")
+        # logger.info(f"response setNeedHenji | write cmd 0x{write_data[5]:02X} | {self._str_Henji()}")
 
     @pyqtSlot()
     def run(self):
@@ -102,7 +102,7 @@ class SerialRecvWorker(QRunnable):
                             logger.info(f"reply ack pack | {bytesPuttyPrint(write_data)} --> {info.text}")
                             self.signals.result.emit(info)
                         if fun_code in self.need_henji:
-                            logger.info(f"put henji | self.need_henji {self._str_Henji()} | fun_code 0x{fun_code:02X} | write cmd 0x{self.temp_wrote[5]:02X}")
+                            # logger.info(f"put henji | self.need_henji {self._str_Henji()} | fun_code 0x{fun_code:02X} | write cmd 0x{self.temp_wrote[5]:02X}")
                             self.henji_queue.put(info)
                         elif fun_code not in (0xAA, 0xA0, 0xEE, 0xD0):
                             logger.debug(f"no put to henji | self.need_henji {self._str_Henji()} | info {info.text}")
@@ -153,7 +153,7 @@ class SerialSendWorker(QRunnable):
             except (queue.Empty, Exception):
                 break
         self.recv_worker.setNeedHenji(write_data)
-        logger.info(f"invoke set henji | write_data cmd 0x{write_data[5]:02X}")
+        # logger.info(f"invoke set henji | write_data cmd 0x{write_data[5]:02X}")
 
         if write_data[5] == 0xFC and write_data[6] == 0x00:
             return (True, write_data, None)
@@ -180,7 +180,7 @@ class SerialSendWorker(QRunnable):
                 return (True, write_data, info)
             else:
                 return (False, write_data, info)
-        logger.debug(f"wait henji result | {bytesPuttyPrint(write_data)} -> {info.text} | {write_data[3] == info.content[6]}")
+        # logger.debug(f"wait henji result | {bytesPuttyPrint(write_data)} -> {info.text} | {write_data[3] == info.content[6]}")
         return (write_data[3] == info.content[6], write_data, info)
 
     @pyqtSlot()
