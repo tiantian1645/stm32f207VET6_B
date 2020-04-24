@@ -1222,6 +1222,11 @@ static void motor_Task(void * argument)
                         }
                         cnt += gComm_Data_LED_Voltage_Interval_Get(); /* 增加电压值 */
                         comm_Data_Set_LED_Voltage(radiant, cnt);      /* 调整电压值 */
+                        if ((radiant == eComm_Data_Sample_Radiant_610 && cnt > COMM_DATA_LED_VOLTAGE_MAX_610) || /* 电压越限停止 */
+                            (radiant == eComm_Data_Sample_Radiant_550 && cnt > COMM_DATA_LED_VOLTAGE_MAX_550) ||
+                            (radiant == eComm_Data_Sample_Radiant_405 && cnt > COMM_DATA_LED_VOLTAGE_MAX_405)) {
+                            break;
+                        }
                     }
                 }
                 motor_Tray_Move_By_Index(eTrayIndex_2); /* 出仓 */
