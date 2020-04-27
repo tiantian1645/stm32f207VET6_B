@@ -29,7 +29,7 @@ REAL_BIN_PATH = r"C:\Users\Administrator\STM32CubeIDE\workspace_1.0.2\stm32f207V
 BL_PATH = r"C:\Users\Administrator\STM32CubeIDE\workspace_1.0.2\stm23F207VET6_Bootloader\Debug\stm23F207VET6_Bootloader.bin"
 
 
-def iter_test_bin_FC(file_path=REAL_BIN_PATH, chunk_size=1024):
+def iter_test_bin_FC(file_path=REAL_BIN_PATH, chunk_size=256):
     try:
         with open(file_path, "rb") as f:
             while True:
@@ -49,7 +49,7 @@ def iter_test_bin_FC(file_path=REAL_BIN_PATH, chunk_size=1024):
         logger.error("read file error \n{}".format(stackprinter.format()))
 
 
-def write_firmware_pack_FC(dd, file_path=REAL_BIN_PATH, chunk_size=1024):
+def write_firmware_pack_FC(dd, file_path=REAL_BIN_PATH, chunk_size=256):
     # total = os.path.getsize(REAL_BIN_PATH)
     addr = 0
     pack_index = 1

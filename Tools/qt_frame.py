@@ -1439,7 +1439,10 @@ class MainWindow(QMainWindow):
                 self.firm_wrote_size = 0
                 file_size = os.path.getsize(file_path)
                 self.firm_size = file_size + (256 - file_size % 256)
-                for pack in write_firmware_pack_FC(self.dd, file_path, chunk_size=1024):
+                # 不建议使用过长数据包升级 
+                # 若使用1024长度 升级1804_o.bin 在 0x8900 ～ 0x8C00处
+                # 上位机发送数据包与下位机bootloader接收数据包 不一致
+                for pack in write_firmware_pack_FC(self.dd, file_path, chunk_size=256):
                     self.task_queue.put(pack)
                 self.upgrade_dg_bt.setText("重启中")
                 self.upgrade_dg_bt.setEnabled(False)
