@@ -832,6 +832,9 @@ void protocol_Self_Check_Temp_ENV_FromISR(uint8_t * pBuffer, eProtocol_COMM_Inde
  */
 uint8_t protocol_Parse_Out_ISR(uint8_t * pInBuff, uint16_t length)
 {
+    uint8_t buffer[8];
+    BaseType_t result;
+
     if (pInBuff[4] == PROTOCOL_DEVICE_ID_CTRL) { /* 回声现象 */
         return 0;
     }
@@ -849,7 +852,12 @@ uint8_t protocol_Parse_Out_ISR(uint8_t * pInBuff, uint16_t length)
         return 0;
     }
 
-    comm_Out_SendTask_ACK_QueueEmitFromISR(&pInBuff[3]);
+    buffer[0] = pInBuff[3]; /* 回应ACK号 */
+    result = serialSendStartIT(COMM_OUT_SERIAL_INDEX, buffer, buildPackOrigin(eComm_Out, eProtocolRespPack_Client_ACK, &buffer[0], 1));
+    if (result == pdFALSE) {                                 /* 中断发送失败 */
+        comm_Out_SendTask_ACK_QueueEmitFromISR(&pInBuff[3]); /* 投入发送任务处理 */
+    }
+
     protocol_Parse_Out_Fun_ISR(pInBuff, length);
     return 0;
 }
@@ -1303,6 +1311,9 @@ static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length)
  */
 uint8_t protocol_Parse_Main_ISR(uint8_t * pInBuff, uint16_t length)
 {
+    uint8_t buffer[8];
+    BaseType_t result;
+
     if (pInBuff[4] == PROTOCOL_DEVICE_ID_CTRL) { /* 回声现象 */
         return 0;
     }
@@ -1313,7 +1324,12 @@ uint8_t protocol_Parse_Main_ISR(uint8_t * pInBuff, uint16_t length)
         return 0;                                     /* 直接返回 */
     }
 
-    comm_Main_SendTask_ACK_QueueEmitFromISR(&pInBuff[3]);
+    buffer[0] = pInBuff[3]; /* 回应ACK号 */
+    result = serialSendStartIT(COMM_MAIN_SERIAL_INDEX, buffer, buildPackOrigin(eComm_Main, eProtocolRespPack_Client_ACK, &buffer[0], 1));
+    if (result == pdFALSE) {                                  /* 中断发送失败 */
+        comm_Main_SendTask_ACK_QueueEmitFromISR(&pInBuff[3]); /* 投入发送任务处理 */
+    }
+
     protocol_Parse_Main_Fun_ISR(pInBuff, length);
     return 0;
 }
@@ -1459,6 +1475,8 @@ static void protocol_Parse_Main_Fun_ISR(uint8_t * pInBuff, uint16_t length)
 uint8_t protocol_Parse_Data_ISR(uint8_t * pInBuff, uint16_t length)
 {
     static uint8_t last_ack = 0;
+    uint8_t buffer[8];
+    BaseType_t result;
 
     if (pInBuff[4] == PROTOCOL_DEVICE_ID_CTRL) { /* 回声现象 */
         return 0;
@@ -1469,7 +1487,11 @@ uint8_t protocol_Parse_Data_ISR(uint8_t * pInBuff, uint16_t length)
         return 0;                                     /* 直接返回 */
     }
 
-    comm_Data_SendTask_ACK_QueueEmitFromISR(&pInBuff[3]);
+    buffer[0] = pInBuff[3]; /* 回应ACK号 */
+    result = serialSendStartIT(COMM_DATA_SERIAL_INDEX, buffer, buildPackOrigin(eComm_Data, eProtocolRespPack_Client_ACK, &buffer[0], 1));
+    if (result == pdFALSE) {                                  /* 中断发送失败 */
+        comm_Data_SendTask_ACK_QueueEmitFromISR(&pInBuff[3]); /* 投入发送任务处理 */
+    }
 
     if (last_ack == pInBuff[3]) { /* 收到与上一帧号相同帧 */
         return 0;                 /* 不做处理 */

@@ -119,9 +119,13 @@ BaseType_t comm_Data_DMA_TX_Wait(uint32_t timeout);
 void comm_Data_DMA_RX_Restore(void);
 
 void comm_Data_DMA_TX_CallBack(void);
-BaseType_t comm_Data_DMA_TX_Enter(uint32_t timeout);
 
+BaseType_t comm_Data_DMA_TX_Enter(uint32_t timeout);
 void comm_Data_DMA_TX_Error(void);
+
+BaseType_t comm_Data_DMA_TX_Enter_From_ISR(void);
+void comm_Data_DMA_TX_Error_From_ISR(void);
+
 BaseType_t comm_Data_SendTask_QueueEmit(uint8_t * pdata, uint8_t length, uint32_t timeout);
 #define comm_Data_SendTask_QueueEmitCover(pdata, length) comm_Data_SendTask_QueueEmit((pdata), (length), (COMM_DATA_SER_TX_RETRY_SUM))
 

@@ -19,7 +19,6 @@ extern DMA_HandleTypeDef hdma_usart1_rx;
 extern UART_HandleTypeDef huart5;
 
 /* Private define ------------------------------------------------------------*/
-#define COMM_MAIN_SERIAL_INDEX eSerialIndex_1
 #define COMM_MAIN_UART_HANDLE huart1
 
 /* Private typedef -----------------------------------------------------------*/
@@ -133,6 +132,19 @@ BaseType_t comm_Main_DMA_TX_Wait(uint32_t timeout)
 }
 
 /**
+ * @brief  串口DMA发送开始前准备 中断版本
+ * @param  None
+ * @retval None
+ */
+BaseType_t comm_Main_DMA_TX_Enter_From_ISR(void)
+{
+    if (xSemaphoreTakeFromISR(comm_Main_Send_Sem, NULL) != pdPASS) { /* 确保发送完成信号量被释放 */
+        return pdFALSE; /* 115200波特率下 发送长度少于 256B 长度数据包耗时超过 30mS */
+    }
+    return pdPASS;
+}
+
+/**
  * @brief  串口DMA发送开始前准备
  * @param  timeout 超时时间
  * @retval None
@@ -143,6 +155,16 @@ BaseType_t comm_Main_DMA_TX_Enter(uint32_t timeout)
         return pdFALSE; /* 115200波特率下 发送长度少于 256B 长度数据包耗时超过 30mS */
     }
     return pdPASS;
+}
+
+/**
+ * @brief  串口DMA发送失败后处理 中断版本
+ * @param  None
+ * @retval None
+ */
+void comm_Main_DMA_TX_Error_From_ISR(void)
+{
+    xSemaphoreGiveFromISR(comm_Main_Send_Sem, NULL); /* DMA 发送异常 释放信号量 */
 }
 
 /**

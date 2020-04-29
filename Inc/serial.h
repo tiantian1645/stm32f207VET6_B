@@ -5,6 +5,9 @@
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported defines ----------------------------------------------------------*/
+#define COMM_MAIN_SERIAL_INDEX eSerialIndex_1
+#define COMM_DATA_SERIAL_INDEX eSerialIndex_2
+#define COMM_OUT_SERIAL_INDEX eSerialIndex_5
 
 /* Exported types ------------------------------------------------------------*/
 typedef struct {
@@ -56,5 +59,5 @@ EventBits_t serialSourceFlagsClear(EventBits_t flag_bits);
 void serialGenerateCallback(uint8_t * pBuff, uint16_t length, sSerialRecord * psrd);
 void serialGenerateDealRecv(UART_HandleTypeDef * huart, sDMA_Record * pDMA_Record, DMA_HandleTypeDef * phdma, sSerialRecord * psrd);
 BaseType_t serialSendStartDMA(eSerialIndex serialIndex, uint8_t * pSendBuff, uint8_t sendLength, uint32_t timeout);
-
+BaseType_t serialSendStartIT(eSerialIndex serialIndex, uint8_t * pSendBuff, uint8_t sendLength);
 #endif

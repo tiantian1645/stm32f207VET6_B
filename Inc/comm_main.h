@@ -44,8 +44,12 @@ void comm_Main_DMA_TX_CallBack(void);
 void comm_Main_DMA_RX_Restore(void);
 
 BaseType_t comm_Main_DMA_TX_Wait(uint32_t timeout);
+
 BaseType_t comm_Main_DMA_TX_Enter(uint32_t timeout);
 void comm_Main_DMA_TX_Error(void);
+
+BaseType_t comm_Main_DMA_TX_Enter_From_ISR(void);
+void comm_Main_DMA_TX_Error_From_ISR(void);
 
 UBaseType_t comm_Main_SendTask_Queue_GetWaiting(void);
 UBaseType_t comm_Main_SendTask_Queue_GetFree(void);

@@ -23,7 +23,6 @@ extern UART_HandleTypeDef huart1;
 extern DMA_HandleTypeDef hdma_uart5_rx;
 
 /* Private define ------------------------------------------------------------*/
-#define COMM_OUT_SERIAL_INDEX eSerialIndex_5
 #define COMM_OUT_UART_HANDLE huart5
 
 #define COMM_OUT_SEND_QUEU_LENGTH 14
@@ -137,6 +136,19 @@ BaseType_t comm_Out_DMA_TX_Wait(uint32_t timeout)
 }
 
 /**
+ * @brief  串口DMA发送开始前准备 中断版本
+ * @param  None
+ * @retval None
+ */
+BaseType_t comm_Out_DMA_TX_Enter_From_ISR(void)
+{
+    if (xSemaphoreTakeFromISR(comm_Out_Send_Sem, NULL) != pdPASS) { /* 确保发送完成信号量被释放 */
+        return pdFALSE; /* 115200波特率下 发送长度少于 256B 长度数据包耗时超过 30mS */
+    }
+    return pdPASS;
+}
+
+/**
  * @brief  串口DMA发送开始前准备
  * @param  timeout 超时时间
  * @retval None
@@ -147,6 +159,16 @@ BaseType_t comm_Out_DMA_TX_Enter(uint32_t timeout)
         return pdFALSE;                                                        /* 115200波特率下 发送长度少于 256B 长度数据包耗时超过 30mS */
     }
     return pdPASS;
+}
+
+/**
+ * @brief  串口DMA发送失败后处理 中断版本
+ * @param  None
+ * @retval None
+ */
+void comm_Out_DMA_TX_Error_From_ISR(void)
+{
+	xSemaphoreGiveFromISR(comm_Out_Send_Sem, NULL); /* DMA 发送异常 释放信号量 */
 }
 
 /**
@@ -441,14 +463,10 @@ BaseType_t comm_Out_SendTask_ACK_Consume(uint32_t timeout)
         return pdFAIL;
     }
 
-    for (;;) {
-        xResult = xQueueReceive(comm_Out_ACK_SendQueue, &buffer[0], timeout / COMM_OUT_ACK_SEND_QUEU_LENGTH);
-        if (xResult) {
-            if (serialSendStartDMA(COMM_OUT_SERIAL_INDEX, buffer, buildPackOrigin(eComm_Out, eProtocolRespPack_Client_ACK, &buffer[0], 1), 30)) {
-                comm_Out_DMA_TX_Wait(30);
-            }
-        } else {
-            break;
+    xResult = xQueueReceive(comm_Out_ACK_SendQueue, &buffer[0], timeout);
+    if (xResult) {
+        if (serialSendStartDMA(COMM_OUT_SERIAL_INDEX, buffer, buildPackOrigin(eComm_Out, eProtocolRespPack_Client_ACK, &buffer[0], 1), 30)) {
+            comm_Out_DMA_TX_Wait(30);
         }
     }
 

@@ -455,3 +455,55 @@ BaseType_t serialSendStart(eSerialIndex serialIndex, uint8_t * pSendBuff, uint8_
     }
     return result;
 }
+
+/**
+ * @brief  串口发送启动 中断方式
+ * @param  None
+ * @retval None
+ */
+BaseType_t serialSendStartIT(eSerialIndex serialIndex, uint8_t * pSendBuff, uint8_t sendLength)
+{
+    BaseType_t result;
+
+    switch (serialIndex) {
+        case eSerialIndex_1:
+            if (comm_Main_DMA_TX_Enter_From_ISR() != pdPASS) { /* 确保发送完成信号量被释放 */
+                return pdFALSE;                                /* 115200波特率下 发送长度少于 256B 长度数据包耗时超过 30mS */
+            }
+            result = HAL_UART_Transmit_IT(&huart1, pSendBuff, sendLength);
+            if (result != HAL_OK) {                /* 发送结果判断 异常反应 HAL_BUSY */
+                comm_Main_DMA_TX_Error_From_ISR(); /* 发送失败处理 */
+                return pdFALSE;
+            } else {
+                return pdTRUE;
+            }
+            break;
+        case eSerialIndex_2:
+            if (comm_Data_DMA_TX_Enter_From_ISR() != pdPASS) { /* 确保发送完成信号量被释放 */
+                return pdFALSE;                                /* 115200波特率下 发送长度少于 256B 长度数据包耗时超过 30mS */
+            }
+            result = HAL_UART_Transmit_IT(&huart2, pSendBuff, sendLength);
+            if (result != HAL_OK) {                /* 发送结果判断 异常反应 HAL_BUSY */
+                comm_Data_DMA_TX_Error_From_ISR(); /* 发送失败处理 */
+                return pdFALSE;
+            } else {
+                return pdTRUE;
+            }
+            break;
+        case eSerialIndex_5:
+            if (comm_Out_DMA_TX_Enter_From_ISR() != pdPASS) { /* 确保发送完成信号量被释放 */
+                return pdFALSE;                               /* 115200波特率下 发送长度少于 256B 长度数据包耗时超过 30mS */
+            }
+            result = HAL_UART_Transmit_IT(&huart5, pSendBuff, sendLength);
+            if (result != HAL_OK) {               /* 发送结果判断 异常反应 HAL_BUSY */
+                comm_Out_DMA_TX_Error_From_ISR(); /* 发送失败处理 */
+                return pdFALSE;
+            } else {
+                return pdTRUE;
+            }
+            break;
+        default:
+            return pdFALSE;
+    }
+    return result;
+}
