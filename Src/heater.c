@@ -10,6 +10,7 @@
 #include "heater.h"
 #include "pid_ctrl.h"
 #include "storge_task.h"
+#include "protocol.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim4;
@@ -109,6 +110,9 @@ float heater_BTM_Setpoint_Get(void)
  */
 void heater_BTM_Setpoint_Set(float setpoint)
 {
+    if (protocol_Debug_Temperature()) {
+        return;
+    }
     if (setpoint >= HEATER_BTM_DEFAULT_SETPOINT - 1.5 && setpoint <= HEATER_BTM_DEFAULT_SETPOINT + 1.5) {
         btm_setpoint = setpoint;
     }
@@ -130,6 +134,9 @@ float heater_TOP_Setpoint_Get(void)
  */
 void heater_TOP_Setpoint_Set(float setpoint)
 {
+    if (protocol_Debug_Temperature()) {
+        return;
+    }
     if (setpoint >= HEATER_TOP_DEFAULT_SETPOINT - 1.5 && setpoint <= HEATER_TOP_DEFAULT_SETPOINT + 1.5) {
         top_setpoint = setpoint;
     }
