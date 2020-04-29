@@ -116,7 +116,7 @@ except Exception:
 
 rotation = CONFIG.get("log", {}).get("rotation", "4 MB")
 retention = CONFIG.get("log", {}).get("retention", 16)
-logger.add("./log/dc201.log", rotation=rotation, retention=retention, enqueue=True)
+logger.add("./log/dc201.log", rotation=rotation, retention=retention, enqueue=True, encoding="utf8")
 
 DB_EXCEL_PATH_RE = re.compile(r"s(\d+)n(\d+)")
 TMER_INTERVAL = 200
@@ -1167,7 +1167,7 @@ class MainWindow(QMainWindow):
                 result = ", ".join(f"{i:#5d}" for i in data)
             elif t is float:
                 result = ", ".join(f"{i:7.2f}" for i in data)
-            if len(result) > 150:
+            if len(result) > 250:
                 result = result[:147] + "..."
             return result
 
