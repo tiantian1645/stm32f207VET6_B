@@ -18,8 +18,6 @@ from math import log10, nan
 
 import numpy as np
 import pyperclip
-import qtmodern.styles
-import qtmodern.windows
 import requests
 import serial
 import serial.tools.list_ports
@@ -58,6 +56,8 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+import qtmodern.styles
+import qtmodern.windows
 
 from bytes_helper import bytes2Float, bytesPuttyPrint
 from dc201_pack import DC201_PACK, DC201_ParamInfo, DC201ErrorCode, parse_1440, write_firmware_pack_BL, write_firmware_pack_FC
@@ -120,6 +120,7 @@ logger.add("./log/dc201.log", rotation=rotation, retention=retention, enqueue=Tr
 
 DB_EXCEL_PATH_RE = re.compile(r"s(\d+)n(\d+)")
 TMER_INTERVAL = 200
+APP_BIN_CHUNK_SIZE = 512
 
 
 class QHLine(QFrame):
@@ -519,7 +520,7 @@ class MainWindow(QMainWindow):
         else:
             self.temperautre_lbs[1].setText("数据异常")
             self.temperautre_lbs[1].setStyleSheet("background-color: red;")
-        self.temperature_plot_dg.setWindowTitle(f"温度记录 | 下 {self.temperautre_lbs[0].text()} | 上 {self.temperautre_lbs[1].text()}")
+        self.temperature_plot_dg.setWindowTitle(f"温度记录 | 下 {self.temperautre_lbs[0].text()} | 上 {self.temperautre_lbs[1].text()} | 环境 {self.temperautre_raw_lbs[-1].text()}")
 
     def updateTemperautreRaw(self, info):
         if len(info.content) != 43:
@@ -1438,11 +1439,11 @@ class MainWindow(QMainWindow):
                 self.firm_start_time = time.time()
                 self.firm_wrote_size = 0
                 file_size = os.path.getsize(file_path)
-                self.firm_size = file_size + (256 - file_size % 256)
-                # 不建议使用过长数据包升级 
+                self.firm_size = file_size + (APP_BIN_CHUNK_SIZE - file_size % APP_BIN_CHUNK_SIZE)
+                # 不建议使用过长数据包升级
                 # 若使用1024长度 升级1804_o.bin 在 0x8900 ～ 0x8C00处
                 # 上位机发送数据包与下位机bootloader接收数据包 不一致
-                for pack in write_firmware_pack_FC(self.dd, file_path, chunk_size=256):
+                for pack in write_firmware_pack_FC(self.dd, file_path, chunk_size=APP_BIN_CHUNK_SIZE):
                     self.task_queue.put(pack)
                 self.upgrade_dg_bt.setText("重启中")
                 self.upgrade_dg_bt.setEnabled(False)
