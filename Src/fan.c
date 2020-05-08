@@ -82,11 +82,23 @@ void fan_Adjust(float rate)
  */
 void fan_Ctrl_Deal(float temp_env)
 {
+    GPIO_PinState state;
+
+    state = HAL_GPIO_ReadPin(FAN_EN_GPIO_Port, FAN_EN_Pin);
+
     if (temp_env < 25 || temp_env == TEMP_INVALID_DATA) {
-        fan_Adjust(0.1);
+        if (state == GPIO_PIN_SET) {
+            fan_Stop();
+        }
     } else if (temp_env > 30) {
+        if (state == GPIO_PIN_RESET) {
+            fan_Start();
+        }
         fan_Adjust(1.0);
     } else {
+        if (state == GPIO_PIN_RESET) {
+            fan_Start();
+        }
         fan_Adjust(0.18 * temp_env - 4.4);
     }
 }
