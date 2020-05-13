@@ -520,7 +520,9 @@ class MainWindow(QMainWindow):
         else:
             self.temperautre_lbs[1].setText("数据异常")
             self.temperautre_lbs[1].setStyleSheet("background-color: red;")
-        self.temperature_plot_dg.setWindowTitle(f"温度记录 | 下 {self.temperautre_lbs[0].text()} | 上 {self.temperautre_lbs[1].text()} | 环境 {self.temperautre_raw_lbs[-1].text()}")
+        self.temperature_plot_dg.setWindowTitle(
+            f"温度记录 | 下 {self.temperautre_lbs[0].text()} | 上 {self.temperautre_lbs[1].text()} | 环境 {self.temperautre_raw_lbs[-1].text()}"
+        )
 
     def updateTemperautreRaw(self, info):
         if len(info.content) != 43:
