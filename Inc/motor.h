@@ -108,6 +108,13 @@ typedef enum {
     eMotor_Sampl_Comm_Out,
 } eMotor_Sampl_Comm;
 
+typedef enum {
+    eMotor_Correct_Stary, /* 杂散光测试 */
+    eMotor_Correct_610, /* 定标测试 610 */
+    eMotor_Correct_550, /* 定标测试 550 */
+    eMotor_Correct_405, /* 定标测试 405 */
+}eMotor_Correct;
+
 /* Exported define -----------------------------------------------------------*/
 #define motor_Status_Set_Position(__RUNSTATUS__, __POSITION__) ((__RUNSTATUS__)->position = (__POSITION__))
 #define motor_Status_Set_TickInit(__RUNSTATUS__, __TICKINIT__) ((__RUNSTATUS__)->tick_init = (__TICKINIT__))

@@ -49,15 +49,10 @@ typedef struct {
 typedef struct {
     uint32_t branch;       /* 批次 */
     uint32_t date;         /* 日期 */
-    uint8_t stages[6];     /* 定标段索引 */
+    uint8_t stage;         /* 定标段索引 */
     uint16_t i_values[13]; /* 标段数据 标准机上测试值 13个灯 610 * 6 / 550 * 6 / 405 * 1  */
     uint32_t check;        /* 校验数据 */
 } sBarcodeCorrectInfo;
-
-typedef struct {
-    uint8_t stage;
-    uint16_t i_value;
-} sBarcodeCorrectInfoUnit;
 
 /* Exported constants --------------------------------------------------------*/
 
@@ -86,7 +81,7 @@ void barcode_Scan_Bantch(uint8_t pos_mark, uint8_t scan_mark);
 int32_t barcode_Motor_Read_Position(void);
 
 uint8_t barcode_Scan_Decode_Correct_Info(uint8_t * pBuffer, uint8_t length);
-uint8_t barcode_Scan_Pick_Correct_Info(uint8_t channel, eComm_Data_Sample_Radiant wave, sBarcodeCorrectInfoUnit * pBciu);
+uint8_t barcode_Scan_Get_Correct_Stage(void);
 uint8_t barcode_Scan_Decode_Correct_Info_From_Result(void);
 /* Private defines -----------------------------------------------------------*/
 

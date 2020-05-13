@@ -1458,6 +1458,34 @@ static void protocol_Parse_Main_Fun_ISR(uint8_t * pInBuff, uint16_t length)
                 motor_Emit_FromISR(&motor_fun);                                          /* 提交到电机队列 */
             }
             break;
+        case eProtocolEmitPack_Client_CMD_Debug_Correct:
+            if (length == 8) {
+                gComm_Data_Correct_Flag_Mark();          /* 标记进入定标状态 */
+                motor_fun.fun_type = eMotor_Fun_Correct; /* 电机执行定标 */
+                motor_fun.fun_param_1 = pInBuff[6];      /* 定标段索引偏移 */
+                motor_Emit_FromISR(&motor_fun);
+            }
+            break;
+        case eProtocolEmitPack_Client_CMD_Debug_System: /* 系统控制 */
+            if (length == 7) {                          /* 无参数 重启 */
+                comm_Data_Board_Reset();                /* 重置采样板 */
+                HAL_NVIC_SystemReset();                 /* 重新启动 */
+            } else if (length == 8) {                   /* 单一参数 杂散光测试 灯BP */
+                comm_Data_GPIO_Init();                  /* 初始化通讯管脚 */
+                if (pInBuff[6] == 0) {
+                    motor_fun.fun_type = eMotor_Fun_Stary_Test; /* 杂散光测试 */
+                    motor_Emit_FromISR(&motor_fun);             /* 提交到任务队列 */
+                } else if (pInBuff[6] == 1) {
+                    motor_fun.fun_type = eMotor_Fun_Lamp_BP; /* 灯BP */
+                    motor_Emit_FromISR(&motor_fun);          /* 提交到任务队列 */
+                } else if (pInBuff[6] == 2) {
+                    motor_fun.fun_type = eMotor_Fun_SP_LED; /* LED校正 */
+                    motor_Emit_FromISR(&motor_fun);         /* 提交到任务队列 */
+                }
+            } else {
+                error_Emit_FromISR(eError_Comm_Out_Param_Error);
+            }
+            break;
         default:
             error_Emit_FromISR(eError_Comm_Main_Unknow_CMD);
             break;

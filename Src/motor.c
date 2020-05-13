@@ -726,7 +726,7 @@ void motor_Sample_Owari(void)
  */
 static void motor_Stary_Test(void)
 {
-    uint8_t result, cnt = 0;
+    uint8_t result, cnt = 0, buffer[12];
     BaseType_t xResult = pdFALSE;
     uint32_t xNotifyValue = 0;
     TickType_t xTick;
@@ -760,6 +760,11 @@ static void motor_Stary_Test(void)
         }
         if (cnt > 0) {
             error_Emit(eError_Stary_Incomlete); /* 发送异常 杂散光测试未完成 */
+        } else {
+            buffer[0] = eMotor_Correct_Stary; /* 杂散光测试 */
+            buffer[1] = 0;                    /* 正常 */
+            comm_Main_SendTask_QueueEmitWithBuild(eProtocolEmitPack_Client_CMD_Correct, buffer, 2, 600);
+            comm_Out_SendTask_QueueEmitWithModify(buffer, 2 + 7, 0); /* 转发至外串口但不允许阻塞 */
         }
         white_Motor_WH(); /* 运动白板电机 白板位置 */
     }
@@ -838,9 +843,8 @@ static void motor_Task(void * argument)
     BaseType_t xResult = pdFALSE;
     uint32_t xNotifyValue, cnt = 0;
     sMotor_Fun mf;
-    uint8_t buffer[64];
+    uint8_t buffer[64], stage;
     TickType_t xTick;
-    sBarcodeCorrectInfoUnit correct_info;
     eComm_Data_Sample_Radiant radiant = eComm_Data_Sample_Radiant_610;
 
     led_Mode_Set(eLED_Mode_Keep_Green);    /* LED 绿灯常亮 */
@@ -1125,7 +1129,14 @@ static void motor_Task(void * argument)
                 }
                 led_Mode_Set(eLED_Mode_Kirakira_Red);                                                               /* LED 红灯闪烁 */
                 if (barcode_Scan_QR() != eBarcodeState_OK || barcode_Scan_Decode_Correct_Info_From_Result() != 0) { /* 扫码失败或者解析失败 */
-                    for (cnt = 1; cnt <= 6; ++cnt) {                                                                /* 定标段索引配置 */
+                    if (mf.fun_param_1 >= 12) {
+                        error_Emit(eError_Correct_Info_Lost);   /* 定标信息不足 */
+                        motor_Sample_Owari_Correct();           /* 清理 */
+                        motor_Tray_Move_By_Index(eTrayIndex_2); /* 出仓 */
+                        gComm_Data_Correct_Flag_Clr();          /* 退出定标状态 */
+                        break;
+                    }
+                    for (cnt = 1; cnt <= 6; ++cnt) { /* 定标段索引配置 */
                         if (mf.fun_param_1 < 6) {
                             comm_Data_Set_Corretc_Stage(cnt, (cnt - 1 + mf.fun_param_1) % 6); /* 定标段索引 循环单条 */
                         } else {
@@ -1133,9 +1144,9 @@ static void motor_Task(void * argument)
                         }
                     }
                 } else {
-                    for (cnt = 1; cnt <= 6; ++cnt) {                                                       /* 定标段索引配置 */
-                        barcode_Scan_Pick_Correct_Info(cnt, eComm_Data_Sample_Radiant_610, &correct_info); /* 抽取通道校正信息 */
-                        comm_Data_Set_Corretc_Stage(cnt, correct_info.stage);                              /* 定标段索引 */
+                    stage = barcode_Scan_Get_Correct_Stage();    /* 抽取通道校正段索引 */
+                    for (cnt = 1; cnt <= 6; ++cnt) {             /* 定标段索引配置 */
+                        comm_Data_Set_Corretc_Stage(cnt, stage); /* 定标段索引 */
                     }
                 }
 
@@ -1220,8 +1231,8 @@ static void motor_Task(void * argument)
                             comm_Data_Set_LED_Voltage(radiant, cnt);                                             /* 调整电压值 */
                             break;                                                                               /* 合格即跳出 */
                         }
-                        cnt += gComm_Data_LED_Voltage_Interval_Get(); /* 增加电压值 */
-                        comm_Data_Set_LED_Voltage(radiant, cnt);      /* 调整电压值 */
+                        cnt += gComm_Data_LED_Voltage_Interval_Get();                                            /* 增加电压值 */
+                        comm_Data_Set_LED_Voltage(radiant, cnt);                                                 /* 调整电压值 */
                         if ((radiant == eComm_Data_Sample_Radiant_610 && cnt > COMM_DATA_LED_VOLTAGE_MAX_610) || /* 电压越限停止 */
                             (radiant == eComm_Data_Sample_Radiant_550 && cnt > COMM_DATA_LED_VOLTAGE_MAX_550) ||
                             (radiant == eComm_Data_Sample_Radiant_405 && cnt > COMM_DATA_LED_VOLTAGE_MAX_405)) {

@@ -23,10 +23,13 @@ typedef enum {
     eProtocolEmitPack_Client_CMD_READ_ID = 0x06, /* ID卡读取命令帧 */
     eProtocolEmitPack_Client_CMD_STATUS = 0x07,  /* 状态信息查询帧 (首帧) */
     eProtocolEmitPack_Client_CMD_TEST = 0x08,    /* 工装测试配置帧 */
+    
     eProtocolEmitPack_Client_CMD_UPGRADE = 0x0F, /* 下位机升级命令帧 */
 
     eProtocolEmitPack_Client_CMD_SP_LED_GET = 0x32, /* 采样板LED电压读取 */
     eProtocolEmitPack_Client_CMD_SP_LED_SET = 0x33, /* 采样板LED电压设置*/
+
+    eProtocolEmitPack_Client_CMD_Correct = 0xC0, /* 校正数据 */
 
     eProtocolEmitPack_Client_CMD_Debug_Motor = 0xD0,        /* 调试用 电机控制 */
     eProtocolEmitPack_Client_CMD_Debug_Correct = 0xD2,      /* 调试用 循环定标 */

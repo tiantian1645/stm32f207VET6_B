@@ -884,6 +884,7 @@ static uint32_t barcode_Str_2_Int_Base_16(uint8_t * pBuffer, uint8_t length)
  * @param  pBuffer 数据指针
  * @param  length 数据长度
  * @note   数据包长度应等同 sBarcodeCorrectInfo 数据类型
+ * @note   只支持整条 校正段索引只有一个
  * @retval 0 成功 1 失败
  */
 uint8_t barcode_Scan_Decode_Correct_Info(uint8_t * pBuffer, uint8_t length)
@@ -892,46 +893,39 @@ uint8_t barcode_Scan_Decode_Correct_Info(uint8_t * pBuffer, uint8_t length)
     eStorgeParamIndex idx;
     eComm_Data_Sample_Radiant wave;
 
-    if (pBuffer == NULL || length != 70) {
+    if (pBuffer == NULL || length != 65) {
         return 1;
     }
 
-    gBarcodeCorrectInfo.branch = barcode_Str_2_Int_Base_10(pBuffer, 4);   /* 4位批号 */
-    gBarcodeCorrectInfo.date = barcode_Str_2_Int_Base_10(pBuffer + 4, 6); /* 6位日期 */
-    for (i = 0; i < 6; ++i) {
-        gBarcodeCorrectInfo.stages[i] = barcode_Str_2_Int_Base_10(pBuffer + 10 + i, 1); /* 6位定标段索引 */
-    }
+    gBarcodeCorrectInfo.branch = barcode_Str_2_Int_Base_10(pBuffer, 4);     /* 4位批号 */
+    gBarcodeCorrectInfo.date = barcode_Str_2_Int_Base_10(pBuffer + 4, 6);   /* 6位日期 */
+    gBarcodeCorrectInfo.stage = barcode_Str_2_Int_Base_10(pBuffer + 10, 1); /* 1位定标段索引 */
+
     for (i = 0; i < 13; ++i) {                                                                /* 13个定标点 */
-        gBarcodeCorrectInfo.i_values[i] = barcode_Str_2_Int_Base_16(pBuffer + 16 + 4 * i, 4); /* 每个4位 */
+        gBarcodeCorrectInfo.i_values[i] = barcode_Str_2_Int_Base_16(pBuffer + 11 + 4 * i, 4); /* 每个4位 */
     }
+
     for (i = 0; i < 6; ++i) {                                                                       /* 6个通道 */
-        for (wave = eComm_Data_Sample_Radiant_610; wave <= eComm_Data_Sample_Radiant_550; ++wave) { /* 610 550 */
-            idx = storge_Param_Illumine_CC_Get_Index(i + 1, wave) - 6;               /* 根据通道和波长 得出校正参数标准值索引 */
-            storge_Param_Illumine_CC_Set_Single(idx + gBarcodeCorrectInfo.stages[i], /* 段索引偏移 */
+        for (wave = eComm_Data_Sample_Radiant_610; wave <= eComm_Data_Sample_Radiant_405; ++wave) { /* 610 550 405 */
+            idx = storge_Param_Illumine_CC_Get_Index(i + 1, wave) - 6;           /* 根据通道和波长 得出校正参数标准值索引 */
+            storge_Param_Illumine_CC_Set_Single(idx + gBarcodeCorrectInfo.stage, /* 段索引偏移 */
                                                 gBarcodeCorrectInfo.i_values[(wave - eComm_Data_Sample_Radiant_610) * 6 + i]); /* 设置校正标准值 */
         }
     }
 
-    gBarcodeCorrectInfo.check = barcode_Str_2_Int_Base_16(pBuffer + 68, 2); /* 2位校验位 */
+    gBarcodeCorrectInfo.check = barcode_Str_2_Int_Base_16(pBuffer + 63, 2); /* 2位校验位 */
     return 0;
 }
 
 /**
- * @brief  校正数据抽取
- * @param  channel 通道号 1～6
- * @param  wave 波长 eComm_Data_Sample_Radiant
- * @param  pBciu 输出指针
- * @note   从 gBarcodeCorrectInfo 中抽取通道波长对应校正数据
- * @retval 0 成功 1 参数越限
+ * @brief  校正段索引抽取
+ * @param  None
+ * @note   从 gBarcodeCorrectInfo 中抽取校正段索引
+ * @retval 校正段索引
  */
-uint8_t barcode_Scan_Pick_Correct_Info(uint8_t channel, eComm_Data_Sample_Radiant wave, sBarcodeCorrectInfoUnit * pBciu)
+uint8_t barcode_Scan_Get_Correct_Stage(void)
 {
-    if (channel < 1 || channel > 6 || wave < eComm_Data_Sample_Radiant_610 || wave > eComm_Data_Sample_Radiant_405) { /* 范围检查 */
-        return 1;
-    }
-    pBciu->stage = gBarcodeCorrectInfo.stages[channel - 1];
-    pBciu->i_value = gBarcodeCorrectInfo.i_values[(wave - eComm_Data_Sample_Radiant_610) * 6 + (channel - 1)];
-    return 0;
+    return gBarcodeCorrectInfo.stage;
 }
 
 /**

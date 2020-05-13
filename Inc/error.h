@@ -83,6 +83,7 @@ typedef enum {
     eError_Comm_Main_Source_Lock = 235,               /* 主串口资源被锁 */
     eError_Comm_Out_Source_Lock = 236,                /* 外串口资源被锁 */
     eError_Comm_Data_Source_Lock = 237,               /* 采样板串口资源被锁 */
+    eError_Correct_Info_Lost = 238,                   /* 定标信息不足 */
 
     /* 周期性上送异常 */
     eError_Temperature_Top_Abnormal = 300, /* 上加热体温度异常 */

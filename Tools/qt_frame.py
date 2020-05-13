@@ -1414,6 +1414,8 @@ class MainWindow(QMainWindow):
             self.updateOutFlashData(info)
         elif cmd_type == 0xB7:
             self.updateVersionLabel(info)
+        elif cmd_type == 0xC0:
+            logger.success(f"recv pack from correct | {info.text}")
         elif cmd_type == 0xD0:
             self.updateMotorDebug(info)
         elif cmd_type == 0xD3:
@@ -2826,7 +2828,7 @@ class MainWindow(QMainWindow):
         self.debugtest_bt.setMaximumWidth(50)
         self.debugtest_sp = QSpinBox()
         self.debugtest_sp.setMaximumWidth(35)
-        self.debugtest_sp.setRange(1, 12)
+        self.debugtest_sp.setRange(1, 13)
         self.debugtest_cnt = 0
         boot_ly.addWidget(self.upgrade_bt)
         boot_ly.addWidget(self.bootload_bt)
@@ -2843,9 +2845,9 @@ class MainWindow(QMainWindow):
         self.selftest_bt.mousePressEvent = self.onSelfCheck
 
     def onDebugTest(self, event):
-        value = self.debugtest_sp.value()
+        value = self.debugtest_sp.value() - 1
         self.onCorrectMatplotStart()
-        self._serialSendPack(0xD2, (value - 1,))
+        self._serialSendPack(0xD2, (value,))
 
     def getErrorContent(self, error_code):
         for i in DC201ErrorCode:
