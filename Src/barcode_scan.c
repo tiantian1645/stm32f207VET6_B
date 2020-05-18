@@ -904,6 +904,7 @@ uint8_t barcode_Scan_Decode_Correct_Info(uint8_t * pBuffer, uint8_t length)
     for (i = 0; i < 13; ++i) {                                                                /* 13个定标点 */
         gBarcodeCorrectInfo.i_values[i] = barcode_Str_2_Int_Base_16(pBuffer + 11 + 4 * i, 4); /* 每个4位 */
     }
+    gBarcodeCorrectInfo.check = barcode_Str_2_Int_Base_16(pBuffer + 63, 2); /* 2位校验位 */
 
     for (i = 0; i < 6; ++i) {                                                                       /* 6个通道 */
         for (wave = eComm_Data_Sample_Radiant_610; wave <= eComm_Data_Sample_Radiant_405; ++wave) { /* 610 550 405 */
@@ -913,7 +914,6 @@ uint8_t barcode_Scan_Decode_Correct_Info(uint8_t * pBuffer, uint8_t length)
         }
     }
 
-    gBarcodeCorrectInfo.check = barcode_Str_2_Int_Base_16(pBuffer + 63, 2); /* 2位校验位 */
     return 0;
 }
 
