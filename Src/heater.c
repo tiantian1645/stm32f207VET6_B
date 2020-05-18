@@ -36,6 +36,7 @@ static sPID_Ctrl_Conf gHeater_TOP_PID_Conf;
 
 static uint8_t gHeater_Overshoot_Flag = 0;
 static uint8_t gHeater_Outdoor_Flag = 0;
+
 // Control loop input,output and setpoint variables
 static float btm_input = 0, btm_output = 0, btm_setpoint = HEATER_BTM_DEFAULT_SETPOINT;
 static float top_input = 0, top_output = 0, top_setpoint = HEATER_TOP_DEFAULT_SETPOINT;
@@ -252,7 +253,7 @@ void heater_TOP_Conf_Set(eHeater_PID_Conf offset, float data)
 
 /**
  * @brief  下加热体 PWM 输出占空比调整
- * @note   范围 0 ~ 100
+ * @note   范围 0 ~ 1
  * @param  pr 浮点数形式占空比
  * @retval None
  */
@@ -292,7 +293,7 @@ void heater_BTM_Output_Stop(void)
  */
 uint8_t heater_BTM_Output_Is_Live(void)
 {
-    return HEATER_BTM_TIM.Instance->CR1 == TIM_CR1_CEN;
+    return (HEATER_BTM_TIM.Instance->CR1 & TIM_CR1_CEN) == TIM_CR1_CEN;
 }
 
 /**
@@ -327,7 +328,7 @@ void heater_BTM_Output_Keep_Deal(void)
             heater_BTM_Output_Ctl(0);
         } else {
             env_temp = temp_Get_Temp_Data_ENV();
-            if (env_temp < 24) {
+            if (env_temp < 24 && env_temp > -7) {
                 btm_input = btm_input - (24 - env_temp) * (24 - env_temp) * 0.0020;
             }
             // Compute new PID output value
@@ -345,7 +346,7 @@ void heater_BTM_Log_PID(void)
 
 /**
  * @brief  上加热体 PWM 输出占空比调整
- * @note   范围 0 ~ 100
+ * @note   范围 0 ~ 1
  * @param  pr 浮点数形式占空比
  * @retval None
  */
@@ -385,7 +386,7 @@ void heater_TOP_Output_Stop(void)
  */
 HAL_TIM_StateTypeDef heater_TOP_Output_Is_Live(void)
 {
-    return HEATER_TOP_TIM.Instance->CR1 == TIM_CR1_CEN;
+    return (HEATER_TOP_TIM.Instance->CR1 & TIM_CR1_CEN) == TIM_CR1_CEN;
 }
 
 /**
@@ -420,7 +421,7 @@ void heater_TOP_Output_Keep_Deal(void)
             heater_TOP_Output_Ctl(0);
         } else {
             env_temp = temp_Get_Temp_Data_ENV();
-            if (env_temp < 24) {
+            if (env_temp < 24 && env_temp > -7) {
                 top_input = top_input - (24 - env_temp) * (24 - env_temp) * 0.0020;
             }
             // Compute new PID output value
