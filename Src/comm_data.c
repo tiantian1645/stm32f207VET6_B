@@ -1277,6 +1277,20 @@ BaseType_t comm_Data_Conf_LED_Voltage_Set_FromISR(uint8_t * pData)
 }
 
 /**
+ * @brief  采样板工装PD测试设置 中断版本
+ * @note   采样板工装PD测试设置
+ * @param  * pData 电测试设置参数 uint8_t array[1]  0 结束 1 启动
+ * @retval pdPASS 提交成功 pdFALSE 提交失败
+ */
+BaseType_t comm_Data_Conf_FA_PD_Set_FromISR(uint8_t * pData)
+{
+    uint8_t sendLength;
+
+    sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_FA_PD_SET, pData, 1); /* 构造测试配置包 */
+    return comm_Data_SendTask_QueueEmit_FromISR(pData, sendLength);
+}
+
+/**
  * @brief  发送杂散光测试包
  * @note   开始杂散光测试 耗时15秒
  * @retval pdPASS 提交成功 pdFALSE 提交失败

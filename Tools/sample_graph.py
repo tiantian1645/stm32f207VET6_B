@@ -157,11 +157,33 @@ class SampleGraph:
         pdc.data.append(data)
         pdc.plot.setData(pdc.data)
 
+    def plot_data_bantch_update(self, idx, data_list):
+        if idx >= len(self.plot_data_confs):
+            return False
+        pdc = self.plot_data_confs[idx]
+        for data in data_list:
+            pdc.data.append(data)
+        pdc.plot.setData(pdc.data)
+
     def clear_plot(self):
         self.plot_data_confs.clear()
         self.plot.clear()
         self.plot.addItem(self.vLine, ignoreBounds=True)
         self.plot.addItem(self.hLine, ignoreBounds=True)
+
+    def hide_plot(self, idx):
+        if idx >= len(self.plot_data_confs):
+            logger.error(f"index error {idx} | {len(self.plot_data_confs)}")
+            return False
+        self.plot_data_confs[idx].plot.curve.hide()
+        self.plot_data_confs[idx].plot.scatter.hide()
+
+    def show_plot(self, idx):
+        if idx >= len(self.plot_data_confs):
+            logger.error(f"index error {idx} | {len(self.plot_data_confs)}")
+            return False
+        self.plot_data_confs[idx].plot.curve.show()
+        self.plot_data_confs[idx].plot.scatter.show()
 
     def mouseMoved(self, evt):
         # logger.debug(f"get evt in mouseMoved | {evt}")

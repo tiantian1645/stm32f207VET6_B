@@ -99,12 +99,13 @@ class SerialRecvWorker(QRunnable):
                             self.serial.write(write_data)
                             self.serial_lock.unlock()
                             self.signals.serial_statistic.emit(("w", write_data))
-                            logger.info(f"reply ack pack | {bytesPuttyPrint(write_data)} --> {info.text}")
+                            if fun_code not in (0x34, ):
+                                logger.info(f"reply ack pack | {bytesPuttyPrint(write_data)} --> {info.text}")
                             self.signals.result.emit(info)
                         if fun_code in self.need_henji:
                             # logger.info(f"put henji | self.need_henji {self._str_Henji()} | fun_code 0x{fun_code:02X} | write cmd 0x{self.temp_wrote[5]:02X}")
                             self.henji_queue.put(info)
-                        elif fun_code not in (0xAA, 0xA0, 0xEE, 0xD0):
+                        elif fun_code not in (0xAA, 0xA0, 0xEE, 0xD0, 0x34):
                             logger.debug(f"no put to henji | self.need_henji {self._str_Henji()} | info {info.text}")
                 if info is not None:
                     if info.is_head and info.is_crc and info.is_tail:

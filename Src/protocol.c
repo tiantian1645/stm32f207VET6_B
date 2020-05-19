@@ -1296,6 +1296,9 @@ static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length)
         case eProtocolEmitPack_Client_CMD_SP_LED_SET:
             comm_Data_Conf_LED_Voltage_Set_FromISR(&pInBuff[6]);
             break;
+        case eProtocolEmitPack_Client_CMD_FA_PD_SET:
+            comm_Data_Conf_FA_PD_Set_FromISR(&pInBuff[6]);
+            break;
         default:
             error_Emit_FromISR(eError_Comm_Out_Unknow_CMD);
             break;
@@ -1597,6 +1600,9 @@ static void protocol_Parse_Data_Fun_ISR(uint8_t * pInBuff, uint16_t length)
             break;
         case eComm_Data_Inbound_CMD_LED_GET:
             comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_LED_Get, &pInBuff[6], length - 7); /* 转发至外串口 */
+            break;
+        case eComm_Data_Inbound_CMD_FA_DEBUG:
+            comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_FA_PD, &pInBuff[6], length - 7); /* 转发至外串口 */
             break;
         default:
             error_Emit_FromISR(eError_Comm_Data_Unknow_CMD);

@@ -2866,7 +2866,7 @@ class MainWindow(QMainWindow):
         error_code = struct.unpack("H", info.content[6:8])[0]
         error_content = self.getErrorContent(error_code)
         level = QMessageBox.Warning
-        msg = ModernMessageBox(self, timeout=3)
+        msg = ModernMessageBox(self, timeout=nan)
         msg.setIcon(level)
         msg.setWindowTitle(f"故障信息 | {datetime.now()}")
         msg.setText(f"故障码 {error_code}\n{error_content}")

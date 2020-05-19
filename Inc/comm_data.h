@@ -80,19 +80,21 @@ typedef struct {
 } sComm_Data_Sample;
 
 typedef enum {
-    eComm_Data_Outbound_CMD_CONF = 0x26,    /* 测试项信息帧 */
-    eComm_Data_Outbound_CMD_START = 0x27,   /* 采样开始控制帧 */
-    eComm_Data_Outbound_CMD_STRAY = 0x28,   /* 杂散光采集帧 */
-    eComm_Data_Outbound_CMD_TEST = 0x30,    /* 工装测试配置帧 */
-    eComm_Data_Outbound_CMD_LED_GET = 0x32, /* LED电压读取 */
-    eComm_Data_Outbound_CMD_LED_SET = 0x33, /* LED电压设置 */
+    eComm_Data_Outbound_CMD_CONF = 0x26,      /* 测试项信息帧 */
+    eComm_Data_Outbound_CMD_START = 0x27,     /* 采样开始控制帧 */
+    eComm_Data_Outbound_CMD_STRAY = 0x28,     /* 杂散光采集帧 */
+    eComm_Data_Outbound_CMD_TEST = 0x30,      /* 工装测试配置帧 */
+    eComm_Data_Outbound_CMD_LED_GET = 0x32,   /* LED电压读取 */
+    eComm_Data_Outbound_CMD_LED_SET = 0x33,   /* LED电压设置 */
+    eComm_Data_Outbound_CMD_FA_PD_SET = 0x34, /* 工装PD测试 */
 } eComm_Data_Outbound_CMD;
 
 typedef enum {
-    eComm_Data_Inbound_CMD_DATA = 0xB3,    /* 采集数据帧 */
-    eComm_Data_Inbound_CMD_OVER = 0x34,    /* 采集数据完成帧 */
-    eComm_Data_Inbound_CMD_ERROR = 0xB5,   /* 错误信息帧 */
-    eComm_Data_Inbound_CMD_LED_GET = 0x32, /* LED电压读取 */
+    eComm_Data_Inbound_CMD_DATA = 0xB3,     /* 采集数据帧 */
+    eComm_Data_Inbound_CMD_OVER = 0x34,     /* 采集数据完成帧 */
+    eComm_Data_Inbound_CMD_ERROR = 0xB5,    /* 错误信息帧 */
+    eComm_Data_Inbound_CMD_LED_GET = 0x32,  /* LED电压读取 */
+    eComm_Data_Inbound_CMD_FA_DEBUG = 0xD3, /* 工装PD采样输出 */
 } eComm_Data_Inbound_CMD;
 
 typedef struct {
@@ -173,6 +175,8 @@ BaseType_t comm_Data_Conf_LED_Voltage_Get(void);
 BaseType_t comm_Data_Conf_LED_Voltage_Get_FromISR(void);
 BaseType_t comm_Data_Conf_LED_Voltage_Set(uint8_t * pData);
 BaseType_t comm_Data_Conf_LED_Voltage_Set_FromISR(uint8_t * pData);
+
+BaseType_t comm_Data_Conf_FA_PD_Set_FromISR(uint8_t * pData);
 
 BaseType_t comm_Data_Sample_Owari(void);
 
