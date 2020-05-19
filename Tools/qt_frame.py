@@ -2144,7 +2144,7 @@ class MainWindow(QMainWindow):
             total_seconds = (datetime_obj - self.device_datetime).total_seconds()
             logger.debug(f"{self.device_datetime} | {datetime_obj} | {total_seconds}")
             if total_seconds < 10:
-                self.upgrade_dg.setWindowTitle(f"固件升级 | 无可更新版本")
+                self.upgrade_dg.setWindowTitle("固件升级 | 无可更新版本")
                 return
             r_file_path = f"data/{filename}"
             with open(r_file_path, "wb") as f:
@@ -2154,7 +2154,7 @@ class MainWindow(QMainWindow):
             self.last_firm_path = file_path
             self.upgrade_dg.setWindowTitle(f"固件升级 | {self._getFileHash_SHA256(file_path)}")
         else:
-            self.upgrade_dg.setWindowTitle(f"固件升级 | 检查失败")
+            self.upgrade_dg.setWindowTitle("固件升级 | 检查失败")
 
     def onSampleOver(self):
         self.stop_matplot_timer()
@@ -2347,7 +2347,7 @@ class MainWindow(QMainWindow):
                 if j == 0:
                     channel = f"通道{i + 1}"
                 else:
-                    channel = f"     "
+                    channel = "     "
                 temp_ly.addWidget(QLabel(f"{channel} {wave}"))
                 for k in range(6):
                     temp_ly.addWidget(QVLine())
@@ -2508,8 +2508,8 @@ class MainWindow(QMainWindow):
         if error_flag is False:
             msg = ModernMessageBox(self)
             msg.setIcon(QMessageBox.Information)
-            msg.setWindowTitle(f"定标数据正常")
-            msg.setText(f">1600")
+            msg.setWindowTitle("定标数据正常")
+            msg.setText(">1600")
             msg.show()
 
     def updateFlashCC_Plot(self, refresh=True):
@@ -2852,11 +2852,11 @@ class MainWindow(QMainWindow):
     def getErrorContent(self, error_code):
         for i in DC201ErrorCode:
             if error_code == i.value[0]:
-                logger.debug(f"hit error | {i.value[0]:05d} | {i.value[1]}")
+                logger.error(f"hit error | {i.value[0]:05d} | {i.value[1]}")
                 return i.value[1]
         for i in (DC201ErrorCode.eError_Comm_Main_UART, DC201ErrorCode.eError_Comm_Data_UART, DC201ErrorCode.eError_Comm_Out_UART):
             if (error_code >> 10) > 0 and error_code & 0xFF == i.value[0]:
-                logger.debug(f"hit serial dma error | {i.value[0]:05d} | {i.value[1]}")
+                logger.error(f"hit serial dma error | {i.value[0]:05d} | {i.value[1]}")
                 return f"{i.value[1]} | 硬件故障码 0x{(error_code >> 10):02X}"
 
         logger.error(f"unknow error code | {error_code}")
