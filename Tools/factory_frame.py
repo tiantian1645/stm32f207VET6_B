@@ -126,13 +126,13 @@ class MainWindow(QMainWindow):
     def create_ctl_gb(self):
         self.ctl_gb = QGroupBox("控制")
         layout = QVBoxLayout(self.ctl_gb)
-        self.selftest_ctl_pd_bt = QPushButton("&PD启动", checkable=True, toggled=self.on_selftest_pd_debug)
+        self.selftest_ctl_pd_bt = QPushButton("&PD测试", clicked=self.on_selftest_pd_debug)
         layout.addWidget(self.selftest_ctl_pd_bt)
-        self.selftest_ctl_clr_bt = QPushButton("&清除数据", checkable=True, toggled=self.on_selftest_clr_plot)
+        self.selftest_ctl_clr_bt = QPushButton("&清除数据", clicked=self.on_selftest_clr_plot)
         layout.addWidget(self.selftest_ctl_clr_bt)
-        self.selftest_all_test_bt = QPushButton("&全检", checkable=True, toggled=self.on_selftest_all_test)
+        self.selftest_all_test_bt = QPushButton("&全检", clicked=self.on_selftest_all_test)
         layout.addWidget(self.selftest_all_test_bt)
-        self.selftest_reboot_bt = QPushButton("&重启", checkable=True, toggled=self._reboot_board)
+        self.selftest_reboot_bt = QPushButton("&重启", clicked=self._reboot_board)
         layout.addWidget(self.selftest_reboot_bt)
 
     def create_serial_gb(self):
@@ -478,11 +478,11 @@ class MainWindow(QMainWindow):
     def parse_PD_Data(self, info):
         payload_byte = info.content[6:-1]
         logger.debug(f"recv pd debug payload_byte | {len(payload_byte)}")
-        num = len(payload_byte) // 6 // 4
-        for i in range(6):
-            raw_data = [struct.unpack("f", payload_byte[24 * j + 4 * i : 24 * j + 4 * i + 4])[0] for j in range(num)]
-            logger.debug(f"channel {i + 1} | raw data {raw_data}")
-            self.pd_plot_graph.plot_data_bantch_update(i, raw_data)
+        channel = payload_byte[0]
+        num = (len(payload_byte) - 1) // 4
+        raw_data = [struct.unpack("I", payload_byte[1 + 4 * j : 5 + 4 * j])[0] for j in range(num)]
+        logger.success(f"channel {channel} | num {num} | raw data {raw_data}")
+        self.pd_plot_graph.plot_data_bantch_update(channel - 1, raw_data)
 
     def onSerialStatistic(self, info):
         if info[0] == "w" and time.time() - self.kirakira_recv_time > 0.1:
@@ -745,13 +745,7 @@ class MainWindow(QMainWindow):
         self._serialSendPack(0xDA, (0x0B, 4))
 
     def on_selftest_pd_debug(self, event):
-        logger.debug(f"clicked pd toggle | {event}")
-        if event:
-            self.selftest_ctl_pd_bt.setText("PD停止")
-            self._serialSendPack(0x34, (1,))
-        else:
-            self.selftest_ctl_pd_bt.setText("PD启动")
-            self._serialSendPack(0x34, (0,))
+        self._serialSendPack(0x34, (1,))
 
     def on_selftest_clr_plot(self, event):
         self.pd_plot_graph.clear_plot()
