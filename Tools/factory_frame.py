@@ -81,6 +81,9 @@ class MainWindow(QMainWindow):
         self.task_queue = queue.Queue()
         self.henji_queue = queue.Queue()
         self.serial = serial.Serial(port=None, baudrate=115200, timeout=0.01)
+        self.temp_timer = QTimer()
+        self.temp_timer_ask_index = 0
+        self.temp_timer.timeout.connect(self.on_selftest_temp_ask)
         self.init_UI()
 
     def create_plot(self):
@@ -190,6 +193,7 @@ class MainWindow(QMainWindow):
             self.serial_send_worker.signals.result.connect(self.onSerialSendWorkerResult)
             self.threadpool.start(self.serial_send_worker)
             self._getStatus()
+            self.temp_timer.start(1500)
             logger.info(f"port update {old_port} --> {self.serial.port}")
         else:
             self.serial_recv_worker.signals.owari.emit()
@@ -199,6 +203,7 @@ class MainWindow(QMainWindow):
             self.serial_post_co.setEnabled(True)
             self.serial_refresh_bt.setEnabled(True)
             self.serial_switch_bt.setText("打开串口")
+            self.temp_timer.stop()
 
     def _getHeater(self):
         self._serialSendPack(0xD3)
@@ -552,21 +557,24 @@ class MainWindow(QMainWindow):
         selftest_temp_ly = QGridLayout()
         self.selftest_temp_top_gb = QGroupBox("上温度")
         self.selftest_temp_top_gb.setLayout(QVBoxLayout())
-        self.selftest_temp_top_gb.layout().setContentsMargins(3, 3, 3, 3)
+        self.selftest_temp_top_gb.layout().setSpacing(0)
+        self.selftest_temp_top_gb.layout().setContentsMargins(0, 0, 0, 0)
         for lb in self.selftest_temp_lbs[0:6]:
             lb.setAlignment(Qt.AlignCenter)
             lb.mouseReleaseEvent = self.onSelftest_temp_top_gb_Clicked
             self.selftest_temp_top_gb.layout().addWidget(lb)
         self.selftest_temp_btm_gb = QGroupBox("下温度")
         self.selftest_temp_btm_gb.setLayout(QVBoxLayout())
-        self.selftest_temp_btm_gb.layout().setContentsMargins(3, 3, 3, 3)
+        self.selftest_temp_btm_gb.layout().setSpacing(0)
+        self.selftest_temp_btm_gb.layout().setContentsMargins(0, 0, 0, 0)
         for lb in self.selftest_temp_lbs[6:8]:
             lb.setAlignment(Qt.AlignCenter)
             lb.mouseReleaseEvent = self.onSelftest_temp_btm_gb_Clicked
             self.selftest_temp_btm_gb.layout().addWidget(lb)
         self.selftest_temp_env_gb = QGroupBox("环境")
         self.selftest_temp_env_gb.setLayout(QVBoxLayout())
-        self.selftest_temp_env_gb.layout().setContentsMargins(3, 3, 3, 3)
+        self.selftest_temp_env_gb.layout().setSpacing(0)
+        self.selftest_temp_env_gb.layout().setContentsMargins(0, 0, 0, 0)
         for lb in self.selftest_temp_lbs[8:9]:
             lb.setAlignment(Qt.AlignCenter)
             lb.mouseReleaseEvent = self.onSelftest_temp_env_gb_Clicked
@@ -804,6 +812,15 @@ class MainWindow(QMainWindow):
         sender = self.sender()
         idx = self.selftest_motor_bts[4:6].index(sender)
         self._serialSendPack(0xD0, (3, idx))
+
+    def on_selftest_temp_ask(self):
+        if self.temp_timer_ask_index % 3 == 0:
+            self._serialSendPack(0xDA, (0x01,))
+        elif self.temp_timer_ask_index % 3 == 1:
+            self._serialSendPack(0xDA, (0x02,))
+        elif self.temp_timer_ask_index % 3 == 2:
+            self._serialSendPack(0xDA, (0x03,))
+        self.temp_timer_ask_index += 1
 
 
 if __name__ == "__main__":
