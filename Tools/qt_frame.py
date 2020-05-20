@@ -1748,18 +1748,21 @@ class MainWindow(QMainWindow):
         self._serialSendPack(0xDA, (0x05,))
 
     def onSelftest_lamp_610_gb_Clicked(self, event):
-        for lb in self.selftest_lamp_610_lbs:
+        for idx, lb in enumerate(self.selftest_lamp_610_lbs):
             self._setColor(lb)
+            lb.setText(f"{idx + 1}")
         self._serialSendPack(0xDA, (0x0B, 1))
 
     def onSelftest_lamp_550_gb_Clicked(self, event):
-        for lb in self.selftest_lamp_550_lbs:
+        for idx, lb in enumerate(self.selftest_lamp_550_lbs):
             self._setColor(lb)
+            lb.setText(f"{idx + 1}")
         self._serialSendPack(0xDA, (0x0B, 2))
 
     def onSelftest_lamp_405_gb_Clicked(self, event):
-        for lb in self.selftest_lamp_405_lbs:
+        for idx, lb in enumerate(self.selftest_lamp_405_lbs):
             self._setColor(lb)
+            lb.setText(f"{idx + 1}")
         self._serialSendPack(0xDA, (0x0B, 4))
 
     def createSelfCheckDialog(self):
@@ -1856,12 +1859,12 @@ class MainWindow(QMainWindow):
         self.selftest_lamp_610_gb.layout().setSpacing(5)
         self.selftest_lamp_550_gb = QGroupBox("550")
         self.selftest_lamp_550_gb.setLayout(QHBoxLayout())
-        self.selftest_lamp_610_gb.layout().setContentsMargins(0, 3, 0, 3)
-        self.selftest_lamp_610_gb.layout().setSpacing(5)
+        self.selftest_lamp_550_gb.layout().setContentsMargins(0, 3, 0, 3)
+        self.selftest_lamp_550_gb.layout().setSpacing(5)
         self.selftest_lamp_405_gb = QGroupBox("405")
         self.selftest_lamp_405_gb.setLayout(QHBoxLayout())
-        self.selftest_lamp_610_gb.layout().setContentsMargins(0, 3, 0, 3)
-        self.selftest_lamp_610_gb.layout().setSpacing(5)
+        self.selftest_lamp_405_gb.layout().setContentsMargins(0, 3, 0, 3)
+        self.selftest_lamp_405_gb.layout().setSpacing(5)
 
         self.selftest_lamp_610_lbs = []
         self.selftest_lamp_550_lbs = []
@@ -1986,7 +1989,7 @@ class MainWindow(QMainWindow):
                     logger.error(f"get raw byte in self check barcode | {bytesPuttyPrint(raw_bytes[9 : 9 + raw_bytes[8]])}")
                 self._setColor(self.selftest_motor_scan_l, nbg="red")
                 self.selftest_motor_scan_gb.setStyleSheet("QGroupBox:title {color: red};")
-                text = bytesPuttyPrint(raw_bytes)
+                text = bytesPuttyPrint(raw_bytes[6:-1])
                 self.selftest_motor_scan_l.setText(text)
             else:
                 try:
@@ -2012,20 +2015,29 @@ class MainWindow(QMainWindow):
                 self.selftest_lamp_610_gb.setToolTip(f"{[i for i in values[0:6]]}, {now}")
                 mi, ma = (min(CONFIG["pd_criterion"]["610"]), max(CONFIG["pd_criterion"]["610"]))
                 for idx, v in enumerate(values[0:6]):
+                    self.selftest_lamp_610_lbs[idx].setText(f"{idx+1}: {v:>8d}")
                     if v > ma or v < mi:
                         self._setColor(self.selftest_lamp_610_lbs[idx], nbg="red")
+                    else:
+                        self._setColor(self.selftest_lamp_610_lbs[idx], nbg="green")
             if mask & 0x02:
                 self.selftest_lamp_550_gb.setToolTip(f"{[i for i in values[6:12]]}, {now}")
                 mi, ma = (min(CONFIG["pd_criterion"]["550"]), max(CONFIG["pd_criterion"]["550"]))
                 for idx, v in enumerate(values[6:12]):
+                    self.selftest_lamp_550_lbs[idx].setText(f"{idx+1}: {v:>8d}")
                     if v > ma or v < mi:
                         self._setColor(self.selftest_lamp_550_lbs[idx], nbg="red")
+                    else:
+                        self._setColor(self.selftest_lamp_550_lbs[idx], nbg="green")
             if mask & 0x04:
                 self.selftest_lamp_405_gb.setToolTip(f"{[i for i in values[12:]]}, {now}")
                 mi, ma = (min(CONFIG["pd_criterion"]["405"]), max(CONFIG["pd_criterion"]["405"]))
                 for idx, v in enumerate(values[12:]):
+                    self.selftest_lamp_405_lbs[idx].setText(f"{idx+1}: {v:>8d}")
                     if v > ma or v < mi:
                         self._setColor(self.selftest_lamp_405_lbs[idx], nbg="red")
+                    else:
+                        self._setColor(self.selftest_lamp_405_lbs[idx], nbg="green")
 
     def onSelfCheck(self, event):
         button = event.button()
@@ -2033,6 +2045,15 @@ class MainWindow(QMainWindow):
         if button == Qt.LeftButton:
             for lb in self.selftest_temp_lbs:
                 lb.setText("**.**")
+            for idx, lb in enumerate(self.selftest_lamp_610_lbs):
+                self._setColor(lb)
+                lb.setText(f"{idx + 1}")
+            for idx, lb in enumerate(self.selftest_lamp_550_lbs):
+                self._setColor(lb)
+                lb.setText(f"{idx + 1}")
+            for idx, lb in enumerate(self.selftest_lamp_405_lbs):
+                self._setColor(lb)
+                lb.setText(f"{idx + 1}")
             self._clear_widget_style_sheet(self.selftest_temp_top_gb)
             self._clear_widget_style_sheet(self.selftest_temp_btm_gb)
             self._clear_widget_style_sheet(self.selftest_temp_env_gb)
