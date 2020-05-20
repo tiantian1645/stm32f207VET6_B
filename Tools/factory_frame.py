@@ -344,34 +344,34 @@ class MainWindow(QMainWindow):
                 self.selftest_motor_white_gb.setStyleSheet("QGroupBox:title {color: red};")
             else:
                 self.selftest_motor_white_gb.setStyleSheet("QGroupBox:title {color: green};")
-            for i, lb in enumerate(self.selftest_motor_lbs[4:6]):
+            for i, lb in enumerate(self.selftest_motor_bts[4:6]):
                 data = raw_bytes[8 + i]
                 if data == 0:
-                    self._setColor(lb, nbg="green")
+                    self._set_btn_color(lb, bg="green")
                 else:
-                    self._setColor(lb, nbg="red")
+                    self._set_btn_color(lb, bg="red")
         elif item == 7:
             if result > 0:
                 self.selftest_motor_heater_gb.setStyleSheet("QGroupBox:title {color: red};")
             else:
                 self.selftest_motor_heater_gb.setStyleSheet("QGroupBox:title {color: green};")
-            for i, lb in enumerate(self.selftest_motor_lbs[0:2]):
+            for i, lb in enumerate(self.selftest_motor_bts[0:2]):
                 data = raw_bytes[8 + i]
                 if data == 0:
-                    self._setColor(lb, nbg="green")
+                    self._set_btn_color(lb, bg="green")
                 else:
-                    self._setColor(lb, nbg="red")
+                    self._set_btn_color(lb, bg="red")
         elif item == 8:
             if result > 0:
                 self.selftest_motor_tray_gb.setStyleSheet("QGroupBox:title {color: red};")
             else:
                 self.selftest_motor_tray_gb.setStyleSheet("QGroupBox:title {color: green};")
-            for i, lb in enumerate(self.selftest_motor_lbs[2:4]):
+            for i, lb in enumerate(self.selftest_motor_bts[2:4]):
                 data = raw_bytes[8 + i]
                 if data == 0:
-                    self._setColor(lb, nbg="green")
+                    self._set_btn_color(lb, bg="green")
                 else:
-                    self._setColor(lb, nbg="red")
+                    self._set_btn_color(lb, bg="red")
         elif item == 9:
             if result > 0:
                 self._setColor(self.selftest_motor_scan_m, nbg="red")
@@ -471,11 +471,11 @@ class MainWindow(QMainWindow):
         msg.show()
 
     def parse_PD_Data(self, info):
-        payload_byte = info.content[6: -1]
+        payload_byte = info.content[6:-1]
         logger.debug(f"recv pd debug payload_byte | {len(payload_byte)}")
         num = len(payload_byte) // 6 // 4
         for i in range(6):
-            raw_data = [struct.unpack("f", payload_byte[24 * j + 4 * i: 24 * j + 4 * i + 4])[0] for j in range(num)]
+            raw_data = [struct.unpack("f", payload_byte[24 * j + 4 * i : 24 * j + 4 * i + 4])[0] for j in range(num)]
             logger.debug(f"channel {i + 1} | raw data {raw_data}")
             self.pd_plot_graph.plot_data_bantch_update(i, raw_data)
 
@@ -505,6 +505,12 @@ class MainWindow(QMainWindow):
             wg.setStyleSheet("")
         else:
             wg.setStyleSheet(f"background-color: {bg}; color: {fg}")
+
+    def _set_btn_color(self, btn, bg=None):
+        if not bg:
+            btn.setStyleSheet("background-color: light gray")
+        else:
+            btn.setStyleSheet(f"background-color: {bg};")
 
     def _clear_widget_style_sheet(self, widget):
         widget.setStyleSheet("")
@@ -570,28 +576,31 @@ class MainWindow(QMainWindow):
         selftest_temp_ly.addWidget(self.selftest_temp_env_gb, 4, 1, 2, 1)
 
         selftest_motor_ly = QGridLayout()
-        self.selftest_motor_lbs = [QLabel(t) for t in ("上", "下", "进", "出", "PD", "白")]
+        self.selftest_motor_bts = [QPushButton(t, maximumWidth=30) for t in ("上", "下", "进", "出", "PD", "白")]
         self.selftest_motor_heater_gb = QGroupBox("上加热体")
         self.selftest_motor_heater_gb.setLayout(QHBoxLayout())
         self.selftest_motor_heater_gb.layout().setContentsMargins(3, 3, 3, 3)
-        for lb in self.selftest_motor_lbs[0:2]:
-            lb.setAlignment(Qt.AlignCenter)
-            lb.mouseReleaseEvent = self.onSelftest_motor_heater_gb_Clicked
-            self.selftest_motor_heater_gb.layout().addWidget(lb)
+        for bt in self.selftest_motor_bts[0:2]:
+            bt.clicked.connect(self.onSelftest_motor_heater_gb_Clicked)
+            bt.setContextMenuPolicy(Qt.CustomContextMenu)
+            bt.customContextMenuRequested.connect(self.on_selftest_motor_heater_clicked)
+            self.selftest_motor_heater_gb.layout().addWidget(bt)
         self.selftest_motor_tray_gb = QGroupBox("托盘")
         self.selftest_motor_tray_gb.setLayout(QHBoxLayout())
         self.selftest_motor_tray_gb.layout().setContentsMargins(3, 3, 3, 3)
-        for lb in self.selftest_motor_lbs[2:4]:
-            lb.setAlignment(Qt.AlignCenter)
-            lb.mouseReleaseEvent = self.onSelftest_motor_tray_gb_Clicked
-            self.selftest_motor_tray_gb.layout().addWidget(lb)
+        for bt in self.selftest_motor_bts[2:4]:
+            bt.clicked.connect(self.onSelftest_motor_tray_gb_Clicked)
+            bt.setContextMenuPolicy(Qt.CustomContextMenu)
+            bt.customContextMenuRequested.connect(self.on_selftest_motor_tray_clicked)
+            self.selftest_motor_tray_gb.layout().addWidget(bt)
         self.selftest_motor_white_gb = QGroupBox("白板")
         self.selftest_motor_white_gb.setLayout(QHBoxLayout())
         self.selftest_motor_white_gb.layout().setContentsMargins(3, 3, 3, 3)
-        for lb in self.selftest_motor_lbs[4:6]:
-            lb.setAlignment(Qt.AlignCenter)
-            lb.mouseReleaseEvent = self.onSelftest_motor_white_gb_Clicked
-            self.selftest_motor_white_gb.layout().addWidget(lb)
+        for bt in self.selftest_motor_bts[4:6]:
+            bt.clicked.connect(self.onSelftest_motor_white_gb_Clicked)
+            bt.setContextMenuPolicy(Qt.CustomContextMenu)
+            bt.customContextMenuRequested.connect(self.on_selftest_motor_white_clicked)
+            self.selftest_motor_white_gb.layout().addWidget(bt)
         self.selftest_motor_scan_gb = QGroupBox("扫码")
         self.selftest_motor_scan_gb.setLayout(QVBoxLayout())
         self.selftest_motor_scan_gb.layout().setContentsMargins(3, 3, 3, 3)
@@ -654,10 +663,12 @@ class MainWindow(QMainWindow):
             self.selftest_lamp_405_lbs.append(lb)
         selftest_lamp_ly.addWidget(self.selftest_lamp_610_gb, 0, 0, 6, 1)
         selftest_lamp_ly.addWidget(self.selftest_lamp_550_gb, 0, 1, 6, 1)
-        selftest_lamp_ly.addWidget(self.selftest_lamp_405_gb, 6, 0, 2, 1)
+        selftest_lamp_ly.addWidget(self.selftest_lamp_405_gb, 6, 0, 1, 1)
         self.selftest_lamp_610_gb.mouseReleaseEvent = self.onSelftest_lamp_610_gb_Clicked
         self.selftest_lamp_550_gb.mouseReleaseEvent = self.onSelftest_lamp_550_gb_Clicked
         self.selftest_lamp_405_gb.mouseReleaseEvent = self.onSelftest_lamp_405_gb_Clicked
+        self.selftest_lamp_all_bt = QPushButton("全波长", checkable=True, toggled=self.on_selftest_lamp_all)
+        selftest_lamp_ly.addWidget(self.selftest_lamp_all_bt, 6, 1, 1, 1)
 
         selftest_wg_ly.addLayout(selftest_temp_ly)
         selftest_wg_ly.addLayout(selftest_motor_ly)
@@ -763,6 +774,36 @@ class MainWindow(QMainWindow):
         self._setColor(self.selftest_storge_lb_f)
         self._setColor(self.selftest_storge_lb_c)
         self._serialSendPack(0xDA)
+
+    def on_selftest_lamp_all(self, event):
+        for idx, lb in enumerate(self.selftest_lamp_610_lbs):
+            self._setColor(lb)
+            lb.setText(f"{idx + 1}")
+        for idx, lb in enumerate(self.selftest_lamp_550_lbs):
+            self._setColor(lb)
+            lb.setText(f"{idx + 1}")
+        for idx, lb in enumerate(self.selftest_lamp_405_lbs):
+            self._setColor(lb)
+            lb.setText(f"{idx + 1}")
+        self._serialSendPack(0xDA, (0x0B, 7))
+
+    def on_selftest_motor_heater_clicked(self, event):
+        sender = self.sender()
+        idx = self.selftest_motor_bts[0:2].index(sender)
+        self._serialSendPack(0xD0, (2, idx))
+
+    def on_selftest_motor_tray_clicked(self, event):
+        sender = self.sender()
+        idx = self.selftest_motor_bts[2:4].index(sender)
+        if idx == 0:
+            self._serialSendPack(0x05)
+        else:
+            self._serialSendPack(0x04)
+
+    def on_selftest_motor_white_clicked(self, event):
+        sender = self.sender()
+        idx = self.selftest_motor_bts[4:6].index(sender)
+        self._serialSendPack(0xD0, (3, idx))
 
 
 if __name__ == "__main__":
