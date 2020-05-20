@@ -1167,7 +1167,7 @@ static void motor_Task(void * argument)
                     gStorgeTaskInfoLockWait(3000);                                                         /* 等待参数保存完毕 */
                     buffer[0] = radiant;                                                                   /* 波长 */
                     buffer[1] = 0;                                                                         /* 正常 */
-                    buffer[2] = stage;                                                                         /* 校正段索引 */
+                    buffer[2] = stage;                                                                     /* 校正段索引 */
                     if (radiant == eComm_Data_Sample_Radiant_610 || radiant == eComm_Data_Sample_Radiant_550) {
                         cnt = 6;
                     } else {
