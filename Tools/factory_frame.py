@@ -246,18 +246,11 @@ class MainWindow(QMainWindow):
     def _reboot_board(self):
         self._serialSendPack(0xDC)
 
-    def _fa_pd_ctl(self, stop=True):
-        if stop:
-            self._serialSendPack(0x34, (0,))
-        else:
-            self._serialSendPack(0x34, (1,))
-
     def _getStatus(self):
         self._serialSendPack(0x07)
         self._getHeater()
         self._getDebuFlag()
         self._getDeviceID()
-        self._fa_pd_ctl()
 
     def _clearTaskQueue(self):
         while True:
