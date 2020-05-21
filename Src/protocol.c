@@ -1299,6 +1299,13 @@ static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length)
         case eProtocolEmitPack_Client_CMD_FA_PD_SET:
             comm_Data_Conf_FA_PD_Set_FromISR(&pInBuff[6]);
             break;
+        case eProtocolEmitPack_Client_CMD_FA_LED_SET:
+            if (length != 7 + 2) {
+                error_Emit_FromISR(eError_Comm_Out_Param_Error);
+                break;
+            } 
+            comm_Data_Conf_FA_LED_Set_FromISR(&pInBuff[6]);
+            break;
         default:
             error_Emit_FromISR(eError_Comm_Out_Unknow_CMD);
             break;

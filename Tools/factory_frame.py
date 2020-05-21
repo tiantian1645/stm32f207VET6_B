@@ -12,6 +12,7 @@ from PyQt5.QtGui import QIcon, QPalette
 from PyQt5.QtWidgets import (
     QApplication,
     QComboBox,
+    QCheckBox,
     QDesktopWidget,
     QFrame,
     QGridLayout,
@@ -21,6 +22,7 @@ from PyQt5.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QSpinBox,
     QStatusBar,
     QVBoxLayout,
     QWidget,
@@ -122,6 +124,31 @@ class MainWindow(QMainWindow):
         self.status_bar.addWidget(self.device_id_lb, 0)
 
         self.setStatusBar(self.status_bar)
+
+    def create_led_gb(self):
+        self.led_gb = QGroupBox("LED")
+        layout = QGridLayout(self.led_gb)
+        self.led_dac_sps = [QSpinBox(minimum=0, maximum=800, value=10, singleStep=5) for i in range(3)]
+        layout.addWidget(QLabel("610"), 0, 0)
+        layout.addWidget(QLabel("550"), 1, 0)
+        layout.addWidget(QLabel("405"), 2, 0)
+        for i in range(3):
+            sp = self.led_dac_sps[i]
+            layout.addWidget(sp, i, 1)
+        self.led_cks = []
+        for i in range(13):
+            c = QCheckBox()
+            self.led_cks.append(c)
+            if i < 6:
+                layout.addWidget(c, 0, 2 + i % 6)
+            elif i < 12:
+                layout.addWidget(c, 1, 2 + i % 6)
+            else:
+                layout.addWidget(c, 2, 2 + i % 6)
+        self.led_set_bt = QPushButton("设置", maximumWidth=40, clicked=self.on_led_set)
+        self.led_reset_bt = QPushButton("重置", maximumWidth=40, clicked=self.on_led_reset)
+        layout.addWidget(self.led_set_bt, 2, 3, 1, 2)
+        layout.addWidget(self.led_reset_bt, 2, 5, 1, 2)
 
     def create_ctl_gb(self):
         self.ctl_gb = QGroupBox("控制")
@@ -289,6 +316,8 @@ class MainWindow(QMainWindow):
             self.udpateDeviceIDLabel(info)
         elif cmd_type == 0xB5:
             self.showWarnInfo(info)
+        elif cmd_type == 0x32:
+            self.updatLED_DAC(info)
         elif cmd_type == 0x34:
             self.parse_PD_Data(info)
         else:
@@ -537,11 +566,13 @@ class MainWindow(QMainWindow):
         self.create_selftest_wg()
         self.create_serial_gb()
         self.create_ctl_gb()
+        self.create_led_gb()
         self.create_status_bar()
         self.create_plot()
         left_ly.addWidget(self.selftest_wg, 0, 0, 8, 2)
-        left_ly.addWidget(self.serial_gb, 8, 0, 3, 1)
-        left_ly.addWidget(self.ctl_gb, 8, 1, 3, 1)
+        left_ly.addWidget(self.led_gb, 8, 0, 3, 2)
+        left_ly.addWidget(self.serial_gb, 11, 0, 3, 1)
+        left_ly.addWidget(self.ctl_gb, 11, 1, 3, 1)
         layout.addLayout(left_ly)
         layout.addWidget(self.pd_plot_wg)
         self.setCentralWidget(widget)
@@ -815,6 +846,36 @@ class MainWindow(QMainWindow):
         elif self.temp_timer_ask_index % 3 == 2:
             self._serialSendPack(0xDA, (0x03,))
         self.temp_timer_ask_index += 1
+
+    def led_dac_set(self):
+        data = bytearray()
+        for idx, sp in enumerate(self.led_dac_sps):
+            data += struct.pack("H", sp.value())
+        self._serialSendPack(0x33, data)
+
+    def on_led_set(self, event=None):
+        mask = 0
+        for i, c in enumerate(self.led_cks):
+            if c.checkState():
+                mask |= (1 << i)
+        data = struct.pack("H", mask)
+        self._serialSendPack(0x35, (*data, ))
+        QTimer.singleShot(300, self.led_dac_set)
+        QTimer.singleShot(800, self.on_led_dac_value_read)
+
+    def on_led_dac_value_read(self, event=None):
+        self._serialSendPack(0x32)
+
+    def updatLED_DAC(self, info):
+        for i, sp in enumerate(self.led_dac_sps):
+            sp.setValue(int.from_bytes(info.content[6 + i * 2 : 8 + i * 2], byteorder="little"))
+
+    def on_led_reset(self, event):
+        for idx, sp in enumerate(self.led_dac_sps):
+            sp.setValue(10)
+        for i, c in enumerate(self.led_cks):
+            c.setCheckState(False)
+        self.on_led_set()
 
 
 if __name__ == "__main__":
