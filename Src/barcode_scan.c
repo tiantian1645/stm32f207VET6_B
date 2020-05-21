@@ -90,6 +90,12 @@ const char BAR_SAM_AMY_[] = "1411190601";
 const char BAR_SAM_UA__[] = "1413190703";
 const char BAR_SAM_CREA[] = "1418190602";
 const char BAR_SAM_QR__[] = "6882190918202303039503500200020004500560020000000400001170301020000000008";
+const char BAR_DEBUG_QR_0[] = "00012005210042103FB04160417040904450B3E0B080B0A0B5A0AEE0B160000C4";
+const char BAR_DEBUG_QR_2[] = "000120052110A840A810A790A800A680A7A11C411C011D111D311D911CB0000F0";
+const char BAR_DEBUG_QR_4[] = "0001200521212341278123512511219123019BC19C8199419B319A51994000086";
+const char BAR_DEBUG_QR_6[] = "0001200521319F71A221A481A1919EA1A24222021F721E821E921F021E20000EF";
+const char BAR_DEBUG_QR_8[] = "000120052142159214F2186215E2171211C29A429E929DC29DA294929DC000011";
+const char BAR_DEBUG_QR_10[] = "00012005215281027DF284B2831276E2812318C31B931ED319B31B131690000F7";
 
 const uint8_t BAR_CODE_PROTOCOL_CLOSE_SCAN[] = {0x08, 0xC6, 0x04, 0x00, 0xFF, 0xF0, 0x32, 0x00, 0xFD, 0x0D}; //关闭瞄准器
 const uint8_t BAR_CODE_PROTOCOL_ACK[] = {0x04, 0xD0, 0x00, 0x00, 0xFF, 0x2C};                                //正常回应
@@ -571,7 +577,7 @@ eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index)
 {
     eBarcodeState result;
     sBarcoderesult * pResult;
-    uint8_t max_read_length, idx;
+    uint8_t max_read_length, idx, buffer[80];
 
     switch (index) {
         case eBarcodeIndex_0:
@@ -617,24 +623,31 @@ eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index)
         pResult->length = 0;
         pResult->state = eBarcodeState_Error;
     } else {
-        pResult->state = barcode_Read_From_Serial(&(pResult->length), pResult->pData + 2, max_read_length, 360);     /* 第一次扫描 */
+        pResult->state = barcode_Read_From_Serial(&(pResult->length), pResult->pData, max_read_length, 360);     /* 第一次扫描 */
         if (pResult->length < 10) {                                                                                  /* 扫描结果为空 */
             vTaskDelay(100);                                                                                         /* 延时 */
-            pResult->state = barcode_Read_From_Serial(&(pResult->length), pResult->pData + 2, max_read_length, 720); /* 第二次扫描 */
+            pResult->state = barcode_Read_From_Serial(&(pResult->length), pResult->pData, max_read_length, 720); /* 第二次扫描 */
         }
         if (pResult->state != eBarcodeState_Error) {
-            pResult->pData[0] = idx;
-            pResult->pData[1] = pResult->length;
             if (index != eBarcodeIndex_6 || pResult->length > 0) {
+                buffer[0] = idx;
+                buffer[1] = pResult->length;
+                memcpy(buffer + 2, pResult->pData, pResult->length);
                 if (comm_Main_SendTask_Queue_GetWaiting() <= COMM_MAIN_SEND_QUEU_LENGTH - 6) {
-                    comm_Main_SendTask_QueueEmitWithBuild(eProtocolRespPack_Client_BARCODE, pResult->pData, pResult->length + 2, 0);
-                    comm_Out_SendTask_QueueEmitWithModify(pResult->pData, pResult->length + 2 + 7, 0);
+                    comm_Main_SendTask_QueueEmitWithBuild(eProtocolRespPack_Client_BARCODE, buffer, pResult->length + 2, 0);
+                    comm_Out_SendTask_QueueEmitWithModify(buffer, pResult->length + 2 + 7, 0);
                 } else {
-                    comm_Out_SendTask_QueueEmitWithBuild(eProtocolRespPack_Client_BARCODE, pResult->pData, pResult->length + 2, 0);
+                    comm_Out_SendTask_QueueEmitWithBuild(eProtocolRespPack_Client_BARCODE, buffer, pResult->length + 2, 0);
                 }
             }
         }
     }
+
+//    if (index == eBarcodeIndex_6) {
+//		pResult->length = 65;
+//		memcpy(pResult->pData, BAR_DEBUG_QR_2, 65);
+//		pResult->state = eBarcodeState_OK;
+//    }
     return pResult->state;
 }
 
@@ -885,7 +898,7 @@ static uint32_t barcode_Str_2_Int_Base_16(uint8_t * pBuffer, uint8_t length)
  * @param  length 数据长度
  * @note   数据包长度应等同 sBarcodeCorrectInfo 数据类型
  * @note   只支持整条 校正段索引只有一个
- * @retval 0 成功 1 失败
+ * @retval 0 成功 1 数据包异常 2 参数异常
  */
 uint8_t barcode_Scan_Decode_Correct_Info(uint8_t * pBuffer, uint8_t length)
 {
@@ -899,12 +912,16 @@ uint8_t barcode_Scan_Decode_Correct_Info(uint8_t * pBuffer, uint8_t length)
 
     gBarcodeCorrectInfo.branch = barcode_Str_2_Int_Base_10(pBuffer, 4);     /* 4位批号 */
     gBarcodeCorrectInfo.date = barcode_Str_2_Int_Base_10(pBuffer + 4, 6);   /* 6位日期 */
-    gBarcodeCorrectInfo.stage = barcode_Str_2_Int_Base_10(pBuffer + 10, 1); /* 1位定标段索引 */
+    gBarcodeCorrectInfo.stage = barcode_Str_2_Int_Base_10(pBuffer + 10, 1); /* 1位定标段索引 0 ~ 5 */
 
     for (i = 0; i < 13; ++i) {                                                                /* 13个定标点 */
         gBarcodeCorrectInfo.i_values[i] = barcode_Str_2_Int_Base_16(pBuffer + 11 + 4 * i, 4); /* 每个4位 */
     }
     gBarcodeCorrectInfo.check = barcode_Str_2_Int_Base_16(pBuffer + 63, 2); /* 2位校验位 */
+
+    if (gBarcodeCorrectInfo.stage > 5 || CRC8(pBuffer, length - 2) != gBarcodeCorrectInfo.check) {
+        return 2;
+    }
 
     for (i = 0; i < 6; ++i) {                                                                       /* 6个通道 */
         for (wave = eComm_Data_Sample_Radiant_610; wave <= eComm_Data_Sample_Radiant_405; ++wave) { /* 610 550 405 */

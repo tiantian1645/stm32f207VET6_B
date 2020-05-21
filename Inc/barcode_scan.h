@@ -7,8 +7,8 @@
 /* Private includes ----------------------------------------------------------*/
 
 /* Exported macro ------------------------------------------------------------*/
-#define BARCODE_QR_LENGTH 120
-#define BARCODE_BA_LENGTH 20
+#define BARCODE_QR_LENGTH 65
+#define BARCODE_BA_LENGTH 10
 #define BARCODE_INDEX_NUM 6
 
 /* Exported types ------------------------------------------------------------*/

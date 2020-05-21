@@ -1147,7 +1147,7 @@ uint8_t comm_Data_Get_Corretc_Stage(uint8_t channel)
 /**
  * @brief  校正段索引配置设置
  * @param  uint8_t channel 通道号 1 ~ 6
- * @param  uint8_t idx 校正段索引
+ * @param  uint8_t idx 校正段索引 0 ~ 5
  * @retval gComm_Data_Correct_stages
  */
 void comm_Data_Set_Corretc_Stage(uint8_t channel, uint8_t idx)

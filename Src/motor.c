@@ -469,7 +469,7 @@ void motor_Init(void)
     if (motor_Fun_Queue_Handle == NULL) {
         Error_Handler();
     }
-    if (xTaskCreate(motor_Task, "Motor Task", 264, NULL, TASK_PRIORITY_MOTOR, &motor_Task_Handle) != pdPASS) {
+    if (xTaskCreate(motor_Task, "Motor Task", 288, NULL, TASK_PRIORITY_MOTOR, &motor_Task_Handle) != pdPASS) {
         Error_Handler();
     }
 }
