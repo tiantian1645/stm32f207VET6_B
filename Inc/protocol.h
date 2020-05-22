@@ -86,7 +86,8 @@ typedef enum {
     eProtocol_Debug_SampleMotorTray = (1 << 3),
     eProtocol_Debug_SampleRawData = (1 << 4),
     eProtocol_Debug_AgingLoop = (1 << 5),
-    eProtocol_Debug_Item_Num = (1 << 6),
+    eProtocol_Debug_Factory_Temp = (1 << 6),
+    eProtocol_Debug_Item_Num = (1 << 7),
 } eProtocol_Debug_Item;
 
 /* Exported defines ----------------------------------------------------------*/
@@ -99,6 +100,7 @@ uint8_t protocol_Debug_SampleBarcode(void);
 uint8_t protocol_Debug_SampleMotorTray(void);
 uint8_t protocol_Debug_SampleRawData(void);
 uint8_t protocol_Debug_AgingLoop(void);
+uint8_t protocol_Debug_Factory_Temp(void);
 void protocol_Debug_Mark(eProtocol_Debug_Item item);
 void protocol_Debug_Clear(eProtocol_Debug_Item item);
 
@@ -121,4 +123,5 @@ void protocol_Temp_Upload_Resume(void);
 void protocol_Temp_Upload_Pause(void);
 void protocol_Temp_Upload_Comm_Set(eProtocol_COMM_Index comm_index, uint8_t sw);
 void protocol_Temp_Upload_Deal(void);
+void protocol_Self_Check_Temp_ALL(void);
 #endif

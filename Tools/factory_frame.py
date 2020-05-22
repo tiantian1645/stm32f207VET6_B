@@ -83,9 +83,6 @@ class MainWindow(QMainWindow):
         self.task_queue = queue.Queue()
         self.henji_queue = queue.Queue()
         self.serial = serial.Serial(port=None, baudrate=115200, timeout=0.01)
-        self.temp_timer = QTimer()
-        self.temp_timer_ask_index = 0
-        self.temp_timer.timeout.connect(self.on_selftest_temp_ask)
         self.init_UI()
 
     def create_plot(self):
@@ -128,31 +125,40 @@ class MainWindow(QMainWindow):
     def create_led_gb(self):
         self.led_gb = QGroupBox("LED")
         layout = QGridLayout(self.led_gb)
+        layout.setContentsMargins(1, 1, 1, 1)
+        layout.setSpacing(1)
+        gbs = [QGroupBox(name) for name in ("610", "550", "405")]
+        lys = [QHBoxLayout(gb) for gb in gbs]
         self.led_dac_sps = [QSpinBox(minimum=0, maximum=800, value=10, singleStep=5) for i in range(3)]
-        layout.addWidget(QLabel("610"), 0, 0)
-        layout.addWidget(QLabel("550"), 1, 0)
-        layout.addWidget(QLabel("405"), 2, 0)
-        for i in range(3):
+        for i, ly in enumerate(lys):
             sp = self.led_dac_sps[i]
-            layout.addWidget(sp, i, 1)
+            ly.addWidget(sp)
+            ly.setContentsMargins(1, 1, 1, 1)
+            ly.setSpacing(1)
         self.led_cks = []
         for i in range(13):
             c = QCheckBox()
             self.led_cks.append(c)
             if i < 6:
-                layout.addWidget(c, 0, 2 + i % 6)
+                lys[0].addWidget(QLabel(f"{i % 6 + 1}"), Qt.AlignCenter)
+                lys[0].addWidget(c, Qt.AlignCenter)
             elif i < 12:
-                layout.addWidget(c, 1, 2 + i % 6)
+                lys[1].addWidget(QLabel(f"{i % 6 + 1}"), Qt.AlignCenter)
+                lys[1].addWidget(c, Qt.AlignCenter)
             else:
-                layout.addWidget(c, 2, 2 + i % 6)
+                lys[2].addWidget(QLabel(f"{i % 6 + 1}"), Qt.AlignCenter)
+                lys[2].addWidget(c, Qt.AlignCenter)
         self.led_set_bt = QPushButton("设置", maximumWidth=40, clicked=self.on_led_set)
         self.led_reset_bt = QPushButton("重置", maximumWidth=40, clicked=self.on_led_reset)
-        layout.addWidget(self.led_set_bt, 2, 3, 1, 2)
-        layout.addWidget(self.led_reset_bt, 2, 5, 1, 2)
+        layout.addWidget(gbs[0], 0, 0, 1, 6)
+        layout.addWidget(gbs[1], 0, 6, 1, 6)
+        layout.addWidget(gbs[2], 0, 12, 1, 2)
+        layout.addWidget(self.led_set_bt, 0, 14, 1, 1)
+        layout.addWidget(self.led_reset_bt, 0, 15, 1, 1)
 
     def create_ctl_gb(self):
         self.ctl_gb = QGroupBox("控制")
-        layout = QVBoxLayout(self.ctl_gb)
+        layout = QHBoxLayout(self.ctl_gb)
         self.selftest_ctl_pd_bt = QPushButton("&PD测试", clicked=self.on_selftest_pd_debug)
         layout.addWidget(self.selftest_ctl_pd_bt)
         self.selftest_ctl_clr_bt = QPushButton("&清除数据", clicked=self.on_selftest_clr_plot)
@@ -164,16 +170,16 @@ class MainWindow(QMainWindow):
 
     def create_serial_gb(self):
         self.serial_gb = QGroupBox("串口")
-        serial_ly = QGridLayout(self.serial_gb)
+        serial_ly = QHBoxLayout(self.serial_gb)
         serial_ly.setContentsMargins(3, 3, 3, 3)
         serial_ly.setSpacing(0)
         self.serial_switch_bt = QPushButton("打开串口")
         self.serial_refresh_bt = QPushButton("刷新(F5)", shortcut="F5")
         self.serial_post_co = QComboBox()
         self.serialRefreshPort()
-        serial_ly.addWidget(self.serial_post_co, 0, 0, 1, 1)
-        serial_ly.addWidget(self.serial_refresh_bt, 1, 0, 1, 1)
-        serial_ly.addWidget(self.serial_switch_bt, 2, 0, 1, 1)
+        serial_ly.addWidget(self.serial_post_co)
+        serial_ly.addWidget(self.serial_refresh_bt)
+        serial_ly.addWidget(self.serial_switch_bt)
         self.serial_refresh_bt.clicked.connect(self.onSerialRefresh)
         self.serial_switch_bt.setCheckable(True)
         self.serial_switch_bt.clicked.connect(self.onSerialSwitch)
@@ -220,7 +226,6 @@ class MainWindow(QMainWindow):
             self.serial_send_worker.signals.result.connect(self.onSerialSendWorkerResult)
             self.threadpool.start(self.serial_send_worker)
             self._getStatus()
-            self.temp_timer.start(1500)
             logger.info(f"port update {old_port} --> {self.serial.port}")
         else:
             self.serial_recv_worker.signals.owari.emit()
@@ -230,7 +235,6 @@ class MainWindow(QMainWindow):
             self.serial_post_co.setEnabled(True)
             self.serial_refresh_bt.setEnabled(True)
             self.serial_switch_bt.setText("打开串口")
-            self.temp_timer.stop()
 
     def _getHeater(self):
         self._serialSendPack(0xD3)
@@ -371,7 +375,7 @@ class MainWindow(QMainWindow):
                 self.selftest_motor_white_gb.setStyleSheet("QGroupBox:title {color: red};")
             else:
                 self.selftest_motor_white_gb.setStyleSheet("QGroupBox:title {color: green};")
-            for i, lb in enumerate(self.selftest_motor_bts[4:6]):
+            for i, lb in enumerate(self.selftest_motor_white_bts[:2]):
                 data = raw_bytes[8 + i]
                 if data == 0:
                     self._set_btn_color(lb, bg="green")
@@ -382,7 +386,7 @@ class MainWindow(QMainWindow):
                 self.selftest_motor_heater_gb.setStyleSheet("QGroupBox:title {color: red};")
             else:
                 self.selftest_motor_heater_gb.setStyleSheet("QGroupBox:title {color: green};")
-            for i, lb in enumerate(self.selftest_motor_bts[0:2]):
+            for i, lb in enumerate(self.selftest_motor_heater_bts[:2]):
                 data = raw_bytes[8 + i]
                 if data == 0:
                     self._set_btn_color(lb, bg="green")
@@ -393,7 +397,7 @@ class MainWindow(QMainWindow):
                 self.selftest_motor_tray_gb.setStyleSheet("QGroupBox:title {color: red};")
             else:
                 self.selftest_motor_tray_gb.setStyleSheet("QGroupBox:title {color: green};")
-            for i, lb in enumerate(self.selftest_motor_bts[2:4]):
+            for i, lb in enumerate(self.selftest_motor_tray_bts[:2]):
                 data = raw_bytes[8 + i]
                 if data == 0:
                     self._set_btn_color(lb, bg="green")
@@ -437,7 +441,7 @@ class MainWindow(QMainWindow):
                 self.selftest_lamp_610_gb.setToolTip(f"{[i for i in values[0:6]]}, {now}")
                 mi, ma = (min(CONFIG["pd_criterion"]["610"]), max(CONFIG["pd_criterion"]["610"]))
                 for idx, v in enumerate(values[0:6]):
-                    self.selftest_lamp_610_lbs[idx].setText(f"{idx+1}: {v:>8d}")
+                    self.selftest_lamp_610_lbs[idx].setText(f"{v}")
                     if v > ma or v < mi:
                         self._setColor(self.selftest_lamp_610_lbs[idx], nbg="red")
                     else:
@@ -446,7 +450,7 @@ class MainWindow(QMainWindow):
                 self.selftest_lamp_550_gb.setToolTip(f"{[i for i in values[6:12]]}, {now}")
                 mi, ma = (min(CONFIG["pd_criterion"]["550"]), max(CONFIG["pd_criterion"]["550"]))
                 for idx, v in enumerate(values[6:12]):
-                    self.selftest_lamp_550_lbs[idx].setText(f"{idx+1}: {v:>8d}")
+                    self.selftest_lamp_550_lbs[idx].setText(f"{v}")
                     if v > ma or v < mi:
                         self._setColor(self.selftest_lamp_550_lbs[idx], nbg="red")
                     else:
@@ -455,7 +459,7 @@ class MainWindow(QMainWindow):
                 self.selftest_lamp_405_gb.setToolTip(f"{[i for i in values[12:]]}, {now}")
                 mi, ma = (min(CONFIG["pd_criterion"]["405"]), max(CONFIG["pd_criterion"]["405"]))
                 for idx, v in enumerate(values[12:]):
-                    self.selftest_lamp_405_lbs[idx].setText(f"{idx+1}: {v:>8d}")
+                    self.selftest_lamp_405_lbs[idx].setText(f"{v}")
                     if v > ma or v < mi:
                         self._setColor(self.selftest_lamp_405_lbs[idx], nbg="red")
                     else:
@@ -554,22 +558,22 @@ class MainWindow(QMainWindow):
 
     def init_UI(self):
         widget = QWidget()
-        layout = QHBoxLayout(widget)
-        left_ly = QGridLayout()
+        layout = QVBoxLayout(widget)
+        ctl_layout = QGridLayout()
         self.create_selftest_wg()
         self.create_serial_gb()
         self.create_ctl_gb()
         self.create_led_gb()
         self.create_status_bar()
         self.create_plot()
-        left_ly.addWidget(self.selftest_wg, 0, 0, 8, 2)
-        left_ly.addWidget(self.led_gb, 8, 0, 3, 2)
-        left_ly.addWidget(self.serial_gb, 11, 0, 3, 1)
-        left_ly.addWidget(self.ctl_gb, 11, 1, 3, 1)
-        layout.addLayout(left_ly)
+        ctl_layout.addWidget(self.selftest_wg, 0, 0, 3, 8)
+        ctl_layout.addWidget(self.led_gb, 3, 0, 1, 8)
+        ctl_layout.addWidget(self.serial_gb, 4, 0, 1, 3)
+        ctl_layout.addWidget(self.ctl_gb, 4, 3, 1, 5)
         layout.addWidget(self.pd_plot_wg)
+        layout.addLayout(ctl_layout)
         self.setCentralWidget(widget)
-        self.resize(900, 600)
+        self.resize(800, 600)
 
     def resizeEvent(self, event):
         logger.debug(f"windows size | {self.size()}")
@@ -577,65 +581,65 @@ class MainWindow(QMainWindow):
     def create_selftest_wg(self):
         self.selftest_wg = QWidget(self)
         self.selftest_temp_lbs = [QLabel("**.**") for _ in range(9)]
-        selftest_wg_ly = QVBoxLayout(self.selftest_wg)
+        selftest_wg_ly = QGridLayout(self.selftest_wg)
         selftest_temp_ly = QGridLayout()
-        self.selftest_temp_top_gb = QGroupBox("上温度")
-        self.selftest_temp_top_gb.setLayout(QVBoxLayout())
+        self.selftest_temp_top_gb = QGroupBox("上温度", objectName="上温度")
+        self.selftest_temp_top_gb.setLayout(QHBoxLayout())
         self.selftest_temp_top_gb.layout().setSpacing(0)
         self.selftest_temp_top_gb.layout().setContentsMargins(0, 0, 0, 0)
         for lb in self.selftest_temp_lbs[0:6]:
             lb.setAlignment(Qt.AlignCenter)
             lb.mouseReleaseEvent = self.onSelftest_temp_top_gb_Clicked
             self.selftest_temp_top_gb.layout().addWidget(lb)
-        self.selftest_temp_btm_gb = QGroupBox("下温度")
-        self.selftest_temp_btm_gb.setLayout(QVBoxLayout())
+        self.selftest_temp_btm_gb = QGroupBox("下温度", objectName="下温度")
+        self.selftest_temp_btm_gb.setLayout(QHBoxLayout())
         self.selftest_temp_btm_gb.layout().setSpacing(0)
         self.selftest_temp_btm_gb.layout().setContentsMargins(0, 0, 0, 0)
         for lb in self.selftest_temp_lbs[6:8]:
             lb.setAlignment(Qt.AlignCenter)
             lb.mouseReleaseEvent = self.onSelftest_temp_btm_gb_Clicked
             self.selftest_temp_btm_gb.layout().addWidget(lb)
-        self.selftest_temp_env_gb = QGroupBox("环境")
-        self.selftest_temp_env_gb.setLayout(QVBoxLayout())
+        self.selftest_temp_env_gb = QGroupBox("环境", objectName="环境")
+        self.selftest_temp_env_gb.setLayout(QHBoxLayout())
         self.selftest_temp_env_gb.layout().setSpacing(0)
         self.selftest_temp_env_gb.layout().setContentsMargins(0, 0, 0, 0)
         for lb in self.selftest_temp_lbs[8:9]:
             lb.setAlignment(Qt.AlignCenter)
             lb.mouseReleaseEvent = self.onSelftest_temp_env_gb_Clicked
             self.selftest_temp_env_gb.layout().addWidget(lb)
-        selftest_temp_ly.addWidget(self.selftest_temp_top_gb, 0, 0, 6, 1)
-        selftest_temp_ly.addWidget(self.selftest_temp_btm_gb, 0, 1, 4, 1)
-        selftest_temp_ly.addWidget(self.selftest_temp_env_gb, 4, 1, 2, 1)
+        selftest_temp_ly.addWidget(self.selftest_temp_top_gb, 0, 0, 1, 6)
+        selftest_temp_ly.addWidget(self.selftest_temp_btm_gb, 0, 6, 1, 2)
+        selftest_temp_ly.addWidget(self.selftest_temp_env_gb, 0, 8, 1, 1)
 
         selftest_motor_ly = QGridLayout()
-        self.selftest_motor_bts = [QPushButton(t, maximumWidth=30) for t in ("上", "下", "进", "出", "PD", "白")]
         self.selftest_motor_heater_gb = QGroupBox("上加热体")
         self.selftest_motor_heater_gb.setLayout(QHBoxLayout())
         self.selftest_motor_heater_gb.layout().setContentsMargins(3, 3, 3, 3)
-        for bt in self.selftest_motor_bts[0:2]:
-            bt.clicked.connect(self.onSelftest_motor_heater_gb_Clicked)
-            bt.setContextMenuPolicy(Qt.CustomContextMenu)
-            bt.customContextMenuRequested.connect(self.on_selftest_motor_heater_clicked)
+        self.selftest_motor_heater_gb.layout().setSpacing(3)
+        self.selftest_motor_heater_bts = [QPushButton(t, maximumWidth=35) for t in ("上", "下", "Test")]
+        for bt in self.selftest_motor_heater_bts:
+            bt.clicked.connect(self.onSelftest_motor_heater_bts_clicked)
             self.selftest_motor_heater_gb.layout().addWidget(bt)
         self.selftest_motor_tray_gb = QGroupBox("托盘")
         self.selftest_motor_tray_gb.setLayout(QHBoxLayout())
         self.selftest_motor_tray_gb.layout().setContentsMargins(3, 3, 3, 3)
-        for bt in self.selftest_motor_bts[2:4]:
-            bt.clicked.connect(self.onSelftest_motor_tray_gb_Clicked)
-            bt.setContextMenuPolicy(Qt.CustomContextMenu)
-            bt.customContextMenuRequested.connect(self.on_selftest_motor_tray_clicked)
+        self.selftest_motor_tray_gb.layout().setSpacing(3)
+        self.selftest_motor_tray_bts = [QPushButton(t, maximumWidth=35) for t in ("进", "出", "Test")]
+        for bt in self.selftest_motor_tray_bts:
+            bt.clicked.connect(self.onSelftest_motor_tray_gb_clicked)
             self.selftest_motor_tray_gb.layout().addWidget(bt)
         self.selftest_motor_white_gb = QGroupBox("白板")
         self.selftest_motor_white_gb.setLayout(QHBoxLayout())
         self.selftest_motor_white_gb.layout().setContentsMargins(3, 3, 3, 3)
-        for bt in self.selftest_motor_bts[4:6]:
-            bt.clicked.connect(self.onSelftest_motor_white_gb_Clicked)
-            bt.setContextMenuPolicy(Qt.CustomContextMenu)
-            bt.customContextMenuRequested.connect(self.on_selftest_motor_white_clicked)
+        self.selftest_motor_white_gb.layout().setSpacing(3)
+        self.selftest_motor_white_bts = [QPushButton(t, maximumWidth=35) for t in ("PD", "白", "Test")]
+        for bt in self.selftest_motor_white_bts:
+            bt.clicked.connect(self.onSelftest_motor_white_gb_clicked)
             self.selftest_motor_white_gb.layout().addWidget(bt)
         self.selftest_motor_scan_gb = QGroupBox("扫码")
-        self.selftest_motor_scan_gb.setLayout(QVBoxLayout())
+        self.selftest_motor_scan_gb.setLayout(QHBoxLayout())
         self.selftest_motor_scan_gb.layout().setContentsMargins(3, 3, 3, 3)
+        self.selftest_motor_scan_gb.layout().setSpacing(3)
         self.selftest_motor_scan_m = QLabel("电机")
         self.selftest_motor_scan_m.mouseReleaseEvent = self.onSelftest_motor_scan_m_Clicked
         self.selftest_motor_scan_l = QLabel("*" * 10)
@@ -643,38 +647,37 @@ class MainWindow(QMainWindow):
         self.selftest_motor_scan_m.setAlignment(Qt.AlignCenter)
         self.selftest_motor_scan_l.setAlignment(Qt.AlignCenter)
         self.selftest_motor_scan_gb.layout().addWidget(self.selftest_motor_scan_m, stretch=1)
-        self.selftest_motor_scan_gb.layout().addWidget(QHLine())
+        self.selftest_motor_scan_gb.layout().addWidget(QVLine())
         self.selftest_motor_scan_gb.layout().addWidget(self.selftest_motor_scan_l, stretch=2)
         selftest_motor_ly.addWidget(self.selftest_motor_heater_gb, 0, 0, 1, 1)
-        selftest_motor_ly.addWidget(self.selftest_motor_tray_gb, 1, 0, 1, 1)
-        selftest_motor_ly.addWidget(self.selftest_motor_white_gb, 2, 0, 1, 1)
-        selftest_motor_ly.addWidget(self.selftest_motor_scan_gb, 0, 1, 3, 1)
+        selftest_motor_ly.addWidget(self.selftest_motor_tray_gb, 0, 1, 1, 1)
+        selftest_motor_ly.addWidget(self.selftest_motor_white_gb, 0, 2, 1, 1)
+        selftest_motor_ly.addWidget(self.selftest_motor_scan_gb, 0, 3, 1, 3)
 
-        selftest_storge_ly = QHBoxLayout()
+        selftest_storge_gb = QGroupBox("存储")
+        selftest_storge_ly = QVBoxLayout(selftest_storge_gb)
+        selftest_storge_ly.setContentsMargins(3, 3, 3, 3)
+        selftest_storge_ly.setSpacing(3)
         self.selftest_storge_lb_f = QLabel("片外 Flash")
         self.selftest_storge_lb_f.mouseReleaseEvent = self.onSelftest_storge_lb_f_Clicked
         self.selftest_storge_lb_c = QLabel("ID Code 卡")
         self.selftest_storge_lb_c.mouseReleaseEvent = self.onSelftest_storge_lb_c_Clicked
-        selftest_storge_gb = QGroupBox("存储")
-        selftest_storge_gb.setLayout(QHBoxLayout())
-        selftest_storge_gb.layout().setContentsMargins(3, 3, 3, 3)
         self.selftest_storge_lb_f.setAlignment(Qt.AlignCenter)
         self.selftest_storge_lb_c.setAlignment(Qt.AlignCenter)
-        selftest_storge_gb.layout().addWidget(self.selftest_storge_lb_f)
-        selftest_storge_gb.layout().addWidget(self.selftest_storge_lb_c)
-        selftest_storge_ly.addWidget(selftest_storge_gb)
+        selftest_storge_ly.addWidget(self.selftest_storge_lb_f)
+        selftest_storge_ly.addWidget(self.selftest_storge_lb_c)
 
         selftest_lamp_ly = QGridLayout()
         self.selftest_lamp_610_gb = QGroupBox("610")
-        self.selftest_lamp_610_gb.setLayout(QVBoxLayout())
+        self.selftest_lamp_610_gb.setLayout(QHBoxLayout())
         self.selftest_lamp_610_gb.layout().setContentsMargins(0, 0, 0, 0)
         self.selftest_lamp_610_gb.layout().setSpacing(0)
         self.selftest_lamp_550_gb = QGroupBox("550")
-        self.selftest_lamp_550_gb.setLayout(QVBoxLayout())
+        self.selftest_lamp_550_gb.setLayout(QHBoxLayout())
         self.selftest_lamp_550_gb.layout().setContentsMargins(0, 0, 0, 0)
         self.selftest_lamp_550_gb.layout().setSpacing(0)
         self.selftest_lamp_405_gb = QGroupBox("405")
-        self.selftest_lamp_405_gb.setLayout(QVBoxLayout())
+        self.selftest_lamp_405_gb.setLayout(QHBoxLayout())
         self.selftest_lamp_405_gb.layout().setContentsMargins(0, 0, 0, 0)
         self.selftest_lamp_405_gb.layout().setSpacing(0)
 
@@ -682,30 +685,30 @@ class MainWindow(QMainWindow):
         self.selftest_lamp_550_lbs = []
         self.selftest_lamp_405_lbs = []
         for i in range(6):
-            lb = QLabel(f"{i + 1:^5d}")
+            lb = QLabel(f"{i + 1:^5d}", minimumHeight=20)
             self.selftest_lamp_610_gb.layout().addWidget(lb, alignment=Qt.AlignCenter)
             self.selftest_lamp_610_lbs.append(lb)
         for i in range(6):
-            lb = QLabel(f"{i + 1:^5d}")
+            lb = QLabel(f"{i + 1:^5d}", minimumHeight=20)
             self.selftest_lamp_550_gb.layout().addWidget(lb, alignment=Qt.AlignCenter)
             self.selftest_lamp_550_lbs.append(lb)
         for i in range(1):
-            lb = QLabel(f"{i + 1:^5d}")
+            lb = QLabel(f"{i + 1:^5d}", minimumHeight=20)
             self.selftest_lamp_405_gb.layout().addWidget(lb, alignment=Qt.AlignCenter)
             self.selftest_lamp_405_lbs.append(lb)
-        selftest_lamp_ly.addWidget(self.selftest_lamp_610_gb, 0, 0, 6, 1)
-        selftest_lamp_ly.addWidget(self.selftest_lamp_550_gb, 0, 1, 6, 1)
-        selftest_lamp_ly.addWidget(self.selftest_lamp_405_gb, 6, 0, 1, 1)
+        selftest_lamp_ly.addWidget(self.selftest_lamp_610_gb, 0, 0, 1, 6)
+        selftest_lamp_ly.addWidget(self.selftest_lamp_550_gb, 0, 6, 1, 6)
+        selftest_lamp_ly.addWidget(self.selftest_lamp_405_gb, 0, 12, 1, 1)
         self.selftest_lamp_610_gb.mouseReleaseEvent = self.onSelftest_lamp_610_gb_Clicked
         self.selftest_lamp_550_gb.mouseReleaseEvent = self.onSelftest_lamp_550_gb_Clicked
         self.selftest_lamp_405_gb.mouseReleaseEvent = self.onSelftest_lamp_405_gb_Clicked
         self.selftest_lamp_all_bt = QPushButton("全波长", checkable=True, toggled=self.on_selftest_lamp_all)
-        selftest_lamp_ly.addWidget(self.selftest_lamp_all_bt, 6, 1, 1, 1)
+        selftest_lamp_ly.addWidget(self.selftest_lamp_all_bt, 0, 13, 1, 1)
 
-        selftest_wg_ly.addLayout(selftest_temp_ly)
-        selftest_wg_ly.addLayout(selftest_motor_ly)
-        selftest_wg_ly.addLayout(selftest_storge_ly)
-        selftest_wg_ly.addLayout(selftest_lamp_ly)
+        selftest_wg_ly.addLayout(selftest_temp_ly, 0, 0, 1, 12)
+        selftest_wg_ly.addLayout(selftest_motor_ly, 1, 0, 1, 12)
+        selftest_wg_ly.addWidget(selftest_storge_gb, 0, 12, 2, 1)
+        selftest_wg_ly.addLayout(selftest_lamp_ly, 2, 0, 1, 13)
 
     def onSelftest_temp_top_gb_Clicked(self, event):
         self._clear_widget_style_sheet(self.selftest_temp_top_gb)
@@ -719,28 +722,43 @@ class MainWindow(QMainWindow):
         self._clear_widget_style_sheet(self.selftest_temp_env_gb)
         self._serialSendPack(0xDA, (0x03,))
 
-    def onSelftest_motor_heater_gb_Clicked(self, event):
+    def onSelftest_motor_heater_bts_clicked(self, event):
         self._clear_widget_style_sheet(self.selftest_motor_heater_gb)
-        self._serialSendPack(0xDA, (0x07,))
+        idx = self.selftest_motor_heater_bts.index(self.sender())
+        if idx == 2:
+            self._serialSendPack(0xDA, (0x07,))
+        else:
+            self._serialSendPack(0xD0, (2, idx))
 
-    def onSelftest_motor_tray_gb_Clicked(self, event):
+    def onSelftest_motor_tray_gb_clicked(self, event):
         self._clear_widget_style_sheet(self.selftest_motor_tray_gb)
-        self._serialSendPack(0xDA, (0x08,))
+        idx = self.selftest_motor_tray_bts.index(self.sender())
+        if idx == 0:
+            self._serialSendPack(0x05)
+        elif idx == 1:
+            self._serialSendPack(0x04)
+        else:
+            self._serialSendPack(0xDA, (0x08,))
 
-    def onSelftest_motor_white_gb_Clicked(self, event):
+    def onSelftest_motor_white_gb_clicked(self, event):
         self._clear_widget_style_sheet(self.selftest_motor_white_gb)
-        self._serialSendPack(0xDA, (0x06,))
+        sender = self.sender()
+        idx = self.selftest_motor_white_bts.index(sender)
+        if idx < 2:
+            self._serialSendPack(0xD0, (3, idx))
+        else:
+            self._serialSendPack(0xDA, (0x06,))
 
     def onSelftest_motor_scan_m_Clicked(self, event):
         self._setColor(self.selftest_motor_scan_m)
         self._serialSendPack(0xDA, (0x09,))
-        self._clear_widget_style_sheet(self.selftest_motor_scan_gb)
+        self.selftest_motor_scan_gb.setStyleSheet("QGroupBox:title {color: };")
 
     def onSelftest_motor_scan_l_Clicked(self, event):
         self._setColor(self.selftest_motor_scan_l)
         self.selftest_motor_scan_l.setText("*" * 10)
         self._serialSendPack(0xDA, (0x0A,))
-        self._clear_widget_style_sheet(self.selftest_motor_scan_gb)
+        self.selftest_motor_scan_gb.setStyleSheet("QGroupBox:title {color: };")
 
     def onSelftest_storge_lb_f_Clicked(self, event):
         self._setColor(self.selftest_storge_lb_f)
@@ -813,33 +831,6 @@ class MainWindow(QMainWindow):
             lb.setText(f"{idx + 1}")
         self._serialSendPack(0xDA, (0x0B, 7))
 
-    def on_selftest_motor_heater_clicked(self, event):
-        sender = self.sender()
-        idx = self.selftest_motor_bts[0:2].index(sender)
-        self._serialSendPack(0xD0, (2, idx))
-
-    def on_selftest_motor_tray_clicked(self, event):
-        sender = self.sender()
-        idx = self.selftest_motor_bts[2:4].index(sender)
-        if idx == 0:
-            self._serialSendPack(0x05)
-        else:
-            self._serialSendPack(0x04)
-
-    def on_selftest_motor_white_clicked(self, event):
-        sender = self.sender()
-        idx = self.selftest_motor_bts[4:6].index(sender)
-        self._serialSendPack(0xD0, (3, idx))
-
-    def on_selftest_temp_ask(self):
-        if self.temp_timer_ask_index % 3 == 0:
-            self._serialSendPack(0xDA, (0x01,))
-        elif self.temp_timer_ask_index % 3 == 1:
-            self._serialSendPack(0xDA, (0x02,))
-        elif self.temp_timer_ask_index % 3 == 2:
-            self._serialSendPack(0xDA, (0x03,))
-        self.temp_timer_ask_index += 1
-
     def led_dac_set(self):
         data = bytearray()
         for idx, sp in enumerate(self.led_dac_sps):
@@ -876,6 +867,7 @@ if __name__ == "__main__":
     import traceback
 
     def trap_exc_during_debug(exc_type, exc_value, exc_traceback):
+        logger.error(stackprinter.format())
         t = "\n".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
         logger.error(f"sys execpt hook\n{t}")
 

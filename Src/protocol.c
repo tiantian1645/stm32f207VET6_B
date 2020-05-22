@@ -148,6 +148,16 @@ uint8_t protocol_Debug_AgingLoop(void)
 }
 
 /**
+ * @brief  调试标志 工装温度
+ * @param  None
+ * @retval 1 使能 0 失能
+ */
+uint8_t protocol_Debug_Factory_Temp(void)
+{
+    return protocol_Is_Debug(eProtocol_Debug_Factory_Temp);
+}
+
+/**
  * @brief  调试模式标志 置位
  * @param  item 项目组别
  * @retval None
@@ -598,16 +608,23 @@ void protocol_Temp_Upload_Deal(void)
         }
     }
 
-    if (protocol_Debug_Temperature()) {
-        if (now - xTick_Out > 0.2 * pdMS_TO_TICKS(1000)) {
+    if (protocol_Debug_Factory_Temp()) {
+        if (now - xTick_Out > 2 * pdMS_TO_TICKS(1000)) {
             xTick_Out = now;
-            protocol_Temp_Upload_Out_Deal(temp_btm, temp_top);
+            protocol_Self_Check_Temp_ALL();
         }
-    } else if (protocol_Temp_Upload_Is_Suspend() == 0) { /* 暂停上送标志 */
-        {
-            if (now - xTick_Out > 5 * pdMS_TO_TICKS(1000)) {
+    } else {
+        if (protocol_Debug_Temperature()) {
+            if (now - xTick_Out > 0.2 * pdMS_TO_TICKS(1000)) {
                 xTick_Out = now;
                 protocol_Temp_Upload_Out_Deal(temp_btm, temp_top);
+            }
+        } else if (protocol_Temp_Upload_Is_Suspend() == 0) { /* 暂停上送标志 */
+            {
+                if (now - xTick_Out > 5 * pdMS_TO_TICKS(1000)) {
+                    xTick_Out = now;
+                    protocol_Temp_Upload_Out_Deal(temp_btm, temp_top);
+                }
             }
         }
     }
@@ -821,6 +838,20 @@ void protocol_Self_Check_Temp_ENV_FromISR(uint8_t * pBuffer, eProtocol_COMM_Inde
     } else if (idx == eComm_Main) {
         comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 6);
     }
+}
+
+/**
+ * @brief  温度主动上送处理 工装模式
+ * @param  None
+ * @retval None
+ */
+void protocol_Self_Check_Temp_ALL(void)
+{
+    uint8_t buffer[40];
+
+    protocol_Self_Check_Temp_TOP(buffer, eComm_Out);
+    protocol_Self_Check_Temp_BTM(buffer, eComm_Out);
+    protocol_Self_Check_Temp_ENV(buffer, eComm_Out);
 }
 
 /**
@@ -1303,7 +1334,7 @@ static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length)
             if (length != 7 + 2) {
                 error_Emit_FromISR(eError_Comm_Out_Param_Error);
                 break;
-            } 
+            }
             comm_Data_Conf_FA_LED_Set_FromISR(&pInBuff[6]);
             break;
         default:
