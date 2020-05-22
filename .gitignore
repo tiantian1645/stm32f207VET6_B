@@ -99,6 +99,7 @@ build/
 develop-eggs/
 dist/
 dist32/
+dist_fa/
 downloads/
 eggs/
 .eggs/

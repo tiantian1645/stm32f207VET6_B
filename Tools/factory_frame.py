@@ -32,6 +32,7 @@ from bytes_helper import bytesPuttyPrint, bytes2Float
 from dc201_pack import DC201_PACK, DC201ErrorCode
 from qt_serial import SerialRecvWorker, SerialSendWorker
 from sample_graph import SampleGraph
+from version import VERSION_FA
 
 
 ICON_PATH = "./icos/tt.ico"
@@ -76,7 +77,7 @@ class QVLine(QFrame):
 class MainWindow(QMainWindow):
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
-        self.setWindowTitle("DC201 FA")
+        self.setWindowTitle(f"DC201 FA {VERSION_FA}")
         self.dd = DC201_PACK()
         self.pack_index = -1
         self.threadpool = QThreadPool()
@@ -129,7 +130,7 @@ class MainWindow(QMainWindow):
         layout.setSpacing(1)
         gbs = [QGroupBox(name) for name in ("610", "550", "405")]
         lys = [QHBoxLayout(gb) for gb in gbs]
-        self.led_dac_sps = [QSpinBox(minimum=0, maximum=800, value=10, singleStep=5) for i in range(3)]
+        self.led_dac_sps = [QSpinBox(minimum=0, maximum=800, value=10, singleStep=5, minimumWidth=60) for i in range(3)]
         for i, ly in enumerate(lys):
             sp = self.led_dac_sps[i]
             ly.addWidget(sp)
@@ -159,13 +160,13 @@ class MainWindow(QMainWindow):
     def create_ctl_gb(self):
         self.ctl_gb = QGroupBox("控制")
         layout = QHBoxLayout(self.ctl_gb)
-        self.selftest_ctl_pd_bt = QPushButton("&PD测试", clicked=self.on_selftest_pd_debug)
+        self.selftest_ctl_pd_bt = QPushButton("PD测试(T)", clicked=self.on_selftest_pd_debug, shortcut="Ctrl+T")
         layout.addWidget(self.selftest_ctl_pd_bt)
-        self.selftest_ctl_clr_bt = QPushButton("&清除数据", clicked=self.on_selftest_clr_plot)
+        self.selftest_ctl_clr_bt = QPushButton("清除数据(C)", clicked=self.on_selftest_clr_plot, shortcut="Ctrl+C")
         layout.addWidget(self.selftest_ctl_clr_bt)
-        self.selftest_all_test_bt = QPushButton("&全检", clicked=self.on_selftest_all_test)
+        self.selftest_all_test_bt = QPushButton("全检(A)", clicked=self.on_selftest_all_test, shortcut="Ctrl+A")
         layout.addWidget(self.selftest_all_test_bt)
-        self.selftest_reboot_bt = QPushButton("&重启", clicked=self._reboot_board)
+        self.selftest_reboot_bt = QPushButton("重启(R)", clicked=self._reboot_board, shortcut="Ctrl+R")
         layout.addWidget(self.selftest_reboot_bt)
 
     def create_serial_gb(self):
@@ -250,11 +251,15 @@ class MainWindow(QMainWindow):
     def _reboot_board(self):
         self._serialSendPack(0xDC)
 
+    def _enable_factory_temp(self):
+        self._serialSendPack(0xD4, (64, 1))
+
     def _getStatus(self):
         self._serialSendPack(0x07)
         self._getHeater()
         self._getDebuFlag()
         self._getDeviceID()
+        self._enable_factory_temp()
 
     def _clearTaskQueue(self):
         while True:
@@ -713,14 +718,17 @@ class MainWindow(QMainWindow):
     def onSelftest_temp_top_gb_Clicked(self, event):
         self._clear_widget_style_sheet(self.selftest_temp_top_gb)
         self._serialSendPack(0xDA, (0x01,))
+        self._enable_factory_temp()
 
     def onSelftest_temp_btm_gb_Clicked(self, event):
         self._clear_widget_style_sheet(self.selftest_temp_btm_gb)
         self._serialSendPack(0xDA, (0x02,))
+        self._enable_factory_temp()
 
     def onSelftest_temp_env_gb_Clicked(self, event):
         self._clear_widget_style_sheet(self.selftest_temp_env_gb)
         self._serialSendPack(0xDA, (0x03,))
+        self._enable_factory_temp()
 
     def onSelftest_motor_heater_bts_clicked(self, event):
         self._clear_widget_style_sheet(self.selftest_motor_heater_gb)
@@ -818,6 +826,7 @@ class MainWindow(QMainWindow):
         self._setColor(self.selftest_storge_lb_f)
         self._setColor(self.selftest_storge_lb_c)
         self._serialSendPack(0xDA)
+        self._enable_factory_temp()
 
     def on_selftest_lamp_all(self, event):
         for idx, lb in enumerate(self.selftest_lamp_610_lbs):

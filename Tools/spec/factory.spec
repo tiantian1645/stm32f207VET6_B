@@ -3,11 +3,11 @@
 block_cipher = None
 
 
-a = Analysis(['qt_frame.py'],
+a = Analysis(['../factory_frame.py'],
              pathex=['C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Tools'],
              binaries=[],
              datas=[],
-             hiddenimports=['sqlalchemy.ext.baked', 'simplejson'],
+             hiddenimports=['simplejson'],
              hookspath=[],
              runtime_hooks=[],
              excludes=[],
@@ -17,11 +17,9 @@ a = Analysis(['qt_frame.py'],
              noarchive=False)
 
 a.datas += [('.\\icos\\tt.ico', 'C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Tools\\icos\\tt.ico', 'DATA')]
-a.datas += [('.\\log\\dc201.log', 'C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Tools\\log\\dc201.log', 'DATA')]
+a.datas += [('.\\log\\dc201_fa.log', 'C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Tools\\log\\dc201.log', 'DATA')]
 a.datas += [('.\\conf\\config.json', 'C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Tools\\conf\\config.json', 'DATA')]
-a.datas += [('.\\data\\db.sqlite3_i', 'C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Tools\\data\\db.sqlite3_i', 'DATA')]
-a.datas += [('.\\qtmodern\\resources\\frameless.qss', 'C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Tools\\venv\\Lib\\site-packages\\qtmodern\\resources\\frameless.qss', 'DATA')]
-a.datas += [('.\\qtmodern\\resources\\style.qss', 'C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Tools\\venv\\Lib\\site-packages\\qtmodern\\resources\\style.qss', 'DATA')]
+
 
 pyz = PYZ(a.pure, a.zipped_data,
              cipher=block_cipher)
@@ -29,7 +27,7 @@ exe = EXE(pyz,
           a.scripts,
           [],
           exclude_binaries=True,
-          name='dc201',
+          name='dc201_fa',
           debug=False,
           bootloader_ignore_signals=False,
           strip=False,
@@ -44,4 +42,4 @@ coll = COLLECT(exe,
                strip=False,
                upx=False,
                upx_exclude=[],
-               name='dc201')
+               name='dc201_fa')
