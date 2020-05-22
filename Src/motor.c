@@ -1129,10 +1129,10 @@ static void motor_Task(void * argument)
                 }
                 led_Mode_Set(eLED_Mode_Kirakira_Red);                                                               /* LED 红灯闪烁 */
                 if (barcode_Scan_QR() != eBarcodeState_OK || barcode_Scan_Decode_Correct_Info_From_Result() != 0) { /* 扫码失败或者解析失败 */
-                    error_Emit(eError_Correct_Info_Lost);                                                       /* 定标信息不足 */
-                    motor_Sample_Owari_Correct();                                                               /* 清理 */
-                    motor_Tray_Move_By_Index(eTrayIndex_2);                                                     /* 出仓 */
-                    gComm_Data_Correct_Flag_Clr();                                                              /* 退出定标状态 */
+                    error_Emit(eError_Correct_Info_Lost);                                                           /* 定标信息不足 */
+                    motor_Sample_Owari_Correct();                                                                   /* 清理 */
+                    motor_Tray_Move_By_Index(eTrayIndex_2);                                                         /* 出仓 */
+                    gComm_Data_Correct_Flag_Clr();                                                                  /* 退出定标状态 */
                     break;
                 } else {
                     stage = barcode_Scan_Get_Correct_Stage(); /* 抽取通道校正段索引 */
@@ -1287,7 +1287,7 @@ static void motor_Self_Check_Motor_White(uint8_t * pBuffer)
  */
 static void motor_Self_Check_Motor_Heater(uint8_t * pBuffer)
 {
-    heat_Motor_Down();                                                                       /* 推出光耦准备测试 */
+    heat_Motor_Up();                                                                         /* 抬起上加热体准备测试 */
     pBuffer[0] = eMotor_Fun_Self_Check_Motor_Heater - eMotor_Fun_Self_Check_Motor_White + 6; /* 自检测试 单项 上加热体电机 */
     if (motor_OPT_Status_Get(eMotor_OPT_Index_Heater) == eMotor_OPT_Status_OFF) {
         pBuffer[3] = heat_Motor_Down(); /* 砸下上加热体 */
@@ -1308,6 +1308,7 @@ static void motor_Self_Check_Motor_Heater(uint8_t * pBuffer)
     } else {
         comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 4);
     }
+    heat_Motor_Up(); /* 保持上加热体抬起 */
 }
 
 /**
