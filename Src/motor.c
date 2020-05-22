@@ -1129,21 +1129,11 @@ static void motor_Task(void * argument)
                 }
                 led_Mode_Set(eLED_Mode_Kirakira_Red);                                                               /* LED 红灯闪烁 */
                 if (barcode_Scan_QR() != eBarcodeState_OK || barcode_Scan_Decode_Correct_Info_From_Result() != 0) { /* 扫码失败或者解析失败 */
-                    if (mf.fun_param_1 >= 12) {                                                                     /* 已知标段不合法 */
-                        error_Emit(eError_Correct_Info_Lost);                                                       /* 定标信息不足 */
-                        motor_Sample_Owari_Correct();                                                               /* 清理 */
-                        motor_Tray_Move_By_Index(eTrayIndex_2);                                                     /* 出仓 */
-                        gComm_Data_Correct_Flag_Clr();                                                              /* 退出定标状态 */
-                        break;
-                    }
-                    for (cnt = 1; cnt <= 6; ++cnt) {                                          /* 定标段索引配置 */
-                        if (mf.fun_param_1 < 6) {                                             /* 0~5 */
-                            comm_Data_Set_Corretc_Stage(cnt, (cnt - 1 + mf.fun_param_1) % 6); /* 定标段索引 循环单条 */
-                        } else {                                                              /* 6~11 */
-                            comm_Data_Set_Corretc_Stage(cnt, mf.fun_param_1 - 6);             /* 定标段索引 整条 */
-                            stage = mf.fun_param_1 - 6;
-                        }
-                    }
+                    error_Emit(eError_Correct_Info_Lost);                                                       /* 定标信息不足 */
+                    motor_Sample_Owari_Correct();                                                               /* 清理 */
+                    motor_Tray_Move_By_Index(eTrayIndex_2);                                                     /* 出仓 */
+                    gComm_Data_Correct_Flag_Clr();                                                              /* 退出定标状态 */
+                    break;
                 } else {
                     stage = barcode_Scan_Get_Correct_Stage(); /* 抽取通道校正段索引 */
                     for (cnt = 1; cnt <= 6; ++cnt) {

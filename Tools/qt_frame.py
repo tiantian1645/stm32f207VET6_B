@@ -25,7 +25,7 @@ import simplejson
 import stackprinter
 from loguru import logger
 from PyQt5.QtCore import QMutex, Qt, QThreadPool, QTimer
-from PyQt5.QtGui import QFont, QIcon, QPalette
+from PyQt5.QtGui import QFont, QIcon, QPalette, QKeySequence
 from PyQt5.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -47,6 +47,7 @@ from PyQt5.QtWidgets import (
     QProgressBar,
     QPushButton,
     QRadioButton,
+    QShortcut,
     QSizePolicy,
     QSlider,
     QSpacerItem,
@@ -1525,6 +1526,23 @@ class MainWindow(QMainWindow):
         self.plot_graph = SampleGraph(parent=self)
         matplot_ly.addWidget(self.plot_graph.win)
         self.temp_saple_data = [None] * 6
+        for i in range(6):
+            shortcut_switch_cb = QShortcut(QKeySequence(f"Ctrl+{i + 1}"), self)
+            shortcut_switch_cb.activated.connect(partial(self.on_matplot_hide, idx=i))
+        self.matplot_shot_bits = ((1 << 6) - 1)
+
+    def on_matplot_hide(self, idx):
+        flag = (1 << idx)
+        if (self.matplot_shot_bits & flag) == flag:
+            self.plot_graph.hide_plot(idx)
+            for num in range(1, len(self.plot_graph.plot_data_confs) // 6):
+                self.plot_graph.hide_plot(idx + 6 * num)
+            self.matplot_shot_bits = self.matplot_shot_bits & ((1 << 6) - 1 - flag)
+        else:
+            self.plot_graph.show_plot(idx)
+            for num in range(1, len(self.plot_graph.plot_data_confs) // 6):
+                self.plot_graph.show_plot(idx + 6 * num)
+            self.matplot_shot_bits = self.matplot_shot_bits | flag
 
     def update_matplot_timer(self):
         for idx, lb in enumerate(self.matplot_timer_lbs):
@@ -2847,16 +2865,12 @@ class MainWindow(QMainWindow):
         self.selftest_bt.setMaximumWidth(50)
         self.debugtest_bt = QPushButton("定标")
         self.debugtest_bt.setMaximumWidth(50)
-        self.debugtest_sp = QSpinBox()
-        self.debugtest_sp.setMaximumWidth(35)
-        self.debugtest_sp.setRange(1, 13)
         self.debugtest_cnt = 0
         boot_ly.addWidget(self.upgrade_bt)
         boot_ly.addWidget(self.bootload_bt)
         boot_ly.addWidget(self.reboot_bt)
         boot_ly.addWidget(self.selftest_bt)
         boot_ly.addWidget(self.debugtest_bt)
-        boot_ly.addWidget(self.debugtest_sp)
         sys_conf_ly.addLayout(boot_ly)
 
         self.upgrade_bt.clicked.connect(self.onUpgrade)
@@ -2866,9 +2880,8 @@ class MainWindow(QMainWindow):
         self.selftest_bt.mousePressEvent = self.onSelfCheck
 
     def onDebugTest(self, event):
-        value = self.debugtest_sp.value() - 1
         self.onCorrectMatplotStart()
-        self._serialSendPack(0xD2, (value,))
+        self._serialSendPack(0xD2, (0xFF,))
 
     def getErrorContent(self, error_code):
         for i in DC201ErrorCode:
