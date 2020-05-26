@@ -212,6 +212,7 @@ class MainWindow(QMainWindow):
         self._getHeater()
         self._getDebuFlag()
         self._getDeviceID()
+        self._serialSendPack(0xDC, (3,))
 
     def _setColor(self, wg, nbg=None, nfg=None):
         palette = wg.palette()
@@ -1266,6 +1267,25 @@ class MainWindow(QMainWindow):
     def onSampleLED_Read(self, event=None):
         self._serialSendPack(0x32)
 
+    def updateStaryOffset(self, info):
+        payload = info.content[6:-1]
+        num = len(payload) // 4
+        if num != 18:
+            logger.error(f"stary data length error | {info.text}")
+            return
+        c_data = ["             610      550      405"]
+        for i in range(6):
+            l_data = []
+            for j in range(3):
+                start = 12 * i + 4 * j
+                v = struct.unpack("I", payload[start : start + 4])[0]
+                l_data.append(f"{v:>6d}")
+            m = " ".join(l_data)
+            c = f"通道-{i + 1}: {m}"
+            logger.success(f"杂散光数据 | {c}")
+            c_data.append(c)
+        self.stary_test_bt.setToolTip("\n".join(c_data))
+
     def keyPressEvent(self, event):
         key = event.key()
         if not self.sample_led_write_bt.isEnabled():
@@ -1434,6 +1454,8 @@ class MainWindow(QMainWindow):
             self.udpateDeviceIDLabel(info)
         elif cmd_type == 0x32:
             self.updateSampleLED(info)
+        elif cmd_type == 0x35:
+            self.updateStaryOffset(info)
 
     def onSerialSendWorkerResult(self, write_result):
         result, write_data, info = write_result

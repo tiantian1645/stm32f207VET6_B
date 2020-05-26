@@ -29,7 +29,7 @@ typedef enum {
     eProtocolEmitPack_Client_CMD_SP_LED_GET = 0x32, /* 采样板LED电压读取 */
     eProtocolEmitPack_Client_CMD_SP_LED_SET = 0x33, /* 采样板LED电压设置*/
 
-    eProtocolEmitPack_Client_CMD_FA_PD_SET = 0x34, /* 采样板PD测试*/
+    eProtocolEmitPack_Client_CMD_FA_PD_SET = 0x34,  /* 采样板PD测试*/
     eProtocolEmitPack_Client_CMD_FA_LED_SET = 0x35, /* 采样板LED设置*/
 
     eProtocolEmitPack_Client_CMD_Correct = 0xC0, /* 校正数据 */
@@ -64,6 +64,7 @@ typedef enum {
     eProtocolRespPack_Client_Debug_Temp = 0xEE, /* 温度上送 调试用 */
     eProtocolRespPack_Client_LED_Get = 0x32,    /* 采样板LED电压读取 */
     eProtocolRespPack_Client_FA_PD = 0x34,      /* 采样板工装PD输出 */
+    eProtocolRespPack_Client_Offset_Get = 0x35, /* 采样板Offset读取 */
 } eProtocolRespPack_Client_Type;
 
 typedef enum {

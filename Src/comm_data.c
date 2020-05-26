@@ -1280,6 +1280,20 @@ BaseType_t comm_Data_Conf_FA_LED_Set_FromISR(uint8_t * pData)
 }
 
 /**
+ * @brief  采样板杂散光获取 中断版本
+ * @note   采样板杂散光获取
+ * @param  None
+ * @retval pdPASS 提交成功 pdFALSE 提交失败
+ */
+BaseType_t comm_Data_Conf_Offset_Get_FromISR(void)
+{
+    uint8_t sendLength, pData[8];
+
+    sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_OFFSET_GET, pData, 0); /* 构造测试配置包 */
+    return comm_Data_SendTask_QueueEmit_FromISR(pData, sendLength);
+}
+
+/**
  * @brief  发送杂散光测试包
  * @note   开始杂散光测试 耗时15秒
  * @retval pdPASS 提交成功 pdFALSE 提交失败

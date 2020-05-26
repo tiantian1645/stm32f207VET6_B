@@ -1197,6 +1197,8 @@ static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length)
                 } else if (pInBuff[6] == 2) {
                     motor_fun.fun_type = eMotor_Fun_SP_LED; /* LED校正 */
                     motor_Emit_FromISR(&motor_fun);         /* 提交到任务队列 */
+                } else if (pInBuff[6] == 3) {               /* 读取杂散光 */
+                    comm_Data_Conf_Offset_Get_FromISR();
                 }
             } else {
                 error_Emit_FromISR(eError_Comm_Out_Param_Error);
@@ -1451,7 +1453,7 @@ static void protocol_Parse_Main_Fun_ISR(uint8_t * pInBuff, uint16_t length)
         case eProtocolEmitPack_Client_CMD_TEST:                 /* 工装测试配置帧 0x08 */
             comm_Data_Sample_Send_Conf_TV_FromISR(&pInBuff[6]); /* 保存测试配置 */
             break;
-        case eProtocolEmitPack_Client_CMD_UPGRADE:              /* 下位机升级命令帧 0x0F */
+        case eProtocolEmitPack_Client_CMD_UPGRADE: /* 下位机升级命令帧 0x0F */
             if (spi_FlashWriteAndCheck_Word(0x0000, 0x87654321) == 0) {
                 heater_BTM_Output_Stop();
                 heater_TOP_Output_Stop();
@@ -1527,6 +1529,8 @@ static void protocol_Parse_Main_Fun_ISR(uint8_t * pInBuff, uint16_t length)
                 } else if (pInBuff[6] == 2) {
                     motor_fun.fun_type = eMotor_Fun_SP_LED; /* LED校正 */
                     motor_Emit_FromISR(&motor_fun);         /* 提交到任务队列 */
+                } else if (pInBuff[6] == 3) {               /* 读取杂散光 */
+                    comm_Data_Conf_Offset_Get_FromISR();
                 }
             } else {
                 error_Emit_FromISR(eError_Comm_Out_Param_Error);
@@ -1639,13 +1643,17 @@ static void protocol_Parse_Data_Fun_ISR(uint8_t * pInBuff, uint16_t length)
             break;
         case eComm_Data_Inbound_CMD_ERROR: /* 采集板错误信息帧 */
             comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_ERR, &pInBuff[6], 2);
-            comm_Out_SendTask_QueueEmitWithModify_FromISR(pInBuff, data_length + 7); /* 修改帧号ID后转发 */
+            comm_Out_SendTask_QueueEmitWithModify_FromISR(pInBuff + 6, 2 + 7); /* 修改帧号ID后转发 */
             break;
         case eComm_Data_Inbound_CMD_LED_GET:
             comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_LED_Get, &pInBuff[6], length - 7); /* 转发至外串口 */
             break;
         case eComm_Data_Inbound_CMD_FA_DEBUG:
             comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_FA_PD, &pInBuff[6], length - 7); /* 转发至外串口 */
+            break;
+        case eComm_Data_Inbound_CMD_OFFSET_GET:
+            comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_Offset_Get, &pInBuff[6], length - 7); /* 构造数据包 */
+            comm_Out_SendTask_QueueEmitWithModify_FromISR(pInBuff + 6, length);                                          /* 转发至外串口 */
             break;
         default:
             error_Emit_FromISR(eError_Comm_Data_Unknow_CMD);
