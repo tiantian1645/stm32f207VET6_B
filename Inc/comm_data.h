@@ -24,17 +24,17 @@
 #define COMM_DATA_PD_TIMER_PRESCALER (54000 - 1) /* TIMER 7 主频切半 1 mS */
 #define COMM_DATA_PD_TIMER_PERIOD (500 - 1)      /* 500C 500 mS */
 
-#define COMM_DATA_LED_VOLTAGE_INIT_610 30
-#define COMM_DATA_LED_VOLTAGE_INIT_550 570
-#define COMM_DATA_LED_VOLTAGE_INIT_405 40
+#define COMM_DATA_LED_VOLTAGE_INIT_610 30  /* 35 ~ 54 avg 43.9667 */
+#define COMM_DATA_LED_VOLTAGE_INIT_550 400 /* 440 ~ 575 avg 498.7667 */
+#define COMM_DATA_LED_VOLTAGE_INIT_405 40  /* 42 ~ 78 avg 65.7097 */
 
-#define COMM_DATA_LED_VOLTAGE_UNIT_610 1
-#define COMM_DATA_LED_VOLTAGE_UNIT_550 6
-#define COMM_DATA_LED_VOLTAGE_UNIT_405 2
+#define COMM_DATA_LED_VOLTAGE_UNIT_610 4
+#define COMM_DATA_LED_VOLTAGE_UNIT_550 16
+#define COMM_DATA_LED_VOLTAGE_UNIT_405 4
 
-#define COMM_DATA_LED_VOLTAGE_MAX_610 75
-#define COMM_DATA_LED_VOLTAGE_MAX_550 800
-#define COMM_DATA_LED_VOLTAGE_MAX_405 90
+#define COMM_DATA_LED_VOLTAGE_MAX_610 70
+#define COMM_DATA_LED_VOLTAGE_MAX_550 650
+#define COMM_DATA_LED_VOLTAGE_MAX_405 84
 
 /* Exported types ------------------------------------------------------------*/
 /* 采集板串口 接收数据定义*/
@@ -96,6 +96,7 @@ typedef enum {
     eComm_Data_Inbound_CMD_ERROR = 0xB5,    /* 错误信息帧 */
     eComm_Data_Inbound_CMD_LED_GET = 0x32,  /* LED电压读取 */
     eComm_Data_Inbound_CMD_FA_DEBUG = 0xD3, /* 工装PD采样输出 */
+	eComm_Data_Inbound_CMD_BEEP_DEBUG = 0xDB, /* 工装PD采样输出 */
 } eComm_Data_Inbound_CMD;
 
 typedef struct {
@@ -209,6 +210,7 @@ uint8_t gComm_Data_Lamp_BP_Flag_Check(void);
 void gComm_Data_SP_LED_Flag_Mark(eComm_Data_Sample_Radiant radiant);
 void gComm_Data_SP_LED_Flag_Clr(void);
 eComm_Data_Sample_Radiant comm_Data_SP_LED_Is_Running(void);
+void gComm_Data_LED_Voltage_Interval_Set(int16_t interval);
 
 void gComm_Data_SelfCheck_PD_Flag_Mark(eComm_Data_Sample_Radiant radiant);
 void gComm_Data_SelfCheck_PD_Flag_Clr(void);

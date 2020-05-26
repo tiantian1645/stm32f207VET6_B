@@ -60,6 +60,8 @@ static eMotor_Sampl_Comm gMotor_Sampl_Comm = eMotor_Sampl_Comm_None; /* 采样�
 static void motor_Task(void * argument);
 static void motor_Tray_Move_By_Index(eTrayIndex index);
 
+static uint8_t motor_Sample_Deal(void);
+
 static eMotor_OPT_Status motor_OPT_Status_Get_Scan(void);
 static eMotor_OPT_Status motor_OPT_Status_Get_Tray_Scan(void);
 static eMotor_OPT_Status motor_OPT_Status_Get_Heater(void);
@@ -401,9 +403,9 @@ eMotor_OPT_Status motor_OPT_Status_Get(eMotor_OPT_Index idx)
 /**
  * @brief  启动采样并控制白板电机
  * @param  None
- * @retval None
+ * @retval 0 正常结束 1 主动打断 2 被动打断
  */
-void motor_Sample_Deal(void)
+static uint8_t motor_Sample_Deal(void)
 {
     uint32_t xNotifyValue = 0;
     BaseType_t xResult = pdFALSE;
@@ -414,8 +416,9 @@ void motor_Sample_Deal(void)
         if (xResult != pdPASS || xNotifyValue == eMotorNotifyValue_BR) {               /* 超时 或者 收到中终止命令 */
             if (xResult != pdPASS) {                                                   /* 超时  */
                 error_Emit(eError_Sample_Incomlete);                                   /* 提交错误信息 */
+                return 2;
             }
-            break;
+            return 1;
         }
         if (xNotifyValue == eMotorNotifyValue_TG) {                 /* 本次采集完成 */
             if (gComm_Data_Sample_PD_WH_Idx_Get() == 1) {           /* 当前检测白物质 */
@@ -427,6 +430,7 @@ void motor_Sample_Deal(void)
             }
         }
     }
+    return 0;
 }
 
 /**
@@ -1151,13 +1155,15 @@ static void motor_Task(void * argument)
                     comm_Data_Sample_Send_Conf_Correct(buffer, radiant, 12, eComm_Data_Outbound_CMD_TEST); /* 配置波长 */
                     white_Motor_WH();                                                                      /* 运动白板电机 白物质位置 */
                     gStorgeIllumineCnt_Clr();                                                              /* 清除标记 */
-                    motor_Sample_Deal();                                                                   /* 启动采样并控制白板电机 */
-                    motor_Wait_Stroge_Correct(3000);                                                       /* 等待设置存储完成 */
-                    storgeTaskNotification(eStorgeNotifyConf_Dump_Params, eComm_Out);                      /* 通知存储任务 保存参数 */
-                    gStorgeTaskInfoLockWait(3000);                                                         /* 等待参数保存完毕 */
-                    buffer[0] = radiant;                                                                   /* 波长 */
-                    buffer[1] = 0;                                                                         /* 正常 */
-                    buffer[2] = stage;                                                                     /* 校正段索引 */
+                    if (motor_Sample_Deal()) {                                                             /* 启动采样并控制白板电机 */
+                        break;                                                                             /* 定标异常 */
+                    }
+                    motor_Wait_Stroge_Correct(3000);                                  /* 等待设置存储完成 */
+                    storgeTaskNotification(eStorgeNotifyConf_Dump_Params, eComm_Out); /* 通知存储任务 保存参数 */
+                    gStorgeTaskInfoLockWait(3000);                                    /* 等待参数保存完毕 */
+                    buffer[0] = radiant;                                              /* 波长 */
+                    buffer[1] = 0;                                                    /* 正常 */
+                    buffer[2] = stage;                                                /* 校正段索引 */
                     if (radiant == eComm_Data_Sample_Radiant_610 || radiant == eComm_Data_Sample_Radiant_550) {
                         cnt = 6;
                     } else {
@@ -1209,37 +1215,36 @@ static void motor_Task(void * argument)
                 for (radiant = eComm_Data_Sample_Radiant_610; radiant <= eComm_Data_Sample_Radiant_405; ++radiant) { /* 逐个波长校正 */
                     switch (radiant) {
                         case eComm_Data_Sample_Radiant_610:
-                            cnt = COMM_DATA_LED_VOLTAGE_INIT_610; /* 初始化电压值 */
+                            gComm_Data_LED_Voltage_Interval_Set(COMM_DATA_LED_VOLTAGE_UNIT_610); /* 调整间隔初始化 */
+                            cnt = COMM_DATA_LED_VOLTAGE_INIT_610;                                /* 初始化电压值 */
                             break;
                         case eComm_Data_Sample_Radiant_550:
-                            cnt = COMM_DATA_LED_VOLTAGE_INIT_550; /* 初始化电压值 */
+                            gComm_Data_LED_Voltage_Interval_Set(COMM_DATA_LED_VOLTAGE_UNIT_550); /* 调整间隔初始化 */
+                            cnt = COMM_DATA_LED_VOLTAGE_INIT_550;                                /* 初始化电压值 */
                             break;
                         case eComm_Data_Sample_Radiant_405:
-                            cnt = COMM_DATA_LED_VOLTAGE_INIT_405; /* 初始化电压值 */
+                            gComm_Data_LED_Voltage_Interval_Set(COMM_DATA_LED_VOLTAGE_UNIT_405); /* 调整间隔初始化 */
+                            cnt = COMM_DATA_LED_VOLTAGE_INIT_405;                                /* 初始化电压值 */
                             break;
                     }
-                    comm_Data_Set_LED_Voltage(radiant, cnt);                                                     /* 设置初始化电压值 */
-                    while (cnt < 2200) {                                                                         /* 循环测试-检测-调整电压 */
-                        comm_Data_RecordInit();                                                                  /* 初始化数据记录 */
-                        gComm_Data_SP_LED_Flag_Mark(radiant);                                                    /* 标记校正采样板LED电压状态 */
-                        comm_Data_Sample_Send_Conf_Correct(buffer, radiant,                                      /* 配置波长 */
-                                                           gComm_Data_LED_Voltage_Points_Get(),                  /* 点数 */
-                                                           eComm_Data_Outbound_CMD_TEST);                        /* 上送 PD 值 */
-                        vTaskDelay(300);                                                                         /* 等待回应报文 */
-                        white_Motor_WH();                                                                        /* 运动白板电机 白板位置 */
-                        motor_Sample_Deal();                                                                     /* 启动采样并控制白板电机 */
+                    comm_Data_Set_LED_Voltage(radiant, cnt);                                    /* 设置初始化电压值 */
+                    for (;;) {                                                                  /* 循环测试-检测-调整电压 */
+                        comm_Data_RecordInit();                                                 /* 初始化数据记录 */
+                        gComm_Data_SP_LED_Flag_Mark(radiant);                                   /* 标记校正采样板LED电压状态 */
+                        comm_Data_Sample_Send_Conf_Correct(buffer, radiant,                     /* 配置波长 */
+                                                           gComm_Data_LED_Voltage_Points_Get(), /* 点数 */
+                                                           eComm_Data_Outbound_CMD_TEST);       /* 上送 PD 值 */
+                        vTaskDelay(300);                                                        /* 等待回应报文 */
+                        white_Motor_WH();                                                       /* 运动白板电机 白板位置 */
+                        if (motor_Sample_Deal()) {                                              /* 启动采样并控制白板电机 */
+                            break;                                                              /* 定标异常 */
+                        }
                         white_Motor_WH();                                                                        /* 运动白板电机 白板位置 */
                         comm_Data_Wait_Data((radiant != eComm_Data_Sample_Radiant_405) ? (0x3F) : (0x01), 1200); /* 等待采样结果上送 */
-                        if (comm_Data_Check_LED(radiant) == 0) {                                                 /* 检查采样值 */
-                            cnt += gComm_Data_LED_Voltage_Interval_Get();                                        /* 回退电压值 */
-                            comm_Data_Set_LED_Voltage(radiant, cnt);                                             /* 调整电压值 */
-                            break;                                                                               /* 合格即跳出 */
-                        }
-                        cnt += gComm_Data_LED_Voltage_Interval_Get();                                            /* 增加电压值 */
+                        stage = comm_Data_Check_LED(radiant);                                                    /* 检查采样值 */
+                        cnt += gComm_Data_LED_Voltage_Interval_Get();                                            /* 回退电压值 */
                         comm_Data_Set_LED_Voltage(radiant, cnt);                                                 /* 调整电压值 */
-                        if ((radiant == eComm_Data_Sample_Radiant_610 && cnt > COMM_DATA_LED_VOLTAGE_MAX_610) || /* 电压越限停止 */
-                            (radiant == eComm_Data_Sample_Radiant_550 && cnt > COMM_DATA_LED_VOLTAGE_MAX_550) ||
-                            (radiant == eComm_Data_Sample_Radiant_405 && cnt > COMM_DATA_LED_VOLTAGE_MAX_405)) {
+                        if (stage == 0) {                                                                        /* 合格即跳出 */
                             break;
                         }
                     }
