@@ -1108,9 +1108,9 @@ static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length)
             break;
         case eProtocolEmitPack_Client_CMD_Debug_Beep: /* 蜂鸣器控制 */
             if (length != 14) {
-                beep_Start_FromISR();
+                beep_Start();
             } else {
-                beep_Start_With_Conf_FromISR(pInBuff[6] % 7, (pInBuff[7] << 8) + pInBuff[8], (pInBuff[9] << 8) + pInBuff[10], (pInBuff[11] << 8) + pInBuff[12]);
+                beep_Start_With_Conf(pInBuff[6] % 7, (pInBuff[7] << 8) + pInBuff[8], (pInBuff[9] << 8) + pInBuff[10], (pInBuff[11] << 8) + pInBuff[12]);
             }
             break;
         case eProtocolEmitPack_Client_CMD_Debug_Flash_Read: /* SPI Flash 读测试 */
