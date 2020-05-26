@@ -39,18 +39,11 @@ typedef enum {
 
 /* Exported functions prototypes ---------------------------------------------*/
 void beep_Start(void);
-void beep_Start_FromISR(void);
 void beep_Start_With_Conf(eBeep_Freq freq, uint16_t t_on, uint16_t t_off, uint16_t period_cnt);
-void beep_Start_With_Conf_FromISR(eBeep_Freq freq, uint16_t t_on, uint16_t t_off, uint16_t period_cnt);
 void beep_Start_With_Loop(void);
 void beep_Stop(void);
 void beep_Deal(uint32_t res);
 void beep_Init(void);
-
-void beep_Conf_Set_Freq(eBeep_Freq freq);
-void beep_Conf_Set_T_on(uint16_t t_on);
-void beep_Conf_Set_T_off(uint16_t t_off);
-void beep_Conf_Set_Period_Cnt(uint16_t period_cnt);
 
 /* Private defines -----------------------------------------------------------*/
 

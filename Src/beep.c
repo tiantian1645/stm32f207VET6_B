@@ -44,6 +44,11 @@ const eBeep_Freq cBeepFreqs[] = {
 static void beep_Conf_Init_Start(void);
 static void beep_Conf_Set_State(eBeep_Status state);
 
+static void beep_Conf_Set_Freq(eBeep_Freq freq);
+static void beep_Conf_Set_T_on(uint16_t t_on);
+static void beep_Conf_Set_T_off(uint16_t t_off);
+static void beep_Conf_Set_Period_Cnt(uint16_t period_cnt);
+
 /* Private user code ---------------------------------------------------------*/
 
 /**
@@ -85,52 +90,41 @@ static void beep_Conf_Set_State(eBeep_Status state)
  * @param  freq 声响频率选择
  * @retval None
  */
-void beep_Conf_Set_Freq(eBeep_Freq freq)
+static void beep_Conf_Set_Freq(eBeep_Freq freq)
 {
-    if (beep_Is_Hima() == 0) {
-        return;
-    }
     gBeep_Conf.freq = freq;
     __HAL_TIM_SET_AUTORELOAD(&BEEP_TIM, freq);
     __HAL_TIM_SET_COMPARE(&BEEP_TIM, BEEP_TIM_CHN, freq / 2);
 }
 
 /**
- * @brief  蜂鸣器
- * @param  None
+ * @brief  蜂鸣器发声周期内响时间
+ * @param  t_on 持续时间 毫秒
  * @retval None
  */
-void beep_Conf_Set_T_on(uint16_t t_on)
+static void beep_Conf_Set_T_on(uint16_t t_on)
 {
-    if (beep_Is_Hima() == 0) {
-        return;
-    }
     gBeep_Conf.t_on = t_on;
 }
 
 /**
- * @brief  蜂鸣器
- * @param  None
+ * @brief  蜂鸣器发声周期内熄时间
+ * @param  t_off 持续时间 毫秒
  * @retval None
  */
-void beep_Conf_Set_T_off(uint16_t t_off)
+static void beep_Conf_Set_T_off(uint16_t t_off)
 {
-    if (beep_Is_Hima() == 0) {
-        return;
-    }
     gBeep_Conf.t_off = t_off;
 }
 
 /**
- * @brief  蜂鸣器
- * @param  None
+ * @brief  蜂鸣器发声次数设置
+ * @param  period_cnt 次数
  * @retval None
  */
-void beep_Conf_Set_Period_Cnt(uint16_t period_cnt)
+static void beep_Conf_Set_Period_Cnt(uint16_t period_cnt)
 {
-    if (beep_Is_Hima()) {
-        gBeep_Conf.period_cnt = period_cnt;
-    }
+    gBeep_Conf.period_cnt = period_cnt;
 }
 
 /**
@@ -155,6 +149,9 @@ void beep_Start(void)
  */
 void beep_Start_With_Conf(eBeep_Freq freq, uint16_t t_on, uint16_t t_off, uint16_t period_cnt)
 {
+    if (beep_Is_Hima() == 0) {
+        return;
+    }
     beep_Conf_Set_Freq(freq);
     beep_Conf_Set_T_on(t_on);
     beep_Conf_Set_T_off(t_off);
@@ -196,9 +193,9 @@ void beep_Stop(void)
  */
 void beep_Deal(uint32_t res)
 {
-    uint32_t gap;
+    uint32_t gap, ccer;
 
-    if (beep_Is_Hima() && HAL_TIM_PWM_GetState(&BEEP_TIM) == HAL_TIM_STATE_READY) { /* 空闲状态置位 PWM状态空闲 跳过检查 */
+    if (beep_Is_Hima()) { /* 空闲状态置位 跳过检查 */
         return;
     }
 
@@ -207,10 +204,16 @@ void beep_Deal(uint32_t res)
         beep_Stop();                                                            /* 停止PWM输出 */
         return;
     }
-    if ((gap % (gBeep_Conf.t_off + gBeep_Conf.t_on) > gBeep_Conf.t_on) || (gBeep_Conf.t_off + gBeep_Conf.t_on) * gBeep_Conf.period_cnt - gap < res / 2 * 3) {
-        HAL_TIM_PWM_Stop(&BEEP_TIM, BEEP_TIM_CHN); /* 停止PWM输出 */
+
+    ccer = BEEP_TIM.Instance->CCER & (1 <<BEEP_TIM_CHN);
+    if (gap % (gBeep_Conf.t_off + gBeep_Conf.t_on) > gBeep_Conf.t_on) {
+        if (ccer) {
+            HAL_TIM_PWM_Stop(&BEEP_TIM, BEEP_TIM_CHN); /* 停止PWM输出 */
+        }
     } else {
-        HAL_TIM_PWM_Start(&BEEP_TIM, BEEP_TIM_CHN); /* 启动PWM输出 */
+        if (!ccer) {
+            HAL_TIM_PWM_Start(&BEEP_TIM, BEEP_TIM_CHN); /* 启动PWM输出 */
+        }
     }
 }
 
