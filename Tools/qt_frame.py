@@ -162,6 +162,7 @@ class MainWindow(QMainWindow):
         self.device_datetime = datetime.now()
         self.serial_recv_worker = None
         self.serial_send_worker = None
+        self.warn_msgbox_cnt = 0
         self.sample_db = SampleDB("sqlite:///data/db.sqlite3", device_id=self.device_id)
         self.sample_record_current_label = None
         self.flash_json_data = None
@@ -1529,10 +1530,10 @@ class MainWindow(QMainWindow):
         for i in range(6):
             shortcut_switch_cb = QShortcut(QKeySequence(f"Ctrl+{i + 1}"), self)
             shortcut_switch_cb.activated.connect(partial(self.on_matplot_hide, idx=i))
-        self.matplot_shot_bits = ((1 << 6) - 1)
+        self.matplot_shot_bits = (1 << 6) - 1
 
     def on_matplot_hide(self, idx):
-        flag = (1 << idx)
+        flag = 1 << idx
         if (self.matplot_shot_bits & flag) == flag:
             self.plot_graph.hide_plot(idx)
             for num in range(1, len(self.plot_graph.plot_data_confs) // 6):
@@ -2896,11 +2897,21 @@ class MainWindow(QMainWindow):
         logger.error(f"unknow error code | {error_code}")
         return "Unknow Error Code"
 
+    def on_warn_msgbox_close(self):
+        self.warn_msgbox_cnt -= 1
+        logger.debug(f"close msg box | nogoru wa {self.warn_msgbox_cnt}")
+
     def showWarnInfo(self, info):
         error_code = struct.unpack("H", info.content[6:8])[0]
         error_content = self.getErrorContent(error_code)
         level = QMessageBox.Warning
-        msg = ModernMessageBox(self, timeout=nan)
+        if self.warn_msgbox_cnt > 50:
+            timeout = 5
+        else:
+            timeout = nan
+        msg = ModernMessageBox(self, timeout=timeout)
+        self.warn_msgbox_cnt += 1
+        msg.close_callback.connect(self.on_warn_msgbox_close)
         msg.setIcon(level)
         msg.setWindowTitle(f"故障信息 | {datetime.now()}")
         msg.setText(f"故障码 {error_code}\n{error_content}")

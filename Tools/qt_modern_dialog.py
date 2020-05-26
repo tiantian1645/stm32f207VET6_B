@@ -242,6 +242,7 @@ class ModernMessageBox(QDialog, ModernWidget):
             w (QWidget): Main widget.
             parent (QWidget, optional): Parent widget.
     """
+    close_callback = Signal()
 
     def __init__(self, parent=None, timeout=60):
         QDialog.__init__(self, parent)
@@ -333,8 +334,12 @@ class ModernMessageBox(QDialog, ModernWidget):
 
     @Slot()
     def on_btnClose_clicked(self):
-        self.timer.stop()
         ModernWidget.on_btnClose_clicked(self)
+
+    def closeEvent(self, event):
+        self.timer.stop()
+        event.accept()
+        self.close_callback.emit()
 
     @Slot()
     def on_titleBar_doubleClicked(self):
