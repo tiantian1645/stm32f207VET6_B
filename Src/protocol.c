@@ -1316,6 +1316,8 @@ static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length)
             break;
         case eProtocolEmitPack_Client_CMD_UPGRADE: /* 下位机升级命令帧 0x0F */
             if (spi_FlashWriteAndCheck_Word(0x0000, 0x87654321) == 0) {
+                heater_BTM_Output_Stop();
+                heater_TOP_Output_Stop();
                 HAL_NVIC_SystemReset(); /* 重新启动 */
             } else {
                 error_Emit_FromISR(eError_Out_Flash_Write_Failed);
@@ -1448,8 +1450,11 @@ static void protocol_Parse_Main_Fun_ISR(uint8_t * pInBuff, uint16_t length)
             break;
         case eProtocolEmitPack_Client_CMD_TEST:                 /* 工装测试配置帧 0x08 */
             comm_Data_Sample_Send_Conf_TV_FromISR(&pInBuff[6]); /* 保存测试配置 */
+            break;
         case eProtocolEmitPack_Client_CMD_UPGRADE:              /* 下位机升级命令帧 0x0F */
             if (spi_FlashWriteAndCheck_Word(0x0000, 0x87654321) == 0) {
+                heater_BTM_Output_Stop();
+                heater_TOP_Output_Stop();
                 HAL_NVIC_SystemReset(); /* 重新启动 */
             } else {
                 error_Emit_FromISR(eError_Out_Flash_Write_Failed);
