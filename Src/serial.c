@@ -167,14 +167,18 @@ void serialGenerateCallback(uint8_t * pBuff, uint16_t length, sSerialRecord * ps
     uint8_t first_head;
     uint16_t i, pos = 0, tail = 0, j;
 
-    first_head = psrd->has_head(pBuff, length);            /* 判断是否有包头 */
-    if (first_head) {                                      /* 有包头 */
-        tail = psrd->has_tail(pBuff, length);              /* 找到包头后 寻找包尾 */
-        if (tail && psrd->is_cmop(pBuff, tail)) {          /* 完整性判断 */
-            psrd->callback(pBuff, tail);                   /* 直接中断内处理 */
-            memset(psrd->pSerialBuff, 0, psrd->maxLength); /* 清空拼包缓存 */
-            psrd->validLength = 0;                         /* 拼包缓存中待处理长度清零 */
-            return;                                        /* 提前返回 */
+    first_head = psrd->has_head(pBuff, length);   /* 判断是否有包头 */
+    if (first_head) {                             /* 有包头 */
+        tail = psrd->has_tail(pBuff, length);     /* 找到包头后 寻找包尾 */
+        if (tail && psrd->is_cmop(pBuff, tail)) { /* 完整性判断 */
+            psrd->callback(pBuff, tail);          /* 直接中断内处理 */
+            length -= tail;                       /* 更新待处理长度 */
+            if (length == 0) {                    /* 仅此一包 */
+                return;                           /* 提前结束 */
+            }                                     /* 处理剩余部分 */
+            for (i = 0; i < length; ++i) {        /* 平移未处理部分至头部 */
+                pBuff[i] = pBuff[i + tail];
+            }
         }
     }
 
@@ -458,7 +462,10 @@ BaseType_t serialSendStart(eSerialIndex serialIndex, uint8_t * pSendBuff, uint8_
 
 /**
  * @brief  串口发送启动 中断方式
- * @param  None
+ * @note   进入此函数前应先检查发送信号量是否可用
+ * @param  serialIndex 串口选择
+ * @param  pSendBuff 数据指针 注意生存时间
+ * @param  sendLength 数据长度
  * @retval None
  */
 BaseType_t serialSendStartIT(eSerialIndex serialIndex, uint8_t * pSendBuff, uint8_t sendLength)
@@ -467,9 +474,6 @@ BaseType_t serialSendStartIT(eSerialIndex serialIndex, uint8_t * pSendBuff, uint
 
     switch (serialIndex) {
         case eSerialIndex_1:
-            if (comm_Main_DMA_TX_Enter_From_ISR() != pdPASS) { /* 确保发送完成信号量被释放 */
-                return pdFALSE;                                /* 115200波特率下 发送长度少于 256B 长度数据包耗时超过 30mS */
-            }
             result = HAL_UART_Transmit_IT(&huart1, pSendBuff, sendLength);
             if (result != HAL_OK) {                /* 发送结果判断 异常反应 HAL_BUSY */
                 comm_Main_DMA_TX_Error_From_ISR(); /* 发送失败处理 */
@@ -479,9 +483,6 @@ BaseType_t serialSendStartIT(eSerialIndex serialIndex, uint8_t * pSendBuff, uint
             }
             break;
         case eSerialIndex_2:
-            if (comm_Data_DMA_TX_Enter_From_ISR() != pdPASS) { /* 确保发送完成信号量被释放 */
-                return pdFALSE;                                /* 115200波特率下 发送长度少于 256B 长度数据包耗时超过 30mS */
-            }
             result = HAL_UART_Transmit_IT(&huart2, pSendBuff, sendLength);
             if (result != HAL_OK) {                /* 发送结果判断 异常反应 HAL_BUSY */
                 comm_Data_DMA_TX_Error_From_ISR(); /* 发送失败处理 */
@@ -491,9 +492,6 @@ BaseType_t serialSendStartIT(eSerialIndex serialIndex, uint8_t * pSendBuff, uint
             }
             break;
         case eSerialIndex_5:
-            if (comm_Out_DMA_TX_Enter_From_ISR() != pdPASS) { /* 确保发送完成信号量被释放 */
-                return pdFALSE;                               /* 115200波特率下 发送长度少于 256B 长度数据包耗时超过 30mS */
-            }
             result = HAL_UART_Transmit_IT(&huart5, pSendBuff, sendLength);
             if (result != HAL_OK) {               /* 发送结果判断 异常反应 HAL_BUSY */
                 comm_Out_DMA_TX_Error_From_ISR(); /* 发送失败处理 */
