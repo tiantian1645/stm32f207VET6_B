@@ -1,2 +1,2 @@
-VERSION = "v0.31"
+VERSION = "v0.32"
 VERSION_FA = "v0.01"
