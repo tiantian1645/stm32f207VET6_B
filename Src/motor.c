@@ -1172,8 +1172,7 @@ static void motor_Task(void * argument)
                     for (unsigned char i = 0; i < cnt; ++i) {
                         storge_ParamReadSingle(storge_Param_Illumine_CC_Get_Index(i + 1, radiant) + stage, (&buffer[3 + 2 * i]));
                     }
-                    comm_Main_SendTask_QueueEmitWithBuild(eProtocolEmitPack_Client_CMD_Correct, buffer, 3 + 2 * cnt, 600);
-                    comm_Out_SendTask_QueueEmitWithModify(buffer, 3 + 2 * cnt + 7, 0); /* 转发至外串口但不允许阻塞 */
+                    comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Correct, buffer, 3 + 2 * cnt);
                 }
 
                 motor_Sample_Owari_Correct();           /* 清理 */
@@ -1420,8 +1419,7 @@ static void motor_Self_Check_PD(uint8_t * pBuffer, uint8_t mask)
 
     gComm_Data_SelfCheck_PD_Flag_Clr();                                            /* 清除自检测试 单项 PD状态 */
     pBuffer[0] = eMotor_Fun_Self_Check_PD - eMotor_Fun_Self_Check_Motor_White + 6; /* 自检测试 单项 PD */
-    ;
-    pBuffer[1] = mask; /* 掩码值 */
+    pBuffer[1] = mask;                                                             /* 掩码值 */
     memcpy(&pBuffer[2], (uint8_t *)(record), ARRAY_LEN(record) * 4);
     if (comm_Main_SendTask_Queue_GetFree() > 0) {
         comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 54); /* 上报主串口 */
