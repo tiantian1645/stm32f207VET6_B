@@ -1037,10 +1037,12 @@ static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length)
             break;
         case eProtocolEmitPack_Client_CMD_Debug_Correct:
             if (length == 8) {
-                gComm_Data_Correct_Flag_Mark();          /* 标记进入定标状态 */
-                motor_fun.fun_type = eMotor_Fun_Correct; /* 电机执行定标 */
-                motor_fun.fun_param_1 = pInBuff[6];      /* 定标段索引偏移 */
-                motor_Emit_FromISR(&motor_fun);
+                gComm_Data_Correct_Flag_Mark();                   /* 标记进入定标状态 */
+                motor_fun.fun_type = eMotor_Fun_Correct;          /* 电机执行定标 */
+                motor_fun.fun_param_1 = pInBuff[6];               /* 定标段索引偏移 */
+                if (motor_Emit_FromISR(&motor_fun) == 0) {        /* 成功提交 */
+                    gMotor_Sampl_Comm_Set(eMotor_Sampl_Comm_Out); /* 标记来源为外串口 */
+                }
             }
             break;
         case eProtocolEmitPack_Client_CMD_Debug_Heater:
@@ -1529,10 +1531,12 @@ static void protocol_Parse_Main_Fun_ISR(uint8_t * pInBuff, uint16_t length)
             break;
         case eProtocolEmitPack_Client_CMD_Debug_Correct:
             if (length == 8) {
-                gComm_Data_Correct_Flag_Mark();          /* 标记进入定标状态 */
-                motor_fun.fun_type = eMotor_Fun_Correct; /* 电机执行定标 */
-                motor_fun.fun_param_1 = pInBuff[6];      /* 定标段索引偏移 */
-                motor_Emit_FromISR(&motor_fun);
+                gComm_Data_Correct_Flag_Mark();                    /* 标记进入定标状态 */
+                motor_fun.fun_type = eMotor_Fun_Correct;           /* 电机执行定标 */
+                motor_fun.fun_param_1 = pInBuff[6];                /* 定标段索引偏移 */
+                if (motor_Emit_FromISR(&motor_fun) == 0) {         /* 成功提交 */
+                    gMotor_Sampl_Comm_Set(eMotor_Sampl_Comm_Main); /* 标记来源为外串口 */
+                }
             }
             break;
         case eProtocolEmitPack_Client_CMD_Debug_System: /* 系统控制 */
