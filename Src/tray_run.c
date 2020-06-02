@@ -383,7 +383,7 @@ eTrayState tray_Motor_Init(void)
 
     tray_Motor_EE_Clear(); /* 清除托盘丢步标志位 */
     xTick = xTaskGetTickCount();
-    dSPIN_Move(FWD, (eTrayIndex_2 >> 5) << 3);
+    dSPIN_Move(FWD, ((eTrayIndex_2 >> 5) << 3) + 32);
     do {
         vTaskDelay(100);
     } while (TRAY_MOTOR_IS_BUSY && (xTaskGetTickCount() - xTick < 2500));
