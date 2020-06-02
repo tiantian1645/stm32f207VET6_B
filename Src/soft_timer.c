@@ -6,6 +6,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include <math.h>
 #include "heater.h"
 #include "pid_ctrl.h"
 #include "motor.h"
@@ -45,7 +46,12 @@ void soft_timer_Heater_Call_Back(TimerHandle_t xTimer)
 {
     static uint16_t btm_cnt = 0, top_cnt = 0;
     static uint8_t btm_flag = 0, top_flag = 0;
-    float btm_temp;
+    float btm_temp, top_temp;
+    float decent_cnt;
+    const float btm_k = HEATER_BTM_OVERSHOOT_AMP / log(HEATER_BTM_OVERSHOOT_B/(HEATER_BTM_OVERSHOOT_B - HEATER_BTM_OVERSHOOT_K * HEATER_BTM_OVERSHOOT_DECENT_DURATION));
+    const float btm_b = btm_k * -1 * log(HEATER_BTM_OVERSHOOT_B - HEATER_BTM_OVERSHOOT_K * HEATER_BTM_OVERSHOOT_DECENT_DURATION);
+    const float top_k = HEATER_TOP_OVERSHOOT_AMP / log(HEATER_TOP_OVERSHOOT_B/(HEATER_TOP_OVERSHOOT_B - HEATER_TOP_OVERSHOOT_K * HEATER_TOP_OVERSHOOT_DECENT_DURATION));
+    const float top_b = top_k * -1 * log(HEATER_TOP_OVERSHOOT_B - HEATER_TOP_OVERSHOOT_K * HEATER_TOP_OVERSHOOT_DECENT_DURATION);
 
     if (heater_Overshoot_Flag_Get(eHeater_BTM)) { /* 执行下加热体温度过冲 */
         if (btm_cnt == 0) {
@@ -68,10 +74,13 @@ void soft_timer_Heater_Call_Back(TimerHandle_t xTimer)
                     heater_Overshoot_Flag_Set(eHeater_BTM, 0);
                     heater_BTM_Setpoint_Set(HEATER_BTM_DEFAULT_SETPOINT); /* 恢复下加热体目标温度 */
                 } else {
-                    heater_BTM_Setpoint_Set(HEATER_BTM_OVERSHOOT_TARGET -
-                                            (HEATER_BTM_OVERSHOOT_TARGET - HEATER_BTM_DEFAULT_SETPOINT) *
-                                                ((float)(btm_cnt - HEATER_BTM_OVERSHOOT_LEVEL_TIMEOUT * SOFT_TIMER_HEATER_SECOND_UNIT) /
-                                                 ((HEATER_BTM_OVERSHOOT_TIMEOUT - HEATER_BTM_OVERSHOOT_LEVEL_TIMEOUT) * SOFT_TIMER_HEATER_SECOND_UNIT)));
+                    decent_cnt = (btm_cnt - HEATER_BTM_OVERSHOOT_LEVEL_TIMEOUT * SOFT_TIMER_HEATER_SECOND_UNIT) / (SOFT_TIMER_HEATER_SECOND_UNIT);
+                    btm_temp = btm_k * log(-decent_cnt * HEATER_BTM_OVERSHOOT_K + HEATER_BTM_OVERSHOOT_B) + btm_b;
+                    heater_BTM_Setpoint_Set(btm_temp + HEATER_BTM_DEFAULT_SETPOINT);
+                    // heater_BTM_Setpoint_Set(HEATER_BTM_OVERSHOOT_TARGET -
+                    //                         HEATER_BTM_OVERSHOOT_AMP *
+                    //                             ((float)(btm_cnt - HEATER_BTM_OVERSHOOT_LEVEL_TIMEOUT * SOFT_TIMER_HEATER_SECOND_UNIT) /
+                    //                              ((HEATER_BTM_OVERSHOOT_DECENT_DURATION) * SOFT_TIMER_HEATER_SECOND_UNIT)));
                 }
             }
         }
@@ -105,10 +114,13 @@ void soft_timer_Heater_Call_Back(TimerHandle_t xTimer)
                     heater_Overshoot_Flag_Set(eHeater_TOP, 0);
                     heater_TOP_Setpoint_Set(HEATER_TOP_DEFAULT_SETPOINT); /* 恢复下加热体目标温度 */
                 } else {
-                    heater_TOP_Setpoint_Set(HEATER_TOP_OVERSHOOT_TARGET -
-                                            (HEATER_TOP_OVERSHOOT_TARGET - HEATER_TOP_DEFAULT_SETPOINT) *
-                                                ((float)(top_cnt - HEATER_TOP_OVERSHOOT_LEVEL_TIMEOUT * SOFT_TIMER_HEATER_SECOND_UNIT) /
-                                                 ((HEATER_TOP_OVERSHOOT_TIMEOUT - HEATER_TOP_OVERSHOOT_LEVEL_TIMEOUT) * SOFT_TIMER_HEATER_SECOND_UNIT)));
+                    decent_cnt = (top_cnt - HEATER_TOP_OVERSHOOT_LEVEL_TIMEOUT * SOFT_TIMER_HEATER_SECOND_UNIT) / (SOFT_TIMER_HEATER_SECOND_UNIT);
+                    top_temp = top_k * log(-decent_cnt * HEATER_TOP_OVERSHOOT_K + HEATER_TOP_OVERSHOOT_B) + top_b;
+                    heater_TOP_Setpoint_Set(top_temp + HEATER_TOP_DEFAULT_SETPOINT);
+                    // heater_TOP_Setpoint_Set(HEATER_TOP_OVERSHOOT_TARGET -
+                    //                         (HEATER_TOP_OVERSHOOT_TARGET - HEATER_TOP_DEFAULT_SETPOINT) *
+                    //                             ((float)(top_cnt - HEATER_TOP_OVERSHOOT_LEVEL_TIMEOUT * SOFT_TIMER_HEATER_SECOND_UNIT) /
+                    //                              ((HEATER_TOP_OVERSHOOT_TIMEOUT - HEATER_TOP_OVERSHOOT_LEVEL_TIMEOUT) * SOFT_TIMER_HEATER_SECOND_UNIT)));
                 }
             }
         }
