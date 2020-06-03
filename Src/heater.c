@@ -329,7 +329,7 @@ void heater_BTM_Output_Keep_Deal(void)
         } else {
             env_temp = temp_Get_Temp_Data_ENV();
             if (env_temp < 24 && env_temp > -7) {
-                btm_input = btm_input - (24 - env_temp) * (24 - env_temp) * 0.0020;
+                btm_input = btm_input - (24 - env_temp) * (24 - env_temp) * 0.0010;
             }
             // Compute new PID output value
             pid_ctrl_compute(&gHeater_BTM_PID_Conf);
@@ -422,7 +422,7 @@ void heater_TOP_Output_Keep_Deal(void)
         } else {
             env_temp = temp_Get_Temp_Data_ENV();
             if (env_temp < 24 && env_temp > -7) {
-                top_input = top_input - (24 - env_temp) * (24 - env_temp) * 0.0020;
+                top_input = top_input - (24 - env_temp) * (24 - env_temp) * 0.0010;
             }
             // Compute new PID output value
             pid_ctrl_compute(&gHeater_TOP_PID_Conf);
