@@ -6,7 +6,6 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include <math.h>
 #include "heater.h"
 #include "pid_ctrl.h"
 #include "motor.h"
@@ -44,98 +43,7 @@ TimerHandle_t gTimerHandleHeater = NULL;
  */
 void soft_timer_Heater_Call_Back(TimerHandle_t xTimer)
 {
-    static uint16_t btm_cnt = 0, top_cnt = 0;
-    static uint8_t btm_flag = 0, top_flag = 0;
-    float btm_temp, top_temp;
-    float decent_cnt;
-    const float btm_k = HEATER_BTM_OVERSHOOT_AMP / log(HEATER_BTM_OVERSHOOT_B/(HEATER_BTM_OVERSHOOT_B - HEATER_BTM_OVERSHOOT_K * HEATER_BTM_OVERSHOOT_DECENT_DURATION));
-    const float btm_b = btm_k * -1 * log(HEATER_BTM_OVERSHOOT_B - HEATER_BTM_OVERSHOOT_K * HEATER_BTM_OVERSHOOT_DECENT_DURATION);
-    const float top_k = HEATER_TOP_OVERSHOOT_AMP / log(HEATER_TOP_OVERSHOOT_B/(HEATER_TOP_OVERSHOOT_B - HEATER_TOP_OVERSHOOT_K * HEATER_TOP_OVERSHOOT_DECENT_DURATION));
-    const float top_b = top_k * -1 * log(HEATER_TOP_OVERSHOOT_B - HEATER_TOP_OVERSHOOT_K * HEATER_TOP_OVERSHOOT_DECENT_DURATION);
-
-    if (heater_Overshoot_Flag_Get(eHeater_BTM)) { /* 执行下加热体温度过冲 */
-        if (btm_cnt == 0) {
-            btm_cnt = 1;
-            heater_BTM_Setpoint_Set(HEATER_BTM_OVERSHOOT_TARGET); /* 修改下加热体目标温度 */
-        } else {
-            btm_temp = temp_Get_Temp_Data_BTM();
-            if (btm_flag == 0 && btm_temp >= HEATER_BTM_OVERSHOOT_TARGET) { /* 保持过冲温度计数开始标志位 */
-                btm_flag = 1;
-            }
-            if (btm_flag) {
-                ++btm_cnt;
-                if (btm_cnt < HEATER_BTM_OVERSHOOT_LEVEL_TIMEOUT * SOFT_TIMER_HEATER_SECOND_UNIT) { /* 保持过冲温度超时计数 */
-                    if (btm_temp > HEATER_BTM_OVERSHOOT_TARGET) {
-                        heater_BTM_Setpoint_Set(btm_temp);
-                    }
-                } else if (btm_cnt >= HEATER_BTM_OVERSHOOT_TIMEOUT * SOFT_TIMER_HEATER_SECOND_UNIT) { /* 完成过冲 */
-                    btm_cnt = 0;
-                    btm_flag = 0;
-                    heater_Overshoot_Flag_Set(eHeater_BTM, 0);
-                    heater_BTM_Setpoint_Set(HEATER_BTM_DEFAULT_SETPOINT); /* 恢复下加热体目标温度 */
-                } else {
-                    decent_cnt = (btm_cnt - HEATER_BTM_OVERSHOOT_LEVEL_TIMEOUT * SOFT_TIMER_HEATER_SECOND_UNIT) / (SOFT_TIMER_HEATER_SECOND_UNIT);
-                    btm_temp = btm_k * log(-decent_cnt * HEATER_BTM_OVERSHOOT_K + HEATER_BTM_OVERSHOOT_B) + btm_b;
-                    heater_BTM_Setpoint_Set(btm_temp + HEATER_BTM_DEFAULT_SETPOINT);
-                    // heater_BTM_Setpoint_Set(HEATER_BTM_OVERSHOOT_TARGET -
-                    //                         HEATER_BTM_OVERSHOOT_AMP *
-                    //                             ((float)(btm_cnt - HEATER_BTM_OVERSHOOT_LEVEL_TIMEOUT * SOFT_TIMER_HEATER_SECOND_UNIT) /
-                    //                              ((HEATER_BTM_OVERSHOOT_DECENT_DURATION) * SOFT_TIMER_HEATER_SECOND_UNIT)));
-                }
-            }
-        }
-    } else { /* 非温度过冲状态 */
-        btm_cnt = 0;
-        btm_flag = 0;
-        if (heater_BTM_Setpoint_Get() < 50) { /* 目标温度50度以上时视为调试状态 */
-            if (heater_Outdoor_Flag_Get(eHeater_BTM)) {
-                heater_BTM_Setpoint_Set(HEATER_BTM_OUTDOOR_SETPOINT); /* 出仓状态下调整标志 */
-            } else if (heater_BTM_Setpoint_Get() != HEATER_BTM_DEFAULT_SETPOINT) {
-                heater_BTM_Setpoint_Set(HEATER_BTM_DEFAULT_SETPOINT); /* 恢复下加热体目标温度 */
-            }
-        }
-    }
-
-    if (heater_Overshoot_Flag_Get(eHeater_TOP)) { /* 执行上加热体温度过冲 */
-        if (top_cnt == 0) {
-            top_cnt = 1;
-            heater_TOP_Setpoint_Set(HEATER_TOP_OVERSHOOT_TARGET); /* 修改上加热体目标温度 */
-        } else {
-            if (top_flag == 0 && temp_Get_Temp_Data_TOP() >= HEATER_TOP_OVERSHOOT_TARGET) { /* 保持过冲温度计数开始标志位 */
-                top_flag = 1;
-            }
-            if (top_flag) {
-                ++top_cnt;
-                if (top_cnt < HEATER_TOP_OVERSHOOT_LEVEL_TIMEOUT * SOFT_TIMER_HEATER_SECOND_UNIT) { /* 保持过冲温度超时计数 */
-
-                } else if (top_cnt >= HEATER_TOP_OVERSHOOT_TIMEOUT * SOFT_TIMER_HEATER_SECOND_UNIT) { /* 完成过冲 */
-                    top_cnt = 0;
-                    top_flag = 0;
-                    heater_Overshoot_Flag_Set(eHeater_TOP, 0);
-                    heater_TOP_Setpoint_Set(HEATER_TOP_DEFAULT_SETPOINT); /* 恢复下加热体目标温度 */
-                } else {
-                    decent_cnt = (top_cnt - HEATER_TOP_OVERSHOOT_LEVEL_TIMEOUT * SOFT_TIMER_HEATER_SECOND_UNIT) / (SOFT_TIMER_HEATER_SECOND_UNIT);
-                    top_temp = top_k * log(-decent_cnt * HEATER_TOP_OVERSHOOT_K + HEATER_TOP_OVERSHOOT_B) + top_b;
-                    heater_TOP_Setpoint_Set(top_temp + HEATER_TOP_DEFAULT_SETPOINT);
-                    // heater_TOP_Setpoint_Set(HEATER_TOP_OVERSHOOT_TARGET -
-                    //                         (HEATER_TOP_OVERSHOOT_TARGET - HEATER_TOP_DEFAULT_SETPOINT) *
-                    //                             ((float)(top_cnt - HEATER_TOP_OVERSHOOT_LEVEL_TIMEOUT * SOFT_TIMER_HEATER_SECOND_UNIT) /
-                    //                              ((HEATER_TOP_OVERSHOOT_TIMEOUT - HEATER_TOP_OVERSHOOT_LEVEL_TIMEOUT) * SOFT_TIMER_HEATER_SECOND_UNIT)));
-                }
-            }
-        }
-    } else { /* 非温度过冲状态 */
-        top_cnt = 0;
-        top_flag = 0;
-        if (heater_TOP_Setpoint_Get() < 50) { /* 目标温度50度以上时视为调试状态 */
-            if (heater_Outdoor_Flag_Get(eHeater_TOP)) {
-                heater_TOP_Setpoint_Set(HEATER_TOP_OUTDOOR_SETPOINT); /* 出仓状态下调整标志 */
-            } else if (heater_TOP_Setpoint_Get() != HEATER_TOP_DEFAULT_SETPOINT) {
-                heater_TOP_Setpoint_Set(HEATER_TOP_DEFAULT_SETPOINT); /* 恢复上加热体目标温度 */
-            }
-        }
-    }
-
+    heater_Overshoot_Handle();        /* 过冲控制 */
     heater_BTM_Output_Keep_Deal();    /* 下加热体PID控制 */
     heater_TOP_Output_Keep_Deal();    /* 上加热体PID控制 */
     motor_OPT_Status_Update();        /* 电机光耦位置状态更新 */

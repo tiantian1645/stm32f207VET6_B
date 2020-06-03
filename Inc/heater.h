@@ -20,22 +20,6 @@
 #define HEATER_BTM_OUTDOOR_SETPOINT (37.3)
 #define HEATER_TOP_OUTDOOR_SETPOINT (37.3)
 
-#define HEATER_BTM_OVERSHOOT_LEVEL_TIMEOUT (18) /* 下加热体过冲目标温度持续时间 */
-#define HEATER_BTM_OVERSHOOT_TARGET (37.3)      /* 下加热体过冲目标温度 */
-#define HEATER_BTM_OVERSHOOT_TIMEOUT (80)       /* 下加热体过冲持续时间  66 */
-#define HEATER_BTM_OVERSHOOT_AMP (HEATER_BTM_OVERSHOOT_TARGET - HEATER_BTM_DEFAULT_SETPOINT)
-#define HEATER_BTM_OVERSHOOT_DECENT_DURATION (HEATER_BTM_OVERSHOOT_TIMEOUT - HEATER_BTM_OVERSHOOT_LEVEL_TIMEOUT)
-#define HEATER_BTM_OVERSHOOT_K (1.3)
-#define HEATER_BTM_OVERSHOOT_B (1.5 * HEATER_BTM_OVERSHOOT_DECENT_DURATION)
-
-#define HEATER_TOP_OVERSHOOT_LEVEL_TIMEOUT (25) /* 上加热体过冲目标温度持续时间 */
-#define HEATER_TOP_OVERSHOOT_TARGET (37.3)      /* 上加热体过冲目标温度 */
-#define HEATER_TOP_OVERSHOOT_TIMEOUT (60)       /* 上加热体过冲持续时间 */
-#define HEATER_TOP_OVERSHOOT_AMP (HEATER_TOP_OVERSHOOT_TARGET - HEATER_TOP_DEFAULT_SETPOINT)
-#define HEATER_TOP_OVERSHOOT_DECENT_DURATION (HEATER_TOP_OVERSHOOT_TIMEOUT - HEATER_TOP_OVERSHOOT_LEVEL_TIMEOUT)
-#define HEATER_TOP_OVERSHOOT_K (1.3)
-#define HEATER_TOP_OVERSHOOT_B (1.5 * HEATER_TOP_OVERSHOOT_DECENT_DURATION)
-
 /* Exported types ------------------------------------------------------------*/
 typedef enum {
     eHeater_PID_Conf_Kp,
@@ -56,6 +40,9 @@ typedef enum {
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/
+void heater_Overshoot_Init(float env);
+void heater_Overshoot_Handle(void);
+
 uint8_t heater_Overshoot_Flag_Get(eHeater_Index idx);
 void heater_Overshoot_Flag_Set(eHeater_Index idx, uint8_t flag);
 

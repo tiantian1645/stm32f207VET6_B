@@ -793,6 +793,9 @@ static void motor_Sample_Temperature_Check(void)
     if (temperature < 36.8 || temperature > 37.8) { /* 不在范围内 */
         error_Emit(eError_Temp_TOP_Not_In_Range);   /* 上报提示 */
     }
+
+    temperature = temp_Get_Temp_Data_ENV(); /* 读取环境温度 */
+    heater_Overshoot_Init(temperature);
     heater_Overshoot_Flag_Set(eHeater_BTM, 1); /* 下加热体过冲标志设置 */
     heater_Overshoot_Flag_Set(eHeater_TOP, 1); /* 上加热体过冲标志设置 */
 }
