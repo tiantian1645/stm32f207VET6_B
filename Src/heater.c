@@ -397,7 +397,7 @@ HAL_TIM_StateTypeDef heater_TOP_Output_Is_Live(void)
 void heater_TOP_Output_Init(void)
 {
     // Prepare PID controller for operation
-    pid_ctrl_init(&gHeater_TOP_PID_Conf, HEATER_TOP_SAMPLE, &top_input, &top_output, &top_setpoint, 160000, 2400, 2000);
+    pid_ctrl_init(&gHeater_TOP_PID_Conf, HEATER_TOP_SAMPLE, &top_input, &top_output, &top_setpoint, 180000, 8400, 8000);
     // Set controler output limits from 0 to 200
     pid_ctrl_limits(&gHeater_TOP_PID_Conf, 0, HEATER_TOP_ARR);
     // Allow PID to compute and change output
