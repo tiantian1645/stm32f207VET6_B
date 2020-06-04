@@ -284,7 +284,7 @@ class MainWindow(QMainWindow):
             self.serial_recv_worker.signals.owari.emit()
         if self.serial_send_worker is not None:
             self.serial_send_worker.signals.owari.emit()
-        self.threadpool.waitForDone(500)
+        self.threadpool.waitForDone(1000)
         sys.exit()
 
     def mouseDoubleClickEvent(self, event):
@@ -365,6 +365,32 @@ class MainWindow(QMainWindow):
         temp_ly.addStretch(1)
         temp_ly.addLayout(temperature_heater_ctl_ly)
         temperature_plot_ly.addLayout(temp_ly)
+
+        overshoot_btm_ly = QHBoxLayout()
+        self.temperature_overshoot_btm_sps = []
+        self.temperature_overshoot_btm_read_bt = QPushButton("读", maximumWidth=30, clicked=self.onTemperatureOvershootRead)
+        self.temperature_overshoot_btm_write_bt = QPushButton("写", maximumWidth=30, clicked=self.onTemperatureOvershootWrite)
+        overshoot_top_ly = QHBoxLayout()
+        self.temperature_overshoot_top_sps = []
+        self.temperature_overshoot_top_read_bt = QPushButton("读", maximumWidth=30, clicked=self.onTemperatureOvershootRead)
+        self.temperature_overshoot_top_write_bt = QPushButton("写", maximumWidth=30, clicked=self.onTemperatureOvershootWrite)
+        for name in ("最大偏差", "水平维持", "总持续", "k", "b", "A", "C"):
+            overshoot_btm_ly.addWidget(QLabel(name))
+            sp = QDoubleSpinBox(minimum=-500, maximum=500, decimals=3, maximumWidth=60)
+            overshoot_btm_ly.addWidget(sp)
+            self.temperature_overshoot_btm_sps.append(sp)
+            overshoot_top_ly.addWidget(QLabel(name))
+            sp = QDoubleSpinBox(minimum=-500, maximum=500, decimals=3, maximumWidth=60)
+            overshoot_top_ly.addWidget(sp)
+            self.temperature_overshoot_top_sps.append(sp)
+
+        overshoot_btm_ly.addWidget(self.temperature_overshoot_btm_read_bt)
+        overshoot_btm_ly.addWidget(self.temperature_overshoot_btm_write_bt)
+        overshoot_top_ly.addWidget(self.temperature_overshoot_top_read_bt)
+        overshoot_top_ly.addWidget(self.temperature_overshoot_top_write_bt)
+        temperature_plot_ly.addLayout(overshoot_btm_ly)
+        temperature_plot_ly.addLayout(overshoot_top_ly)
+
         self.temperature_heater_btm_cb.clicked.connect(self.onTemperatureHeaterChanged)
         self.temperature_heater_top_cb.clicked.connect(self.onTemperatureHeaterChanged)
         self.temperature_plot_clear_bt.clicked.connect(self.onTemperautreDataClear)
@@ -423,6 +449,26 @@ class MainWindow(QMainWindow):
             data &= ~(1 << 1)
         self._serialSendPack(0xD3, (data,))
 
+    def onTemperatureOvershootRead(self, event):
+        sender = self.sender()
+        if sender is self.temperature_overshoot_btm_read_bt:
+            self._serialSendPack(0xD3, (0x04,))
+        elif sender is self.temperature_overshoot_top_read_bt:
+            self._serialSendPack(0xD3, (0x05,))
+
+    def onTemperatureOvershootWrite(self, event):
+        sender = self.sender()
+        if sender is self.temperature_overshoot_btm_write_bt:
+            values = [i.value() for i in self.temperature_overshoot_btm_sps[:3]]
+            payload_bytes = b''.join([struct.pack("f", i) for i in values])
+            payload = [0x04] + [i for i in payload_bytes]
+            self._serialSendPack(0xD3, payload)
+        elif sender is self.temperature_overshoot_top_write_bt:
+            values = [i.value() for i in self.temperature_overshoot_top_sps[:3]]
+            payload_bytes = b''.join([struct.pack("f", i) for i in values])
+            payload = [0x05] + [i for i in payload_bytes]
+            self._serialSendPack(0xD3, payload)
+
     def onHeaterCtlRW(self, event=None, pbt=None):
         logger.debug(f"invoke onHeaterCtlRW | event {event} | pbt {pbt}")
         if pbt in self.temperature_heater_btm_ks_bts:
@@ -462,7 +508,7 @@ class MainWindow(QMainWindow):
                 self.temperature_heater_top_cb.setChecked(True)
             else:
                 self.temperature_heater_top_cb.setChecked(False)
-        if len(raw_bytes) == 26:
+        elif len(raw_bytes) == 26:
             bt = raw_bytes[6]
             logger.debug(f"get heater conf value | bt {bt}")
             for i in range(4):
@@ -476,6 +522,19 @@ class MainWindow(QMainWindow):
                     sp = self.temperature_heater_top_ks_sps[i]
                     sp.setValue(value)
                     self._setColor(sp)
+        elif len(raw_bytes) == 36:
+            if raw_bytes[6] == 4:
+                for i, sp in enumerate(self.temperature_overshoot_btm_sps):
+                    value = struct.unpack("f", raw_bytes[7 + 4 * i : 11 + 4 * i])[0]
+                    logger.info(f"ghet temperature overshoot param | {i+1} | {value}")
+                    sp.setValue(value)
+            elif raw_bytes[6] == 5:
+                for i, sp in enumerate(self.temperature_overshoot_top_sps):
+                    value = struct.unpack("f", raw_bytes[7 + 4 * i : 11 + 4 * i])[0]
+                    logger.info(f"ghet temperature overshoot param | {i+1} | {value}")
+                    sp.setValue(value)
+        else:
+            logger.info(f"get other temperatur debug pack | {len(raw_bytes)} | {info.text}")
 
     def onTemperatureCtlResetPara(self, event):
         for i, k in enumerate(("Kp", "Ki", "Kd", "target")):
@@ -722,8 +781,8 @@ class MainWindow(QMainWindow):
         matplot_record_ly.addWidget(QVLine(), 0)
         matplot_record_ly.addWidget(self.sample_record_label)
         barcode_ly.addLayout(matplot_record_ly, 7, 0, 1, 6)
-        self.stary_test_bt = QPushButton("杂散光", maximumWidth=75)
-        self.stary_test_bt.clicked.connect(lambda x: self._serialSendPack(0xDC, (0,)))
+        self.stary_test_bt_flag = 0
+        self.stary_test_bt = QPushButton("杂散光", maximumWidth=75, enabled=False, clicked=self.onStaryTest)
         self.out_flash_param_parse_bt = QPushButton("校正曲线", clicked=self.onOutFlashParamCC_parse, maximumWidth=90)
         barcode_ly.addWidget(self.stary_test_bt, 7, 4, 1, 1)
         barcode_ly.addWidget(self.out_flash_param_parse_bt, 7, 5, 1, 1)
@@ -734,6 +793,11 @@ class MainWindow(QMainWindow):
             self.motor_scan_bts[i].clicked.connect(partial(self.onMotorScan, idx=i))
         self.sample_record_idx_sp.valueChanged.connect(self.onSampleRecordReadBySp)
         self.sample_record_label.mousePressEvent = self.onSampleLabelClick
+
+    def onStaryTest(self, event):
+        self._serialSendPack(0xDC, (0,))
+        self.stary_test_bt_flag = 0
+        self.stary_test_bt.setDisabled(True)
 
     def initBarcodeScan(self):
         for lb in self.barcode_lbs:
@@ -1301,6 +1365,18 @@ class MainWindow(QMainWindow):
             else:
                 self.sample_led_write_bt_flag = 0
             logger.debug(f"keyPressEvent | 0X{key:x} | {self.sample_led_write_bt_flag:08b}")
+        if not self.stary_test_bt.isEnabled():
+            if (
+                (key == Qt.Key_Down and self.stary_test_bt_flag in (0x00, 0x01))
+                or (key == Qt.Key_Up and self.stary_test_bt_flag in (0x03, 0x07))
+                or (key == Qt.Key_Right and self.stary_test_bt_flag in (0x0F, 0x1F))
+                or (key == Qt.Key_Left and self.stary_test_bt_flag in (0x3F, 0x7F))
+            ):
+                self.stary_test_bt_flag = (self.stary_test_bt_flag << 1) + 1
+                if self.stary_test_bt_flag == 0xFF:
+                    self.stary_test_bt.setEnabled(True)
+            else:
+                self.stary_test_bt_flag = 0
 
     def onSampleLED_Write(self, event=None):
         data = bytearray()
@@ -2237,10 +2313,10 @@ class MainWindow(QMainWindow):
         else:
             self.sample_record_plot_by_index(0)
         if not os.path.isfile(self.data_xlsx_path) or not check_file_permission(self.data_xlsx_path):
-            dump_sample(self.sample_db.iter_all_data(num=100), self.data_xlsx_path)
+            dump_sample(self.sample_db.iter_all_data(num=20), self.data_xlsx_path)
         elif (not self.lamp_ag_cb.isChecked()) and (not self.debug_flag_cbs[5].isChecked()):
             # insert_sample(self.sample_db.iter_from_label(), self.data_xlsx_path)
-            dump_sample(self.sample_db.iter_all_data(num=100), self.data_xlsx_path)
+            dump_sample(self.sample_db.iter_all_data(num=20), self.data_xlsx_path)
         if self.lamp_ag_cb.isChecked():
             self.onMatplotStart(False, f"Aging {datetime.now().strftime('%Y%m%d%H%M%S')}")
         if self.debug_flag_cbs[5].isChecked():
