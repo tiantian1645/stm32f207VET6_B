@@ -36,12 +36,12 @@ from version import VERSION_FA
 
 
 ICON_PATH = "./icos/tt.ico"
-CONFIG_PATH = "./conf/config.json"
+CONFIG_PATH = "./conf/config_fa.json"
 CONFIG = dict()
 try:
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
         CONFIG = simplejson.load(f)
-    if "pd_criterion" not in CONFIG.keys() or "sh_criterion" not in CONFIG.keys():
+    if not all((i in CONFIG.keys() for i in ("log", "pd_criterion", "sh_criterion", "ignore_error_code"))):
         raise ValueError("lost key")
 except Exception:
     logger.error(f"load conf failed \n{stackprinter.format()}")
@@ -49,9 +49,10 @@ except Exception:
     CONFIG["log"] = dict(rotation="4 MB", retention=16)
     CONFIG["pd_criterion"] = {"610": [6000000, 14000000], "550": [6000000, 14000000], "405": [6000000, 14000000]}
     CONFIG["sh_criterion"] = {"610": (1434, 3080, 4882, 6894, 8818, 10578), "550": (2181, 3943, 5836, 7989, 10088, 12032), "405": (0, 0, 0, 0, 0, 0)}
+    CONFIG["ignore_error_code"] = [300, 301, 302, 303, 304, 305]
     try:
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-            simplejson.dump(CONFIG, f)
+            simplejson.dump(CONFIG, f, indent=4)
     except Exception:
         logger.error(f"dump conf failed \n{stackprinter.format()}")
 
@@ -506,6 +507,9 @@ class MainWindow(QMainWindow):
 
     def showWarnInfo(self, info):
         error_code = struct.unpack("H", info.content[6:8])[0]
+        if error_code in CONFIG["ignore_error_code"]:
+            logger.debug(f"ignore error code | {error_code}")
+            return
         error_content = self.getErrorContent(error_code)
         level = QMessageBox.Warning
         msg = QMessageBox(self)
