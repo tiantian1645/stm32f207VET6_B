@@ -90,26 +90,23 @@ void heater_Overshoot_Init(float env)
     float fall_duration, delta_temp_factor;
     uint32_t tick;
 
+    tick = HAL_GetTick();
     if (env == 0) {
         env = temp_Get_Temp_Data_ENV();
         tick = 0xFFFFFFFF;
         gHeater_BTM_Overshoot.start = tick;
         gHeater_TOP_Overshoot.start = tick;
+    }
+
+    if (env < 25) {
+    	delta_temp_factor = (25 - env) * (25 - env) / (25 - 14) / (25 - 14);
     } else {
-        tick = HAL_GetTick();
-        gHeater_BTM_Overshoot.start = tick;
-        gHeater_TOP_Overshoot.start = tick;
+    	delta_temp_factor = 0;
     }
 
-    if (env < 0) { /* For Debug Param */
-        return;
-    }
-
-    delta_temp_factor = (25 - env) * (25 - env) / (25 - 10) * (25 - 10);
-
-    gHeater_BTM_Overshoot.peak_delta = 0.3 + delta_temp_factor * 0.7;
+    gHeater_BTM_Overshoot.peak_delta = 0.3 + delta_temp_factor * 0.3;
     gHeater_BTM_Overshoot.level_duration = 18 + delta_temp_factor * 10.0;
-    gHeater_BTM_Overshoot.whole_duration = 80;
+    gHeater_BTM_Overshoot.whole_duration = 80 + delta_temp_factor * 10.0;
     fall_duration = gHeater_BTM_Overshoot.whole_duration - gHeater_BTM_Overshoot.level_duration;
     gHeater_BTM_Overshoot.pk = 1.3;
     gHeater_BTM_Overshoot.pb = 1.5 * fall_duration;
@@ -117,9 +114,9 @@ void heater_Overshoot_Init(float env)
         gHeater_BTM_Overshoot.peak_delta / log(gHeater_BTM_Overshoot.pb / (gHeater_BTM_Overshoot.pb - gHeater_BTM_Overshoot.pk * fall_duration));
     gHeater_BTM_Overshoot.pc = gHeater_BTM_Overshoot.pa * -1 * log(gHeater_BTM_Overshoot.pb - gHeater_BTM_Overshoot.pk * fall_duration);
 
-    gHeater_TOP_Overshoot.peak_delta = 0.3 + delta_temp_factor * 0.7;
+    gHeater_TOP_Overshoot.peak_delta = 0.3 + delta_temp_factor * 0.3;
     gHeater_TOP_Overshoot.level_duration = 25 + delta_temp_factor * 10.0;
-    gHeater_TOP_Overshoot.whole_duration = 60;
+    gHeater_TOP_Overshoot.whole_duration = 60 + delta_temp_factor * 30.0;
     fall_duration = gHeater_TOP_Overshoot.whole_duration - gHeater_TOP_Overshoot.level_duration;
     gHeater_TOP_Overshoot.pk = 1.3;
     gHeater_TOP_Overshoot.pb = 1.5 * fall_duration;
