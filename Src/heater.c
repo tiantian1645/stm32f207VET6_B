@@ -282,10 +282,32 @@ uint8_t heater_Overshoot_Flag_Get(eHeater_Index idx)
  */
 void heater_Overshoot_Flag_Set(eHeater_Index idx, uint8_t flag)
 {
+    float env;
+
+    env = temp_Get_Temp_Data_ENV();
+
     if (flag > 0) {
         gHeater_Overshoot_Flag |= (1 << idx);
+        if (idx == eHeater_BTM) {
+            gHeater_BTM_Overshoot.start = HAL_GetTick();
+            if (env < 25) {
+                heater_PID_Conf_Param_Set(&gHeater_BTM_PID_Conf, eHeater_PID_Conf_Min_Output, 15.0 / 100 * HEATER_BTM_ARR * (25 - env) * (25 - env) / (169));
+            }
+        } else if (idx == eHeater_TOP) {
+            gHeater_TOP_Overshoot.start = HAL_GetTick();
+            if (env < 25) {
+                heater_PID_Conf_Param_Set(&gHeater_TOP_PID_Conf, eHeater_PID_Conf_Min_Output, 8.0 / 100 * HEATER_TOP_ARR * (25 - env) * (25 - env) / (169));
+            }
+        }
     } else {
         gHeater_Overshoot_Flag &= (0xFF - (1 << idx));
+        if (idx == eHeater_BTM) {
+            gHeater_BTM_Overshoot.start = 0xFFFFFFFF;
+            heater_PID_Conf_Param_Set(&gHeater_BTM_PID_Conf, eHeater_PID_Conf_Min_Output, 0);
+        } else if (idx == eHeater_TOP) {
+            gHeater_TOP_Overshoot.start = 0xFFFFFFFF;
+            heater_PID_Conf_Param_Set(&gHeater_TOP_PID_Conf, eHeater_PID_Conf_Min_Output, 0);
+        }
     }
 }
 
