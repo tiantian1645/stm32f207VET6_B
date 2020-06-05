@@ -21,7 +21,7 @@
 
 /* Private macro -------------------------------------------------------------*/
 #define TICK_SECOND configTICK_RATE_HZ /* 系统时钟频率 */
-#define tick_get xTaskGetTickCount     /* 系统时钟获取函数 */
+#define tick_get HAL_GetTick     /* 系统时钟获取函数 */
 
 /* Private variables ---------------------------------------------------------*/
 
