@@ -252,7 +252,7 @@ void heater_Overshoot_Handle(void)
         } else {
             dp = (tick - gHeater_TOP_Overshoot.start) / 1000.0 - gHeater_TOP_Overshoot.level_duration;
             offset_temp = gHeater_TOP_Overshoot.pa * log(-dp * gHeater_TOP_Overshoot.pk + gHeater_TOP_Overshoot.pb) + gHeater_TOP_Overshoot.pc;
-            heater_TOP_Setpoint_Set(offset_temp + HEATER_TOP_DEFAULT_SETPOINT); /* 修改下加热体目标温度 */
+            heater_TOP_Setpoint_Set(offset_temp + HEATER_TOP_DEFAULT_SETPOINT); /* 修改上加热体目标温度 */
         }
     } else {
         if (HEATER_TOP_MIN_SETPOINT < heater_TOP_Setpoint_Get() || heater_TOP_Setpoint_Get() < HEATER_TOP_MAX_SETPOINT) { /* 目标温度处于(20, 45)不受调试控制 */
