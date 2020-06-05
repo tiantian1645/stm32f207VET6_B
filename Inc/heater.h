@@ -37,11 +37,36 @@ typedef enum {
     eHeater_TOP,
 } eHeater_Index;
 
+typedef struct {
+    uint32_t start;       /* 起始时刻 毫秒 */
+    float peak_delta;     /* 过冲目标温度偏差 */
+    float level_duration; /* 过冲目标温度维持时间 单位:秒 */
+    float whole_duration; /* 过冲过程持续时间 单位:秒 */
+    float pk;             /* f(x) = a * ln(kx + b) + c */
+    float pb;             /* f(x) = a * ln(kx + b) + c */
+    float pa;             /* f(x) = a * ln(kx + b) + c */
+    float pc;             /* f(x) = a * ln(kx + b) + c */
+} sHeater_Overshoot;
+
+typedef enum {
+    eHeater_Overshoot_Param_peak_delta,
+    eHeater_Overshoot_Param_level_duration,
+    eHeater_Overshoot_Param_whole_duration,
+    eHeater_Overshoot_Param_pk,
+    eHeater_Overshoot_Param_pb,
+    eHeater_Overshoot_Param_pa,
+    eHeater_Overshoot_Param_pc,
+} eHeater_Overshoot_Param_Index;
+
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/
 void heater_Overshoot_Init(float env);
 void heater_Overshoot_Handle(void);
+void heater_Overshoot_Set_Parmer(eHeater_Index bt_idx, eHeater_Overshoot_Param_Index p_idx, float data);
+float heater_Overshoot_Get_Parmer(eHeater_Index bt_idx, eHeater_Overshoot_Param_Index p_idx);
+void heater_Overshoot_Set_All(eHeater_Index bt_idx, uint8_t * pBuffer);
+void heater_Overshoot_Get_All(eHeater_Index bt_idx, uint8_t * pBuffer);
 
 uint8_t heater_Overshoot_Flag_Get(eHeater_Index idx);
 void heater_Overshoot_Flag_Set(eHeater_Index idx, uint8_t flag);

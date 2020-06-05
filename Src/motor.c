@@ -795,7 +795,7 @@ static void motor_Sample_Temperature_Check(void)
     }
 
     temperature = temp_Get_Temp_Data_ENV(); /* 读取环境温度 */
-    heater_Overshoot_Init(temperature);
+    heater_Overshoot_Init(-1);
     heater_Overshoot_Flag_Set(eHeater_BTM, 1); /* 下加热体过冲标志设置 */
     heater_Overshoot_Flag_Set(eHeater_TOP, 1); /* 上加热体过冲标志设置 */
 }
@@ -859,6 +859,7 @@ static void motor_Task(void * argument)
     motor_Resource_Init();                 /* 电机驱动、位置初始化 */
     barcode_Init();                        /* 扫码枪初始化 */
     tray_Motor_EE_Clear();                 /* 清除托盘丢步标志位 */
+    heater_Overshoot_Init(0);              /* 初始化过冲参数 */
 
     for (;;) {
         xResult = xQueuePeek(motor_Fun_Queue_Handle, &mf, portMAX_DELAY);

@@ -1058,16 +1058,33 @@ static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length)
                     }
                     comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolEmitPack_Client_CMD_Debug_Heater, pInBuff, 1);
                     break;
-                case 8:                            /* 一个参数 配置加热使能状态 */
-                    if (pInBuff[6] & (1 << 0)) {   /* 下加热体 */
-                        heater_BTM_Output_Start(); /* 下加热体使能 */
-                    } else {
-                        heater_BTM_Output_Stop(); /* 下加热体失能 */
-                    }
-                    if (pInBuff[6] & (1 << 1)) {   /* 上加热体 */
-                        heater_TOP_Output_Start(); /* 上加热体使能 */
-                    } else {
-                        heater_TOP_Output_Stop(); /* 上加热体失能 */
+                case 8: /* 一个参数 配置加热使能状态 */
+                    switch (pInBuff[6]) {
+                        case 0:
+                        case 1:
+                        case 2:
+                        case 3:
+                            if (pInBuff[6] & (1 << 0)) {   /* 下加热体 */
+                                heater_BTM_Output_Start(); /* 下加热体使能 */
+                            } else {
+                                heater_BTM_Output_Stop(); /* 下加热体失能 */
+                            }
+                            if (pInBuff[6] & (1 << 1)) {   /* 上加热体 */
+                                heater_TOP_Output_Start(); /* 上加热体使能 */
+                            } else {
+                                heater_TOP_Output_Stop(); /* 上加热体失能 */
+                            }
+                            break;
+                        case 4:
+                            pInBuff[0] = 4;
+                            heater_Overshoot_Get_All(eHeater_BTM, pInBuff + 1);
+                            comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolEmitPack_Client_CMD_Debug_Heater, pInBuff, 29);
+                            break;
+                        case 5:
+                            pInBuff[0] = 5;
+                            heater_Overshoot_Get_All(eHeater_TOP, pInBuff + 1);
+                            comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolEmitPack_Client_CMD_Debug_Heater, pInBuff, 29);
+                            break;
                     }
                     break;
                 case 10:                   /* 3个参数 读取PID参数 */
@@ -1102,6 +1119,19 @@ static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length)
                             temp = *(float *)(pInBuff + 9 + 4 * result);
                             heater_TOP_Conf_Set(pInBuff[7] + result, temp);
                         }
+                    }
+                    break;
+                case 20:
+                    switch (pInBuff[6]) {
+                        case 4:
+                            heater_Overshoot_Set_All(eHeater_BTM, pInBuff + 7);
+                            break;
+                        case 5:
+                            heater_Overshoot_Set_All(eHeater_TOP, pInBuff + 7);
+                            break;
+                        default:
+                            error_Emit_FromISR(eError_Comm_Out_Param_Error);
+                            break;
                     }
                     break;
             }

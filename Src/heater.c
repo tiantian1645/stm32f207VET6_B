@@ -20,16 +20,6 @@ extern TIM_HandleTypeDef htim3;
 /* Private includes ----------------------------------------------------------*/
 
 /* Private typedef -----------------------------------------------------------*/
-typedef struct {
-    uint32_t start;       /* 起始时刻 毫秒 */
-    float peak_delta;     /* 过冲目标温度偏差 */
-    float level_duration; /* 过冲目标温度维持时间 单位:秒 */
-    float whole_duration; /* 过冲过程持续时间 单位:秒 */
-    float pk;             /* f(x) = a * ln(kx + b) + c */
-    float pb;             /* f(x) = a * ln(kx + b) + c */
-    float pa;             /* f(x) = a * ln(kx + b) + c */
-    float pc;             /* f(x) = a * ln(kx + b) + c */
-} sHeater_Overshoot;
 
 /* Private define ------------------------------------------------------------*/
 
@@ -69,7 +59,7 @@ static void heater_PID_Conf_Param_Set(sPID_Ctrl_Conf * pConf, eHeater_PID_Conf o
  * @retval None
  */
 /**
- * 
+ *
 import numpy as np
 from scipy.optimize import curve_fit
 from loguru import logger
@@ -86,18 +76,32 @@ for i in range(10, 36, 5):
     v = fit_func(i, *params[0])
     logger.debug(f"temp {i} duration {v:.2f} S")
 
- * 
+ *
 */
 void heater_Overshoot_Init(float env)
 {
-    float fall_duration;
+    float fall_duration, delta_temp_factor;
     uint32_t tick;
 
-    tick = HAL_GetTick();
+    if (env == 0) {
+        env = temp_Get_Temp_Data_ENV();
+        tick = 0xFFFFFFFF;
+        gHeater_BTM_Overshoot.start = tick;
+        gHeater_TOP_Overshoot.start = tick;
+    } else {
+        tick = HAL_GetTick();
+        gHeater_BTM_Overshoot.start = tick;
+        gHeater_TOP_Overshoot.start = tick;
+    }
 
-    gHeater_BTM_Overshoot.start = tick;
-    gHeater_BTM_Overshoot.peak_delta = 0.3;
-    gHeater_BTM_Overshoot.level_duration = 18 + (25 - env) * (25 - env) * 6.0 / 225.0;
+    if (env < 0) { /* For Debug Param */
+        return;
+    }
+
+    delta_temp_factor = (25 - env) * (25 - env) / (25 - 10) * (25 - 10);
+
+    gHeater_BTM_Overshoot.peak_delta = 0.3 + delta_temp_factor * 0.7;
+    gHeater_BTM_Overshoot.level_duration = 18 + delta_temp_factor * 10.0;
     gHeater_BTM_Overshoot.whole_duration = 80;
     fall_duration = gHeater_BTM_Overshoot.whole_duration - gHeater_BTM_Overshoot.level_duration;
     gHeater_BTM_Overshoot.pk = 1.3;
@@ -106,9 +110,8 @@ void heater_Overshoot_Init(float env)
         gHeater_BTM_Overshoot.peak_delta / log(gHeater_BTM_Overshoot.pb / (gHeater_BTM_Overshoot.pb - gHeater_BTM_Overshoot.pk * fall_duration));
     gHeater_BTM_Overshoot.pc = gHeater_BTM_Overshoot.pa * -1 * log(gHeater_BTM_Overshoot.pb - gHeater_BTM_Overshoot.pk * fall_duration);
 
-    gHeater_TOP_Overshoot.start = tick;
-    gHeater_TOP_Overshoot.peak_delta = 0.3;
-    gHeater_TOP_Overshoot.level_duration = 25 + (25 - env) * (25 - env) * 6.0 / 225.0;;
+    gHeater_TOP_Overshoot.peak_delta = 0.3 + delta_temp_factor * 0.7;
+    gHeater_TOP_Overshoot.level_duration = 25 + delta_temp_factor * 10.0;
     gHeater_TOP_Overshoot.whole_duration = 60;
     fall_duration = gHeater_TOP_Overshoot.whole_duration - gHeater_TOP_Overshoot.level_duration;
     gHeater_TOP_Overshoot.pk = 1.3;
@@ -116,6 +119,87 @@ void heater_Overshoot_Init(float env)
     gHeater_TOP_Overshoot.pa =
         gHeater_TOP_Overshoot.peak_delta / log(gHeater_TOP_Overshoot.pb / (gHeater_TOP_Overshoot.pb - gHeater_TOP_Overshoot.pk * fall_duration));
     gHeater_TOP_Overshoot.pc = gHeater_TOP_Overshoot.pa * -1 * log(gHeater_TOP_Overshoot.pb - gHeater_TOP_Overshoot.pk * fall_duration);
+}
+
+/**
+ * @brief  过冲控制参数设置
+ * @param  bt_idx  上下加热体索引
+ * @param  p_idx 参数项索引
+ * @param  float 设置值
+ * @retval None
+ */
+void heater_Overshoot_Set_Parmer(eHeater_Index bt_idx, eHeater_Overshoot_Param_Index p_idx, float data)
+{
+    float * pParam;
+
+    switch (bt_idx) {
+        case eHeater_BTM:
+            pParam = &(gHeater_BTM_Overshoot.peak_delta) + p_idx;
+            break;
+        default:
+            pParam = &(gHeater_TOP_Overshoot.peak_delta) + p_idx;
+            break;
+    }
+    *pParam = data;
+}
+
+/**
+ * @brief  过冲控制参数读取
+ * @param  bt_idx  上下加热体索引
+ * @param  p_idx 参数项索引
+ * @retval 参数值
+ */
+float heater_Overshoot_Get_Parmer(eHeater_Index bt_idx, eHeater_Overshoot_Param_Index p_idx)
+{
+    float data;
+
+    switch (bt_idx) {
+        case eHeater_BTM:
+            data = *(&(gHeater_BTM_Overshoot.peak_delta) + p_idx);
+            break;
+        default:
+            data = *(&(gHeater_TOP_Overshoot.peak_delta) + p_idx);
+            break;
+    }
+    return data;
+}
+
+void heater_Overshoot_Set_All(eHeater_Index bt_idx, uint8_t * pBuffer)
+{
+    eHeater_Overshoot_Param_Index i;
+    float data;
+    float fall_duration;
+
+    for (i = eHeater_Overshoot_Param_peak_delta; i <= eHeater_Overshoot_Param_whole_duration; ++i) {
+        memcpy(&data, pBuffer, 4);
+        heater_Overshoot_Set_Parmer(bt_idx, i, data);
+        pBuffer += 4;
+    }
+
+    fall_duration = gHeater_BTM_Overshoot.whole_duration - gHeater_BTM_Overshoot.level_duration;
+    gHeater_BTM_Overshoot.pk = 1.3;
+    gHeater_BTM_Overshoot.pb = 1.5 * fall_duration;
+    gHeater_BTM_Overshoot.pa =
+        gHeater_BTM_Overshoot.peak_delta / log(gHeater_BTM_Overshoot.pb / (gHeater_BTM_Overshoot.pb - gHeater_BTM_Overshoot.pk * fall_duration));
+    gHeater_BTM_Overshoot.pc = gHeater_BTM_Overshoot.pa * -1 * log(gHeater_BTM_Overshoot.pb - gHeater_BTM_Overshoot.pk * fall_duration);
+    fall_duration = gHeater_TOP_Overshoot.whole_duration - gHeater_TOP_Overshoot.level_duration;
+    gHeater_TOP_Overshoot.pk = 1.3;
+    gHeater_TOP_Overshoot.pb = 1.5 * fall_duration;
+    gHeater_TOP_Overshoot.pa =
+        gHeater_TOP_Overshoot.peak_delta / log(gHeater_TOP_Overshoot.pb / (gHeater_TOP_Overshoot.pb - gHeater_TOP_Overshoot.pk * fall_duration));
+    gHeater_TOP_Overshoot.pc = gHeater_TOP_Overshoot.pa * -1 * log(gHeater_TOP_Overshoot.pb - gHeater_TOP_Overshoot.pk * fall_duration);
+}
+
+void heater_Overshoot_Get_All(eHeater_Index bt_idx, uint8_t * pBuffer)
+{
+    eHeater_Overshoot_Param_Index i;
+    float data;
+
+    for (i = eHeater_Overshoot_Param_peak_delta; i <= eHeater_Overshoot_Param_pc; ++i) {
+        data = heater_Overshoot_Get_Parmer(bt_idx, i);
+        memcpy(pBuffer, &data, 4);
+        pBuffer += 4;
+    }
 }
 
 /**
@@ -452,7 +536,7 @@ void heater_BTM_Output_Keep_Deal(void)
         } else {
             env_temp = temp_Get_Temp_Data_ENV();
             if (env_temp < 24 && env_temp > -7) {
-                btm_input = btm_input - (24 - env_temp) * (24 - env_temp) * 0.0010;
+                btm_input = btm_input - (24 - env_temp) * (24 - env_temp) * 0.0005;
             }
             // Compute new PID output value
             pid_ctrl_compute(&gHeater_BTM_PID_Conf);
@@ -545,7 +629,7 @@ void heater_TOP_Output_Keep_Deal(void)
         } else {
             env_temp = temp_Get_Temp_Data_ENV();
             if (env_temp < 24 && env_temp > -7) {
-                top_input = top_input - (24 - env_temp) * (24 - env_temp) * 0.0010;
+                top_input = top_input - (24 - env_temp) * (24 - env_temp) * 0.0005;
             }
             // Compute new PID output value
             pid_ctrl_compute(&gHeater_TOP_PID_Conf);
