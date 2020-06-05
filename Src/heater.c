@@ -31,6 +31,13 @@ extern TIM_HandleTypeDef htim3;
 #define HEATER_BTM_CHN TIM_CHANNEL_4
 #define HEATER_TOP_TIM htim3
 #define HEATER_TOP_CHN TIM_CHANNEL_3
+
+#define HEATER_BTM_MAX_SETPOINT 45
+#define HEATER_BTM_MIN_SETPOINT 20
+
+#define HEATER_TOP_MAX_SETPOINT 45
+#define HEATER_TOP_MIN_SETPOINT 20
+
 /* Private variables ---------------------------------------------------------*/
 static sPID_Ctrl_Conf gHeater_BTM_PID_Conf;
 static sPID_Ctrl_Conf gHeater_TOP_PID_Conf;
@@ -228,11 +235,11 @@ void heater_Overshoot_Handle(void)
             heater_BTM_Setpoint_Set(offset_temp + HEATER_BTM_DEFAULT_SETPOINT); /* 修改下加热体目标温度 */
         }
     } else {
-        if (30 < heater_BTM_Setpoint_Get() || heater_BTM_Setpoint_Get() < 50) {    /* 目标温度处于(30, 50)不受调试控制 */
-            if (heater_Outdoor_Flag_Get(eHeater_BTM)) {                            /* 出仓温度设置标志 */
-                heater_BTM_Setpoint_Set(HEATER_BTM_OUTDOOR_SETPOINT);              /* 出仓状态下调整标志 */
-            } else if (heater_BTM_Setpoint_Get() != HEATER_BTM_DEFAULT_SETPOINT) { /* 默认温度 */
-                heater_BTM_Setpoint_Set(HEATER_BTM_DEFAULT_SETPOINT);              /* 恢复下加热体目标温度 */
+        if (HEATER_BTM_MIN_SETPOINT < heater_BTM_Setpoint_Get() || heater_BTM_Setpoint_Get() < HEATER_BTM_MAX_SETPOINT) { /* 目标温度处于(20, 45)不受调试控制 */
+            if (heater_Outdoor_Flag_Get(eHeater_BTM)) {                                                                   /* 出仓温度设置标志 */
+                heater_BTM_Setpoint_Set(HEATER_BTM_OUTDOOR_SETPOINT);                                                     /* 出仓状态下调整标志 */
+            } else if (heater_BTM_Setpoint_Get() != HEATER_BTM_DEFAULT_SETPOINT) {                                        /* 默认温度 */
+                heater_BTM_Setpoint_Set(HEATER_BTM_DEFAULT_SETPOINT);                                                     /* 恢复下加热体目标温度 */
             }
         }
     }
@@ -251,11 +258,11 @@ void heater_Overshoot_Handle(void)
             heater_TOP_Setpoint_Set(offset_temp + HEATER_TOP_DEFAULT_SETPOINT); /* 修改下加热体目标温度 */
         }
     } else {
-        if (30 < heater_TOP_Setpoint_Get() || heater_TOP_Setpoint_Get() < 50) {    /* 目标温度处于(30, 50)不受调试控制 */
-            if (heater_Outdoor_Flag_Get(eHeater_TOP)) {                            /* 出仓温度设置标志 */
-                heater_TOP_Setpoint_Set(HEATER_TOP_OUTDOOR_SETPOINT);              /* 出仓状态下调整标志 */
-            } else if (heater_TOP_Setpoint_Get() != HEATER_TOP_DEFAULT_SETPOINT) { /* 默认温度 */
-                heater_TOP_Setpoint_Set(HEATER_TOP_DEFAULT_SETPOINT);              /* 恢复下加热体目标温度 */
+        if (HEATER_TOP_MIN_SETPOINT < heater_TOP_Setpoint_Get() || heater_TOP_Setpoint_Get() < HEATER_TOP_MAX_SETPOINT) { /* 目标温度处于(20, 45)不受调试控制 */
+            if (heater_Outdoor_Flag_Get(eHeater_TOP)) {                                                                   /* 出仓温度设置标志 */
+                heater_TOP_Setpoint_Set(HEATER_TOP_OUTDOOR_SETPOINT);                                                     /* 出仓状态下调整标志 */
+            } else if (heater_TOP_Setpoint_Get() != HEATER_TOP_DEFAULT_SETPOINT) {                                        /* 默认温度 */
+                heater_TOP_Setpoint_Set(HEATER_TOP_DEFAULT_SETPOINT);                                                     /* 恢复下加热体目标温度 */
             }
         }
     }
@@ -324,7 +331,7 @@ float heater_BTM_Setpoint_Get(void)
  */
 void heater_BTM_Setpoint_Set(float setpoint)
 {
-    if (setpoint >= HEATER_BTM_DEFAULT_SETPOINT - 1.5 && setpoint <= HEATER_BTM_DEFAULT_SETPOINT + 1.5) {
+    if (setpoint >= HEATER_BTM_MIN_SETPOINT && setpoint <= HEATER_BTM_MAX_SETPOINT) {
         btm_setpoint = setpoint;
     }
 }
@@ -345,7 +352,7 @@ float heater_TOP_Setpoint_Get(void)
  */
 void heater_TOP_Setpoint_Set(float setpoint)
 {
-    if (setpoint >= HEATER_TOP_DEFAULT_SETPOINT - 1.5 && setpoint <= HEATER_TOP_DEFAULT_SETPOINT + 1.5) {
+    if (setpoint >= HEATER_TOP_MIN_SETPOINT && setpoint <= HEATER_TOP_MAX_SETPOINT) {
         top_setpoint = setpoint;
     }
 }
