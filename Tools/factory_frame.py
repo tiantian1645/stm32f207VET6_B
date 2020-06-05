@@ -231,7 +231,7 @@ class MainWindow(QMainWindow):
         else:
             self.serial_recv_worker.signals.owari.emit()
             self.serial_send_worker.signals.owari.emit()
-            self.threadpool.waitForDone(500)
+            self.threadpool.waitForDone(1000)
             self.serial.close()
             self.serial_post_co.setEnabled(True)
             self.serial_refresh_bt.setEnabled(True)
@@ -324,6 +324,13 @@ class MainWindow(QMainWindow):
             self.parse_PD_Data(info)
         else:
             logger.debug(f"recv pack info | {info.text}")
+
+    def closeEvent(self, event):
+        self.serial_recv_worker.signals.owari.emit()
+        self.serial_send_worker.signals.owari.emit()
+        self.threadpool.waitForDone(1000)
+        self.serial.close()
+        sys.exit()
 
     def updateSelfCheckDialog(self, info):
         raw_bytes = info.content
