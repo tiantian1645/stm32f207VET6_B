@@ -551,8 +551,6 @@ void heater_BTM_Output_Init(void)
  */
 void heater_BTM_Output_Keep_Deal(void)
 {
-    float env_temp;
-
     // Check if need to compute PID
     if (pid_ctrl_need_compute(&gHeater_BTM_PID_Conf)) {
         // Read process feedback
@@ -560,10 +558,6 @@ void heater_BTM_Output_Keep_Deal(void)
         if (btm_input > *(gHeater_BTM_PID_Conf.setpoint) + 2) {
             heater_BTM_Output_Ctl(0);
         } else {
-            env_temp = temp_Get_Temp_Data_ENV();
-            if (env_temp < 24 && env_temp > -7) {
-                btm_input = btm_input - (24 - env_temp) * (24 - env_temp) * 0.0005;
-            }
             // Compute new PID output value
             pid_ctrl_compute(&gHeater_BTM_PID_Conf);
             // Change actuator value
@@ -644,8 +638,6 @@ void heater_TOP_Output_Init(void)
  */
 void heater_TOP_Output_Keep_Deal(void)
 {
-    float env_temp;
-
     // Check if need to compute PID
     if (pid_ctrl_need_compute(&gHeater_TOP_PID_Conf)) {
         // Read process feedback
@@ -653,10 +645,6 @@ void heater_TOP_Output_Keep_Deal(void)
         if (top_input > *(gHeater_TOP_PID_Conf.setpoint) + 2) {
             heater_TOP_Output_Ctl(0);
         } else {
-            env_temp = temp_Get_Temp_Data_ENV();
-            if (env_temp < 24 && env_temp > -7) {
-                top_input = top_input - (24 - env_temp) * (24 - env_temp) * 0.0005;
-            }
             // Compute new PID output value
             pid_ctrl_compute(&gHeater_TOP_PID_Conf);
             // Change actuator value
