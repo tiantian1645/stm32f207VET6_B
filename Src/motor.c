@@ -696,6 +696,7 @@ void motor_Sample_Owari_Correct(void)
     led_Mode_Set(eLED_Mode_Keep_Green);          /* LED 绿灯常亮 */
     comm_Data_GPIO_Init();                       /* 初始化通讯管脚 */
     gMotor_Sampl_Comm_Init();                    /* 复位来源标记 */
+    heater_BTM_Output_Start();                   /* 恢复下加热体 */
 }
 
 /**
@@ -721,6 +722,7 @@ void motor_Sample_Owari(void)
     comm_Data_Sample_Owari();                    /* 上送采样结束报文 */
     comm_Data_GPIO_Init();                       /* 初始化通讯管脚 */
     gMotor_Sampl_Comm_Init();                    /* 复位来源标记 */
+    heater_BTM_Output_Start();                   /* 恢复下加热体 */
 }
 
 /**
@@ -749,6 +751,7 @@ static void motor_Stary_Test(void)
         if (comm_Data_Start_Stary_Test() != pdPASS) { /* 开始杂散光测试 */
             cnt = 1;
         } else {
+            heater_BTM_Output_Stop();                                                      /* 关闭下加热体 */
             led_Mode_Set(eLED_Mode_Kirakira_Green);                                        /* LED 绿灯闪烁 */
             xTick = xTaskGetTickCount();                                                   /* 起始计时 */
             xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(15000)); /* 等待杂散光完成通知 */
@@ -760,6 +763,7 @@ static void motor_Stary_Test(void)
                 cnt = 3;                                                                   /* 标记 3 */
                 vTaskDelayUntil(&xTick, pdMS_TO_TICKS(15000));                             /* 补全等待时间 */
             }
+            heater_BTM_Output_Start();    /* 恢复下加热体 */
             comm_Data_Stary_Test_Clear(); /* finally 清除杂散光测试标记 */
         }
         if (cnt > 0) {

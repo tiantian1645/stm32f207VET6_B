@@ -17,6 +17,7 @@
 #include "temperature.h"
 #include "white_motor.h"
 #include "sample.h"
+#include "heater.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern UART_HandleTypeDef huart2;
@@ -732,8 +733,8 @@ uint8_t comm_Data_Check_LED(eComm_Data_Sample_Radiant radiant)
             gComm_Data_LED_Voltage_Interval_Set(-1);
             last_bias_1300 = 0x80000000;          /* 初始化历史值 */
             gComm_Data_LED_Voltage_Points_Set(1); /* 点数设为 1 */
-            if (max != 0xFFFFFF){
-            	return 0;
+            if (max != 0xFFFFFF) {
+                return 0;
             }
             return 1;
         } else {
@@ -1781,6 +1782,7 @@ void comm_Data_ISR_Deal(void)
     if (HAL_GPIO_ReadPin(FRONT_TRIG_IN_GPIO_Port, FRONT_TRIG_IN_Pin) == GPIO_PIN_SET) { /* 上升沿 采样板开始采样 */
 
     } else {                                                                             /* 下降沿 采样板采样完成 */
+        heater_BTM_Output_Start();                                                       /* 恢复下加热体 */
         if (comm_Data_Stary_Test_Is_Running()) {                                         /* 判断是否处于杂散光测试中 */
             motor_Sample_Info_From_ISR(eMotorNotifyValue_SP);                            /* 通知电机任务杂散光测试完成 */
         } else if (gComm_Data_TIM_StartFlag_Check()) {                                   /* 定时器未停止 采样进行中 */
@@ -1807,6 +1809,7 @@ void comm_Data_ISR_Deal(void)
  **/
 void comm_Data_ISR_Tran(uint8_t wp)
 {
+    heater_BTM_Output_Stop(); /* 关闭下加热体 */
     if (wp == 0) {
         HAL_GPIO_WritePin(FRONT_STATUS_GPIO_Port, FRONT_STATUS_Pin, GPIO_PIN_RESET); /* 采样输出脚拉低 下降沿 白板 */
     } else {
