@@ -20,6 +20,7 @@ typedef enum {
     eStorgeNotifyConf_Test_Flash = 0x00000100,
     eStorgeNotifyConf_Test_ID_Card = 0x00000200,
     eStorgeNotifyConf_Test_All = 0x00000400,
+    eStorgeNotifyConf_Dump_Correct = 0x00000800,
     eStorgeNotifyConf_COMM_Out = 0x10000000,
     eStorgeNotifyConf_COMM_Main = 0x20000000,
 } eStorgeNotifyConf;

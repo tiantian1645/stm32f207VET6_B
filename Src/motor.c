@@ -1160,18 +1160,20 @@ static void motor_Task(void * argument)
                 white_Motor_PD(); /* 运动白板电机 PD位置 清零位置 */
 
                 for (radiant = eComm_Data_Sample_Radiant_610; radiant <= eComm_Data_Sample_Radiant_405; ++radiant) {
-                    comm_Data_Sample_Send_Conf_Correct(buffer, radiant, 12, eComm_Data_Outbound_CMD_TEST); /* 配置波长 */
-                    white_Motor_WH();                                                                      /* 运动白板电机 白物质位置 */
-                    gStorgeIllumineCnt_Clr();                                                              /* 清除标记 */
-                    if (motor_Sample_Deal()) {                                                             /* 启动采样并控制白板电机 */
-                        break;                                                                             /* 定标异常 */
+                    comm_Data_Sample_Send_Conf_Correct(buffer, radiant, MOTOR_CORRECT_POINT_NUM, eComm_Data_Outbound_CMD_TEST); /* 配置波长 点数 */
+                    white_Motor_WH();          /* 运动白板电机 白物质位置 */
+                    gStorgeIllumineCnt_Clr();  /* 清除标记 */
+                    if (motor_Sample_Deal()) { /* 启动采样并控制白板电机 */
+                        break;                 /* 定标异常 */
                     }
-                    motor_Wait_Stroge_Correct(3000);                                  /* 等待设置存储完成 */
-                    storgeTaskNotification(eStorgeNotifyConf_Dump_Params, eComm_Out); /* 通知存储任务 保存参数 */
-                    gStorgeTaskInfoLockWait(3000);                                    /* 等待参数保存完毕 */
-                    buffer[0] = radiant;                                              /* 波长 */
-                    buffer[1] = 0;                                                    /* 正常 */
-                    buffer[2] = stage;                                                /* 校正段索引 */
+                    motor_Wait_Stroge_Correct(3000);                                   /* 等待设置存储完成 */
+                    storgeTaskNotification(eStorgeNotifyConf_Dump_Params, eComm_Out);  /* 通知存储任务 保存参数 */
+                    gStorgeTaskInfoLockWait(3000);                                     /* 等待参数保存完毕 */
+                    storgeTaskNotification(eStorgeNotifyConf_Dump_Correct, eComm_Out); /* 保存原始数据 */
+                    gStorgeTaskInfoLockWait(3000);                                     /* 等待参数保存完毕 */
+                    buffer[0] = radiant;                                               /* 波长 */
+                    buffer[1] = 0;                                                     /* 正常 */
+                    buffer[2] = stage;                                                 /* 校正段索引 */
                     if (radiant == eComm_Data_Sample_Radiant_610 || radiant == eComm_Data_Sample_Radiant_550) {
                         cnt = 6;
                     } else {

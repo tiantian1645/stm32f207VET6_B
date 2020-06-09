@@ -8,6 +8,7 @@
 #include "spi_flash.h"
 #include "protocol.h"
 #include "soft_timer.h"
+#include "motor.h"
 
 /* Private includes ----------------------------------------------------------*/
 #include "storge_task.h"
@@ -25,7 +26,7 @@
 #define STORGE_DEAL_MASK                                                                                                                                       \
     (eStorgeNotifyConf_Read_Flash + eStorgeNotifyConf_Write_Flash + eStorgeNotifyConf_Read_Parmas + eStorgeNotifyConf_Write_Parmas +                           \
      eStorgeNotifyConf_Load_Parmas + eStorgeNotifyConf_Dump_Params + eStorgeNotifyConf_Read_ID_Card + eStorgeNotifyConf_Write_ID_Card +                        \
-     eStorgeNotifyConf_Test_Flash + eStorgeNotifyConf_Test_ID_Card + eStorgeNotifyConf_Test_All)
+     eStorgeNotifyConf_Test_Flash + eStorgeNotifyConf_Test_ID_Card + eStorgeNotifyConf_Test_All + eStorgeNotifyConf_Dump_Correct)
 
 #define STORGE_APP_PARAMS_ADDR (0x1000) /* Sector 1 */
 #define STORGE_APP_CREDEG_ADDR (0x2000) /* Sector 2 */
@@ -37,6 +38,12 @@ typedef struct {
     uint32_t num;                    /* 操作数量 */
     uint8_t buffer[STORGE_BUFF_LEN]; /* 准备写入的内容 */
 } sStorgeTaskQueueInfo;
+
+typedef struct {
+    uint32_t addr;
+    uint32_t num;
+    uint8_t buffer[MOTOR_CORRECT_POINT_NUM * 10];
+} sStorgeCorrectInfo;
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -50,6 +57,8 @@ static TaskHandle_t storgeTaskHandle = NULL;
 static uint8_t gStorgeTaskInfoLock = 0;
 static sStorgeParamInfo gStorgeParamInfo;
 static uint8_t gStorgeIllumineCnt = 0;
+static sStorgeCorrectInfo gStorgeFlashCorrectBuffer[6] = {0};
+
 /* Private function prototypes -----------------------------------------------*/
 static void storgeTask(void * argument);
 static void storge_ParamInit(void);
@@ -506,6 +515,19 @@ static void storgeTask(void * argument)
                     storge_Test_Flash(buff, eComm_Out);
                     storge_Test_EEPROM(buff, eComm_Out);
                 }
+            case eStorgeNotifyConf_Dump_Correct: /* 保存校正数据 */
+                for (i = 0; i < ARRAY_LEN(gStorgeFlashCorrectBuffer); ++i) {
+                    if (gStorgeFlashCorrectBuffer[i].num > 0) {
+                        wroteCnt =
+                            spi_FlashWriteBuffer(gStorgeFlashCorrectBuffer[i].addr, gStorgeFlashCorrectBuffer[i].buffer, gStorgeFlashCorrectBuffer[i].num);
+                        if (wroteCnt == gStorgeFlashCorrectBuffer[i].num) {
+                            gStorgeFlashCorrectBuffer[i].num = 0;
+                        } else {
+                            storgeOutFlashWriteErrorHandle();
+                        }
+                    }
+                }
+                break;
             default:
                 break;
         }
@@ -1017,10 +1039,12 @@ uint8_t stroge_Conf_CC_O_Data_From_B3(uint8_t * pBuffer, uint8_t length)
 
     if (wave == eComm_Data_Sample_Radiant_405 && pBuffer[1] - 1 == 0) { /* 405 另行存储 */
         addr = STORGE_APP_CREDEG_ADDR_405 + 120 * stage;                /* 计算偏移地址 */
-        spi_FlashWriteBuffer(addr, pBuffer + 2, length);                /* 保存原始数据 */
     } else {
         addr = STORGE_APP_CREDEG_ADDR + (1440 * (pBuffer[1] - 1)) + 240 * stage + 120 * (wave - eComm_Data_Sample_Radiant_610); /* 计算偏移地址 */
-        spi_FlashWriteBuffer(addr, pBuffer + 2, length);                                                                        /* 保存原始数据 */
     }
+    // spi_FlashWriteBuffer(addr, pBuffer + 2, length);                                                                        /* 保存原始数据 */
+    gStorgeFlashCorrectBuffer[pBuffer[1] - 1].addr = addr;
+    gStorgeFlashCorrectBuffer[pBuffer[1] - 1].num = length;
+    memcpy(gStorgeFlashCorrectBuffer[pBuffer[1] - 1].buffer, pBuffer + 2, length);
     return result;
 }

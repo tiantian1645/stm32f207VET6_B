@@ -12,6 +12,8 @@
 #define MOTOR_TASK_NOTIFY_WHITE (1 << 2)
 #define MOTOR_TASK_NOTIFY_HEATER (1 << 3)
 
+#define MOTOR_CORRECT_POINT_NUM    12
+
 /* Exported types ------------------------------------------------------------*/
 
 typedef enum {
