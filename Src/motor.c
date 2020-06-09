@@ -737,6 +737,13 @@ static void motor_Stary_Test(void)
     uint32_t xNotifyValue = 0;
     TickType_t xTick;
 
+    motor_Tray_Move_By_Index(eTrayIndex_1);                       /* 扫码位置 */
+    barcode_Scan_QR();                                            /* 扫描二维条码 */
+    if (barcode_Scan_Decode_Correct_Info_From_Result() != 0xFF) { /* 杂散光二维码不正确 */
+        error_Emit(eError_Stary_QR_Invalid);                      /* 发送异常 杂散光二维码不正确 */
+        motor_Tray_Move_By_Index(eTrayIndex_2);                   /* 出仓 */
+        return;
+    }
     motor_Tray_Move_By_Index(eTrayIndex_0);           /* 入仓 */
     heat_Motor_Down();                                /* 砸下加热体 */
     led_Mode_Set(eLED_Mode_Kirakira_Red);             /* LED 红灯闪烁 */

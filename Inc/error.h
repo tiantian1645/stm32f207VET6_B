@@ -76,14 +76,15 @@ typedef enum {
     eError_Comm_Out_Send_Failed = 228,                /* 外串口发送失败 */
     eError_Comm_Out_Not_ACK = 229,                    /* 外串口没有收到ACK */
     eError_Sample_Incomlete = 230,                    /* 采样未完成 */
-    eError_Stary_Incomlete = 231,                     /* 杂散光测试未完成 */
-    eError_Stary_Doing = 232,                         /* 杂散光测试中 */
-    eError_Temp_BTM_Stable_Timeout = 233,             /* 等待下加热体温度稳定超时 */
-    eError_Temp_BTM_Stable_Waiting = 234,             /* 等待下加热体温度稳定中 */
-    eError_Comm_Main_Source_Lock = 235,               /* 主串口资源被锁 */
-    eError_Comm_Out_Source_Lock = 236,                /* 外串口资源被锁 */
-    eError_Comm_Data_Source_Lock = 237,               /* 采样板串口资源被锁 */
-    eError_Correct_Info_Lost = 238,                   /* 定标信息不足 */
+    eError_Stary_QR_Invalid = 231,                    /* 杂散光二维码不正确 */
+    eError_Stary_Incomlete = 232,                     /* 杂散光测试未完成 */
+    eError_Stary_Doing = 233,                         /* 杂散光测试中 */
+    eError_Temp_BTM_Stable_Timeout = 234,             /* 等待下加热体温度稳定超时 */
+    eError_Temp_BTM_Stable_Waiting = 235,             /* 等待下加热体温度稳定中 */
+    eError_Comm_Main_Source_Lock = 236,               /* 主串口资源被锁 */
+    eError_Comm_Out_Source_Lock = 237,                /* 外串口资源被锁 */
+    eError_Comm_Data_Source_Lock = 238,               /* 采样板串口资源被锁 */
+    eError_Correct_Info_Lost = 239,                   /* 定标信息不足 */
 
     /* 周期性上送异常 */
     eError_Temperature_Top_Abnormal = 300, /* 上加热体温度异常 */

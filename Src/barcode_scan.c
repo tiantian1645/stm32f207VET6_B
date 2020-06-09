@@ -624,8 +624,8 @@ eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index)
         pResult->state = eBarcodeState_Error;
     } else {
         pResult->state = barcode_Read_From_Serial(&(pResult->length), pResult->pData, max_read_length, 360);     /* 第一次扫描 */
-        if (pResult->length < 10) {                                                                                  /* 扫描结果为空 */
-            vTaskDelay(100);                                                                                         /* 延时 */
+        if (pResult->length < 10) {                                                                              /* 扫描结果为空 */
+            vTaskDelay(100);                                                                                     /* 延时 */
             pResult->state = barcode_Read_From_Serial(&(pResult->length), pResult->pData, max_read_length, 720); /* 第二次扫描 */
         }
         if (pResult->state != eBarcodeState_Error) {
@@ -643,11 +643,11 @@ eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index)
         }
     }
 
-//    if (index == eBarcodeIndex_6) {
-//		pResult->length = 65;
-//		memcpy(pResult->pData, BAR_DEBUG_QR_2, 65);
-//		pResult->state = eBarcodeState_OK;
-//    }
+    //    if (index == eBarcodeIndex_6) {
+    //		pResult->length = 65;
+    //		memcpy(pResult->pData, BAR_DEBUG_QR_2, 65);
+    //		pResult->state = eBarcodeState_OK;
+    //    }
     return pResult->state;
 }
 
@@ -898,11 +898,12 @@ static uint32_t barcode_Str_2_Int_Base_16(uint8_t * pBuffer, uint8_t length)
  * @param  length 数据长度
  * @note   数据包长度应等同 sBarcodeCorrectInfo 数据类型
  * @note   只支持整条 校正段索引只有一个
- * @retval 0 成功 1 数据包异常 2 参数异常
+ * @note   杂散光条码 定标点应全为0 校正段应为9
+ * @retval 0 成功 1 数据包异常 2 参数异常 0xFf 杂散光条码
  */
 uint8_t barcode_Scan_Decode_Correct_Info(uint8_t * pBuffer, uint8_t length)
 {
-    uint8_t i;
+    uint8_t i, ao = 0;
     eStorgeParamIndex idx;
     eComm_Data_Sample_Radiant wave;
 
@@ -916,10 +917,18 @@ uint8_t barcode_Scan_Decode_Correct_Info(uint8_t * pBuffer, uint8_t length)
 
     for (i = 0; i < 13; ++i) {                                                                /* 13个定标点 */
         gBarcodeCorrectInfo.i_values[i] = barcode_Str_2_Int_Base_16(pBuffer + 11 + 4 * i, 4); /* 每个4位 */
+        if (ao == 0 && gBarcodeCorrectInfo.i_values[i] > 0) {                                 /* 全为0标志检查 */
+            ao = 1;
+        }
     }
     gBarcodeCorrectInfo.check = barcode_Str_2_Int_Base_16(pBuffer + 63, 2); /* 2位校验位 */
 
-    if (gBarcodeCorrectInfo.stage > 5 || CRC8(pBuffer, length - 2) != gBarcodeCorrectInfo.check) {
+    if (CRC8(pBuffer, length - 2) != gBarcodeCorrectInfo.check) { /* CRC异常 */
+        return 2;
+    }
+    if (gBarcodeCorrectInfo.stage == 9 && ao == 0) { /* 杂散光校正段 */
+        return 0xFF;
+    } else if (gBarcodeCorrectInfo.stage > 5) {
         return 2;
     }
 
