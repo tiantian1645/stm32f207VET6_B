@@ -944,7 +944,7 @@ static void motor_Task(void * argument)
                 white_Motor_PD();                                      /* 运动白板电机 PD位置 */
                 white_Motor_WH();                                      /* 运动白板电机 白物质位置 */
                 if (protocol_Debug_SampleBarcode() == 0) {             /* 非调试模式 */
-                    vTaskDelayUntil(&xTick, pdMS_TO_TICKS(15 * 1000)); /* 等待补全20秒 */
+                    vTaskDelayUntil(&xTick, pdMS_TO_TICKS(15 * 1000)); /* 等待补全15秒 */
                 }
                 comm_Data_RecordInit(); /* 初始化数据记录 */
                 motor_Sample_Deal();    /* 启动采样并控制白板电机 */

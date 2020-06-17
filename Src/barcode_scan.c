@@ -623,10 +623,10 @@ eBarcodeState barcode_Scan_By_Index(eBarcodeIndex index)
         pResult->length = 0;
         pResult->state = eBarcodeState_Error;
     } else {
-        pResult->state = barcode_Read_From_Serial(&(pResult->length), pResult->pData, max_read_length, 360);     /* 第一次扫描 */
+        pResult->state = barcode_Read_From_Serial(&(pResult->length), pResult->pData, max_read_length, 800);     /* 第一次扫描 */
         if (pResult->length < 10) {                                                                              /* 扫描结果为空 */
             vTaskDelay(100);                                                                                     /* 延时 */
-            pResult->state = barcode_Read_From_Serial(&(pResult->length), pResult->pData, max_read_length, 720); /* 第二次扫描 */
+            pResult->state = barcode_Read_From_Serial(&(pResult->length), pResult->pData, max_read_length, 400); /* 第二次扫描 */
         }
         if (pResult->state != eBarcodeState_Error) {
             if (index != eBarcodeIndex_6 || pResult->length > 0) {
@@ -686,6 +686,7 @@ eBarcodeState barcode_Scan_Bar(void)
         if (barcode_Interrupt_Flag_Get()) {
             return eBarcodeState_Interrupt;
         }
+        vTaskDelay(10);
         result = barcode_Scan_By_Index(cBarCodeIndex[i]); /* 扫码位置索引倒序 */
         if (result == eBarcodeState_Error) {              /* 扫码电机故障 */
             return eBarcodeState_Error;                   /* 提前返回 */
