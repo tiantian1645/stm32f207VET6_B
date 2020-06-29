@@ -1,6 +1,7 @@
 import queue
 import time
 from datetime import datetime
+from functools import partial
 import struct
 import serial
 import serial.tools.list_ports
@@ -129,8 +130,8 @@ class MainWindow(QMainWindow):
         layout = QGridLayout(self.led_gb)
         layout.setContentsMargins(1, 1, 1, 1)
         layout.setSpacing(1)
-        gbs = [QGroupBox(name) for name in ("610", "550", "405")]
-        lys = [QHBoxLayout(gb) for gb in gbs]
+        self.led_sub_gbs = [QGroupBox(name) for name in ("610", "550", "405")]
+        lys = [QHBoxLayout(gb) for gb in self.led_sub_gbs]
         self.led_dac_sps = [QSpinBox(minimum=0, maximum=800, value=10, singleStep=5, minimumWidth=60) for i in range(3)]
         for i, ly in enumerate(lys):
             sp = self.led_dac_sps[i]
@@ -142,19 +143,24 @@ class MainWindow(QMainWindow):
             c = QCheckBox()
             self.led_cks.append(c)
             if i < 6:
-                lys[0].addWidget(QLabel(f"{i % 6 + 1}"), Qt.AlignCenter)
-                lys[0].addWidget(c, Qt.AlignCenter)
+                lys[0].addWidget(QLabel(f"{i % 6 + 1}"))
+                lys[0].addWidget(c)
+                lys[0].addStretch(1)
             elif i < 12:
-                lys[1].addWidget(QLabel(f"{i % 6 + 1}"), Qt.AlignCenter)
-                lys[1].addWidget(c, Qt.AlignCenter)
+                lys[1].addWidget(QLabel(f"{i % 6 + 1}"))
+                lys[1].addWidget(c)
+                lys[1].addStretch(1)
             else:
-                lys[2].addWidget(QLabel(f"{i % 6 + 1}"), Qt.AlignCenter)
-                lys[2].addWidget(c, Qt.AlignCenter)
+                lys[2].addWidget(QLabel(f"{i % 6 + 1}"))
+                lys[2].addWidget(c)
+                lys[2].addStretch(1)
+        for idx, gb in enumerate(self.led_sub_gbs):
+            gb.mouseDoubleClickEvent = partial(self.on_led_sub_gb_double_click, idx=idx)
         self.led_set_bt = QPushButton("设置", maximumWidth=40, clicked=self.on_led_set)
         self.led_reset_bt = QPushButton("重置", maximumWidth=40, clicked=self.on_led_reset)
-        layout.addWidget(gbs[0], 0, 0, 1, 6)
-        layout.addWidget(gbs[1], 0, 6, 1, 6)
-        layout.addWidget(gbs[2], 0, 12, 1, 2)
+        layout.addWidget(self.led_sub_gbs[0], 0, 0, 1, 6)
+        layout.addWidget(self.led_sub_gbs[1], 0, 6, 1, 6)
+        layout.addWidget(self.led_sub_gbs[2], 0, 12, 1, 2)
         layout.addWidget(self.led_set_bt, 0, 14, 1, 1)
         layout.addWidget(self.led_reset_bt, 0, 15, 1, 1)
 
@@ -338,42 +344,17 @@ class MainWindow(QMainWindow):
         raw_bytes = info.content
         item = raw_bytes[6]
         result = raw_bytes[7]
-        if item == 1:
-            if result > 0:
-                self.selftest_temp_top_gb.setStyleSheet("QGroupBox:title {color: red};")
-            else:
-                self.selftest_temp_top_gb.setStyleSheet("QGroupBox:title {color: green};")
-            for i, lb in enumerate(self.selftest_temp_lbs[0:6]):
-                temp = struct.unpack("f", raw_bytes[8 + 4 * i : 12 + 4 * i])[0]
-                lb.setText(f"{temp:.2f}")
-                if 36.7 < temp < 37.3:
-                    self._setColor(lb, nbg="green")
-                else:
-                    self._setColor(lb, nbg="red")
-        elif item == 2:
-            if result > 0:
-                self.selftest_temp_btm_gb.setStyleSheet("QGroupBox:title {color: red};")
-            else:
-                self.selftest_temp_btm_gb.setStyleSheet("QGroupBox:title {color: green};")
-            for i, lb in enumerate(self.selftest_temp_lbs[6:8]):
-                temp = struct.unpack("f", raw_bytes[8 + 4 * i : 12 + 4 * i])[0]
-                lb.setText(f"{temp:.2f}")
-                if 36.7 < temp < 37.3:
-                    self._setColor(lb, nbg="green")
-                else:
-                    self._setColor(lb, nbg="red")
-        elif item == 3:
+        if item == 3:
             if result > 0:
                 self.selftest_temp_env_gb.setStyleSheet("QGroupBox:title {color: red};")
             else:
                 self.selftest_temp_env_gb.setStyleSheet("QGroupBox:title {color: green};")
-            for i, lb in enumerate(self.selftest_temp_lbs[8:9]):
-                temp = struct.unpack("f", raw_bytes[8 + 4 * i : 12 + 4 * i])[0]
-                lb.setText(f"{temp:.2f}")
-                if 16 < temp < 46:
-                    self._setColor(lb, nbg="green")
-                else:
-                    self._setColor(lb, nbg="red")
+            temp = struct.unpack("f", raw_bytes[8:12])[0]
+            self.selftest_temp_env_lb.setText(f"{temp:.2f}")
+            if 16 < temp < 46:
+                self._setColor(self.selftest_temp_env_lb, nbg="green")
+            else:
+                self._setColor(self.selftest_temp_env_lb, nbg="red")
         elif item == 4:
             if result > 0:
                 self._setColor(self.selftest_storge_lb_f, nbg="red")
@@ -525,7 +506,9 @@ class MainWindow(QMainWindow):
         num = (len(payload_byte) - 1) // 4
         raw_data = [struct.unpack("I", payload_byte[1 + 4 * j : 5 + 4 * j])[0] for j in range(num)]
         logger.success(f"channel {channel} | num {num} | raw data {raw_data}")
-        self.pd_plot_graph.plot_data_bantch_update(channel - 1, raw_data)
+        max_idx = raw_data.index(max(raw_data))
+        show_data = raw_data[max_idx:] + raw_data[:max_idx]
+        self.pd_plot_graph.plot_data_bantch_update(channel - 1, show_data)
 
     def onSerialStatistic(self, info):
         if info[0] == "w" and time.time() - self.kirakira_recv_time > 0.1:
@@ -597,36 +580,16 @@ class MainWindow(QMainWindow):
 
     def create_selftest_wg(self):
         self.selftest_wg = QWidget(self)
-        self.selftest_temp_lbs = [QLabel("**.**") for _ in range(9)]
         selftest_wg_ly = QGridLayout(self.selftest_wg)
-        selftest_temp_ly = QGridLayout()
-        self.selftest_temp_top_gb = QGroupBox("上温度", objectName="上温度")
-        self.selftest_temp_top_gb.setLayout(QHBoxLayout())
-        self.selftest_temp_top_gb.layout().setSpacing(0)
-        self.selftest_temp_top_gb.layout().setContentsMargins(0, 0, 0, 0)
-        for lb in self.selftest_temp_lbs[0:6]:
-            lb.setAlignment(Qt.AlignCenter)
-            lb.mouseReleaseEvent = self.onSelftest_temp_top_gb_Clicked
-            self.selftest_temp_top_gb.layout().addWidget(lb)
-        self.selftest_temp_btm_gb = QGroupBox("下温度", objectName="下温度")
-        self.selftest_temp_btm_gb.setLayout(QHBoxLayout())
-        self.selftest_temp_btm_gb.layout().setSpacing(0)
-        self.selftest_temp_btm_gb.layout().setContentsMargins(0, 0, 0, 0)
-        for lb in self.selftest_temp_lbs[6:8]:
-            lb.setAlignment(Qt.AlignCenter)
-            lb.mouseReleaseEvent = self.onSelftest_temp_btm_gb_Clicked
-            self.selftest_temp_btm_gb.layout().addWidget(lb)
+
         self.selftest_temp_env_gb = QGroupBox("环境", objectName="环境")
         self.selftest_temp_env_gb.setLayout(QHBoxLayout())
         self.selftest_temp_env_gb.layout().setSpacing(0)
         self.selftest_temp_env_gb.layout().setContentsMargins(0, 0, 0, 0)
-        for lb in self.selftest_temp_lbs[8:9]:
-            lb.setAlignment(Qt.AlignCenter)
-            lb.mouseReleaseEvent = self.onSelftest_temp_env_gb_Clicked
-            self.selftest_temp_env_gb.layout().addWidget(lb)
-        selftest_temp_ly.addWidget(self.selftest_temp_top_gb, 0, 0, 1, 6)
-        selftest_temp_ly.addWidget(self.selftest_temp_btm_gb, 0, 6, 1, 2)
-        selftest_temp_ly.addWidget(self.selftest_temp_env_gb, 0, 8, 1, 1)
+        self.selftest_temp_env_lb = QLabel("**.**")
+        self.selftest_temp_env_lb.setAlignment(Qt.AlignCenter)
+        self.selftest_temp_env_lb.mouseReleaseEvent = self.onSelftest_temp_env_gb_Clicked
+        self.selftest_temp_env_gb.layout().addWidget(self.selftest_temp_env_lb)
 
         selftest_motor_ly = QGridLayout()
         self.selftest_motor_heater_gb = QGroupBox("上加热体")
@@ -722,20 +685,10 @@ class MainWindow(QMainWindow):
         self.selftest_lamp_all_bt = QPushButton("全波长", checkable=True, toggled=self.on_selftest_lamp_all)
         selftest_lamp_ly.addWidget(self.selftest_lamp_all_bt, 0, 13, 1, 1)
 
-        selftest_wg_ly.addLayout(selftest_temp_ly, 0, 0, 1, 12)
-        selftest_wg_ly.addLayout(selftest_motor_ly, 1, 0, 1, 12)
-        selftest_wg_ly.addWidget(selftest_storge_gb, 0, 12, 2, 1)
-        selftest_wg_ly.addLayout(selftest_lamp_ly, 2, 0, 1, 13)
-
-    def onSelftest_temp_top_gb_Clicked(self, event):
-        self._clear_widget_style_sheet(self.selftest_temp_top_gb)
-        self._serialSendPack(0xDA, (0x01,))
-        self._enable_factory_temp()
-
-    def onSelftest_temp_btm_gb_Clicked(self, event):
-        self._clear_widget_style_sheet(self.selftest_temp_btm_gb)
-        self._serialSendPack(0xDA, (0x02,))
-        self._enable_factory_temp()
+        selftest_wg_ly.addWidget(self.selftest_temp_env_gb, 0, 0, 2, 1)
+        selftest_wg_ly.addLayout(selftest_motor_ly, 0, 1, 2, 12)
+        selftest_wg_ly.addWidget(selftest_storge_gb, 0, 13, 2, 1)
+        selftest_wg_ly.addLayout(selftest_lamp_ly, 2, 0, 1, 14)
 
     def onSelftest_temp_env_gb_Clicked(self, event):
         self._clear_widget_style_sheet(self.selftest_temp_env_gb)
@@ -815,8 +768,7 @@ class MainWindow(QMainWindow):
             self.pd_plot_graph.plot_data_new(name=f"CH-{i + 1}")
 
     def on_selftest_all_test(self, event):
-        for lb in self.selftest_temp_lbs:
-            lb.setText("**.**")
+        self.selftest_temp_env_lb.setText("**.**")
         for idx, lb in enumerate(self.selftest_lamp_610_lbs):
             self._setColor(lb)
             lb.setText(f"{idx + 1}")
@@ -826,8 +778,6 @@ class MainWindow(QMainWindow):
         for idx, lb in enumerate(self.selftest_lamp_405_lbs):
             self._setColor(lb)
             lb.setText(f"{idx + 1}")
-        self._clear_widget_style_sheet(self.selftest_temp_top_gb)
-        self._clear_widget_style_sheet(self.selftest_temp_btm_gb)
         self._clear_widget_style_sheet(self.selftest_temp_env_gb)
         self._clear_widget_style_sheet(self.selftest_motor_heater_gb)
         self._clear_widget_style_sheet(self.selftest_motor_tray_gb)
@@ -862,9 +812,9 @@ class MainWindow(QMainWindow):
         mask = 0
         for i, c in enumerate(self.led_cks):
             if c.checkState():
-                mask |= (1 << i)
+                mask |= 1 << i
         data = struct.pack("H", mask)
-        self._serialSendPack(0x35, (*data, ))
+        self._serialSendPack(0x35, (*data,))
         QTimer.singleShot(300, self.led_dac_set)
         QTimer.singleShot(800, self.on_led_dac_value_read)
 
@@ -879,8 +829,24 @@ class MainWindow(QMainWindow):
         for idx, sp in enumerate(self.led_dac_sps):
             sp.setValue(10)
         for i, c in enumerate(self.led_cks):
-            c.setCheckState(False)
+            c.setCheckState(0)
         self.on_led_set()
+
+    def on_led_sub_gb_double_click(self, event, idx):
+        event_button = event.button()
+        if idx == 0:
+            cks = self.led_cks[:6]
+        elif idx == 1:
+            cks = self.led_cks[6:12]
+        else:
+            cks = self.led_cks[12:]
+        for ck in cks:
+            if event_button == Qt.LeftButton:
+                ck.setCheckState(2)
+            elif event_button == Qt.RightButton:
+                ck.setCheckState(0)
+            elif event_button == Qt.MidButton:
+                ck.setCheckState(0 if ck.checkState() else 2)
 
 
 if __name__ == "__main__":
