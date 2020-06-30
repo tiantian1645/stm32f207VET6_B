@@ -1,9 +1,10 @@
 import queue
-import time
-from datetime import datetime
-from collections import namedtuple
-from functools import partial
 import struct
+import time
+from collections import namedtuple
+from datetime import datetime
+from functools import partial
+
 import serial
 import serial.tools.list_ports
 import simplejson
@@ -13,8 +14,8 @@ from PyQt5.QtCore import QMutex, Qt, QThreadPool, QTimer
 from PyQt5.QtGui import QIcon, QPalette
 from PyQt5.QtWidgets import (
     QApplication,
-    QComboBox,
     QCheckBox,
+    QComboBox,
     QDesktopWidget,
     QFrame,
     QGridLayout,
@@ -30,12 +31,12 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from bytes_helper import bytesPuttyPrint, bytes2Float
+from bytes_helper import bytes2Float, bytesPuttyPrint
 from dc201_pack import DC201_PACK, DC201ErrorCode
 from qt_serial import SerialRecvWorker, SerialSendWorker
 from sample_graph import SampleGraph
 from version import VERSION_FA
-
+from wave_helper import get_freq_amp_from_data
 
 ICON_PATH = "./icos/tt.ico"
 CONFIG_PATH = "./conf/config_fa.json"
@@ -63,7 +64,7 @@ retention = CONFIG.get("log", {}).get("retention", 16)
 logger.add("./log/dc201_fa.log", rotation=rotation, retention=retention, enqueue=True, encoding="utf8")
 
 
-Check_Info = namedtuple("Check_Info", "T A")
+Check_Info = namedtuple("Check_Info", "F A")
 
 
 class QHLine(QFrame):
@@ -488,18 +489,13 @@ class MainWindow(QMainWindow):
         elif channel == 6:
             check_info_list = []
             for idx, raw_data in enumerate(self.analyse_list):
-                min_v = min(raw_data)
-                max_v = max(raw_data)
-                max_idx = raw_data.index(max(raw_data[:44]))
-                min_idx = raw_data.index(min(raw_data[:44]))
-                T = abs(max_idx - min_idx)
-                A = max_v - min_v
-                check_info_list.append(Check_Info(T, A))
-                logger.debug(f"channel {idx + 1} | min_i {min_idx:2d} | max_i {max_idx:2d} | T {T} | min {min_v} | max {max_v} | A {A}")
+                F, A = get_freq_amp_from_data(raw_data)
+                check_info_list.append(Check_Info(F, A))
+                logger.debug(f"channel {idx + 1} | F {F:3f} | A {A:.3f}")
                 self.pd_plot_graph.plot_data_bantch_update(idx, raw_data)
             msg = QMessageBox(self)
             msg_content = "\n".join((f"通道 {i + 1} 周期 {c.T} 幅值 {c.A}" for i, c in enumerate(check_info_list)))
-            if all(13 <= i.T <= 17 for i in check_info_list) and all(6000000 < i.A < 6350000 for i in check_info_list):
+            if all(1170 <= F <= 1172 for i in check_info_list) and all(1800000 < i.A < 2800000 for i in check_info_list):
                 msg.setIcon(QMessageBox.Information)
                 msg.setWindowTitle("PD测试通过")
                 detail_text = f"PASS\n{msg_content}"
@@ -726,7 +722,7 @@ class MainWindow(QMainWindow):
         self.selftest_motor_scan_l.setText("*" * 10)
         self._setColor(self.selftest_storge_lb_f)
         self.on_selftest_pd_debug()
-        self._serialSendPack(0xDA, (0xFA, ))
+        self._serialSendPack(0xDA, (0xFA,))
         self._enable_factory_temp()
 
     def led_dac_set(self):
