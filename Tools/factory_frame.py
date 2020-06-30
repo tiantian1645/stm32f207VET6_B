@@ -1,6 +1,7 @@
 import queue
 import time
 from datetime import datetime
+from collections import namedtuple
 from functools import partial
 import struct
 import serial
@@ -62,6 +63,9 @@ retention = CONFIG.get("log", {}).get("retention", 16)
 logger.add("./log/dc201_fa.log", rotation=rotation, retention=retention, enqueue=True, encoding="utf8")
 
 
+Check_Info = namedtuple("Check_Info", "T A")
+
+
 class QHLine(QFrame):
     def __init__(self):
         super(QHLine, self).__init__()
@@ -86,6 +90,8 @@ class MainWindow(QMainWindow):
         self.task_queue = queue.Queue()
         self.henji_queue = queue.Queue()
         self.serial = serial.Serial(port=None, baudrate=115200, timeout=0.01)
+        self.analyse_list = []
+        self.analyse_lasst_idx = -1
         self.init_UI()
 
     def create_plot(self):
@@ -500,15 +506,43 @@ class MainWindow(QMainWindow):
         msg.show()
 
     def parse_PD_Data(self, info):
+        def unstruct_u24(b):
+            return b[2] << 16 | b[1] << 8 | b[0]
+
         payload_byte = info.content[6:-1]
         logger.debug(f"recv pd debug payload_byte | {len(payload_byte)}")
         channel = payload_byte[0]
-        num = (len(payload_byte) - 1) // 4
-        raw_data = [struct.unpack("I", payload_byte[1 + 4 * j : 5 + 4 * j])[0] for j in range(num)]
+        num = (len(payload_byte) - 1) // 3
+        raw_data = [unstruct_u24(payload_byte[1 + 3 * j : 4 + 3 * j]) for j in range(num)]
         logger.success(f"channel {channel} | num {num} | raw data {raw_data}")
-        max_idx = raw_data.index(max(raw_data))
-        show_data = raw_data[max_idx:] + raw_data[:max_idx]
-        self.pd_plot_graph.plot_data_bantch_update(channel - 1, show_data)
+        if channel != self.analyse_lasst_idx:
+            self.analyse_list.append(raw_data)
+            self.analyse_lasst_idx = channel
+        if len(self.analyse_list) != channel:
+            logger.error("analyse data lost")
+        elif channel == 6:
+            check_info_list = []
+            for idx, raw_data in enumerate(self.analyse_list):
+                min_v = min(raw_data)
+                max_v = max(raw_data)
+                max_idx = raw_data.index(max(raw_data[:44]))
+                min_idx = raw_data.index(min(raw_data[:44]))
+                T = abs(max_idx - min_idx)
+                A = max_v - min_v
+                check_info_list.append(Check_Info(T, A))
+                logger.debug(f"channel {idx + 1} | min_i {min_idx:2d} | max_i {max_idx:2d} | T {T} | min {min_v} | max {max_v} | A {A}")
+                self.pd_plot_graph.plot_data_bantch_update(idx, raw_data)
+            msg = QMessageBox(self)
+            msg_content = "\n".join((f"通道 {i + 1} 周期 {c.T} 幅值 {c.A}" for i, c in enumerate(check_info_list)))
+            if all(13 <= i.T <= 16 for i in check_info_list) and all(6000000 < i.A < 6300000 for i in check_info_list):
+                msg.setIcon(QMessageBox.Information)
+                msg.setWindowTitle("PD测试通过")
+                msg.setText(f"PASS\n{msg_content}")
+            else:
+                msg.setIcon(QMessageBox.Critical)
+                msg.setWindowTitle("PD测试失败")
+                msg.setText(f"FAIL\n{msg_content}")
+            msg.exec_()
 
     def onSerialStatistic(self, info):
         if info[0] == "w" and time.time() - self.kirakira_recv_time > 0.1:
@@ -761,6 +795,8 @@ class MainWindow(QMainWindow):
 
     def on_selftest_pd_debug(self, event):
         self._serialSendPack(0x34, (1,))
+        self.analyse_list.clear()
+        self.analyse_lasst_idx = -1
 
     def on_selftest_clr_plot(self, event):
         self.pd_plot_graph.clear_plot()
