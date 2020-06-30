@@ -160,6 +160,9 @@ void gMotorPressureStopBits_Clear(void);
 eMotor_Sampl_Comm gMotor_Sampl_Comm_Get(void);
 void gMotor_Sampl_Comm_Set(eMotor_Sampl_Comm b);
 void gMotor_Sampl_Comm_Init(void);
+
+void gMotor_Aging_Sleep_Set(uint8_t sleep);
+
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/

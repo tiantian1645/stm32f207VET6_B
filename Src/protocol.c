@@ -1140,6 +1140,8 @@ static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length)
             if (length == 7) {
                 pInBuff[0] = protocol_Debug_Get();
                 comm_Out_SendTask_QueueEmitWithBuild_FromISR(eProtocolEmitPack_Client_CMD_Debug_Flag, pInBuff, 1);
+            } else if (length == 8) {
+                gMotor_Aging_Sleep_Set(pInBuff[6]);
             } else if (length == 9) {
                 if (pInBuff[7] == 0) {
                     protocol_Debug_Clear(pInBuff[6]);

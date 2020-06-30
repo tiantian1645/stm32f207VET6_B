@@ -55,6 +55,7 @@ static sMotor_OPT_Record gMotor_OPT_Records[eMotor_OPT_Index_NUM];   /* 光耦�
 static uint8_t gMotorPressureStopBits = 0xFF;                        /* 压力测试停止标志位 */
 static uint8_t gMotorTempStableWaiting = 0;                          /* 启动时等待温度稳定标志位 */
 static eMotor_Sampl_Comm gMotor_Sampl_Comm = eMotor_Sampl_Comm_None; /* 采样时指令来源 */
+static uint8_t gMotor_Aging_Sleep = 10;                               /* 老化测试出仓后等待间隔 单位 秒 */
 
 /* Private function prototypes -----------------------------------------------*/
 static void motor_Task(void * argument);
@@ -301,6 +302,26 @@ eMotor_Sampl_Comm gMotor_Sampl_Comm_Get(void)
 void gMotor_Sampl_Comm_Set(eMotor_Sampl_Comm b)
 {
     gMotor_Sampl_Comm = b;
+}
+
+/**
+ * @brief  老化循环测试等待间隔 获取
+ * @param  None
+ * @retval 老化循环测试等待间隔
+ */
+uint8_t gMotor_Aging_Sleep_Get(void)
+{
+    return gMotor_Aging_Sleep;
+}
+
+/**
+ * @brief  老化循环测试等待间隔 设置
+ * @param  sleep 等待时间 单位 秒
+ * @retval None
+ */
+void gMotor_Aging_Sleep_Set(uint8_t sleep)
+{
+    gMotor_Aging_Sleep = sleep;
 }
 
 /**
@@ -986,11 +1007,15 @@ static void motor_Task(void * argument)
                     white_Motor_PD();                                      /* 运动白板电机 PD位置 */
                     white_Motor_WH();                                      /* 运动白板电机 白物质位置 */
                     if (protocol_Debug_SampleBarcode() == 0) {             /* 非调试模式 */
-                        vTaskDelayUntil(&xTick, pdMS_TO_TICKS(15 * 1000)); /* 等待补全20秒 */
+                        vTaskDelayUntil(&xTick, pdMS_TO_TICKS(15 * 1000)); /* 等待补全15秒 */
                     }
-                    comm_Data_RecordInit(); /* 初始化数据记录 */
-                    motor_Sample_Deal();    /* 启动采样并控制白板电机 */
-                    motor_Sample_Owari();   /* 清理 */
+                    comm_Data_RecordInit();                                                                            /* 初始化数据记录 */
+                    motor_Sample_Deal();                                                                               /* 启动采样并控制白板电机 */
+                    motor_Sample_Owari();                                                                              /* 清理 */
+                    xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(gMotor_Aging_Sleep_Get() * 1000)); /* 等待任务通知 */
+                    if (xResult == pdPASS && xNotifyValue == eMotorNotifyValue_BR) {                                   /* 收到中终止命令 */
+                        break;
+                    }
                     ++cnt;
                 } while (protocol_Debug_AgingLoop());
                 protocol_Debug_Clear(eProtocol_Debug_AgingLoop); /* 清除老化测试标志位 */

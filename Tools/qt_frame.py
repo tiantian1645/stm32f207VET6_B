@@ -460,12 +460,12 @@ class MainWindow(QMainWindow):
         sender = self.sender()
         if sender is self.temperature_overshoot_btm_write_bt:
             values = [i.value() for i in self.temperature_overshoot_btm_sps[:3]]
-            payload_bytes = b''.join([struct.pack("f", i) for i in values])
+            payload_bytes = b"".join([struct.pack("f", i) for i in values])
             payload = [0x04] + [i for i in payload_bytes]
             self._serialSendPack(0xD3, payload)
         elif sender is self.temperature_overshoot_top_write_bt:
             values = [i.value() for i in self.temperature_overshoot_top_sps[:3]]
-            payload_bytes = b''.join([struct.pack("f", i) for i in values])
+            payload_bytes = b"".join([struct.pack("f", i) for i in values])
             payload = [0x05] + [i for i in payload_bytes]
             self._serialSendPack(0xD3, payload)
 
@@ -2954,29 +2954,25 @@ class MainWindow(QMainWindow):
         boot_ly = QHBoxLayout()
         boot_ly.setContentsMargins(3, 3, 3, 3)
         boot_ly.setSpacing(0)
-        self.upgrade_bt = QPushButton("固件")
-        self.upgrade_bt.setMaximumWidth(50)
-        self.bootload_bt = QPushButton("Bootloader")
-        self.bootload_bt.setMaximumWidth(75)
-        self.reboot_bt = QPushButton("重启")
-        self.reboot_bt.setMaximumWidth(50)
-        self.selftest_bt = QPushButton("自检")
-        self.selftest_bt.setMaximumWidth(50)
-        self.debugtest_bt = QPushButton("定标")
-        self.debugtest_bt.setMaximumWidth(50)
+        self.upgrade_bt = QPushButton("固件", maximumWidth=50, clicked=self.onUpgrade)
+        self.bootload_bt = QPushButton("Bootloader", maximumWidth=75, clicked=self.onBootload)
+        self.reboot_bt = QPushButton("重启", maximumWidth=50, clicked=self.onReboot)
+        self.selftest_bt = QPushButton("自检", maximumWidth=50)
+        self.selftest_bt.mousePressEvent = self.onSelfCheck  # 区分鼠标按键
+        self.debugtest_bt = QPushButton("定标", maximumWidth=50, clicked=self.onDebugTest)
+        self.debug_aging_sleep_sp = QSpinBox(minimum=0, maximum=255, value=10, maximumWidth=50, suffix="S", valueChanged=self.on_debug_aging_sleep_sp)
         self.debugtest_cnt = 0
         boot_ly.addWidget(self.upgrade_bt)
         boot_ly.addWidget(self.bootload_bt)
         boot_ly.addWidget(self.reboot_bt)
         boot_ly.addWidget(self.selftest_bt)
         boot_ly.addWidget(self.debugtest_bt)
+        boot_ly.addWidget(QLabel("间隔", maximumWidth=50))
+        boot_ly.addWidget(self.debug_aging_sleep_sp)
         sys_conf_ly.addLayout(boot_ly)
 
-        self.upgrade_bt.clicked.connect(self.onUpgrade)
-        self.bootload_bt.clicked.connect(self.onBootload)
-        self.reboot_bt.clicked.connect(self.onReboot)
-        self.debugtest_bt.clicked.connect(self.onDebugTest)
-        self.selftest_bt.mousePressEvent = self.onSelfCheck
+    def on_debug_aging_sleep_sp(self, event):
+        self._serialSendPack(0xD4, (event,))
 
     def onDebugTest(self, event):
         self.onCorrectMatplotStart()
