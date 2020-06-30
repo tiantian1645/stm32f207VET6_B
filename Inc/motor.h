@@ -57,6 +57,7 @@ typedef enum {
     eMotor_Fun_PRE_WHITE,               /* 压力测试 白板 */
     eMotor_Fun_PRE_ALL,                 /* 压力测试 */
     eMotor_Fun_Self_Check,              /* 自检测试 */
+    eMotor_Fun_Self_Check_FA,           /* 自检测试 生产板厂 */
     eMotor_Fun_Self_Check_Motor_White,  /* 自检测试 单项 白板电机 */
     eMotor_Fun_Self_Check_Motor_Heater, /* 自检测试 单项 上加热体电机 */
     eMotor_Fun_Self_Check_Motor_Tray,   /* 自检测试 单项 托盘电机 */

@@ -170,13 +170,20 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.led_set_bt, 0, 14, 1, 1)
         layout.addWidget(self.led_reset_bt, 0, 15, 1, 1)
 
+    def create_pd_gb(self):
+        self.pd_gb = QGroupBox("PD")
+        layout = QHBoxLayout(self.pd_gb)
+        self.selftest_pd_bt = QPushButton("PD测试(T)", clicked=self.on_selftest_pd_debug, shortcut="Ctrl+T")
+        layout.addWidget(self.selftest_pd_bt)
+        self.self_test_pd_lb = QLabel("测试结果")
+        self.self_test_pd_lb.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.self_test_pd_lb)
+        self.selftest_clr_bt = QPushButton("清除数据(C)", clicked=self.on_selftest_clr_plot, shortcut="Ctrl+C")
+        layout.addWidget(self.selftest_clr_bt)
+
     def create_ctl_gb(self):
         self.ctl_gb = QGroupBox("控制")
         layout = QHBoxLayout(self.ctl_gb)
-        self.selftest_ctl_pd_bt = QPushButton("PD测试(T)", clicked=self.on_selftest_pd_debug, shortcut="Ctrl+T")
-        layout.addWidget(self.selftest_ctl_pd_bt)
-        self.selftest_ctl_clr_bt = QPushButton("清除数据(C)", clicked=self.on_selftest_clr_plot, shortcut="Ctrl+C")
-        layout.addWidget(self.selftest_ctl_clr_bt)
         self.selftest_all_test_bt = QPushButton("全检(A)", clicked=self.on_selftest_all_test, shortcut="Ctrl+A")
         layout.addWidget(self.selftest_all_test_bt)
         self.selftest_reboot_bt = QPushButton("重启(R)", clicked=self._reboot_board, shortcut="Ctrl+R")
@@ -366,11 +373,6 @@ class MainWindow(QMainWindow):
                 self._setColor(self.selftest_storge_lb_f, nbg="red")
             else:
                 self._setColor(self.selftest_storge_lb_f, nbg="green")
-        elif item == 5:
-            if result > 0:
-                self._setColor(self.selftest_storge_lb_c, nbg="red")
-            else:
-                self._setColor(self.selftest_storge_lb_c, nbg="green")
         elif item == 6:
             if result > 0:
                 self.selftest_motor_white_gb.setStyleSheet("QGroupBox:title {color: red};")
@@ -428,43 +430,6 @@ class MainWindow(QMainWindow):
                     self._setColor(self.selftest_motor_scan_l, nbg="green")
                     self.selftest_motor_scan_gb.setStyleSheet("QGroupBox:title {color: green};")
                 self.selftest_motor_scan_l.setText(text)
-        elif item == 11:
-            if len(raw_bytes) != 61:
-                logger.error(f"self check pd data length error | {bytesPuttyPrint(raw_bytes)}")
-            mask = raw_bytes[7]
-            values = []
-            for i in range(13):
-                value = struct.unpack("I", raw_bytes[8 + 4 * i : 8 + 4 * (i + 1)])[0]
-                logger.debug(f"get self check pd data | {i} | {value}")
-                values.append(value)
-            now = datetime.now()
-            if mask & 0x01:
-                self.selftest_lamp_610_gb.setToolTip(f"{[i for i in values[0:6]]}, {now}")
-                mi, ma = (min(CONFIG["pd_criterion"]["610"]), max(CONFIG["pd_criterion"]["610"]))
-                for idx, v in enumerate(values[0:6]):
-                    self.selftest_lamp_610_lbs[idx].setText(f"{v}")
-                    if v > ma or v < mi:
-                        self._setColor(self.selftest_lamp_610_lbs[idx], nbg="red")
-                    else:
-                        self._setColor(self.selftest_lamp_610_lbs[idx], nbg="green")
-            if mask & 0x02:
-                self.selftest_lamp_550_gb.setToolTip(f"{[i for i in values[6:12]]}, {now}")
-                mi, ma = (min(CONFIG["pd_criterion"]["550"]), max(CONFIG["pd_criterion"]["550"]))
-                for idx, v in enumerate(values[6:12]):
-                    self.selftest_lamp_550_lbs[idx].setText(f"{v}")
-                    if v > ma or v < mi:
-                        self._setColor(self.selftest_lamp_550_lbs[idx], nbg="red")
-                    else:
-                        self._setColor(self.selftest_lamp_550_lbs[idx], nbg="green")
-            if mask & 0x04:
-                self.selftest_lamp_405_gb.setToolTip(f"{[i for i in values[12:]]}, {now}")
-                mi, ma = (min(CONFIG["pd_criterion"]["405"]), max(CONFIG["pd_criterion"]["405"]))
-                for idx, v in enumerate(values[12:]):
-                    self.selftest_lamp_405_lbs[idx].setText(f"{v}")
-                    if v > ma or v < mi:
-                        self._setColor(self.selftest_lamp_405_lbs[idx], nbg="red")
-                    else:
-                        self._setColor(self.selftest_lamp_405_lbs[idx], nbg="green")
 
     def updateVersionLabel(self, info):
         self.version = f"{bytes2Float(info.content[6:10]):.3f}"
@@ -534,14 +499,22 @@ class MainWindow(QMainWindow):
                 self.pd_plot_graph.plot_data_bantch_update(idx, raw_data)
             msg = QMessageBox(self)
             msg_content = "\n".join((f"通道 {i + 1} 周期 {c.T} 幅值 {c.A}" for i, c in enumerate(check_info_list)))
-            if all(13 <= i.T <= 16 for i in check_info_list) and all(6000000 < i.A < 6300000 for i in check_info_list):
+            if all(13 <= i.T <= 17 for i in check_info_list) and all(6000000 < i.A < 6350000 for i in check_info_list):
                 msg.setIcon(QMessageBox.Information)
                 msg.setWindowTitle("PD测试通过")
+                detail_text = f"PASS\n{msg_content}"
                 msg.setText(f"PASS\n{msg_content}")
+                self.self_test_pd_lb.setText("PD测试通过")
+                self.self_test_pd_lb.setToolTip(detail_text)
+                self.self_test_pd_lb.setStyleSheet("background-color : green; color : #3d3d3d;")
             else:
                 msg.setIcon(QMessageBox.Critical)
                 msg.setWindowTitle("PD测试失败")
+                detail_text = f"FAIL\n{msg_content}"
                 msg.setText(f"FAIL\n{msg_content}")
+                self.self_test_pd_lb.setText("PD测试失败")
+                self.self_test_pd_lb.setToolTip(detail_text)
+                self.self_test_pd_lb.setStyleSheet("background-color : red; color : #3d3d3d;")
             msg.exec_()
 
     def onSerialStatistic(self, info):
@@ -596,6 +569,7 @@ class MainWindow(QMainWindow):
         ctl_layout = QGridLayout()
         self.create_selftest_wg()
         self.create_serial_gb()
+        self.create_pd_gb()
         self.create_ctl_gb()
         self.create_led_gb()
         self.create_status_bar()
@@ -603,7 +577,8 @@ class MainWindow(QMainWindow):
         ctl_layout.addWidget(self.selftest_wg, 0, 0, 3, 8)
         ctl_layout.addWidget(self.led_gb, 3, 0, 1, 8)
         ctl_layout.addWidget(self.serial_gb, 4, 0, 1, 3)
-        ctl_layout.addWidget(self.ctl_gb, 4, 3, 1, 5)
+        ctl_layout.addWidget(self.pd_gb, 4, 3, 1, 3)
+        ctl_layout.addWidget(self.ctl_gb, 4, 6, 1, 2)
         layout.addWidget(self.pd_plot_wg)
         layout.addLayout(ctl_layout)
         self.setCentralWidget(widget)
@@ -674,55 +649,12 @@ class MainWindow(QMainWindow):
         selftest_storge_ly.setSpacing(3)
         self.selftest_storge_lb_f = QLabel("片外 Flash")
         self.selftest_storge_lb_f.mouseReleaseEvent = self.onSelftest_storge_lb_f_Clicked
-        self.selftest_storge_lb_c = QLabel("ID Code 卡")
-        self.selftest_storge_lb_c.mouseReleaseEvent = self.onSelftest_storge_lb_c_Clicked
         self.selftest_storge_lb_f.setAlignment(Qt.AlignCenter)
-        self.selftest_storge_lb_c.setAlignment(Qt.AlignCenter)
         selftest_storge_ly.addWidget(self.selftest_storge_lb_f)
-        selftest_storge_ly.addWidget(self.selftest_storge_lb_c)
-
-        selftest_lamp_ly = QGridLayout()
-        self.selftest_lamp_610_gb = QGroupBox("610")
-        self.selftest_lamp_610_gb.setLayout(QHBoxLayout())
-        self.selftest_lamp_610_gb.layout().setContentsMargins(0, 0, 0, 0)
-        self.selftest_lamp_610_gb.layout().setSpacing(0)
-        self.selftest_lamp_550_gb = QGroupBox("550")
-        self.selftest_lamp_550_gb.setLayout(QHBoxLayout())
-        self.selftest_lamp_550_gb.layout().setContentsMargins(0, 0, 0, 0)
-        self.selftest_lamp_550_gb.layout().setSpacing(0)
-        self.selftest_lamp_405_gb = QGroupBox("405")
-        self.selftest_lamp_405_gb.setLayout(QHBoxLayout())
-        self.selftest_lamp_405_gb.layout().setContentsMargins(0, 0, 0, 0)
-        self.selftest_lamp_405_gb.layout().setSpacing(0)
-
-        self.selftest_lamp_610_lbs = []
-        self.selftest_lamp_550_lbs = []
-        self.selftest_lamp_405_lbs = []
-        for i in range(6):
-            lb = QLabel(f"{i + 1:^5d}", minimumHeight=20)
-            self.selftest_lamp_610_gb.layout().addWidget(lb, alignment=Qt.AlignCenter)
-            self.selftest_lamp_610_lbs.append(lb)
-        for i in range(6):
-            lb = QLabel(f"{i + 1:^5d}", minimumHeight=20)
-            self.selftest_lamp_550_gb.layout().addWidget(lb, alignment=Qt.AlignCenter)
-            self.selftest_lamp_550_lbs.append(lb)
-        for i in range(1):
-            lb = QLabel(f"{i + 1:^5d}", minimumHeight=20)
-            self.selftest_lamp_405_gb.layout().addWidget(lb, alignment=Qt.AlignCenter)
-            self.selftest_lamp_405_lbs.append(lb)
-        selftest_lamp_ly.addWidget(self.selftest_lamp_610_gb, 0, 0, 1, 6)
-        selftest_lamp_ly.addWidget(self.selftest_lamp_550_gb, 0, 6, 1, 6)
-        selftest_lamp_ly.addWidget(self.selftest_lamp_405_gb, 0, 12, 1, 1)
-        self.selftest_lamp_610_gb.mouseReleaseEvent = self.onSelftest_lamp_610_gb_Clicked
-        self.selftest_lamp_550_gb.mouseReleaseEvent = self.onSelftest_lamp_550_gb_Clicked
-        self.selftest_lamp_405_gb.mouseReleaseEvent = self.onSelftest_lamp_405_gb_Clicked
-        self.selftest_lamp_all_bt = QPushButton("全波长", checkable=True, toggled=self.on_selftest_lamp_all)
-        selftest_lamp_ly.addWidget(self.selftest_lamp_all_bt, 0, 13, 1, 1)
 
         selftest_wg_ly.addWidget(self.selftest_temp_env_gb, 0, 0, 2, 1)
         selftest_wg_ly.addLayout(selftest_motor_ly, 0, 1, 2, 12)
         selftest_wg_ly.addWidget(selftest_storge_gb, 0, 13, 2, 1)
-        selftest_wg_ly.addLayout(selftest_lamp_ly, 2, 0, 1, 14)
 
     def onSelftest_temp_env_gb_Clicked(self, event):
         self._clear_widget_style_sheet(self.selftest_temp_env_gb)
@@ -771,32 +703,12 @@ class MainWindow(QMainWindow):
         self._setColor(self.selftest_storge_lb_f)
         self._serialSendPack(0xDA, (0x04,))
 
-    def onSelftest_storge_lb_c_Clicked(self, event):
-        self._setColor(self.selftest_storge_lb_c)
-        self._serialSendPack(0xDA, (0x05,))
-
-    def onSelftest_lamp_610_gb_Clicked(self, event):
-        for idx, lb in enumerate(self.selftest_lamp_610_lbs):
-            self._setColor(lb)
-            lb.setText(f"{idx + 1}")
-        self._serialSendPack(0xDA, (0x0B, 1))
-
-    def onSelftest_lamp_550_gb_Clicked(self, event):
-        for idx, lb in enumerate(self.selftest_lamp_550_lbs):
-            self._setColor(lb)
-            lb.setText(f"{idx + 1}")
-        self._serialSendPack(0xDA, (0x0B, 2))
-
-    def onSelftest_lamp_405_gb_Clicked(self, event):
-        for idx, lb in enumerate(self.selftest_lamp_405_lbs):
-            self._setColor(lb)
-            lb.setText(f"{idx + 1}")
-        self._serialSendPack(0xDA, (0x0B, 4))
-
-    def on_selftest_pd_debug(self, event):
+    def on_selftest_pd_debug(self, event=None):
         self._serialSendPack(0x34, (1,))
         self.analyse_list.clear()
         self.analyse_lasst_idx = -1
+        self.self_test_pd_lb.setText("测试结果")
+        self.self_test_pd_lb.setStyleSheet("background-color : white; color : #3d3d3d;")
 
     def on_selftest_clr_plot(self, event):
         self.pd_plot_graph.clear_plot()
@@ -805,15 +717,6 @@ class MainWindow(QMainWindow):
 
     def on_selftest_all_test(self, event):
         self.selftest_temp_env_lb.setText("**.**")
-        for idx, lb in enumerate(self.selftest_lamp_610_lbs):
-            self._setColor(lb)
-            lb.setText(f"{idx + 1}")
-        for idx, lb in enumerate(self.selftest_lamp_550_lbs):
-            self._setColor(lb)
-            lb.setText(f"{idx + 1}")
-        for idx, lb in enumerate(self.selftest_lamp_405_lbs):
-            self._setColor(lb)
-            lb.setText(f"{idx + 1}")
         self._clear_widget_style_sheet(self.selftest_temp_env_gb)
         self._clear_widget_style_sheet(self.selftest_motor_heater_gb)
         self._clear_widget_style_sheet(self.selftest_motor_tray_gb)
@@ -822,21 +725,9 @@ class MainWindow(QMainWindow):
         self._setColor(self.selftest_motor_scan_l)
         self.selftest_motor_scan_l.setText("*" * 10)
         self._setColor(self.selftest_storge_lb_f)
-        self._setColor(self.selftest_storge_lb_c)
-        self._serialSendPack(0xDA)
+        self.on_selftest_pd_debug()
+        self._serialSendPack(0xDA, (0xFA, ))
         self._enable_factory_temp()
-
-    def on_selftest_lamp_all(self, event):
-        for idx, lb in enumerate(self.selftest_lamp_610_lbs):
-            self._setColor(lb)
-            lb.setText(f"{idx + 1}")
-        for idx, lb in enumerate(self.selftest_lamp_550_lbs):
-            self._setColor(lb)
-            lb.setText(f"{idx + 1}")
-        for idx, lb in enumerate(self.selftest_lamp_405_lbs):
-            self._setColor(lb)
-            lb.setText(f"{idx + 1}")
-        self._serialSendPack(0xDA, (0x0B, 7))
 
     def led_dac_set(self):
         data = bytearray()

@@ -1121,6 +1121,14 @@ static void motor_Task(void * argument)
                 motor_Self_Check_PD(buffer, 0x07);
                 motor_Tray_Move_By_Index(eTrayIndex_2); /* 出仓 */
                 break;
+            case eMotor_Fun_Self_Check_FA: /* 自检测试  生产板厂 */
+                motor_Self_Check_Motor_Tray(buffer);
+                motor_Self_Check_Motor_White(buffer);
+                motor_Self_Check_Motor_Heater(buffer);
+                motor_Self_Check_Motor_Scan(buffer);
+                motor_Self_Check_Scan(buffer);
+                motor_Tray_Move_By_Index(eTrayIndex_2); /* 出仓 */
+                break;
             case eMotor_Fun_Self_Check_Motor_White: /* 自检测试 单项 白板电机 */
                 motor_Self_Check_Motor_White(buffer);
                 break;
