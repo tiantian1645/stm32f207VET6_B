@@ -153,6 +153,7 @@ uint16_t se2707_build_pack_param_read(uint16_t param_type, uint8_t * pResult)
 {
     uint8_t payload[2];
 
+    param_type = param_type & 0xFFFF;
     payload[0] = param_type >> 8;
     payload[1] = param_type & 0xFF;
     return se2707_build_pack(PARAM_REQUEST, Set_Param_Tempory, payload, 2, pResult);
@@ -284,11 +285,17 @@ uint8_t se2707_decode_param(uint8_t * pData, uint8_t length, sSE2707_Image_Captu
     if (length < 10 || pData == NULL || pData[1] != PARAM_SEND) {
         return 1;
     }
-    if (se2707_checksum_check(pData, 10) != 0) {
+    if (se2707_checksum_check(pData, length) != 0) {
         return 2;
     }
-    pResult->param = (pData[5] << 8) + pData[6];
-    pResult->data = pData[7];
+    if (length == 10) {
+        pResult->param = (pData[5] << 8) + pData[6];
+        pResult->data = pData[7];
+    } else if (length == 12) {
+        pResult->param = (pData[5] << 16) + (pData[6] << 8) + pData[7];
+        pResult->data = (pData[8] << 8) + pData[9];
+    }
+
     return 0;
 }
 
@@ -329,16 +336,20 @@ uint8_t se2707_conf_param(UART_HandleTypeDef * puart, sSE2707_Image_Capture_Para
  */
 uint8_t se2707_check_param(UART_HandleTypeDef * puart, sSE2707_Image_Capture_Param * pICP, uint32_t timeout, uint8_t retry)
 {
-    uint8_t buffer[10], result;
-    uint16_t length;
+    uint8_t buffer[14], result;
+    uint16_t send_length, recv_len;
     sSE2707_Image_Capture_Param icp;
 
     do {
-        length = se2707_build_pack_param_read(pICP->param, buffer);
-        se2707_send_pack(puart, buffer, length);
+        send_length = se2707_build_pack_param_read(pICP->param, buffer);
+        se2707_send_pack(puart, buffer, send_length);
         memset(buffer, 0, ARRAY_LEN(buffer));
-        length = se2707_recv_pack(puart, buffer, 10, timeout);
-        result = se2707_decode_param(buffer, length, &icp);
+        if (pICP->param <= 0xFFFF) {
+            recv_len = se2707_recv_pack(puart, buffer, 10, timeout);
+        } else {
+            recv_len = se2707_recv_pack(puart, buffer, 12, timeout);
+        }
+        result = se2707_decode_param(buffer, recv_len, &icp);
         if (result != 0) {
             se2707_clear_recv(puart);
             continue;

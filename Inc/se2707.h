@@ -89,12 +89,12 @@ typedef enum {
     Operational_Modes,
     Aim_Brightness = 0xF19C,
     Illumination_Brightness = 0xF19D,
-    Decoding_Autoexposure = 0xF029,
-    Decoding_Illumination = 0xF02A,
-    Decode_Aiming_Pattern = 0xF032,
+    Decoding_Autoexposure = 0xF029, /* 自动曝光 0 */
+    Decoding_Illumination = 0xF02A, /* 解码照明 1 */
+    Decode_Aiming_Pattern = 0xF032, /* 自动瞄准 0 */
     Image_Capture_Illumination = 0xF069,
     Image_Capture_Autoexposure = 0xF068,
-    Exposure_Time = 0xF4F1,
+    Exposure_Time = 0xF4F137,
     Analog_Gain = 0xF4D0,
     Snapshot_Mode_Timeout = 0xF043,
     Snapshot_Aiming_Pattern = 0xF02C,

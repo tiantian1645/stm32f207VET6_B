@@ -445,6 +445,22 @@ void barcode_Motor_Calculate(uint32_t target_step)
 }
 
 /**
+ * @brief  扫码模块参数同步
+ * @param  icParam 参数
+ * @retval None
+ */
+uint8_t barcode_se2707_Param_Sync(sSE2707_Image_Capture_Param icParam)
+{
+    uint8_t result;
+
+    result = se2707_check_param(&BARCODE_UART, &icParam, 2000, 2);    /* 检查参数项 */
+    if (result == 3 || result == 4) {                                 /* 参数项不匹配 */
+        result = se2707_conf_param(&BARCODE_UART, &icParam, 2000, 2); /* 重新配置参数项 */
+    }
+    return result;
+}
+
+/**
  * @brief  扫码模块硬件初始化
  * @param  None
  * @retval None
@@ -452,7 +468,6 @@ void barcode_Motor_Calculate(uint32_t target_step)
 void barcode_sn2707_Init(void)
 {
     sSE2707_Image_Capture_Param icParam;
-    uint8_t result = 0, error_flag = 0;
 
     HAL_GPIO_WritePin(BC_AIM_WK_N_GPIO_Port, BC_AIM_WK_N_Pin, GPIO_PIN_RESET);
     HAL_Delay(5);
@@ -460,31 +475,39 @@ void barcode_sn2707_Init(void)
 
     icParam.param = Decode_Aiming_Pattern;
     icParam.data = 0;
-    result = se2707_check_param(&BARCODE_UART, &icParam, 2000, 2);    /* 检查参数项 */
-    if (result == 3 || result == 4) {                                 /* 参数项不匹配 */
-        result = se2707_conf_param(&BARCODE_UART, &icParam, 2000, 2); /* 重新配置参数项 */
-    }
-    if (result != 0) {
-        error_flag = 1;
-    }
-    if (error_flag != 0) {                     /* 存在错误 */
+    if (barcode_se2707_Param_Sync(icParam)) {  /* 存在错误 */
         error_Emit(eError_Scan_Config_Failed); /* 报错 */
         return;
     }
 
     icParam.param = Illumination_Brightness;
     icParam.data = 1;
-    result = se2707_check_param(&BARCODE_UART, &icParam, 2000, 2);    /* 检查参数项 */
-    if (result == 3 || result == 4) {                                 /* 参数项不匹配 */
-        result = se2707_conf_param(&BARCODE_UART, &icParam, 2000, 2); /* 重新配置参数项 */
-    }
-    if (result != 0) {
-        error_flag = 1;
+    if (barcode_se2707_Param_Sync(icParam)) {  /* 存在错误 */
+        error_Emit(eError_Scan_Config_Failed); /* 报错 */
+        return;
     }
 
-    if (error_flag != 0) {                     /* 存在错误 */
+    icParam.param = Decoding_Autoexposure; /* 开启自动曝光 */
+    icParam.data = 0;
+    if (barcode_se2707_Param_Sync(icParam)) {  /* 存在错误 */
         error_Emit(eError_Scan_Config_Failed); /* 报错 */
+        return;
     }
+
+    icParam.param = Exposure_Time; /* 曝光时间 */
+    icParam.data = 105;
+    if (barcode_se2707_Param_Sync(icParam)) {  /* 存在错误 */
+        error_Emit(eError_Scan_Config_Failed); /* 报错 */
+        return;
+    }
+
+    /* WARNING 此项暂时无法调整 参数项目编号异常 */
+    // icParam.param = Analog_Gain; /*  */
+    // icParam.data = 1;
+    // if (barcode_se2707_Param_Sync(icParam)) {  /* 存在错误 */
+    //     esrror_Emit(eError_Scan_Config_Failed); /* 报错 */
+    //     return;
+    // }
 }
 
 /**
