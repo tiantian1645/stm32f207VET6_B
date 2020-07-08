@@ -99,9 +99,9 @@ void heater_Overshoot_Init(float env)
     }
 
     if (env < 25) {
-    	delta_temp_factor = (25 - env) * (25 - env) / (25 - 14) / (25 - 14);
+        delta_temp_factor = (25 - env) * (25 - env) / (25 - 14) / (25 - 14);
     } else {
-    	delta_temp_factor = 0;
+        delta_temp_factor = 0;
     }
 
     gHeater_BTM_Overshoot.peak_delta = 0.3 + delta_temp_factor * 0.3;
@@ -537,7 +537,7 @@ uint8_t heater_BTM_Output_Is_Live(void)
 void heater_BTM_Output_Init(void)
 {
     // Prepare PID controller for operation
-    pid_ctrl_init(&gHeater_BTM_PID_Conf, HEATER_BTM_SAMPLE, &btm_input, &btm_output, &btm_setpoint, 1600000, 3600, 1200);
+    pid_ctrl_init(&gHeater_BTM_PID_Conf, HEATER_BTM_SAMPLE, &btm_input, &btm_output, &btm_setpoint, 120000, 2800, 1400);
     // Set controler output limits from 0 to 200
     pid_ctrl_limits(&gHeater_BTM_PID_Conf, 0, HEATER_BTM_ARR);
     // Allow PID to compute and change output
