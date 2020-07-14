@@ -55,7 +55,7 @@ static sMotor_OPT_Record gMotor_OPT_Records[eMotor_OPT_Index_NUM];   /* 光耦�
 static uint8_t gMotorPressureStopBits = 0xFF;                        /* 压力测试停止标志位 */
 static uint8_t gMotorTempStableWaiting = 0;                          /* 启动时等待温度稳定标志位 */
 static eMotor_Sampl_Comm gMotor_Sampl_Comm = eMotor_Sampl_Comm_None; /* 采样时指令来源 */
-static uint8_t gMotor_Aging_Sleep = 10;                               /* 老化测试出仓后等待间隔 单位 秒 */
+static uint8_t gMotor_Aging_Sleep = 10;                              /* 老化测试出仓后等待间隔 单位 秒 */
 
 /* Private function prototypes -----------------------------------------------*/
 static void motor_Task(void * argument);
@@ -822,7 +822,7 @@ static void motor_Sample_Temperature_Check(void)
         error_Emit(eError_Temp_BTM_Not_In_Range);   /* 上报提示 */
     }
     temperature = temp_Get_Temp_Data_TOP();         /* 读取上加热体温度 */
-    if (temperature < 36.8 || temperature > 37.8) { /* 不在范围内 */
+    if (temperature < 36.8 || temperature > 37.5) { /* 不在范围内 */
         error_Emit(eError_Temp_TOP_Not_In_Range);   /* 上报提示 */
     }
 
@@ -962,10 +962,16 @@ static void motor_Task(void * argument)
                     motor_Sample_Owari();           /* 清理 */
                     break;                          /* 提前结束 */
                 }
-                white_Motor_PD();                                      /* 运动白板电机 PD位置 */
-                white_Motor_WH();                                      /* 运动白板电机 白物质位置 */
-                if (protocol_Debug_SampleBarcode() == 0) {             /* 非调试模式 */
-                    vTaskDelayUntil(&xTick, pdMS_TO_TICKS(15 * 1000)); /* 等待补全15秒 */
+                white_Motor_PD();                          /* 运动白板电机 PD位置 */
+                white_Motor_WH();                          /* 运动白板电机 白物质位置 */
+                if (protocol_Debug_SampleBarcode() == 0) { /* 非调试模式 */
+                    /* vTaskDelayUntil(&xTick, pdMS_TO_TICKS(15 * 1000)); /* 等待补全15秒 */
+                    cnt = pdMS_TO_TICKS(15 * 1000) + xTick - xTaskGetTickCount();    /* 等待补全15秒 */
+                    xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, cnt);    /* 等待任务通知 */
+                    if (xResult == pdPASS && xNotifyValue == eMotorNotifyValue_BR) { /* 收到中终止命令 */
+                        motor_Sample_Owari();                                        /* 清理 */
+                        break;
+                    }
                 }
                 comm_Data_RecordInit(); /* 初始化数据记录 */
                 motor_Sample_Deal();    /* 启动采样并控制白板电机 */
@@ -1009,11 +1015,11 @@ static void motor_Task(void * argument)
                     if (protocol_Debug_SampleBarcode() == 0) {             /* 非调试模式 */
                         vTaskDelayUntil(&xTick, pdMS_TO_TICKS(15 * 1000)); /* 等待补全15秒 */
                     }
-                    comm_Data_RecordInit();                                                                            /* 初始化数据记录 */
-                    motor_Sample_Deal();                                                                               /* 启动采样并控制白板电机 */
-                    motor_Sample_Owari();                                                                              /* 清理 */
+                    comm_Data_RecordInit(); /* 初始化数据记录 */
+                    motor_Sample_Deal();    /* 启动采样并控制白板电机 */
+                    motor_Sample_Owari();   /* 清理 */
                     xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(gMotor_Aging_Sleep_Get() * 1000)); /* 等待任务通知 */
-                    if (xResult == pdPASS && xNotifyValue == eMotorNotifyValue_BR) {                                   /* 收到中终止命令 */
+                    if (xResult == pdPASS && xNotifyValue == eMotorNotifyValue_BR) {                                         /* 收到中终止命令 */
                         break;
                     }
                     ++cnt;
