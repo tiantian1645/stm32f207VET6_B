@@ -24,30 +24,31 @@ extern TIM_HandleTypeDef htim3;
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
-#define HEATER_BTM_SAMPLE 10
-#define HEATER_TOP_SAMPLE 10
-
 #define HEATER_BTM_TIM htim4
 #define HEATER_BTM_CHN TIM_CHANNEL_4
 #define HEATER_TOP_TIM htim3
 #define HEATER_TOP_CHN TIM_CHANNEL_3
 
+#define HEATER_BTM_DEBUG_MAX_SETPOINT 60
 #define HEATER_BTM_MAX_SETPOINT 45
 #define HEATER_BTM_MIN_SETPOINT 20
+#define HEATER_BTM_DEBUG_MIN_SETPOINT 10
 
+#define HEATER_TOP_DEBUG_MAX_SETPOINT 60
 #define HEATER_TOP_MAX_SETPOINT 45
 #define HEATER_TOP_MIN_SETPOINT 20
+#define HEATER_TOP_DEBUG_MIN_SETPOINT 10
 
-#define HEATER_BTM_OVERSHOOT_PK 4.95
-#define HEATER_BTM_OVERSHOOT_PB 5
+#define HEATER_BTM_OVERSHOOT_PK 1.2
+#define HEATER_BTM_OVERSHOOT_PB 1.5
 
 #define HEATER_BTM_OVERSHOOT_LEVEL 15
 #define HEATER_BTM_OVERSHOOT_WHOLE 60
 
-#define HEATER_TOP_OVERSHOOT_PK 4.95
-#define HEATER_TOP_OVERSHOOT_PB 5
+#define HEATER_TOP_OVERSHOOT_PK 1.2
+#define HEATER_TOP_OVERSHOOT_PB 1.5
 
-#define HEATER_TOP_OVERSHOOT_LEVEL 25
+#define HEATER_TOP_OVERSHOOT_LEVEL 30
 #define HEATER_TOP_OVERSHOOT_WHOLE 60
 
 /* Private variables ---------------------------------------------------------*/
@@ -65,6 +66,15 @@ static sHeater_Overshoot gHeater_BTM_Overshoot = {0};
 static sHeater_Overshoot gHeater_TOP_Overshoot = {0};
 
 /* Private constants ---------------------------------------------------------*/
+const uint32_t cHeater_BTM_PID_Groups[][3] = {
+    {30000, 3600, 750}, /* >20 */
+    {30000, 3600, 750}, /* <20 */
+};
+
+const uint32_t cHeater_TOP_PID_Groups[][3] = {
+    {30000, 1200, 600}, /* >20 */
+    {30000, 1200, 600}, /* <20 */
+};
 
 /* Private function prototypes -----------------------------------------------*/
 static float heater_PID_Conf_Param_Get(sPID_Ctrl_Conf * pConf, eHeater_PID_Conf offset);
@@ -116,7 +126,7 @@ void heater_Overshoot_Init(float env)
         delta_temp_factor = 0;
     }
 
-    gHeater_BTM_Overshoot.peak_delta = 0.3 + delta_temp_factor * 0.3;
+    gHeater_BTM_Overshoot.peak_delta = 0.2 + delta_temp_factor * 0.3;
     gHeater_BTM_Overshoot.level_duration = HEATER_BTM_OVERSHOOT_LEVEL + delta_temp_factor * 10.0;
     gHeater_BTM_Overshoot.whole_duration = HEATER_BTM_OVERSHOOT_WHOLE + delta_temp_factor * 10.0;
     fall_duration = gHeater_BTM_Overshoot.whole_duration - gHeater_BTM_Overshoot.level_duration;
@@ -244,7 +254,7 @@ void heater_Overshoot_Handle(void)
             heater_BTM_Setpoint_Set(offset_temp + HEATER_BTM_DEFAULT_SETPOINT); /* 修改下加热体目标温度 */
         }
     } else {
-        if (HEATER_BTM_MIN_SETPOINT < heater_BTM_Setpoint_Get() || heater_BTM_Setpoint_Get() < HEATER_BTM_MAX_SETPOINT) { /* 目标温度处于(20, 45)不受调试控制 */
+        if (HEATER_BTM_MIN_SETPOINT < heater_BTM_Setpoint_Get() && heater_BTM_Setpoint_Get() < HEATER_BTM_MAX_SETPOINT) { /* 目标温度处于(20, 45)不受调试控制 */
             if (heater_Outdoor_Flag_Get(eHeater_BTM)) {                                                                   /* 出仓温度设置标志 */
                 heater_BTM_Setpoint_Set(HEATER_BTM_OUTDOOR_SETPOINT);                                                     /* 出仓状态下调整标志 */
             } else if (heater_BTM_Setpoint_Get() != HEATER_BTM_DEFAULT_SETPOINT) {                                        /* 默认温度 */
@@ -267,7 +277,7 @@ void heater_Overshoot_Handle(void)
             heater_TOP_Setpoint_Set(offset_temp + HEATER_TOP_DEFAULT_SETPOINT); /* 修改上加热体目标温度 */
         }
     } else {
-        if (HEATER_TOP_MIN_SETPOINT < heater_TOP_Setpoint_Get() || heater_TOP_Setpoint_Get() < HEATER_TOP_MAX_SETPOINT) { /* 目标温度处于(20, 45)不受调试控制 */
+        if (HEATER_TOP_MIN_SETPOINT < heater_TOP_Setpoint_Get() && heater_TOP_Setpoint_Get() < HEATER_TOP_MAX_SETPOINT) { /* 目标温度处于(20, 45)不受调试控制 */
             if (heater_Outdoor_Flag_Get(eHeater_TOP)) {                                                                   /* 出仓温度设置标志 */
                 heater_TOP_Setpoint_Set(HEATER_TOP_OUTDOOR_SETPOINT);                                                     /* 出仓状态下调整标志 */
             } else if (heater_TOP_Setpoint_Get() != HEATER_TOP_DEFAULT_SETPOINT) {                                        /* 默认温度 */
@@ -362,7 +372,7 @@ float heater_BTM_Setpoint_Get(void)
  */
 void heater_BTM_Setpoint_Set(float setpoint)
 {
-    if (setpoint >= HEATER_BTM_MIN_SETPOINT && setpoint <= HEATER_BTM_MAX_SETPOINT) {
+    if (setpoint >= HEATER_BTM_DEBUG_MIN_SETPOINT && setpoint <= HEATER_BTM_DEBUG_MAX_SETPOINT) {
         btm_setpoint = setpoint;
     }
 }
@@ -383,7 +393,7 @@ float heater_TOP_Setpoint_Get(void)
  */
 void heater_TOP_Setpoint_Set(float setpoint)
 {
-    if (setpoint >= HEATER_TOP_MIN_SETPOINT && setpoint <= HEATER_TOP_MAX_SETPOINT) {
+    if (setpoint >= HEATER_TOP_DEBUG_MIN_SETPOINT && setpoint <= HEATER_TOP_DEBUG_MAX_SETPOINT) {
         top_setpoint = setpoint;
     }
 }
@@ -549,11 +559,28 @@ uint8_t heater_BTM_Output_Is_Live(void)
 void heater_BTM_Output_Init(void)
 {
     // Prepare PID controller for operation
-    pid_ctrl_init(&gHeater_BTM_PID_Conf, HEATER_BTM_SAMPLE, &btm_input, &btm_output, &btm_setpoint, 120000, 2800, 1400);
+    pid_ctrl_init(&gHeater_BTM_PID_Conf, HEATER_BTM_SAMPLE, &btm_input, &btm_output, &btm_setpoint, cHeater_BTM_PID_Groups[0][0], cHeater_BTM_PID_Groups[0][1],
+                  cHeater_BTM_PID_Groups[0][2]);
     // Set controler output limits from 0 to 200
     pid_ctrl_limits(&gHeater_BTM_PID_Conf, 0, HEATER_BTM_ARR);
     // Allow PID to compute and change output
     pid_ctrl_auto(&gHeater_BTM_PID_Conf);
+}
+
+/**
+ * @brief  下加热体 PWM 输出 PID 参数调整
+ * @param  env_temp 环境温度
+ * @retval None
+ */
+void heater_BTM_Output_PID_Adapt(float env_temp)
+{
+    if (env_temp < 0 || env_temp > 20) { /* 非法值 或者高于20度 */
+        pid_ctrl_tune(&gHeater_BTM_PID_Conf, cHeater_BTM_PID_Groups[0][0], cHeater_BTM_PID_Groups[0][1],
+                      cHeater_BTM_PID_Groups[0][2]); /* 倍率换算为以一秒采样间隔倍率 */
+    } else {                                         /* 0～20 */
+        pid_ctrl_tune(&gHeater_BTM_PID_Conf, cHeater_BTM_PID_Groups[1][0], cHeater_BTM_PID_Groups[1][1],
+                      cHeater_BTM_PID_Groups[1][2]); /* 倍率换算为以一秒采样间隔倍率 */
+    }
 }
 
 /**
@@ -636,11 +663,28 @@ HAL_TIM_StateTypeDef heater_TOP_Output_Is_Live(void)
 void heater_TOP_Output_Init(void)
 {
     // Prepare PID controller for operation
-    pid_ctrl_init(&gHeater_TOP_PID_Conf, HEATER_TOP_SAMPLE, &top_input, &top_output, &top_setpoint, 30000, 1200, 1200);
+    pid_ctrl_init(&gHeater_TOP_PID_Conf, HEATER_TOP_SAMPLE, &top_input, &top_output, &top_setpoint, cHeater_TOP_PID_Groups[0][0], cHeater_TOP_PID_Groups[0][1],
+                  cHeater_TOP_PID_Groups[0][2]);
     // Set controler output limits from 0 to 200
     pid_ctrl_limits(&gHeater_TOP_PID_Conf, 0, HEATER_TOP_ARR);
     // Allow PID to compute and change output
     pid_ctrl_auto(&gHeater_TOP_PID_Conf);
+}
+
+/**
+ * @brief  上加热体 PWM 输出 PID 参数调整
+ * @param  env_temp 环境温度
+ * @retval None
+ */
+void heater_TOP_Output_PID_Adapt(float env_temp)
+{
+    if (env_temp < 0 || env_temp > 20) { /* 非法值 或者高于20度 */
+        pid_ctrl_tune(&gHeater_TOP_PID_Conf, cHeater_TOP_PID_Groups[0][0], cHeater_TOP_PID_Groups[0][1],
+                      cHeater_TOP_PID_Groups[0][2]); /* 倍率换算为以一秒采样间隔倍率 */
+    } else {                                         /* 0～20 */
+        pid_ctrl_tune(&gHeater_TOP_PID_Conf, cHeater_TOP_PID_Groups[1][0], cHeater_TOP_PID_Groups[1][1],
+                      cHeater_TOP_PID_Groups[1][2]); /* 倍率换算为以一秒采样间隔倍率 */
+    }
 }
 
 /**

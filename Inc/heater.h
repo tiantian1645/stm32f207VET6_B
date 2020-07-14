@@ -14,6 +14,9 @@
 #define HEATER_TOP_ARR (10000 - 1)
 #define HEATER_TOP_CCR (10000 - 1)
 
+#define HEATER_BTM_SAMPLE 100
+#define HEATER_TOP_SAMPLE 100
+
 #define HEATER_BTM_DEFAULT_SETPOINT (37)
 #define HEATER_TOP_DEFAULT_SETPOINT (37)
 
@@ -82,6 +85,7 @@ void heater_BTM_Output_Stop(void);
 uint8_t heater_BTM_Output_Is_Live(void);
 
 void heater_BTM_Output_Init(void);
+void heater_BTM_Output_PID_Adapt(float env_temp);
 void heater_BTM_Output_Keep_Deal(void);
 
 void heater_BTM_Log_PID(void);
@@ -94,6 +98,7 @@ void heater_TOP_Output_Stop(void);
 uint8_t heater_TOP_Output_Is_Live(void);
 
 void heater_TOP_Output_Init(void);
+void heater_TOP_Output_PID_Adapt(float env_temp);
 void heater_TOP_Output_Keep_Deal(void);
 
 void heater_TOP_Log_PID(void);

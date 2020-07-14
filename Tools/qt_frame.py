@@ -92,7 +92,9 @@ TEMP_RAW_SYMBOL_CONFIG = (("o", 4, "b"), ("s", 4, "g"), ("t", 4, "r"), ("d", 4, 
 METHOD_NAMES = ("无项目", "速率法", "终点法", "两点终点法")
 WAVE_NAMES = ("610", "550", "405")
 SampleConf = namedtuple("SampleConf", "method wave point_num set_info")
-HEATER_PID_PS = [1, 100, 0.01, 1, 1, 1]
+HEATER_PID_FQ = 1000 / 100
+HEATER_PID_PS = [1, HEATER_PID_FQ, 1 / HEATER_PID_FQ, 1, 1, 1]
+
 
 ICON_PATH = "./icos/tt.ico"
 FLASH_CONF_DATA_PATH = "./data/flash.json"

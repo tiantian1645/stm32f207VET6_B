@@ -43,12 +43,24 @@ TimerHandle_t gTimerHandleHeater = NULL;
  */
 void soft_timer_Heater_Call_Back(TimerHandle_t xTimer)
 {
+    static uint32_t cnt = 0;
+    float env_temp;
+
+    ++cnt;
     heater_Overshoot_Handle();        /* 过冲控制 */
     heater_BTM_Output_Keep_Deal();    /* 下加热体PID控制 */
     heater_TOP_Output_Keep_Deal();    /* 上加热体PID控制 */
     motor_OPT_Status_Update();        /* 电机光耦位置状态更新 */
     I2C_EEPROM_Card_Status_Update();  /* ID Code 卡插入状态更新 */
     beep_Deal(SOFT_TIMER_HEATER_PER); /* 蜂鸣器处处理 */
+
+    if (cnt % (pdMS_TO_TICKS(6 * 1000) / SOFT_TIMER_HEATER_PER) == 0) { /* 每60秒修正一次PID控制参数 */
+        env_temp = temp_Get_Temp_Data_ENV();
+        if (protocol_Debug_Temperature() == 0) {
+            heater_BTM_Output_PID_Adapt(env_temp);
+            heater_TOP_Output_PID_Adapt(env_temp);
+        }
+    }
 }
 
 /**
@@ -63,8 +75,9 @@ void soft_timer_Heater_Init(void)
         Error_Handler();
     }
 
-    motor_OPT_Status_Init();
-    beep_Init(); /* 蜂鸣器初始化 */
+    motor_OPT_Status_Init(); /* 电机光耦检测初始化 */
+    beep_Init();             /* 蜂鸣器初始化 */
+
     heater_BTM_Output_Init();
     heater_BTM_Output_Start();
 
