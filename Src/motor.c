@@ -818,13 +818,13 @@ static void motor_Sample_Temperature_Check(void)
 {
     float temperature;
 
-    temperature = temp_Get_Temp_Data_BTM();         /* 读取下加热体温度 */
-    if (temperature < 36.8 || temperature > 37.5) { /* 不在范围内 */
-        error_Emit(eError_Temp_BTM_Not_In_Range);   /* 上报提示 */
+    temperature = temp_Get_Temp_Data_BTM();       /* 读取下加热体温度 */
+    if (temperature < 36 || temperature > 38) {   /* 不在范围内 */
+        error_Emit(eError_Temp_BTM_Not_In_Range); /* 上报提示 */
     }
-    temperature = temp_Get_Temp_Data_TOP();         /* 读取上加热体温度 */
-    if (temperature < 36.8 || temperature > 37.5) { /* 不在范围内 */
-        error_Emit(eError_Temp_TOP_Not_In_Range);   /* 上报提示 */
+    temperature = temp_Get_Temp_Data_TOP();       /* 读取上加热体温度 */
+    if (temperature < 36 || temperature > 38) {   /* 不在范围内 */
+        error_Emit(eError_Temp_TOP_Not_In_Range); /* 上报提示 */
     }
 
     temperature = temp_Get_Temp_Data_ENV();    /* 读取环境温度 */
