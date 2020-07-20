@@ -123,7 +123,7 @@ logger.add("./log/dc201.log", rotation=rotation, retention=retention, enqueue=Tr
 
 DB_EXCEL_PATH_RE = re.compile(r"s(\d+)n(\d+)")
 TMER_INTERVAL = 200
-APP_BIN_CHUNK_SIZE = 512
+APP_BIN_CHUNK_SIZE = 1024
 
 
 class QHLine(QFrame):
