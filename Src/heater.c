@@ -42,14 +42,14 @@ extern TIM_HandleTypeDef htim3;
 #define HEATER_BTM_OVERSHOOT_PK 1.2
 #define HEATER_BTM_OVERSHOOT_PB 1.5
 
-#define HEATER_BTM_OVERSHOOT_LEVEL 15
+#define HEATER_BTM_OVERSHOOT_LEVEL 18
 #define HEATER_BTM_OVERSHOOT_WHOLE 60
 
 #define HEATER_TOP_OVERSHOOT_PK 1.2
 #define HEATER_TOP_OVERSHOOT_PB 1.5
 
 #define HEATER_TOP_OVERSHOOT_LEVEL 30
-#define HEATER_TOP_OVERSHOOT_WHOLE 60
+#define HEATER_TOP_OVERSHOOT_WHOLE 75
 
 /* Private variables ---------------------------------------------------------*/
 static sPID_Ctrl_Conf gHeater_BTM_PID_Conf;
@@ -67,13 +67,13 @@ static sHeater_Overshoot gHeater_TOP_Overshoot = {0};
 
 /* Private constants ---------------------------------------------------------*/
 const uint32_t cHeater_BTM_PID_Groups[][3] = {
-    {30000, 3600, 750}, /* >20 */
-    {30000, 3600, 750}, /* <20 */
+    {30000, 2400, 500}, /* >20 */
+    {30000, 2400, 500}, /* <20 */
 };
 
 const uint32_t cHeater_TOP_PID_Groups[][3] = {
-    {30000, 1200, 600}, /* >20 */
-    {30000, 1200, 600}, /* <20 */
+    {30000, 600, 600}, /* >20 */
+    {30000, 600, 600}, /* <20 */
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -109,7 +109,7 @@ for i in range(10, 36, 5):
 */
 void heater_Overshoot_Init(float env)
 {
-    float fall_duration, delta_temp_factor;
+    float fall_duration;
     uint32_t tick;
 
     tick = HAL_GetTick();
@@ -120,15 +120,15 @@ void heater_Overshoot_Init(float env)
         gHeater_TOP_Overshoot.start = tick;
     }
 
-    if (env < 25) {
-        delta_temp_factor = (25 - env) * (25 - env) / (25 - 14) / (25 - 14);
+    if (env > 20) {
+        gHeater_BTM_Overshoot.peak_delta = 0.25;
+        gHeater_BTM_Overshoot.level_duration = HEATER_BTM_OVERSHOOT_LEVEL;
+        gHeater_BTM_Overshoot.whole_duration = HEATER_BTM_OVERSHOOT_WHOLE;
     } else {
-        delta_temp_factor = 0;
+        gHeater_BTM_Overshoot.peak_delta = 0.5;
+        gHeater_BTM_Overshoot.level_duration = HEATER_BTM_OVERSHOOT_LEVEL + 10.0;
+        gHeater_BTM_Overshoot.whole_duration = HEATER_BTM_OVERSHOOT_WHOLE + 10.0;
     }
-
-    gHeater_BTM_Overshoot.peak_delta = 0.2 + delta_temp_factor * 0.3;
-    gHeater_BTM_Overshoot.level_duration = HEATER_BTM_OVERSHOOT_LEVEL + delta_temp_factor * 10.0;
-    gHeater_BTM_Overshoot.whole_duration = HEATER_BTM_OVERSHOOT_WHOLE + delta_temp_factor * 10.0;
     fall_duration = gHeater_BTM_Overshoot.whole_duration - gHeater_BTM_Overshoot.level_duration;
     gHeater_BTM_Overshoot.pk = HEATER_BTM_OVERSHOOT_PK;
     gHeater_BTM_Overshoot.pb = HEATER_BTM_OVERSHOOT_PB * fall_duration;
@@ -136,9 +136,15 @@ void heater_Overshoot_Init(float env)
         gHeater_BTM_Overshoot.peak_delta / log(gHeater_BTM_Overshoot.pb / (gHeater_BTM_Overshoot.pb - gHeater_BTM_Overshoot.pk * fall_duration));
     gHeater_BTM_Overshoot.pc = gHeater_BTM_Overshoot.pa * -1 * log(gHeater_BTM_Overshoot.pb - gHeater_BTM_Overshoot.pk * fall_duration);
 
-    gHeater_TOP_Overshoot.peak_delta = 0.3 + delta_temp_factor * 0.3;
-    gHeater_TOP_Overshoot.level_duration = HEATER_TOP_OVERSHOOT_LEVEL + delta_temp_factor * 10.0;
-    gHeater_TOP_Overshoot.whole_duration = HEATER_TOP_OVERSHOOT_WHOLE + delta_temp_factor * 30.0;
+    if (env > 20) {
+        gHeater_TOP_Overshoot.peak_delta = 0.55;
+        gHeater_TOP_Overshoot.level_duration = HEATER_TOP_OVERSHOOT_LEVEL;
+        gHeater_TOP_Overshoot.whole_duration = HEATER_TOP_OVERSHOOT_WHOLE;
+    } else {
+        gHeater_TOP_Overshoot.peak_delta = 0.65;
+        gHeater_TOP_Overshoot.level_duration = HEATER_TOP_OVERSHOOT_LEVEL + 10.0;
+        gHeater_TOP_Overshoot.whole_duration = HEATER_TOP_OVERSHOOT_WHOLE + 30.0;
+    }
     fall_duration = gHeater_TOP_Overshoot.whole_duration - gHeater_TOP_Overshoot.level_duration;
     gHeater_TOP_Overshoot.pk = HEATER_TOP_OVERSHOOT_PK;
     gHeater_TOP_Overshoot.pb = HEATER_TOP_OVERSHOOT_PB * fall_duration;
@@ -241,17 +247,19 @@ void heater_Overshoot_Handle(void)
     tick = HAL_GetTick();
 
     /* 下加热体过冲处理 */
-    if (heater_Overshoot_Flag_Get(eHeater_BTM)) {                                                      /* 执行下加热体温度过冲 */
-        if (tick - gHeater_BTM_Overshoot.start <= gHeater_BTM_Overshoot.level_duration * 1000) {       /* 维持阶段 */
-            heater_BTM_Setpoint_Set(gHeater_BTM_Overshoot.peak_delta + HEATER_BTM_DEFAULT_SETPOINT);   /* 修改下加热体目标温度 */
-        } else if (tick - gHeater_BTM_Overshoot.start > gHeater_BTM_Overshoot.whole_duration * 1000) { /* 完成过冲 */
-            gHeater_BTM_Overshoot.start = 0xFFFFFFFF;                                                  /* 重置起始时间 */
-            heater_Overshoot_Flag_Set(eHeater_BTM, 0);                                                 /* 取消过冲标志 */
-            heater_BTM_Setpoint_Set(HEATER_BTM_DEFAULT_SETPOINT);                                      /* 修改下加热体目标温度 */
+    if (heater_Overshoot_Flag_Get(eHeater_BTM)) {                                                                      /* 执行下加热体温度过冲 */
+        if (tick - gHeater_BTM_Overshoot.start <= gHeater_BTM_Overshoot.level_duration * 1000) {                       /* 维持阶段 */
+            heater_BTM_Setpoint_Set(gHeater_BTM_Overshoot.peak_delta + HEATER_BTM_DEFAULT_SETPOINT);                   /* 修改下加热体目标温度 */
+            heater_PID_Conf_Param_Set(&gHeater_BTM_PID_Conf, eHeater_PID_Conf_Min_Output, 5.0 / 100 * HEATER_BTM_ARR); /* 最小出力修改 */
+        } else if (tick - gHeater_BTM_Overshoot.start > gHeater_BTM_Overshoot.whole_duration * 1000) {                 /* 完成过冲 */
+            gHeater_BTM_Overshoot.start = 0xFFFFFFFF;                                                                  /* 重置起始时间 */
+            heater_Overshoot_Flag_Set(eHeater_BTM, 0);                                                                 /* 取消过冲标志 */
+            heater_BTM_Setpoint_Set(HEATER_BTM_DEFAULT_SETPOINT);                                                      /* 修改下加热体目标温度 */
         } else {
             dp = (tick - gHeater_BTM_Overshoot.start) / 1000.0 - gHeater_BTM_Overshoot.level_duration;
             offset_temp = gHeater_BTM_Overshoot.pa * log(-dp * gHeater_BTM_Overshoot.pk + gHeater_BTM_Overshoot.pb) + gHeater_BTM_Overshoot.pc;
-            heater_BTM_Setpoint_Set(offset_temp + HEATER_BTM_DEFAULT_SETPOINT); /* 修改下加热体目标温度 */
+            heater_BTM_Setpoint_Set(offset_temp + HEATER_BTM_DEFAULT_SETPOINT);                                        /* 修改下加热体目标温度 */
+            heater_PID_Conf_Param_Set(&gHeater_BTM_PID_Conf, eHeater_PID_Conf_Min_Output, 7.5 / 100 * HEATER_BTM_ARR); /* 最小出力修改 */
         }
     } else {
         if (HEATER_BTM_MIN_SETPOINT < heater_BTM_Setpoint_Get() && heater_BTM_Setpoint_Get() < HEATER_BTM_MAX_SETPOINT) { /* 目标温度处于(20, 45)不受调试控制 */
@@ -261,20 +269,27 @@ void heater_Overshoot_Handle(void)
                 heater_BTM_Setpoint_Set(HEATER_BTM_DEFAULT_SETPOINT);                                                     /* 恢复下加热体目标温度 */
             }
         }
+        if (temp_Get_Temp_Data_BTM() - HEATER_BTM_DEFAULT_SETPOINT > 0.1) {
+            heater_PID_Conf_Param_Set(&gHeater_BTM_PID_Conf, eHeater_PID_Conf_Min_Output, 0.0 / 100 * HEATER_BTM_ARR); /* 最小出力修改 */
+        } else {
+            heater_PID_Conf_Param_Set(&gHeater_BTM_PID_Conf, eHeater_PID_Conf_Min_Output, 5.0 / 100 * HEATER_BTM_ARR); /* 最小出力修改 */
+        }
     }
 
     /* 上加热体过冲处理 */
-    if (heater_Overshoot_Flag_Get(eHeater_TOP)) {                                                      /* 执行下加热体温度过冲 */
-        if (tick - gHeater_TOP_Overshoot.start <= gHeater_TOP_Overshoot.level_duration * 1000) {       /* 维持阶段 */
-            heater_TOP_Setpoint_Set(gHeater_TOP_Overshoot.peak_delta + HEATER_TOP_DEFAULT_SETPOINT);   /* 修改下加热体目标温度 */
-        } else if (tick - gHeater_TOP_Overshoot.start > gHeater_TOP_Overshoot.whole_duration * 1000) { /* 完成过冲 */
-            gHeater_TOP_Overshoot.start = 0xFFFFFFFF;                                                  /* 重置起始时间 */
-            heater_Overshoot_Flag_Set(eHeater_TOP, 0);                                                 /* 取消过冲标志 */
-            heater_TOP_Setpoint_Set(HEATER_TOP_DEFAULT_SETPOINT);                                      /* 修改下加热体目标温度 */
+    if (heater_Overshoot_Flag_Get(eHeater_TOP)) {                                                                      /* 执行下加热体温度过冲 */
+        if (tick - gHeater_TOP_Overshoot.start <= gHeater_TOP_Overshoot.level_duration * 1000) {                       /* 维持阶段 */
+            heater_TOP_Setpoint_Set(gHeater_TOP_Overshoot.peak_delta + HEATER_TOP_DEFAULT_SETPOINT);                   /* 修改下加热体目标温度 */
+            heater_PID_Conf_Param_Set(&gHeater_TOP_PID_Conf, eHeater_PID_Conf_Min_Output, 8.0 / 100 * HEATER_TOP_ARR); /* 最小出力修改 */
+        } else if (tick - gHeater_TOP_Overshoot.start > gHeater_TOP_Overshoot.whole_duration * 1000) {                 /* 完成过冲 */
+            gHeater_TOP_Overshoot.start = 0xFFFFFFFF;                                                                  /* 重置起始时间 */
+            heater_Overshoot_Flag_Set(eHeater_TOP, 0);                                                                 /* 取消过冲标志 */
+            heater_TOP_Setpoint_Set(HEATER_TOP_DEFAULT_SETPOINT);                                                      /* 修改下加热体目标温度 */
         } else {
             dp = (tick - gHeater_TOP_Overshoot.start) / 1000.0 - gHeater_TOP_Overshoot.level_duration;
             offset_temp = gHeater_TOP_Overshoot.pa * log(-dp * gHeater_TOP_Overshoot.pk + gHeater_TOP_Overshoot.pb) + gHeater_TOP_Overshoot.pc;
-            heater_TOP_Setpoint_Set(offset_temp + HEATER_TOP_DEFAULT_SETPOINT); /* 修改上加热体目标温度 */
+            heater_TOP_Setpoint_Set(offset_temp + HEATER_TOP_DEFAULT_SETPOINT);                                         /* 修改上加热体目标温度 */
+            heater_PID_Conf_Param_Set(&gHeater_TOP_PID_Conf, eHeater_PID_Conf_Min_Output, 12.0 / 100 * HEATER_TOP_ARR); /* 最小出力修改 */
         }
     } else {
         if (HEATER_TOP_MIN_SETPOINT < heater_TOP_Setpoint_Get() && heater_TOP_Setpoint_Get() < HEATER_TOP_MAX_SETPOINT) { /* 目标温度处于(20, 45)不受调试控制 */
@@ -283,6 +298,11 @@ void heater_Overshoot_Handle(void)
             } else if (heater_TOP_Setpoint_Get() != HEATER_TOP_DEFAULT_SETPOINT) {                                        /* 默认温度 */
                 heater_TOP_Setpoint_Set(HEATER_TOP_DEFAULT_SETPOINT);                                                     /* 恢复下加热体目标温度 */
             }
+        }
+        if (temp_Get_Temp_Data_TOP() - HEATER_TOP_DEFAULT_SETPOINT > 0.1) {
+            heater_PID_Conf_Param_Set(&gHeater_TOP_PID_Conf, eHeater_PID_Conf_Min_Output, 0.0 / 100 * HEATER_TOP_ARR); /* 最小出力修改 */
+        } else {
+            heater_PID_Conf_Param_Set(&gHeater_TOP_PID_Conf, eHeater_PID_Conf_Min_Output, 2.0 / 100 * HEATER_TOP_ARR); /* 最小出力修改 */
         }
     }
 }
@@ -304,22 +324,12 @@ uint8_t heater_Overshoot_Flag_Get(eHeater_Index idx)
  */
 void heater_Overshoot_Flag_Set(eHeater_Index idx, uint8_t flag)
 {
-    float env;
-
-    env = temp_Get_Temp_Data_ENV();
-
     if (flag > 0) {
         gHeater_Overshoot_Flag |= (1 << idx);
         if (idx == eHeater_BTM) {
             gHeater_BTM_Overshoot.start = HAL_GetTick();
-            if (env < 25) {
-                heater_PID_Conf_Param_Set(&gHeater_BTM_PID_Conf, eHeater_PID_Conf_Min_Output, 15.0 / 100 * HEATER_BTM_ARR * (25 - env) * (25 - env) / (169));
-            }
         } else if (idx == eHeater_TOP) {
             gHeater_TOP_Overshoot.start = HAL_GetTick();
-            if (env < 25) {
-                heater_PID_Conf_Param_Set(&gHeater_TOP_PID_Conf, eHeater_PID_Conf_Min_Output, 8.0 / 100 * HEATER_TOP_ARR * (25 - env) * (25 - env) / (169));
-            }
         }
     } else {
         gHeater_Overshoot_Flag &= (0xFF - (1 << idx));
