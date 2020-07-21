@@ -111,6 +111,7 @@ except Exception:
     CONFIG["log"] = dict(rotation="4 MB", retention=16)
     CONFIG["pd_criterion"] = {"610": [6000000, 14000000], "550": [6000000, 14000000], "405": [6000000, 14000000]}
     CONFIG["sh_criterion"] = {"610": (1434, 3080, 4882, 6894, 8818, 10578), "550": (2181, 3943, 5836, 7989, 10088, 12032), "405": (0, 0, 0, 0, 0, 0)}
+    CONFIG["app_bin_chunk_size"] = 4096
     try:
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
             simplejson.dump(CONFIG, f)
@@ -123,7 +124,7 @@ logger.add("./log/dc201.log", rotation=rotation, retention=retention, enqueue=Tr
 
 DB_EXCEL_PATH_RE = re.compile(r"s(\d+)n(\d+)")
 TMER_INTERVAL = 200
-APP_BIN_CHUNK_SIZE = 1024
+APP_BIN_CHUNK_SIZE = CONFIG.get("app_bin_chunk_size", 1024)  # min 256 max 4096
 
 
 class QHLine(QFrame):
