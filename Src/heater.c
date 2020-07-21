@@ -58,6 +58,8 @@ typedef struct {
 #define HEATER_TOP_MIN_SETPOINT 20
 #define HEATER_TOP_DEBUG_MIN_SETPOINT 10
 
+#define HEATER_COLD_TEMP 25
+
 /* Private variables ---------------------------------------------------------*/
 static sPID_Ctrl_Conf gHeater_BTM_PID_Conf;
 static sPID_Ctrl_Conf gHeater_TOP_PID_Conf;
@@ -74,33 +76,33 @@ static sHeater_Overshoot gHeater_TOP_Overshoot = {0};
 
 /* Private constants ---------------------------------------------------------*/
 const sHeater_Conf_PID cHeater_BTM_PID_Groups[] = {
-    {30000, 2400, 500},  /* >20 */
-    {50000, 2400, 1000}, /* <20 */
+    {30000, 2400, 500},  /* >HEATER_COLD_TEMP */
+    {50000, 3000, 1500}, /* <HEATER_COLD_TEMP */
 };
 
 const sHeater_Conf_PID cHeater_TOP_PID_Groups[] = {
-    {30000, 600, 600}, /* >20 */
-    {50000, 600, 600}, /* <20 */
+    {30000, 600, 600}, /* >HEATER_COLD_TEMP20 */
+    {50000, 600, 600}, /* <HEATER_COLD_TEMP */
 };
 
 const sHeater_Conf_Min_Out cHeater_BTM_Min_Out_Conf[] = {
     {5.0 / 100, 7.5 / 100, 5.0 / 100},
-    {8.0 / 100, 12.0 / 100, 8.0 / 100},
+    {14.0 / 100, 12.5 / 100, 12.5 / 100},
 };
 
 const sHeater_Conf_Min_Out cHeater_TOP_Min_Out_Conf[] = {
     {8.0 / 100, 12.0 / 100, 2.0 / 100},
-    {10.0 / 100, 15.0 / 100, 4.0 / 100},
+    {120.0 / 100, 15.0 / 100, 4.0 / 100},
 };
 
 const sHeater_Conf_Overshoot cHeater_BTM_Overshoot_Conf[] = {
     {0.25, 18, 60, 1.3, 1.5},
-    {0.5, 28, 70, 1.4, 1.5},
+    {0.55, 30, 90, 1.25, 1.5},
 };
 
 const sHeater_Conf_Overshoot cHeater_TOP_Overshoot_Conf[] = {
     {0.55, 30, 75, 1.3, 1.5},
-    {0.65, 40, 105, 1.4, 1.5},
+    {0.65, 40, 105, 1.45, 1.5},
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -148,7 +150,7 @@ void heater_Overshoot_Init(float env)
         gHeater_TOP_Overshoot.start = tick;
     }
 
-    if (env > 20) {
+    if (env > HEATER_COLD_TEMP) {
         pOvershoot = &(cHeater_BTM_Overshoot_Conf[0]);
     } else {
         pOvershoot = &(cHeater_BTM_Overshoot_Conf[1]);
@@ -163,7 +165,7 @@ void heater_Overshoot_Init(float env)
         gHeater_BTM_Overshoot.peak_delta / log(gHeater_BTM_Overshoot.pb / (gHeater_BTM_Overshoot.pb - gHeater_BTM_Overshoot.pk * fall_duration));
     gHeater_BTM_Overshoot.pc = gHeater_BTM_Overshoot.pa * -1 * log(gHeater_BTM_Overshoot.pb - gHeater_BTM_Overshoot.pk * fall_duration);
 
-    if (env > 20) {
+    if (env > HEATER_COLD_TEMP) {
         pOvershoot = &(cHeater_TOP_Overshoot_Conf[0]);
     } else {
         pOvershoot = &(cHeater_TOP_Overshoot_Conf[1]);
@@ -275,7 +277,7 @@ void heater_Overshoot_Handle(void)
     env_temp = temp_Get_Temp_Data_ENV();
 
     /* 下加热体过冲处理 */
-    if (env_temp < 20) {
+    if (env_temp < HEATER_COLD_TEMP) {
         pConf_Min_Out = &(cHeater_BTM_Min_Out_Conf[1]);
     } else {
         pConf_Min_Out = &(cHeater_BTM_Min_Out_Conf[0]);
@@ -310,7 +312,7 @@ void heater_Overshoot_Handle(void)
     }
 
     /* 上加热体过冲处理 */
-    if (env_temp < 20) {
+    if (env_temp < HEATER_COLD_TEMP) {
         pConf_Min_Out = &(cHeater_TOP_Min_Out_Conf[1]);
     } else {
         pConf_Min_Out = &(cHeater_TOP_Min_Out_Conf[0]);
@@ -623,10 +625,10 @@ void heater_BTM_Output_Init(void)
  */
 void heater_BTM_Output_PID_Adapt(float env_temp)
 {
-    if (env_temp < 0 || env_temp > 20) { /* 非法值 或者高于20度 */
+    if (env_temp < 0 || env_temp > HEATER_COLD_TEMP) { /* 非法值 或者高于 HEATER_COLD_TEMP 度 */
         pid_ctrl_tune(&gHeater_BTM_PID_Conf, cHeater_BTM_PID_Groups[0].kp, cHeater_BTM_PID_Groups[0].ki,
                       cHeater_BTM_PID_Groups[0].kd); /* 倍率换算为以一秒采样间隔倍率 */
-    } else {                                         /* 0～20 */
+    } else {                                         /* 0～HEATER_COLD_TEMP */
         pid_ctrl_tune(&gHeater_BTM_PID_Conf, cHeater_BTM_PID_Groups[1].kp, cHeater_BTM_PID_Groups[1].ki,
                       cHeater_BTM_PID_Groups[1].kd); /* 倍率换算为以一秒采样间隔倍率 */
     }
@@ -727,10 +729,10 @@ void heater_TOP_Output_Init(void)
  */
 void heater_TOP_Output_PID_Adapt(float env_temp)
 {
-    if (env_temp < 0 || env_temp > 20) { /* 非法值 或者高于20度 */
+    if (env_temp < 0 || env_temp > HEATER_COLD_TEMP) { /* 非法值 或者高于 HEATER_COLD_TEMP 度 */
         pid_ctrl_tune(&gHeater_TOP_PID_Conf, cHeater_TOP_PID_Groups[0].kp, cHeater_TOP_PID_Groups[0].ki,
                       cHeater_TOP_PID_Groups[0].kd); /* 倍率换算为以一秒采样间隔倍率 */
-    } else {                                         /* 0～20 */
+    } else {                                         /* 0～HEATER_COLD_TEMP */
         pid_ctrl_tune(&gHeater_TOP_PID_Conf, cHeater_TOP_PID_Groups[1].kp, cHeater_TOP_PID_Groups[1].ki,
                       cHeater_TOP_PID_Groups[1].kd); /* 倍率换算为以一秒采样间隔倍率 */
     }
