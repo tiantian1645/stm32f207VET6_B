@@ -28,6 +28,7 @@ typedef enum {
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/
+uint16_t gTempADC_Results_Get_By_Index(uint8_t idx);
 uint32_t temp_Random_Generate(void);
 uint32_t temp_Get_Conv_Cnt(void);
 HAL_StatusTypeDef temp_Start_ADC_DMA(void);

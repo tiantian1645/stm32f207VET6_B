@@ -562,8 +562,9 @@ void protocol_Temp_Upload_Main_Deal(float temp_btm, float temp_top)
  */
 void protocol_Temp_Upload_Out_Deal(float temp_btm, float temp_top)
 {
-    uint8_t buffer[48], length, i;
+    uint8_t buffer[64], length, i;
     float temperature;
+    uint16_t adc_raw;
 
     if (protocol_Temp_Upload_Comm_Get(eComm_Out) == 0) { /* 无需进行串口发送 */
         return;
@@ -579,12 +580,16 @@ void protocol_Temp_Upload_Out_Deal(float temp_btm, float temp_top)
         if (temp_btm != TEMP_INVALID_DATA || temp_top != TEMP_INVALID_DATA) { /* 温度值都不是无效值 */
             comm_Out_SendTask_QueueEmitCover(buffer, length);                 /* 提交到发送队列 */
         }
-        for (i = eTemp_NTC_Index_0; i <= eTemp_NTC_Index_8; ++i) {
-            temperature = temp_Get_Temp_Data(i);
-            memcpy(buffer + 4 * i, &temperature, 4);
-        }
-        if (protocol_Debug_Temperature()) {                                                       /* 使能温度调试 */
-            length = buildPackOrigin(eComm_Out, eProtocolRespPack_Client_Debug_Temp, buffer, 36); /* 构造数据包  */
+        if (protocol_Debug_Temperature()) { /* 使能温度调试 */
+            for (i = eTemp_NTC_Index_0; i <= eTemp_NTC_Index_8; ++i) {
+                temperature = temp_Get_Temp_Data(i);
+                memcpy(buffer + 4 * i, &temperature, 4);
+            }
+            for (i = eTemp_NTC_Index_0; i <= eTemp_NTC_Index_8; ++i) {
+                adc_raw = gTempADC_Results_Get_By_Index(i);
+                memcpy(buffer + 36 + 2 * i, (uint8_t *)(&adc_raw), 2);
+            }
+            length = buildPackOrigin(eComm_Out, eProtocolRespPack_Client_Debug_Temp, buffer, 54); /* 构造数据包  */
             comm_Out_SendTask_QueueEmitCover(buffer, length);                                     /* 提交到发送队列 */
         }
     }

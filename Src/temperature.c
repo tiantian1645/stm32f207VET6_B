@@ -48,10 +48,16 @@ const eTemp_NTC_Index TEMP_NTC_BTM_IDXS[TEMP_NTC_BTM_NUM] = {eTemp_NTC_Index_6};
 /* Private variables ---------------------------------------------------------*/
 static uint32_t gTempADC_DMA_Buffer[TEMP_NTC_NUM * TEMP_STA_NUM];
 static uint32_t gTempADC_Statictic_buffer[TEMP_NTC_NUM][TEMP_STA_NUM];
-static uint32_t gTempADC_Results[TEMP_NTC_NUM];
+static uint16_t gTempADC_Results[TEMP_NTC_NUM];
 static uint32_t gTempADC_Conv_Cnt = 0;
 
 /* Private constants ---------------------------------------------------------*/
+/* 15 ℃ 1653 ADC 14.773140 kΩ */
+/* 22 ℃ 1925 ADC 11.272727 kΩ */
+/* 27 ℃ 2120 ADC  9.316038 kΩ */
+/* 32 ℃ 2307 ADC  7.750325 kΩ */
+/* 37 ℃ 2489 ADC  6.562391 kΩ */
+
 static const sRBP_Type cRB_Pairs[124] = {
     {27.513, 3296.9174642092316}, {26.271, 3289.5406289495836}, {25.162, 3291.2469316004663}, {24.107, 3293.0548811901517}, {23.101, 3294.630603545126},
     {22.144, 3296.407527512391},  {21.231, 3297.942193625932},  {20.362, 3299.701481822821},  {19.533, 3301.3205639087555}, {18.742, 3302.7850157150087},
@@ -83,6 +89,16 @@ static const sRBP_Type cRB_Pairs[124] = {
 /* Private function prototypes -----------------------------------------------*/
 
 /* Private user code ---------------------------------------------------------*/
+
+/**
+ * @brief  原始ADC值获取
+ * @param  idx 索引
+ * @retval ADC值
+ */
+uint16_t gTempADC_Results_Get_By_Index(uint8_t idx)
+{
+    return gTempADC_Results[idx % ARRAY_LEN(gTempADC_Results)];
+}
 
 /**
  * @brief  通过电阻值计算B值

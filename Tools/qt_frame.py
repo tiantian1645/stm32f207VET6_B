@@ -590,7 +590,8 @@ class MainWindow(QMainWindow):
         )
 
     def updateTemperautreRaw(self, info):
-        if len(info.content) != 43:
+        payload_length = len(info.content) - 7
+        if payload_length not in (36, 54):
             logger.error(f"error temp raw info | {info}")
             return
         if self.temp_raw_start_time is None:
@@ -600,7 +601,12 @@ class MainWindow(QMainWindow):
             time_point = time.time() - self.temp_raw_start_time
         for idx in range(9):
             temp_value = struct.unpack("f", info.content[6 + 4 * idx : 10 + 4 * idx])[0]
-            self.temperautre_raw_lbs[idx].setText(f"#{idx + 1} {temp_value:.3f}℃")
+            if payload_length == 54:
+                adc_raw = struct.unpack("H", info.content[10 + 32 + 2 * idx : 12 + 32 + 2 * idx])[0]
+                r = 10 * (4095 - adc_raw) / adc_raw
+                self.temperautre_raw_lbs[idx].setText(f"#{idx + 1} {temp_value:.3f}℃ A {adc_raw} R {r:.6f} kΩ")
+            elif payload_length == 36:
+                self.temperautre_raw_lbs[idx].setText(f"#{idx + 1} {temp_value:.3f}℃ A")
             self.temperature_raw_graph.plot_data_update(idx, time_point, temp_value)
 
     def updateMotorTrayPosition(self, info):
