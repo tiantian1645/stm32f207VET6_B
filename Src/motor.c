@@ -424,7 +424,7 @@ eMotor_OPT_Status motor_OPT_Status_Get(eMotor_OPT_Index idx)
 /**
  * @brief  启动采样并控制白板电机
  * @param  None
- * @retval 0 正常结束 1 主动打断 2 被动打断
+ * @retval 0 正常结束 1 主动打断 2 被动打断 3 超过最大等待轮次
  */
 static uint8_t motor_Sample_Deal(void)
 {
@@ -447,11 +447,11 @@ static uint8_t motor_Sample_Deal(void)
             } else if (gComm_Data_Sample_PD_WH_Idx_Get() == 2) {    /* 当前检测PD */
                 white_Motor_WH();                                   /* 运动白板电机 白物质位置 */
             } else if (gComm_Data_Sample_PD_WH_Idx_Get() == 0xFF) { /* 最后一次采样完成 */
-                break;
+                return 0;
             }
         }
     }
-    return 0;
+    return 3;
 }
 
 /**
@@ -947,7 +947,8 @@ static void motor_Task(void * argument)
                 if (motor_Sample_Barcode_Scan() > 0) { /* 扫码处理 */
                     break;                             /* 收到打断信息 提前结束 */
                 }
-
+                white_Motor_PD();                                            /* 运动白板电机 PD位置 */
+                white_Motor_WH();                                            /* 运动白板电机 白物质位置 */
                 if (comm_Data_Conf_Sem_Wait(pdMS_TO_TICKS(400)) != pdPASS) { /* 等待配置信息 */
                     error_Emit(eError_Comm_Data_Not_Conf);                   /* 提交错误信息 采样配置信息未下达 */
                     motor_Sample_Owari();                                    /* 清理 */
@@ -963,14 +964,14 @@ static void motor_Task(void * argument)
                     motor_Sample_Owari();           /* 清理 */
                     break;                          /* 提前结束 */
                 }
-                white_Motor_PD();                                                    /* 运动白板电机 PD位置 */
-                white_Motor_WH();                                                    /* 运动白板电机 白物质位置 */
-                if (protocol_Debug_SampleBarcode() == 0) {                           /* 非调试模式 */
-                    cnt = pdMS_TO_TICKS(15 * 1000) + xTick - xTaskGetTickCount();    /* 等待补全15秒 */
-                    xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, cnt);    /* 等待任务通知 */
-                    if (xResult == pdPASS && xNotifyValue == eMotorNotifyValue_BR) { /* 收到中终止命令 */
-                        motor_Sample_Owari();                                        /* 清理 */
-                        break;
+                if (protocol_Debug_SampleBarcode() == 0) {                                                       /* 非调试模式 */
+                    cnt = xTaskGetTickCount() - xTick;                                                           /* 耗时时间 */
+                    if (cnt < pdMS_TO_TICKS(15 * 1000)) {                                                        /* 等待补全15秒 */
+                        xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(15 * 1000) - cnt); /* 等待任务通知 */
+                        if (xResult == pdPASS && xNotifyValue == eMotorNotifyValue_BR) {                         /* 收到中终止命令 */
+                            motor_Sample_Owari();                                                                /* 清理 */
+                            break;
+                        }
                     }
                 }
                 comm_Data_RecordInit(); /* 初始化数据记录 */
@@ -990,8 +991,9 @@ static void motor_Task(void * argument)
                     if (motor_Sample_Barcode_Scan() > 0) { /* 扫码处理 */
                         break;                             /* 收到打断信息 提前结束 */
                     }
-
-                    if (comm_Data_Conf_Sem_Wait(pdMS_TO_TICKS(800)) != pdPASS) { /* 等待配置信息 */
+                    white_Motor_PD();                                            /* 运动白板电机 PD位置 */
+                    white_Motor_WH();                                            /* 运动白板电机 白物质位置 */
+                    if (comm_Data_Conf_Sem_Wait(pdMS_TO_TICKS(400)) != pdPASS) { /* 等待配置信息 */
                         if (cnt == 0) {                                          /* 首次配置信息 */
                             error_Emit(eError_Comm_Data_Not_Conf);               /* 提交错误信息 采样配置信息未下达 */
                             motor_Sample_Owari();                                /* 清理 */
@@ -1010,8 +1012,6 @@ static void motor_Task(void * argument)
                         motor_Sample_Owari();           /* 清理 */
                         break;                          /* 提前结束 */
                     }
-                    white_Motor_PD();                                      /* 运动白板电机 PD位置 */
-                    white_Motor_WH();                                      /* 运动白板电机 白物质位置 */
                     if (protocol_Debug_SampleBarcode() == 0) {             /* 非调试模式 */
                         vTaskDelayUntil(&xTick, pdMS_TO_TICKS(15 * 1000)); /* 等待补全15秒 */
                     }
