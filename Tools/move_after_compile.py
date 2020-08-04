@@ -119,7 +119,7 @@ def main():
     if not bl_hex_path_list:
         logger.error(f"could not find bootloader hex file in | {bl_hex_dir}")
     else:
-        for i in TARGET_DIR.parent.glob("dc201_control_board_whole.*"):
+        for i in TARGET_DIR.parent.glob("dc201_control_board_whole*"):
             logger.debug(f"remove | {i}")
             os.remove(i)
         bl_hex_path = bl_hex_path_list[0]
