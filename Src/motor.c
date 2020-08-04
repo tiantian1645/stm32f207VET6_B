@@ -432,7 +432,7 @@ static uint8_t motor_Sample_Deal(void)
     BaseType_t xResult = pdFALSE;
 
     comm_Data_Sample_Start(); /* 启动定时器同步发包 开始采样 */
-    for (;;) {
+    for (uint16_t i = 0; i <= gComm_Data_Sample_Max_Point_Get() * 2; ++i) {
         xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(10000)); /* 等待任务通知 */
         if (xResult != pdPASS || xNotifyValue == eMotorNotifyValue_BR) {               /* 超时 或者 收到中终止命令 */
             if (xResult != pdPASS) {                                                   /* 超时  */
