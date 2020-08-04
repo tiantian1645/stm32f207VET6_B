@@ -394,6 +394,31 @@ class MainWindow(QMainWindow):
         temperature_plot_ly.addLayout(overshoot_btm_ly)
         temperature_plot_ly.addLayout(overshoot_top_ly)
 
+        self.temperautre_wg_raw_lbs = [QLabel("-" * 4) for _ in range(9)]
+        temp_wg = QWidget()
+        temp_ly = QHBoxLayout(temp_wg)
+        for i, l in enumerate(self.temperautre_wg_raw_lbs):
+            temp_ly.addWidget(l)
+        temp_wg.mousePressEvent = self.onTemperautreRawLabelClick
+        temperature_plot_ly.addWidget(temp_wg)
+
+        temp_ly = QHBoxLayout()
+        temp_ly.addWidget(QLabel("温度校正参数: "))
+        temp_ly.setContentsMargins(3, 3, 3, 3)
+        temp_ly.setSpacing(3)
+        self.out_flash_param_temp_sps = [
+            QDoubleSpinBox(self, maximumWidth=90, minimum=-5, maximum=5, decimals=3, singleStep=0.035, suffix="℃") for _ in range(3)
+        ]
+        for i, sp in enumerate(self.out_flash_param_temp_sps):
+            temp_ly.addWidget(QLabel(("上加热体", "下加热体", "环境")[i]), stretch=0, alignment=Qt.AlignLeft)
+            temp_ly.addWidget(sp, stretch=1)
+        temp_ly.addStretch(1)
+        self.out_flash_param_temp_read_bt = QPushButton("读取", clicked=self.on_out_flash_param_temp_read)
+        self.out_flash_param_temp_write_bt = QPushButton("写入", clicked=self.on_out_flash_param_temp_write)
+        temp_ly.addWidget(self.out_flash_param_temp_read_bt)
+        temp_ly.addWidget(self.out_flash_param_temp_write_bt)
+        temperature_plot_ly.addLayout(temp_ly)
+
         self.temperature_heater_btm_cb.clicked.connect(self.onTemperatureHeaterChanged)
         self.temperature_heater_top_cb.clicked.connect(self.onTemperatureHeaterChanged)
         self.temperature_plot_clear_bt.clicked.connect(self.onTemperautreDataClear)
@@ -586,7 +611,7 @@ class MainWindow(QMainWindow):
             self.temperautre_lbs[1].setText("数据异常")
             self.temperautre_lbs[1].setStyleSheet("background-color: red;")
         self.temperature_plot_dg.setWindowTitle(
-            f"温度记录 | 下 {self.temperautre_lbs[0].text()} | 上 {self.temperautre_lbs[1].text()} | 环境 {self.temperautre_raw_lbs[-1].text()}"
+            f"温度记录 | 下 {self.temperautre_lbs[0].text()} | 上 {self.temperautre_lbs[1].text()} | 环境 {self.temperautre_wg_raw_lbs[-1].text()}"
         )
 
     def updateTemperautreRaw(self, info):
@@ -604,10 +629,31 @@ class MainWindow(QMainWindow):
             if payload_length == 54:
                 adc_raw = struct.unpack("H", info.content[10 + 32 + 2 * idx : 12 + 32 + 2 * idx])[0]
                 r = 10 * (4095 - adc_raw) / adc_raw
-                self.temperautre_raw_lbs[idx].setText(f"#{idx + 1} {temp_value:.3f}℃ A {adc_raw} R {r:.6f} kΩ")
+                self.temperautre_wg_raw_lbs[idx].setText(f"#{idx + 1} {temp_value:.3f}℃")
+                self.temperautre_wg_raw_lbs[idx].setToolTip(f"ADC {adc_raw} 电阻 {r:.6f} kΩ")
             elif payload_length == 36:
-                self.temperautre_raw_lbs[idx].setText(f"#{idx + 1} {temp_value:.3f}℃ A")
+                self.temperautre_wg_raw_lbs[idx].setText(f"#{idx + 1} {temp_value:.3f}℃ A")
             self.temperature_raw_graph.plot_data_update(idx, time_point, temp_value)
+
+    def on_out_flash_param_temp_read(self, event=None):
+        data = (*(struct.pack("H", 0)), *(struct.pack("H", 3)))
+        self._serialSendPack(0xDD, data)
+
+    def on_out_flash_param_temp_write(self, event=None):
+        data = []
+        for idx, sp in enumerate(self.out_flash_param_temp_sps):
+            for d in struct.pack("f", sp.value() * -1):
+                data.append(d)
+        for i in range(0, len(data), 224):
+            sl = data[i : i + 224]
+            start = [*struct.pack("H", i // 4)]
+            num = [*struct.pack("H", len(sl) // 4)]
+            self._serialSendPack(0xDD, start + num + sl)
+        data = (0xFF, 0xFF)  # 保存参数 写入Flash
+        self._serialSendPack(0xDD, data)
+        for sp in self.out_flash_param_temp_sps:
+            self._setColor(sp, nfg="red")
+        QTimer.singleShot(500, partial(self.on_out_flash_param_temp_read, event=False))
 
     def updateMotorTrayPosition(self, info):
         position = info.content[6]
@@ -2409,17 +2455,6 @@ class MainWindow(QMainWindow):
         self.id_card_data_write_bt.clicked.connect(self.onID_CardWrite)
         self.id_card_data_dg = ModernDialog(self.id_card_data_dg, self)
 
-        temperautre_raw_wg = QWidget()
-        temperautre_raw_ly = QHBoxLayout(temperautre_raw_wg)
-        temperautre_raw_ly.setContentsMargins(5, 0, 5, 0)
-        temperautre_raw_ly.setSpacing(5)
-        self.temperautre_raw_lbs = [QLabel("-" * 4) for _ in range(9)]
-        for i in range(9):
-            temperautre_raw_ly.addSpacing(1)
-            temperautre_raw_ly.addWidget(self.temperautre_raw_lbs[i])
-            temperautre_raw_ly.addSpacing(1)
-        temperautre_raw_wg.mousePressEvent = self.onTemperautreRawLabelClick
-
         self.temperature_raw_plot_dg = QDialog(self)
         self.temperature_raw_plot_dg.setWindowTitle("温度ADC 采样原始数据")
         temperature_raw_plot_ly = QVBoxLayout(self.temperature_raw_plot_dg)
@@ -2453,9 +2488,6 @@ class MainWindow(QMainWindow):
         out_flash_param_gb = QGroupBox("系统参数")
         out_flash_param_ly = QVBoxLayout(out_flash_param_gb)
         out_flash_param_ly.setSpacing(5)
-        self.out_flash_param_temp_sps = [
-            QDoubleSpinBox(self, maximumWidth=90, minimum=-5, maximum=5, decimals=3, singleStep=0.035, suffix="℃") for _ in range(3)
-        ]
         self.out_flash_param_read_bt = QPushButton("读取", clicked=self.onOutFlashParamRead, maximumWidth=90)
         self.out_flash_param_write_bt = QPushButton("写入", clicked=self.onOutFlashParamWrite, maximumWidth=90)
         self.out_flash_param_clear_o_bt = QPushButton("清除测试点", clicked=self.onOutFlashParamCC_O, maximumWidth=120)
@@ -2465,19 +2497,6 @@ class MainWindow(QMainWindow):
         self.out_flash_param_load_bt = QPushButton("Load", clicked=self.onOutFlashParamCC_Load, maximumWidth=90)
         self.out_flash_param_debug_bt = QPushButton("Debug", clicked=self.onOutFlashParamCC_Debug, maximumWidth=90)
         self.out_flash_param_check_bt = QPushButton("Check", clicked=self.onOutFlashParamCC_Check, maximumWidth=90)
-
-        out_flash_param_temp_cc_wg = QGroupBox("温度校正参数")
-        out_flash_param_temp_cc_ly = QGridLayout(out_flash_param_temp_cc_wg)
-        out_flash_param_temp_cc_ly.setAlignment(Qt.AlignCenter)
-
-        for i, sp in enumerate(self.out_flash_param_temp_sps):
-            temp_ly = QHBoxLayout()
-            temp_ly.setContentsMargins(5, 0, 5, 0)
-            temp_ly.setSpacing(5)
-            temp_ly.addWidget(QLabel(("上加热体", "下加热体", "环境")[i]))
-            temp_ly.addWidget(sp)
-            out_flash_param_temp_cc_ly.addLayout(temp_ly, i // 6, i % 6)
-        out_flash_param_ly.addWidget(out_flash_param_temp_cc_wg)
 
         out_flash_param_od_cc_wg = QGroupBox("OD校正参数")
         out_flash_param_od_cc_ly = QVBoxLayout(out_flash_param_od_cc_wg)
@@ -2509,7 +2528,6 @@ class MainWindow(QMainWindow):
 
         out_flash_data_ly.addWidget(self.out_flash_data_te)
         out_flash_data_ly.addLayout(out_flash_temp_ly)
-        out_flash_data_ly.addWidget(temperautre_raw_wg)
         out_flash_data_ly.addWidget(out_flash_param_gb)
 
         temp_ly = QHBoxLayout()
@@ -2732,20 +2750,17 @@ class MainWindow(QMainWindow):
 
     def onOutFlashParamWrite(self, event=None):
         data = []
-        for idx, sp in enumerate(self.out_flash_param_temp_sps):
-            for d in struct.pack("f", sp.value() * -1):
-                data.append(d)
         for idx, sp in enumerate(self.out_flash_param_cc_sps):
             for d in struct.pack("I", int(sp.value())):
                 data.append(d)
         for i in range(0, len(data), 224):
             sl = data[i : i + 224]
-            start = [*struct.pack("H", i // 4)]
+            start = [*struct.pack("H", (i // 4) + 3)]
             num = [*struct.pack("H", len(sl) // 4)]
             self._serialSendPack(0xDD, start + num + sl)
-        data = (0xFF, 0xFF)
+        data = (0xFF, 0xFF)  # 保存参数 写入Flash
         self._serialSendPack(0xDD, data)
-        for sp in self.out_flash_param_cc_sps + self.out_flash_param_temp_sps:
+        for sp in self.out_flash_param_cc_sps:
             self._setColor(sp, nfg="red")
         QTimer.singleShot(500, partial(self.onOutFlashParamRead, event=False))
 
@@ -2771,6 +2786,7 @@ class MainWindow(QMainWindow):
         raw_pack = info.content
         start = struct.unpack("H", raw_pack[6:8])[0]
         num = struct.unpack("H", raw_pack[8:10])[0]
+        logger.debug(f"param pack | start {start} | num {num} | raw_pack_len {len(raw_pack)}")
         for i in range(num):
             idx = start + i
             if idx < len(self.out_flash_param_temp_sps):
