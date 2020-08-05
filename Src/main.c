@@ -39,6 +39,7 @@
 #include "fan.h"
 #include "beep.h"
 #include "led.h"
+#include "white_motor.h"
 
 /* USER CODE END Includes */
 
@@ -122,6 +123,8 @@ void StartDefaultTask(void * argument);
 
 /* USER CODE BEGIN PFP */
 static void Miscellaneous_Task(void * argument);
+static TaskHandle_t Miscellaneous_Task_Handle = NULL;
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -194,7 +197,7 @@ int main(void)
     /* storge task */
     storgeTaskInit();
 
-    if (xTaskCreate(Miscellaneous_Task, "TASK_MISC", 160, NULL, 1, NULL) != pdPASS) {
+    if (xTaskCreate(Miscellaneous_Task, "TASK_MISC", 160, NULL, 1, &Miscellaneous_Task_Handle) != pdPASS) {
         FL_Error_Handler(__FILE__, __LINE__);
     }
 
@@ -1332,6 +1335,19 @@ uint8_t GetHardwareVersion(void)
 }
 
 /**
+ * @brief  杂项任务 通知提交
+ * @param  notify 通知值
+ * @retval 通知结果
+ */
+BaseType_t Miscellaneous_Task_Notify(uint32_t notify)
+{
+    BaseType_t xResult;
+
+    xResult = xTaskNotify(Miscellaneous_Task_Handle, notify, eSetValueWithoutOverwrite);
+    return xResult;
+}
+
+/**
  * @brief  杂项任务
  * @param  argument: Not used
  * @retval None
@@ -1339,7 +1355,8 @@ uint8_t GetHardwareVersion(void)
 static void Miscellaneous_Task(void * argument)
 {
     TickType_t xTick;
-    uint32_t cnt;
+    uint32_t cnt, notify;
+    BaseType_t xResult;
 
     temp_Start_ADC_DMA();                         /* 启动ADC转换 */
     fan_Start();                                  /* 启动风扇PWM输出 */
@@ -1350,6 +1367,17 @@ static void Miscellaneous_Task(void * argument)
     vTaskDelay(30);                               /* ADC 转换完成 */
 
     for (;;) {
+        xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &notify, 80);
+        if (xResult) {
+            switch (notify) {
+                case 0:
+                default:
+                    white_Motor_PD(); /* 运动白板电机 PD位置 */
+                    white_Motor_WH(); /* 运动白板电机 白物质位置 */
+                    break;
+            }
+        }
+
         fan_Ctrl_Deal(temp_Get_Temp_Data_ENV()); /* 根据环境温度调整风扇输出 */
         led_Out_Deal(xTick);                     /* 外接LED板处理 */
         protocol_Temp_Upload_Deal();             /* 温度信息上送处理 */

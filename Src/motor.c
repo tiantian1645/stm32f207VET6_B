@@ -852,9 +852,13 @@ static uint8_t motor_Sample_Barcode_Scan(void)
             return 1;                                    /* 提前结束 */
         }
     }
-    if (protocol_Debug_SampleMotorTray() == 0) { /* 非调试模式 */
-        motor_Tray_Move_By_Index(eTrayIndex_0);  /* 入仓 */
-        heat_Motor_Down();                       /* 砸下上加热体 */
+    if (protocol_Debug_SampleMotorTray() == 0) {      /* 非调试模式 */
+        motor_Tray_Move_By_Index(eTrayIndex_0);       /* 入仓 */
+        heat_Motor_Down();                            /* 砸下上加热体 */
+        if (Miscellaneous_Task_Notify(0) != pdPASS) { /* 通知杂项任务同步运动白板电机 通知失败即亲自运动 */
+            white_Motor_PD();                         /* 运动白板电机 PD位置 */
+            white_Motor_WH();                         /* 运动白板电机 白物质位置 */
+        }
     }
 
     if (protocol_Debug_SampleBarcode() == 0) {           /* 非调试模式 */
@@ -937,9 +941,9 @@ static void motor_Task(void * argument)
                 barcode_Scan_Bantch((uint8_t)(mf.fun_param_1 >> 8), (uint8_t)(mf.fun_param_1)); /* 位置掩码 扫码使能掩码 */
                 break;
             case eMotor_Fun_Sample_Start:                         /* 准备测试 */
+                xTick = HAL_GetTick();                            /* 记录总体准备起始时间 */
                 barcode_Interrupt_Flag_Clear();                   /* 清除打断标志 */
                 xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0); /* 清空通知 */
-                xTick = xTaskGetTickCount();                      /* 记录总体准备起始时间 */
                 comm_Data_Conf_Sem_Wait(0);                       /* 清除配置信息信号量 */
                 led_Mode_Set(eLED_Mode_Kirakira_Green);           /* LED 绿灯闪烁 */
 
@@ -947,9 +951,7 @@ static void motor_Task(void * argument)
                 if (motor_Sample_Barcode_Scan() > 0) { /* 扫码处理 */
                     break;                             /* 收到打断信息 提前结束 */
                 }
-                white_Motor_PD();                                            /* 运动白板电机 PD位置 */
-                white_Motor_WH();                                            /* 运动白板电机 白物质位置 */
-                if (comm_Data_Conf_Sem_Wait(pdMS_TO_TICKS(400)) != pdPASS) { /* 等待配置信息 */
+                if (comm_Data_Conf_Sem_Wait(pdMS_TO_TICKS(750)) != pdPASS) { /* 等待配置信息 */
                     error_Emit(eError_Comm_Data_Not_Conf);                   /* 提交错误信息 采样配置信息未下达 */
                     motor_Sample_Owari();                                    /* 清理 */
                     break;                                                   /* 提前结束 */
@@ -965,7 +967,7 @@ static void motor_Task(void * argument)
                     break;                          /* 提前结束 */
                 }
                 if (protocol_Debug_SampleBarcode() == 0) {                                                       /* 非调试模式 */
-                    cnt = xTaskGetTickCount() - xTick;                                                           /* 耗时时间 */
+                    cnt = HAL_GetTick() - xTick;                                                                 /* 耗时时间 */
                     if (cnt < pdMS_TO_TICKS(15 * 1000)) {                                                        /* 等待补全15秒 */
                         xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(15 * 1000) - cnt); /* 等待任务通知 */
                         if (xResult == pdPASS && xNotifyValue == eMotorNotifyValue_BR) {                         /* 收到中终止命令 */
@@ -991,8 +993,6 @@ static void motor_Task(void * argument)
                     if (motor_Sample_Barcode_Scan() > 0) { /* 扫码处理 */
                         break;                             /* 收到打断信息 提前结束 */
                     }
-                    white_Motor_PD();                                            /* 运动白板电机 PD位置 */
-                    white_Motor_WH();                                            /* 运动白板电机 白物质位置 */
                     if (comm_Data_Conf_Sem_Wait(pdMS_TO_TICKS(400)) != pdPASS) { /* 等待配置信息 */
                         if (cnt == 0) {                                          /* 首次配置信息 */
                             error_Emit(eError_Comm_Data_Not_Conf);               /* 提交错误信息 采样配置信息未下达 */

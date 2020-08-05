@@ -74,6 +74,7 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef * htim);
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
+BaseType_t Miscellaneous_Task_Notify(uint32_t notify);
 void FL_Error_Handler(char * file, int line);
 uint8_t GetHardwareVersion(void);
 void reset_Tim1(void);
