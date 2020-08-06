@@ -436,9 +436,10 @@ static uint8_t motor_Sample_Deal(void)
         xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(10000)); /* 等待任务通知 */
         if (xResult != pdPASS || xNotifyValue == eMotorNotifyValue_BR) {               /* 超时 或者 收到中终止命令 */
             if (xResult != pdPASS) {                                                   /* 超时  */
-                error_Emit(eError_Sample_Incomlete);                                   /* 提交错误信息 */
+                error_Emit(eError_Sample_Incomlete);                                   /* 采样板超时 */
                 return 2;
             }
+            error_Emit(eError_Sample_Initiative_Break); /* 主动打断 */
             return 1;
         }
         if (xNotifyValue == eMotorNotifyValue_TG) {                 /* 本次采集完成 */
@@ -447,10 +448,12 @@ static uint8_t motor_Sample_Deal(void)
             } else if (gComm_Data_Sample_PD_WH_Idx_Get() == 2) {    /* 当前检测PD */
                 white_Motor_WH();                                   /* 运动白板电机 白物质位置 */
             } else if (gComm_Data_Sample_PD_WH_Idx_Get() == 0xFF) { /* 最后一次采样完成 */
+                error_Emit(eError_Sample_Normailly_Exit);           /* 正常退出 */
                 return 0;
             }
         }
     }
+    error_Emit(eError_Sample_Out_Of_Range); /* 超出最大轮次 */
     return 3;
 }
 
@@ -947,9 +950,10 @@ static void motor_Task(void * argument)
                 comm_Data_Conf_Sem_Wait(0);                       /* 清除配置信息信号量 */
                 led_Mode_Set(eLED_Mode_Kirakira_Green);           /* LED 绿灯闪烁 */
 
-                motor_Sample_Temperature_Check();      /* 采样前温度检查 */
-                if (motor_Sample_Barcode_Scan() > 0) { /* 扫码处理 */
-                    break;                             /* 收到打断信息 提前结束 */
+                motor_Sample_Temperature_Check();               /* 采样前温度检查 */
+                if (motor_Sample_Barcode_Scan() > 0) {          /* 扫码处理 */
+                    error_Emit(eError_Sample_Initiative_Break); /* 主动打断 */
+                    break;                                      /* 收到打断信息 提前结束 */
                 }
                 if (comm_Data_Conf_Sem_Wait(pdMS_TO_TICKS(750)) != pdPASS) { /* 等待配置信息 */
                     error_Emit(eError_Comm_Data_Not_Conf);                   /* 提交错误信息 采样配置信息未下达 */
@@ -962,15 +966,17 @@ static void motor_Task(void * argument)
                         break;                                               /* 提前结束 */
                     }
                 }
-                if (barcode_Interrupt_Flag_Get()) { /* 中途打断 */
-                    motor_Sample_Owari();           /* 清理 */
-                    break;                          /* 提前结束 */
+                if (barcode_Interrupt_Flag_Get()) {             /* 中途打断 */
+                    error_Emit(eError_Sample_Initiative_Break); /* 主动打断 */
+                    motor_Sample_Owari();                       /* 清理 */
+                    break;                                      /* 提前结束 */
                 }
                 if (protocol_Debug_SampleBarcode() == 0) {                                                       /* 非调试模式 */
                     cnt = HAL_GetTick() - xTick;                                                                 /* 耗时时间 */
                     if (cnt < pdMS_TO_TICKS(15 * 1000)) {                                                        /* 等待补全15秒 */
                         xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(15 * 1000) - cnt); /* 等待任务通知 */
                         if (xResult == pdPASS && xNotifyValue == eMotorNotifyValue_BR) {                         /* 收到中终止命令 */
+                            error_Emit(eError_Sample_Initiative_Break);                                          /* 主动打断 */
                             motor_Sample_Owari();                                                                /* 清理 */
                             break;
                         }
@@ -1008,9 +1014,10 @@ static void motor_Task(void * argument)
                             break;                                     /* 提前结束 */
                         }
                     }
-                    if (barcode_Interrupt_Flag_Get()) { /* 中途打断 */
-                        motor_Sample_Owari();           /* 清理 */
-                        break;                          /* 提前结束 */
+                    if (barcode_Interrupt_Flag_Get()) {             /* 中途打断 */
+                        motor_Sample_Owari();                       /* 清理 */
+                        error_Emit(eError_Sample_Initiative_Break); /* 主动打断 */
+                        break;                                      /* 提前结束 */
                     }
                     if (protocol_Debug_SampleBarcode() == 0) {             /* 非调试模式 */
                         vTaskDelayUntil(&xTick, pdMS_TO_TICKS(15 * 1000)); /* 等待补全15秒 */
@@ -1020,6 +1027,7 @@ static void motor_Task(void * argument)
                     motor_Sample_Owari();   /* 清理 */
                     xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(gMotor_Aging_Sleep_Get() * 1000)); /* 等待任务通知 */
                     if (xResult == pdPASS && xNotifyValue == eMotorNotifyValue_BR) {                                         /* 收到中终止命令 */
+                        error_Emit(eError_Sample_Initiative_Break);                                                          /* 主动打断 */
                         break;
                     }
                     ++cnt;

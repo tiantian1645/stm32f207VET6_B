@@ -21,28 +21,30 @@ typedef enum {
     eError_Comm_Out_Resend_2 = 7,  /* 采样板串口第二次发送无回应 */
 
     /* 提示类信息 */
-    eError_Motor_Task_Busy = 100,       /* 电机任务忙 */
-    eError_Motor_Notify_No_Read = 101,  /* 电机任务通知不能读 */
-    eError_Storge_Task_Busy = 102,      /* 存储任务忙 */
-    eError_ID_Card_Deal_Param = 103,    /* ID Code卡操作参数异常 */
-    eError_Out_Flash_Deal_Param = 104,  /* 外部Flash操作参数异常 */
-    eError_Comm_Main_Wrong_ID = 105,    /* 主串口异常ID */
-    eError_Comm_Main_Unknow_CMD = 106,  /* 主串口异常功能码 */
-    eError_Comm_Main_Param_Error = 107, /* 主串口报文参数异常 */
-    eError_Comm_Data_Wrong_ID = 108,    /* 采样板串口异常ID */
-    eError_Comm_Data_Unknow_CMD = 109,  /* 采样板串口异常功能码 */
-    eError_Comm_Data_Param_Error = 110, /* 采样板串口报文参数异常 */
-    eError_Comm_Out_Wrong_ID = 111,     /* 外串口异常ID */
-    eError_Comm_Out_Unknow_CMD = 112,   /* 外串口异常功能码 */
-    eError_Comm_Out_Param_Error = 113,  /* 外串口报文参数异常 */
-    eError_Temp_BTM_Not_In_Range = 114, /* 下加热体温度不在范围内 */
-    eError_Temp_TOP_Not_In_Range = 115, /* 上加热体温度不在范围内 */
-    eError_Comm_Main_UART = 116,        /* 主串口DMA中断处理发生串口异常 附加错误码 (硬件故障码 << 10 + eError_Comm_Main_UART) */
-    eError_Comm_Data_UART = 117,        /* 采样板串口DMA中断处理发生串口异常 附加错误码 (硬件故障码 << 10 + eError_Comm_Data_UART) */
-    eError_Comm_Out_UART = 118,         /* 外串口DMA中断处理发生串口异常 附加错误码 (硬件故障码 << 10 + eError_Comm_Out_UART) */
-    eError_Tray_Motor_Lose = 119,       /* 托盘出仓后无命令下托盘移动到扫码光耦处 */
-    eError_Tray_ID_Code_Card_In = 120,  /* ID Code 卡插入 */
-    eError_Tray_ID_Code_Card_Out = 121, /* ID Code 卡拔出 */
+    eError_Motor_Task_Busy = 100,         /* 电机任务忙 */
+    eError_Motor_Notify_No_Read = 101,    /* 电机任务通知不能读 */
+    eError_Storge_Task_Busy = 102,        /* 存储任务忙 */
+    eError_ID_Card_Deal_Param = 103,      /* ID Code卡操作参数异常 */
+    eError_Out_Flash_Deal_Param = 104,    /* 外部Flash操作参数异常 */
+    eError_Comm_Main_Wrong_ID = 105,      /* 主串口异常ID */
+    eError_Comm_Main_Unknow_CMD = 106,    /* 主串口异常功能码 */
+    eError_Comm_Main_Param_Error = 107,   /* 主串口报文参数异常 */
+    eError_Comm_Data_Wrong_ID = 108,      /* 采样板串口异常ID */
+    eError_Comm_Data_Unknow_CMD = 109,    /* 采样板串口异常功能码 */
+    eError_Comm_Data_Param_Error = 110,   /* 采样板串口报文参数异常 */
+    eError_Comm_Out_Wrong_ID = 111,       /* 外串口异常ID */
+    eError_Comm_Out_Unknow_CMD = 112,     /* 外串口异常功能码 */
+    eError_Comm_Out_Param_Error = 113,    /* 外串口报文参数异常 */
+    eError_Temp_BTM_Not_In_Range = 114,   /* 下加热体温度不在范围内 */
+    eError_Temp_TOP_Not_In_Range = 115,   /* 上加热体温度不在范围内 */
+    eError_Comm_Main_UART = 116,          /* 主串口DMA中断处理发生串口异常 附加错误码 (硬件故障码 << 10 + eError_Comm_Main_UART) */
+    eError_Comm_Data_UART = 117,          /* 采样板串口DMA中断处理发生串口异常 附加错误码 (硬件故障码 << 10 + eError_Comm_Data_UART) */
+    eError_Comm_Out_UART = 118,           /* 外串口DMA中断处理发生串口异常 附加错误码 (硬件故障码 << 10 + eError_Comm_Out_UART) */
+    eError_Tray_Motor_Lose = 119,         /* 托盘出仓后无命令下托盘移动到扫码光耦处 */
+    eError_Tray_ID_Code_Card_In = 120,    /* ID Code 卡插入 */
+    eError_Tray_ID_Code_Card_Out = 121,   /* ID Code 卡拔出 */
+    eError_Sample_Initiative_Break = 122, /* 主动打断测试 */
+    eError_Sample_Normailly_Exit = 123,   /* 正常退出测试 */
 
     /* 执行异常 */
     eError_Motor_Heater_Timeout_Up = 200,             /* 上加热体电机运动超时 上升方向 */
@@ -85,6 +87,7 @@ typedef enum {
     eError_Comm_Out_Source_Lock = 237,                /* 外串口资源被锁 */
     eError_Comm_Data_Source_Lock = 238,               /* 采样板串口资源被锁 */
     eError_Correct_Info_Lost = 239,                   /* 定标信息不足 */
+    eError_Sample_Out_Of_Range = 240,                 /* 超出最大采样轮次 */
 
     /* 周期性上送异常 */
     eError_Temperature_Top_Abnormal = 300, /* 上加热体温度异常 */
