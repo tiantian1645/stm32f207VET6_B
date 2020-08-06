@@ -855,12 +855,12 @@ static uint8_t motor_Sample_Barcode_Scan(void)
             return 1;                                    /* 提前结束 */
         }
     }
-    if (protocol_Debug_SampleMotorTray() == 0) {      /* 非调试模式 */
-        motor_Tray_Move_By_Index(eTrayIndex_0);       /* 入仓 */
-        heat_Motor_Down();                            /* 砸下上加热体 */
-        if (Miscellaneous_Task_Notify(0) != pdPASS) { /* 通知杂项任务同步运动白板电机 通知失败即亲自运动 */
-            white_Motor_PD();                         /* 运动白板电机 PD位置 */
-            white_Motor_WH();                         /* 运动白板电机 白物质位置 */
+    if (protocol_Debug_SampleMotorTray() == 0) {                                        /* 非调试模式 */
+        motor_Tray_Move_By_Index(eTrayIndex_0);                                         /* 入仓 */
+        heat_Motor_Down();                                                              /* 砸下上加热体 */
+        if (protocol_Debug_SampleBarcode() || Miscellaneous_Task_Notify(0) != pdPASS) { /* 通知杂项任务同步运动白板电机 通知失败即亲自运动 */
+            white_Motor_PD();                                                           /* 运动白板电机 PD位置 */
+            white_Motor_WH();                                                           /* 运动白板电机 白物质位置 */
         }
     }
 
