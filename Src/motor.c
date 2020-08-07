@@ -844,13 +844,16 @@ static void motor_Sample_Temperature_Check(void)
 static uint8_t motor_Sample_Barcode_Scan(void)
 {
     eBarcodeState barcode_result;
+    TickType_t xTick;
 
+    xTick = xTaskGetTickCount();
     if (protocol_Debug_SampleBarcode() == 0) { /* 非调试模式 */
         if (protocol_Debug_SampleMotorTray() == 0) {
             motor_Tray_Move_By_Index(eTrayIndex_1); /* 扫码位置 */
         }
         barcode_result = barcode_Scan_QR();              /* 扫描二维条码 */
         if (barcode_result == eBarcodeState_Interrupt) { /* 中途打断 */
+            error_Emit(eError_Sample_Initiative_Break);  /* 主动打断 */
             motor_Sample_Owari();                        /* 清理 */
             return 1;                                    /* 提前结束 */
         }
@@ -872,7 +875,7 @@ static uint8_t motor_Sample_Barcode_Scan(void)
             barcode_result = barcode_Scan_Bar();             /* 扫描一维条码 */
             if (barcode_result == eBarcodeState_Interrupt) { /* 中途打断 */
                 error_Emit(eError_Sample_Initiative_Break);  /* 主动打断 */
-                vTaskDelay(1500);                            /* 等待1.5秒 释放白板电机资源 */
+                vTaskDelayUntil(&xTick, 5000);               /* 等待5秒 释放白板电机资源 */
                 motor_Sample_Owari();                        /* 清理 */
                 return 1;                                    /* 提前结束 */
             }
@@ -952,10 +955,9 @@ static void motor_Task(void * argument)
                 comm_Data_Conf_Sem_Wait(0);                       /* 清除配置信息信号量 */
                 led_Mode_Set(eLED_Mode_Kirakira_Green);           /* LED 绿灯闪烁 */
 
-                motor_Sample_Temperature_Check();               /* 采样前温度检查 */
-                if (motor_Sample_Barcode_Scan() > 0) {          /* 扫码处理 */
-                    error_Emit(eError_Sample_Initiative_Break); /* 主动打断 */
-                    break;                                      /* 收到打断信息 提前结束 */
+                motor_Sample_Temperature_Check();      /* 采样前温度检查 */
+                if (motor_Sample_Barcode_Scan() > 0) { /* 扫码处理 */
+                    break;                             /* 收到打断信息 提前结束 */
                 }
                 if (comm_Data_Conf_Sem_Wait(pdMS_TO_TICKS(750)) != pdPASS) { /* 等待配置信息 */
                     error_Emit(eError_Comm_Data_Not_Conf);                   /* 提交错误信息 采样配置信息未下达 */
