@@ -869,10 +869,12 @@ static uint8_t motor_Sample_Barcode_Scan(void)
             barcode_Motor_Run_By_Index(eBarcodeIndex_0); /* 回归原点 */
         } else {
             /* tray_Move_By_Relative(eMotorDir_REV, 800, 500);  //进仓10毫米 */
-            barcode_result = barcode_Scan_Bar();             /* 扫描一维条码 */
-            if (barcode_result == eBarcodeState_Interrupt) { /* 中途打断 */
-                motor_Sample_Owari();                        /* 清理 */
-                return 1;                                    /* 提前结束 */
+            barcode_result = barcode_Scan_Bar();                  /* 扫描一维条码 */
+            if (barcode_result == eBarcodeState_Interrupt) {      /* 中途打断 */
+                error_Emit(eError_Sample_Initiative_Break);       /* 主动打断 */
+                m_drv8824_Index_Switch(eM_DRV8824_Index_0, 1500); /* 等待PWM资源 */
+                motor_Sample_Owari();                             /* 清理 */
+                return 1;                                         /* 提前结束 */
             }
         }
     }
