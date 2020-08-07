@@ -475,13 +475,13 @@ void protocol_Temp_Upload_Error_Deal(TickType_t now, float temp_btm, float temp_
     float setpoint = 37;
 
     setpoint = heater_BTM_Conf_Get(eHeater_PID_Conf_Set_Point);                      /* 获取目标温度 */
-    if (temp_btm < setpoint - 0.5) {                                                 /* 温度值低于36.5 */
+    if (temp_btm < setpoint - 3) {                                                   /* 温度值低于34 */
         xTick_btm_Keep_Hight = now;                                                  /* 温度过高计数清零 */
         if (xTick_btm_Keep_Hight - xTick_btm_Keep_low > 600 * pdMS_TO_TICKS(1000)) { /* 过低持续次数大于 10 Min */
             error_Emit(eError_Temperature_Btm_TooLow);                               /* 报错 */
             xTick_btm_Keep_low = xTick_btm_Keep_Hight;                               /* 重复报错间隔 */
         }
-    } else if (temp_btm > setpoint + 0.5) {  /* 温度值高于37.5 */
+    } else if (temp_btm > setpoint + 3) {    /* 温度值高于40 */
         if (temp_btm == TEMP_INVALID_DATA) { /* 温度值为无效值 */
             if (now - xTick_btm_Nai > 60 * pdMS_TO_TICKS(1000) || now < 100) {
                 error_Emit(eError_Temperature_Btm_Abnormal); /* 报错 */
@@ -494,20 +494,20 @@ void protocol_Temp_Upload_Error_Deal(TickType_t now, float temp_btm, float temp_
                 xTick_btm_Keep_Hight = xTick_btm_Keep_low;                              /* 重复报错间隔 */
             }
         }
-    } else {                                       /* 温度值为36.5～37.5 */
+    } else {                                       /* 温度值为34～40 */
         xTick_btm_Keep_low = now;                  /* 温度过低计数清零 */
         xTick_btm_Keep_Hight = xTick_btm_Keep_low; /* 温度过高计数清零 */
         xTick_btm_Nai = now;                       /* 温度无效计数清零 */
     }
 
     setpoint = heater_TOP_Conf_Get(eHeater_PID_Conf_Set_Point);                      /* 获取目标温度 */
-    if (temp_top < setpoint - 0.5) {                                                 /* 温度值低于36.5 */
+    if (temp_top < setpoint - 3) {                                                   /* 温度值低于34 */
         xTick_top_Keep_Hight = now;                                                  /* 温度过高计数清零 */
         if (xTick_top_Keep_Hight - xTick_top_Keep_low > 600 * pdMS_TO_TICKS(1000)) { /* 过低持续时间 10 Min */
             error_Emit(eError_Temperature_Top_TooLow);                               /* 报错 */
             xTick_top_Keep_low = xTick_top_Keep_Hight;                               /* 重复报错间隔 */
         }
-    } else if (temp_top > setpoint + 0.5) {  /* 温度值高于37.5 */
+    } else if (temp_top > setpoint + 3) {    /* 温度值高于40 */
         if (temp_top == TEMP_INVALID_DATA) { /* 温度值为无效值 */
             if (now - xTick_top_Nai > 60 * pdMS_TO_TICKS(1000) || now < 100) {
                 error_Emit(eError_Temperature_Top_Abnormal); /* 报错 */
@@ -520,7 +520,7 @@ void protocol_Temp_Upload_Error_Deal(TickType_t now, float temp_btm, float temp_
                 xTick_top_Keep_Hight = xTick_top_Keep_low;                              /* 重复报错间隔 */
             }
         }
-    } else {                        /* 温度值为36.5～37.5 */
+    } else {                        /* 温度值为34～40 */
         xTick_top_Keep_low = now;   /* 温度过低计数清零 */
         xTick_top_Keep_Hight = now; /* 温度过高计数清零 */
         xTick_top_Nai = now;        /* 温度无效计数清零 */
