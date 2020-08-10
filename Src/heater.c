@@ -91,8 +91,8 @@ const sHeater_Conf_Min_Out cHeater_BTM_Min_Out_Conf[] = {
 };
 
 const sHeater_Conf_Min_Out cHeater_TOP_Min_Out_Conf[] = {
-    {8.0 / 100, 12.0 / 100, 2.0 / 100},
-    {120.0 / 100, 15.0 / 100, 4.0 / 100},
+    {4.0 / 100, 4.0 / 100, 2.0 / 100},
+    {12.0 / 100, 15.0 / 100, 4.0 / 100},
 };
 
 const sHeater_Conf_Overshoot cHeater_BTM_Overshoot_Conf[] = {
@@ -101,7 +101,7 @@ const sHeater_Conf_Overshoot cHeater_BTM_Overshoot_Conf[] = {
 };
 
 const sHeater_Conf_Overshoot cHeater_TOP_Overshoot_Conf[] = {
-    {0.55, 30, 75, 1.3, 1.5},
+    {0.35, 30, 75, 1.3, 1.5},
     {0.65, 40, 105, 1.45, 1.5},
 };
 
