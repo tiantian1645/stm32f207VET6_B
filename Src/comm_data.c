@@ -7,6 +7,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include <math.h>
 #include "serial.h"
 #include "protocol.h"
 #include "stdio.h"
@@ -35,6 +36,10 @@ extern TIM_HandleTypeDef htim7;
 #define COMM_DATA_ACK_SEND_QUEU_LENGTH 6
 
 /* Private typedef -----------------------------------------------------------*/
+typedef struct {
+    int16_t dac;
+    int32_t adc_avg;
+} sComm_Data_LED_SP_Record;
 
 /* Private variables ---------------------------------------------------------*/
 
@@ -96,6 +101,8 @@ static uint8_t gComm_Data_Correct_stages[6] = {0, 0, 0, 0, 0, 0}; /* 定标段�
 
 static uint8_t gComm_Data_Lamp_BP_Flag = 0;   /* 灯BP状态标志 */
 static uint8_t gComm_Data_AgingLoop_Mode = 0; /* 老化测试 配置状态 */
+
+static sComm_Data_LED_SP_Record gComm_Data_LED_SP_Record[3];
 
 /* Private constants ---------------------------------------------------------*/
 
@@ -575,7 +582,6 @@ uint8_t comm_Data_Set_LED_Voltage(eComm_Data_Sample_Radiant radiant, uint16_t vo
     memcpy(buffer, (uint8_t *)(&gComm_LED_Voltage), sizeof(sComm_LED_Voltage));
     comm_Data_Conf_LED_Voltage_Set(buffer);
     vTaskDelay(600);
-    ;
     return 0;
 }
 
@@ -672,16 +678,36 @@ void gComm_Data_LED_Voltage_Points_Set(uint8_t points)
 /**
  * @brief  检查LED测试数据
  * @param  radiant 波长
+ * @param  dac LED输出电压DAC值
+ * @param  idx 次数索引
  * @note   白板PD值应在 1000万～1400万之间
  * @note   根据测试值调整电压增量间隔 gComm_Data_LED_Voltage_Interval
+ * @note 610
+ * 30  8602768
+ * 34  9926537
+ * 38  11177849
+ * 42  12531599
+ * 46  13657148
+ * 44  13104119
+ * 43  12859434
+ * @note 550
+ * 400  8871945
+ * 416  9281926
+ * 432  9684998
+ * 448  10067955
+ * 464  10483267
+ * 480  10901802
+ * 496  11307418
+ * 528  11716487
  * @retval 0 结束检查 1 继续检查
  */
-uint8_t comm_Data_Check_LED(eComm_Data_Sample_Radiant radiant)
+uint8_t comm_Data_Check_LED(eComm_Data_Sample_Radiant radiant, uint16_t dac, uint8_t idx)
 {
     uint8_t i, j, result = 1;
     uint32_t sums[6] = {0, 0, 0, 0, 0, 0}, temp_32, min = 0xFFFFFFFF, max = 0;
     int16_t sign;
     int32_t bias_1300 = 0;
+    float cal_inter;
     static int32_t last_bias_1300 = 0x80000000;
 
     /* 计算总和 */
@@ -719,6 +745,16 @@ uint8_t comm_Data_Check_LED(eComm_Data_Sample_Radiant radiant)
         }
     }
 
+    if (idx < ARRAY_LEN(gComm_Data_LED_SP_Record)) {
+        gComm_Data_LED_SP_Record[idx % 3].dac = dac;
+        gComm_Data_LED_SP_Record[idx % 3].adc_avg = temp_32;
+    } else {
+        memcpy(gComm_Data_LED_SP_Record, gComm_Data_LED_SP_Record + 1, sizeof(sComm_Data_LED_SP_Record));
+        memcpy(gComm_Data_LED_SP_Record + 1, gComm_Data_LED_SP_Record + 2, sizeof(sComm_Data_LED_SP_Record));
+        gComm_Data_LED_SP_Record[2].dac = dac;
+        gComm_Data_LED_SP_Record[2].adc_avg = temp_32;
+    }
+
     if (j == 0 || bias_1300 == 0) {             /* 没有有效值 或者没有误差*/
         gComm_Data_LED_Voltage_Interval_Set(0); /* 不修改间隔结束流程 */
         last_bias_1300 = 0x80000000;            /* 初始化历史值 */
@@ -727,7 +763,7 @@ uint8_t comm_Data_Check_LED(eComm_Data_Sample_Radiant radiant)
     }
 
     bias_1300 = bias_1300 / j;
-    if (max >= 14000000) { /* 最大值越限 */
+    if (max >= 14500000) { /* 最大值越限 */
         sign = gComm_Data_LED_Voltage_Interval_Get() / 2;
         if (sign == 0) {
             gComm_Data_LED_Voltage_Interval_Set(-1);
@@ -778,6 +814,25 @@ uint8_t comm_Data_Check_LED(eComm_Data_Sample_Radiant radiant)
         } else {
             gComm_Data_LED_Voltage_Interval_Set(sign);
             result = 1;
+        }
+    } else if (idx >= 2) {
+        cal_inter =
+            (gComm_Data_LED_SP_Record[2].adc_avg - gComm_Data_LED_SP_Record[1].adc_avg) / (gComm_Data_LED_SP_Record[2].dac - gComm_Data_LED_SP_Record[1].dac);
+        if ((14000000 + gComm_Data_LED_SP_Record[2].adc_avg) > (13000000 + max)) {
+            cal_inter = (13000000.0 - gComm_Data_LED_SP_Record[2].adc_avg) / cal_inter;
+        } else {
+            cal_inter = (14000000.0 - max) / cal_inter;
+        }
+
+        cal_inter += (cal_inter > 0) ? (0.5) : (-0.5);
+
+        if (fabs(cal_inter) > 2) {
+            if (cal_inter > 200) {
+                cal_inter = 200;
+            } else if (cal_inter < -200) {
+                cal_inter = -200;
+            }
+            gComm_Data_LED_Voltage_Interval_Set(cal_inter);
         }
     }
     last_bias_1300 = bias_1300;
