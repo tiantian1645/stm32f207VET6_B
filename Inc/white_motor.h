@@ -9,7 +9,7 @@
 
 /* Exported macro ------------------------------------------------------------*/
 #define WHITE_MOTOR_RUN_PD_TIMEOUT 450 /* 关联 COMM_DATA_PD_TIMER_PERIOD */
-#define WHITE_MOTOR_RUN_WH_TIMEOUT 1000
+#define WHITE_MOTOR_RUN_WH_TIMEOUT 1200
 
 /* Exported types ------------------------------------------------------------*/
 
