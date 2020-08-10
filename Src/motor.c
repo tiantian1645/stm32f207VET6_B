@@ -863,10 +863,10 @@ static uint8_t motor_Sample_Barcode_Scan(void)
     if (protocol_Debug_SampleMotorTray() == 0) {                                        /* 非调试模式 */
         motor_Tray_Move_By_Index(eTrayIndex_0);                                         /* 入仓 */
         heat_Motor_Down();                                                              /* 砸下上加热体 */
-        if (protocol_Debug_SampleBarcode() || Miscellaneous_Task_Notify(0) != pdPASS) { /* 通知杂项任务同步运动白板电机 通知失败即亲自运动 */
-            white_Motor_PD();                                                           /* 运动白板电机 PD位置 */
-            white_Motor_WH();                                                           /* 运动白板电机 白物质位置 */
-        }
+    }
+    if (protocol_Debug_SampleBarcode() || Miscellaneous_Task_Notify(0) != pdPASS) { /* 通知杂项任务同步运动白板电机 通知失败即亲自运动 */
+        white_Motor_PD();                                                           /* 运动白板电机 PD位置 */
+        white_Motor_WH();                                                           /* 运动白板电机 白物质位置 */
     }
 
     if (protocol_Debug_SampleBarcode() == 0) {           /* 非调试模式 */
@@ -1297,7 +1297,7 @@ static void motor_Task(void * argument)
                             break;
                     }
                     comm_Data_Set_LED_Voltage(radiant, cnt);                                    /* 设置初始化电压值 */
-                    for (uint8_t i = 0; i < 20; ++i) {                                         /* 循环测试-检测-调整电压 */
+                    for (uint8_t i = 0; i < 20; ++i) {                                          /* 循环测试-检测-调整电压 */
                         comm_Data_RecordInit();                                                 /* 初始化数据记录 */
                         gComm_Data_SP_LED_Flag_Mark(radiant);                                   /* 标记校正采样板LED电压状态 */
                         comm_Data_Sample_Send_Conf_Correct(buffer, radiant,                     /* 配置波长 */
@@ -1316,7 +1316,7 @@ static void motor_Task(void * argument)
                         if (stage == 0) {                                                                        /* 合格即跳出 */
                             break;
                         }
-                        vTaskDelay(300);                                                        /* 等待 */
+                        vTaskDelay(300); /* 等待 */
                     }
                 }
                 motor_Tray_Move_By_Index(eTrayIndex_2); /* 出仓 */
