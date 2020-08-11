@@ -429,6 +429,9 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef * htim_base)
 
         __HAL_LINKDMA(htim_base, hdma[TIM_DMA_ID_UPDATE], hdma_tim1_up);
 
+        /* TIM1 interrupt Init */
+        HAL_NVIC_SetPriority(TIM1_UP_TIM10_IRQn, 15, 0);
+        HAL_NVIC_EnableIRQ(TIM1_UP_TIM10_IRQn);
         /* USER CODE BEGIN TIM1_MspInit 1 */
 
         /* USER CODE END TIM1_MspInit 1 */
@@ -513,6 +516,9 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef * htim_base)
         GPIO_InitStruct.Alternate = GPIO_AF3_TIM10;
         HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
+        /* TIM10 interrupt Init */
+        HAL_NVIC_SetPriority(TIM1_UP_TIM10_IRQn, 15, 0);
+        HAL_NVIC_EnableIRQ(TIM1_UP_TIM10_IRQn);
         /* USER CODE BEGIN TIM10_MspInit 1 */
 
         /* USER CODE END TIM10_MspInit 1 */
@@ -655,6 +661,16 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef * htim_base)
 
         /* TIM1 DMA DeInit */
         HAL_DMA_DeInit(htim_base->hdma[TIM_DMA_ID_UPDATE]);
+
+        /* TIM1 interrupt DeInit */
+        /* USER CODE BEGIN TIM1:TIM1_UP_TIM10_IRQn disable */
+        /**
+         * Uncomment the line below to disable the "TIM1_UP_TIM10_IRQn" interrupt
+         * Be aware, disabling shared interrupt may affect other IPs
+         */
+        /* HAL_NVIC_DisableIRQ(TIM1_UP_TIM10_IRQn); */
+        /* USER CODE END TIM1:TIM1_UP_TIM10_IRQn disable */
+
         /* USER CODE BEGIN TIM1_MspDeInit 1 */
 
         /* USER CODE END TIM1_MspDeInit 1 */
@@ -732,6 +748,15 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef * htim_base)
         PB8     ------> TIM10_CH1
         */
         HAL_GPIO_DeInit(GPIOB, GPIO_PIN_8);
+
+        /* TIM10 interrupt DeInit */
+        /* USER CODE BEGIN TIM10:TIM1_UP_TIM10_IRQn disable */
+        /**
+         * Uncomment the line below to disable the "TIM1_UP_TIM10_IRQn" interrupt
+         * Be aware, disabling shared interrupt may affect other IPs
+         */
+        /* HAL_NVIC_DisableIRQ(TIM1_UP_TIM10_IRQn); */
+        /* USER CODE END TIM10:TIM1_UP_TIM10_IRQn disable */
 
         /* USER CODE BEGIN TIM10_MspDeInit 1 */
 

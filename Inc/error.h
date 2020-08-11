@@ -19,6 +19,7 @@ typedef enum {
     eError_Scan_Debug = 5,         /* 扫码枪错误调试 */
     eError_Comm_Out_Resend_1 = 6,  /* 采样板串口第一次发送无回应 */
     eError_Comm_Out_Resend_2 = 7,  /* 采样板串口第二次发送无回应 */
+    eError_Fan_Lost_Speed = 8,     /* 风扇转速过低 */
 
     /* 提示类信息 */
     eError_Motor_Task_Busy = 100,         /* 电机任务忙 */

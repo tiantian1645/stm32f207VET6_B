@@ -26,6 +26,7 @@
 #include "storge_task.h"
 #include "temperature.h"
 #include "heater.h"
+#include "fan.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim6;
@@ -914,6 +915,7 @@ static void motor_Task(void * argument)
             continue;
         }
         cnt = 0;
+        fan_IC_Error_Report_Disable();
         switch (mf.fun_type) {
             case eMotor_Fun_In:             /* 入仓 */
                 if (heat_Motor_Up() != 0) { /* 抬起上加热体电机 失败 */
@@ -1325,6 +1327,7 @@ static void motor_Task(void * argument)
             default:
                 break;
         }
+        fan_IC_Error_Report_Enable();
         gComm_Mian_Block_Enable();
         xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0); /* 清除任务通知 */
         xQueueReceive(motor_Fun_Queue_Handle, &mf, 0);

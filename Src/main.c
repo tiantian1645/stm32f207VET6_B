@@ -205,6 +205,7 @@ int main(void)
     vTaskStartScheduler();
 #if 0
   /* USER CODE END 2 */
+
   /* Init scheduler */
   osKernelInitialize();
 
@@ -236,7 +237,6 @@ int main(void)
   osKernelStart();
  
   /* We should never get here as control is now taken by the scheduler */
-
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
     while (1) {
@@ -950,9 +950,9 @@ static void MX_TIM10_Init(void)
 
     /* USER CODE END TIM10_Init 1 */
     htim10.Instance = TIM10;
-    htim10.Init.Prescaler = 0;
+    htim10.Init.Prescaler = FAN_IC_PSC;
     htim10.Init.CounterMode = TIM_COUNTERMODE_UP;
-    htim10.Init.Period = 0;
+    htim10.Init.Period = FAN_IC_ARR;
     htim10.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
     htim10.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
     if (HAL_TIM_Base_Init(&htim10) != HAL_OK) {
@@ -964,7 +964,7 @@ static void MX_TIM10_Init(void)
     sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
     sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
     sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
-    sConfigIC.ICFilter = 0;
+    sConfigIC.ICFilter = FAN_IC_IF;
     if (HAL_TIM_IC_ConfigChannel(&htim10, &sConfigIC, TIM_CHANNEL_1) != HAL_OK) {
         Error_Handler();
     }
@@ -1359,8 +1359,7 @@ static void Miscellaneous_Task(void * argument)
     BaseType_t xResult;
 
     temp_Start_ADC_DMA();                         /* 启动ADC转换 */
-    fan_Start();                                  /* 启动风扇PWM输出 */
-    fan_Adjust(0.1);                              /* 调整PWM占空比 */
+    fan_Init();                                   /* 风扇初始化 */
     protocol_Temp_Upload_Comm_Set(eComm_Out, 0);  /* 关闭外串口发送 */
     protocol_Temp_Upload_Comm_Set(eComm_Main, 0); /* 关闭主板发送 */
     xTick = xTaskGetTickCount();                  /* 获取系统时刻 */
@@ -1379,6 +1378,7 @@ static void Miscellaneous_Task(void * argument)
         }
 
         fan_Ctrl_Deal(temp_Get_Temp_Data_ENV()); /* 根据环境温度调整风扇输出 */
+        fan_IC_Error_Deal();                     /* 风扇转速监控 */
         led_Out_Deal(xTick);                     /* 外接LED板处理 */
         protocol_Temp_Upload_Deal();             /* 温度信息上送处理 */
 
