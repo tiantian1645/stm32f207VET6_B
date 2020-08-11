@@ -35,13 +35,10 @@ def iter_test_bin_FC(file_path=REAL_BIN_PATH, chunk_size=256):
             while True:
                 data = f.read(chunk_size)
                 if len(data) > 0 and len(data) < chunk_size:
-                    if len(data) > 512:
-                        chunk_size = 1024
-                    elif chunk_size > 256:
-                        chunk_size = 512
-                    else:
-                        chunk_size = 256
+                    chunk_size = len(data) + 256 - (len(data) % 256)
                     data = data.ljust(chunk_size, b"\x00")
+                    yield (data)
+                    break
                 if not data:
                     break
                 yield (data)
