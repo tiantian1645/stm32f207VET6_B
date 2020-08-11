@@ -733,8 +733,13 @@ void motor_Sample_Owari_Correct(void)
  */
 void motor_Sample_Owari(void)
 {
-    heater_Overshoot_Flag_Set(eHeater_BTM, 0);   /* 取消下加热体过冲加热标志 */
-    heater_Overshoot_Flag_Set(eHeater_TOP, 0);   /* 取消上加热体过冲加热标志 */
+    uint8_t cnt = 0;
+
+    heater_Overshoot_Flag_Set(eHeater_BTM, 0);           /* 取消下加热体过冲加热标志 */
+    heater_Overshoot_Flag_Set(eHeater_TOP, 0);           /* 取消上加热体过冲加热标志 */
+    while (++cnt < 10 && Miscellaneous_Task_Is_Busy()) { /* 白板电机未完成 */
+        vTaskDelay(500);                                 /* 轮询等待 释放白板电机资源 */
+    }
     white_Motor_WH();                            /* 运动白板电机 白板位置 */
     if (protocol_Debug_SampleMotorTray() == 0) { /* 非托盘电机调试 */
         motor_Tray_Move_By_Index(eTrayIndex_2);  /* 出仓 */
@@ -847,9 +852,7 @@ static void motor_Sample_Temperature_Check(void)
 static uint8_t motor_Sample_Barcode_Scan(void)
 {
     eBarcodeState barcode_result;
-    TickType_t xTick;
 
-    xTick = xTaskGetTickCount();
     if (protocol_Debug_SampleBarcode() == 0) { /* 非调试模式 */
         if (protocol_Debug_SampleMotorTray() == 0) {
             motor_Tray_Move_By_Index(eTrayIndex_1); /* 扫码位置 */
@@ -878,7 +881,6 @@ static uint8_t motor_Sample_Barcode_Scan(void)
             barcode_result = barcode_Scan_Bar();             /* 扫描一维条码 */
             if (barcode_result == eBarcodeState_Interrupt) { /* 中途打断 */
                 error_Emit(eError_Sample_Initiative_Break);  /* 主动打断 */
-                vTaskDelayUntil(&xTick, 5000);               /* 等待5秒 释放白板电机资源 */
                 motor_Sample_Owari();                        /* 清理 */
                 return 1;                                    /* 提前结束 */
             }

@@ -124,6 +124,7 @@ void StartDefaultTask(void * argument);
 /* USER CODE BEGIN PFP */
 static void Miscellaneous_Task(void * argument);
 static TaskHandle_t Miscellaneous_Task_Handle = NULL;
+static uint8_t Miscellaneous_Task_State = 0;
 
 /* USER CODE END PFP */
 
@@ -1348,6 +1349,16 @@ BaseType_t Miscellaneous_Task_Notify(uint32_t notify)
 }
 
 /**
+ * @brief  杂项任务 是否处于忙状态
+ * @param  None
+ * @retval 0 空闲 1 忙碌
+ */
+uint8_t Miscellaneous_Task_Is_Busy(void)
+{
+    return Miscellaneous_Task_State > 0;
+}
+
+/**
  * @brief  杂项任务
  * @param  argument: Not used
  * @retval None
@@ -1371,8 +1382,10 @@ static void Miscellaneous_Task(void * argument)
             switch (notify) {
                 case 0:
                 default:
+                    Miscellaneous_Task_State = 1;
                     white_Motor_PD(); /* 运动白板电机 PD位置 */
                     white_Motor_WH(); /* 运动白板电机 白物质位置 */
+                    Miscellaneous_Task_State = 0;
                     break;
             }
         }
