@@ -103,6 +103,8 @@ CONFIG = dict()
 try:
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
         CONFIG = simplejson.load(f)
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        simplejson.dump(CONFIG, f, indent=4)
     if "pd_criterion" not in CONFIG.keys() or "sh_criterion" not in CONFIG.keys():
         raise ValueError("lost key")
 except Exception:
@@ -114,7 +116,7 @@ except Exception:
     CONFIG["app_bin_chunk_size"] = 4096
     try:
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-            simplejson.dump(CONFIG, f)
+            simplejson.dump(CONFIG, f, indent=4)
     except Exception:
         logger.error(f"dump conf failed \n{stackprinter.format()}")
 
@@ -1534,6 +1536,7 @@ class MainWindow(QMainWindow):
         logger.error(f"emit from serial worker error signal | {s}")
         self.serial_recv_worker.signals.owari.emit()
         self.serial_send_worker.signals.owari.emit()
+        self.threadpool.waitForDone(1000)
         msg = ModernMessageBox(self)
         msg.setIcon(QMessageBox.Critical)
         msg.setWindowTitle("串口通讯故障")
@@ -1601,9 +1604,6 @@ class MainWindow(QMainWindow):
                 self.firm_wrote_size = 0
                 file_size = os.path.getsize(file_path)
                 self.firm_size = file_size + (APP_BIN_CHUNK_SIZE - file_size % APP_BIN_CHUNK_SIZE)
-                # 不建议使用过长数据包升级
-                # 若使用1024长度 升级1804_o.bin 在 0x8900 ～ 0x8C00处
-                # 上位机发送数据包与下位机bootloader接收数据包 不一致
                 for pack in write_firmware_pack_FC(self.dd, file_path, chunk_size=APP_BIN_CHUNK_SIZE):
                     self.task_queue.put(pack)
                 self.upgrade_dg_bt.setText("重启中")

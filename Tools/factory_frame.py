@@ -148,6 +148,7 @@ class MainWindow(QMainWindow):
         self.led_cks = []
         for i in range(13):
             c = QCheckBox()
+            c.setChecked(True)
             self.led_cks.append(c)
             if i < 6:
                 lys[0].addWidget(QLabel(f"{i % 6 + 1}"))
@@ -313,6 +314,9 @@ class MainWindow(QMainWindow):
 
     def onSerialWorkerError(self, s):
         logger.error(f"emit from serial worker error signal | {s}")
+        self.serial_recv_worker.signals.owari.emit()
+        self.serial_send_worker.signals.owari.emit()
+        self.threadpool.waitForDone(1000)
         msg = QMessageBox(self)
         msg.setIcon(QMessageBox.Critical)
         msg.setWindowTitle("串口通讯故障")
@@ -511,7 +515,7 @@ class MainWindow(QMainWindow):
                 self.self_test_pd_lb.setText("PD测试失败")
                 self.self_test_pd_lb.setToolTip(detail_text)
                 self.self_test_pd_lb.setStyleSheet("background-color : red; color : #3d3d3d;")
-            msg.exec_()
+                msg.exec_()
 
     def onSerialStatistic(self, info):
         if info[0] == "w" and time.time() - self.kirakira_recv_time > 0.1:
@@ -713,6 +717,7 @@ class MainWindow(QMainWindow):
 
     def on_selftest_all_test(self, event):
         self.selftest_temp_env_lb.setText("**.**")
+        self.on_led_set()
         self._clear_widget_style_sheet(self.selftest_temp_env_gb)
         self._clear_widget_style_sheet(self.selftest_motor_heater_gb)
         self._clear_widget_style_sheet(self.selftest_motor_tray_gb)

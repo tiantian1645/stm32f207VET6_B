@@ -99,7 +99,7 @@ class SerialRecvWorker(QRunnable):
                             self.serial.write(write_data)
                             self.serial_lock.unlock()
                             self.signals.serial_statistic.emit(("w", write_data))
-                            if fun_code not in (0x34, ):
+                            if fun_code not in (0x34,):
                                 logger.info(f"reply ack pack | {bytesPuttyPrint(write_data)} --> {info.text}")
                             self.signals.result.emit(info)
                         if fun_code in self.need_henji:
@@ -199,7 +199,10 @@ class SerialSendWorker(QRunnable):
                     write_data = self.getWriteData(0.01)
                 if write_data is None:
                     continue
-                logger.debug(f"serial write data | {bytesPuttyPrint(write_data)}")
+                if write_data[5] == 0xFC:
+                    logger.debug(f"serial write data FC | {len(write_data)}")
+                else:
+                    logger.debug(f"serial write data | {bytesPuttyPrint(write_data)}")
                 # time.sleep(0.01)
                 self.recv_worker.serial_lock.lock()
                 self.serial.write(write_data)
