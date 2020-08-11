@@ -1532,6 +1532,8 @@ class MainWindow(QMainWindow):
 
     def onSerialWorkerError(self, s):
         logger.error(f"emit from serial worker error signal | {s}")
+        self.serial_recv_worker.signals.owari.emit()
+        self.serial_send_worker.signals.owari.emit()
         msg = ModernMessageBox(self)
         msg.setIcon(QMessageBox.Critical)
         msg.setWindowTitle("串口通讯故障")
