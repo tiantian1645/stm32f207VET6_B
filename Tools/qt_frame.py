@@ -1582,6 +1582,8 @@ class MainWindow(QMainWindow):
             self.updateDebugFlag(info)
         elif cmd_type == 0xDA:
             self.updateSelfCheckDialog(info)
+        elif cmd_type == 0xDC:
+            self.parseAgingStatistic(info)
         elif cmd_type == 0xDD:
             self.updateOutFlashParam(info)
         elif cmd_type == 0xEE:
@@ -2783,6 +2785,17 @@ class MainWindow(QMainWindow):
                 nbg = "blue"
                 nfg = "yellow"
                 self._setColor(sp, nbg, nfg)
+
+    def parseAgingStatistic(self, info):
+        payload = info.content[6:-1]
+        data_list = struct.unpack("IIIII", payload)
+        text = f"白板电机 失败次数/总次数\nPD方向 {data_list[0]} / {data_list[1]} | 白物质方向 {data_list[2]} / {data_list[3]}"
+        logger.info(text)
+        msg = ModernMessageBox(self, timeout=5)
+        msg.setIcon(QMessageBox.Warning)
+        msg.setWindowTitle("白板电机老化统计")
+        msg.setText(text)
+        msg.show()
 
     def updateOutFlashParam(self, info):
         raw_pack = info.content

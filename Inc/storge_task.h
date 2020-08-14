@@ -411,6 +411,14 @@ typedef struct {
 
 } sStorgeParamInfo;
 
+typedef struct {
+    uint32_t motor_white_pd_failed_cnt;
+    uint32_t motor_white_pd_test_sum;
+    uint32_t motor_white_wh_failed_cnt;
+    uint32_t motor_white_wh_test_sum;
+    uint32_t check_sum;
+} sStorgeAgingStatistic;
+
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macro ------------------------------------------------------------*/
@@ -436,6 +444,9 @@ uint8_t stroge_Conf_CC_O_Data(uint8_t * pBuffer);
 uint8_t stroge_Conf_CC_O_Data_From_B3(uint8_t * pBuffer, uint8_t length);
 eStorgeParamIndex storge_Param_Illumine_CC_Get_Index(uint8_t channel, eComm_Data_Sample_Radiant wave);
 void storge_Param_Illumine_CC_Set_Single(eStorgeParamIndex idx, uint32_t data);
+
+uint8_t storge_Load_Aging_Statistic(sStorgeAgingStatistic * pSAS);
+uint8_t storge_Dump_Aging_Statistic(sStorgeAgingStatistic * pSAS);
 
 void gStorgeIllumineCnt_Clr(void);
 uint8_t gStorgeIllumineCnt_Check(uint8_t target);

@@ -1030,6 +1030,10 @@ static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length)
                         }
                     }
                     break;
+                case 0xDD:
+                    motor_fun.fun_type = eMotor_Fun_Clear_Aging_Statistic;
+                    motor_Emit_FromISR(&motor_fun);
+                    break;
                 case 0xFF:
                     gMotorPressureStopBits_Clear();
                     break;

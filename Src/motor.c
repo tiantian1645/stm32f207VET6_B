@@ -57,6 +57,7 @@ static uint8_t gMotorPressureStopBits = 0xFF;                        /* 压力�
 static uint8_t gMotorTempStableWaiting = 0;                          /* 启动时等待温度稳定标志位 */
 static eMotor_Sampl_Comm gMotor_Sampl_Comm = eMotor_Sampl_Comm_None; /* 采样时指令来源 */
 static uint8_t gMotor_Aging_Sleep = 10;                              /* 老化测试出仓后等待间隔 单位 秒 */
+static sStorgeAgingStatistic gMotorAgingStatistic = {0};
 
 /* Private function prototypes -----------------------------------------------*/
 static void motor_Task(void * argument);
@@ -85,6 +86,15 @@ const eMotor_OPT_Status (*gOPT_Status_Get_Funs[])(void) = {motor_OPT_Status_Get_
                                                            motor_OPT_Status_Get_Heater, motor_OPT_Status_Get_White_In, motor_OPT_Status_Get_White_Out};
 
 /* Private user code ---------------------------------------------------------*/
+uint8_t motor_Reset_Aging_Statistic(void)
+{
+    gMotorAgingStatistic.motor_white_pd_failed_cnt = 0;
+    gMotorAgingStatistic.motor_white_pd_test_sum = 0;
+    gMotorAgingStatistic.motor_white_wh_failed_cnt = 0;
+    gMotorAgingStatistic.motor_white_wh_test_sum = 0;
+    return storge_Dump_Aging_Statistic(&gMotorAgingStatistic);
+}
+
 /**
  * @brief  软定时器光耦状态硬件读取 扫码电机
  * @param  None
@@ -898,7 +908,7 @@ static uint8_t motor_Sample_Barcode_Scan(void)
 static void motor_Task(void * argument)
 {
     BaseType_t xResult = pdFALSE;
-    uint32_t xNotifyValue, cnt = 0;
+    uint32_t xNotifyValue, cnt = 0, ag_cnt = 0;
     sMotor_Fun mf;
     uint8_t buffer[64], stage;
     TickType_t xTick;
@@ -911,14 +921,40 @@ static void motor_Task(void * argument)
     tray_Motor_EE_Clear();                 /* 清除托盘丢步标志位 */
     heater_Overshoot_Init(0);              /* 初始化过冲参数 */
 
+    storge_Load_Aging_Statistic(&gMotorAgingStatistic);
+    if (gMotorAgingStatistic.motor_white_pd_failed_cnt + gMotorAgingStatistic.motor_white_pd_test_sum + gMotorAgingStatistic.motor_white_wh_failed_cnt +
+            gMotorAgingStatistic.motor_white_wh_test_sum !=
+        gMotorAgingStatistic.check_sum) {
+        motor_Reset_Aging_Statistic();
+    }
+
     for (;;) {
-        xResult = xQueuePeek(motor_Fun_Queue_Handle, &mf, portMAX_DELAY);
+        xResult = xQueuePeek(motor_Fun_Queue_Handle, &mf, 200);
         if (xResult != pdPASS) {
+            if (motor_OPT_Status_Get_White_In() == eMotor_OPT_Status_OFF) {
+                if (white_Motor_WH()) { /* 白板位置 */
+                    gMotorAgingStatistic.motor_white_wh_failed_cnt += 1;
+                }
+                gMotorAgingStatistic.motor_white_wh_test_sum += 1;
+            } else {
+                if (white_Motor_PD()) { /* PD位置 */
+                    gMotorAgingStatistic.motor_white_pd_failed_cnt += 1;
+                }
+                gMotorAgingStatistic.motor_white_pd_test_sum += 1;
+            }
+            if (++ag_cnt % 10 == 0) {
+                storge_Dump_Aging_Statistic(&gMotorAgingStatistic);
+                memcpy(buffer, (uint8_t *)(&gMotorAgingStatistic), sizeof(sStorgeAgingStatistic));
+                comm_Out_SendTask_QueueEmitWithBuildCover(0xDC, buffer, sizeof(sStorgeAgingStatistic));
+            }
             continue;
         }
         cnt = 0;
         fan_IC_Error_Report_Disable();
         switch (mf.fun_type) {
+            case eMotor_Fun_Clear_Aging_Statistic:
+                motor_Reset_Aging_Statistic();
+                break;
             case eMotor_Fun_In:             /* 入仓 */
                 if (heat_Motor_Up() != 0) { /* 抬起上加热体电机 失败 */
                     break;

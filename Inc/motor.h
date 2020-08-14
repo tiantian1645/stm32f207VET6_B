@@ -12,7 +12,7 @@
 #define MOTOR_TASK_NOTIFY_WHITE (1 << 2)
 #define MOTOR_TASK_NOTIFY_HEATER (1 << 3)
 
-#define MOTOR_CORRECT_POINT_NUM    12
+#define MOTOR_CORRECT_POINT_NUM 12
 
 /* Exported types ------------------------------------------------------------*/
 
@@ -73,6 +73,7 @@ typedef enum {
     eMotor_Fun_Lamp_BP,                 /* 灯光测试 */
     eMotor_Fun_SP_LED,                  /* 采样板LED校正 */
     eMotor_Fun_AgingLoop,               /* 老化测试 */
+    eMotor_Fun_Clear_Aging_Statistic,   /* 重置老化统计 */
 } eMotor_Fun;
 
 /* 电机任务队列效果结构 */
@@ -113,10 +114,10 @@ typedef enum {
 
 typedef enum {
     eMotor_Correct_Stary, /* 杂散光测试 */
-    eMotor_Correct_610, /* 定标测试 610 */
-    eMotor_Correct_550, /* 定标测试 550 */
-    eMotor_Correct_405, /* 定标测试 405 */
-}eMotor_Correct;
+    eMotor_Correct_610,   /* 定标测试 610 */
+    eMotor_Correct_550,   /* 定标测试 550 */
+    eMotor_Correct_405,   /* 定标测试 405 */
+} eMotor_Correct;
 
 /* Exported define -----------------------------------------------------------*/
 #define motor_Status_Set_Position(__RUNSTATUS__, __POSITION__) ((__RUNSTATUS__)->position = (__POSITION__))
@@ -162,6 +163,8 @@ void gMotor_Sampl_Comm_Set(eMotor_Sampl_Comm b);
 void gMotor_Sampl_Comm_Init(void);
 
 void gMotor_Aging_Sleep_Set(uint8_t sleep);
+
+uint8_t motor_Reset_Aging_Statistic(void);
 
 /* Exported constants --------------------------------------------------------*/
 

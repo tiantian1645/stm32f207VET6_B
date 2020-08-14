@@ -31,6 +31,7 @@
 #define STORGE_APP_PARAMS_ADDR (0x1000) /* Sector 1 */
 #define STORGE_APP_CREDEG_ADDR (0x2000) /* Sector 2 */
 #define STORGE_APP_CREDEG_ADDR_405 ((STORGE_APP_CREDEG_ADDR) + 8640)
+#define STORGE_APP_AGING_ADDR (0x4000) /* Sector 4 */
 #define STORGE_APP_APRAM_PART_NUM (56) /* 单次操作最大数目 */
 /* Private typedef -----------------------------------------------------------*/
 typedef struct {
@@ -1053,4 +1054,21 @@ uint8_t stroge_Conf_CC_O_Data_From_B3(uint8_t * pBuffer, uint8_t length)
     gStorgeFlashCorrectBuffer[pBuffer[1] - 1].num = length;
     memcpy(gStorgeFlashCorrectBuffer[pBuffer[1] - 1].buffer, pBuffer + 2, length);
     return result;
+}
+
+uint8_t storge_Load_Aging_Statistic(sStorgeAgingStatistic * pSAS)
+{
+    if (spi_FlashReadBuffer(STORGE_APP_AGING_ADDR, (uint8_t *)(pSAS), sizeof(sStorgeAgingStatistic)) != sizeof(sStorgeAgingStatistic)) {
+        return 1;
+    }
+    return 0;
+}
+
+uint8_t storge_Dump_Aging_Statistic(sStorgeAgingStatistic * pSAS)
+{
+    pSAS->check_sum = pSAS->motor_white_pd_failed_cnt + pSAS->motor_white_pd_test_sum + pSAS->motor_white_wh_failed_cnt + pSAS->motor_white_wh_test_sum;
+    if (spi_FlashWriteBuffer(STORGE_APP_AGING_ADDR, (uint8_t *)(pSAS), sizeof(sStorgeAgingStatistic)) != sizeof(sStorgeAgingStatistic)) {
+        return 1;
+    }
+    return 0;
 }
