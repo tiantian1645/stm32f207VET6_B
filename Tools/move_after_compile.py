@@ -37,6 +37,7 @@ TARGET_DIR = Path("E:\\WebServer\\DC201\\程序\\控制板\\Application\\")
 REPO = Repo(search_parent_directories=True)
 VERSION_RE = re.compile(r"#define APP_VERSION \(\(float\)([\d\.]+)\)")
 SHA_RE = re.compile(r"\d{8}-\d{6}-(\w{40})")
+INVALID_DIFF_PARENTS = (Path("Tools"), Path(".vscode"), Path(".settings"))
 
 
 def get_version_str():
@@ -51,11 +52,20 @@ def get_version_str():
 
 
 def check_by_diff(diff):
-    dps = tuple(d.a_path for d in diff)
-    if any((os.path.splitext(dp)[1].lower() not in (".py", ".json") for dp in dps)):
-        logger.debug(f"find valid change in dps {dps}")
+    valid_diff_list = []
+    for d in diff:
+        dp = Path(d.a_path)
+        if dp.suffix.lower() in (".c", ".h"):
+            logger.debug(f"find source code change in diff {dp}")
+            return True
+        if any(i in INVALID_DIFF_PARENTS for i in dp.parents):
+            logger.debug(f"pass invalid change for invalid path tuple | {dp}")
+            continue
+        valid_diff_list.append(dp)
+        logger.debug(f"find other valid change in diff {dp}")
+    if valid_diff_list:
         return True
-    logger.debug(f"do not find valid change in dps {dps}")
+    logger.debug(f"could not find any valid change in diff {[d.a_path for d in diff]}")
     return False
 
 
