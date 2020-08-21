@@ -219,3 +219,5 @@ dmypy.json
 
 db.sqlite3_i
 *.xlsx
+
+.settings/
