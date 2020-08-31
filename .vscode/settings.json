@@ -10,9 +10,9 @@
   "C_Cpp.default.cStandard": "c99",
   "C_Cpp.clang_format_sortIncludes": false,
   "C_Cpp.default.includePath": [
-    "D:\\ST\\STM32CubeIDE_1.0.2\\STM32CubeIDE\\plugins\\com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.7-2018-q2-update.win32_1.0.0.201904181610\\tools\\arm-none-eabi\\include\\**",
-    "D:\\ST\\STM32CubeIDE_1.0.2\\STM32CubeIDE\\plugins\\com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.7-2018-q2-update.win32_1.0.0.201904181610\\tools\\lib\\gcc\\arm-none-eabi\\7.3.1\\include\\",
-    "D:\\ST\\STM32CubeIDE_1.0.2\\STM32CubeIDE\\plugins\\com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.7-2018-q2-update.win32_1.0.0.201904181610\\tools\\lib\\gcc\\arm-none-eabi\\7.3.1\\include-fixed\\",
+    "D:\\ST\\STM32CubeIDE_1.0.2\\STM32CubeIDE\\plugins\\com.st.stm32cube.ide.mcu.externaltools.gnu-arm-embedded.7-2018-q2-update.win32_1.4.0.202007081208\\tools\\arm-none-eabi\\include\\**",
+    "D:\\ST\\STM32CubeIDE_1.0.2\\STM32CubeIDE\\plugins\\com.st.stm32cube.ide.mcu.externaltools.gnu-arm-embedded.7-2018-q2-update.win32_1.4.0.202007081208\\tools\\lib\\gcc\\arm-none-eabi\\7.3.1\\include\\",
+    "D:\\ST\\STM32CubeIDE_1.0.2\\STM32CubeIDE\\plugins\\com.st.stm32cube.ide.mcu.externaltools.gnu-arm-embedded.7-2018-q2-update.win32_1.4.0.202007081208\\tools\\lib\\gcc\\arm-none-eabi\\7.3.1\\include-fixed\\",
     "C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\**",
     "C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Drivers\\CMSIS\\Include\\",
     "C:\\Users\\Administrator\\STM32CubeIDE\\workspace_1.0.2\\stm32f207VET6_B\\Drivers\\CMSIS\\Device\\ST\\STM32F2xx\\Include\\",
