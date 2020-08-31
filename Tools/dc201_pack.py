@@ -88,6 +88,33 @@ def write_firmware_pack_BL(dd, file_path=BL_PATH, chunk_size=224):
         yield pack
 
 
+def iter_test_bin_SA(file_path, chunk_size=224):
+    try:
+        total = os.path.getsize(file_path)
+        with open(file_path, "rb") as f:
+            start = 0
+            while True:
+                data = f.read(chunk_size)
+                if not data:
+                    break
+                num = len(data)
+                # https://stackoverflow.com/questions/34760988/python-struct-error
+                yield struct.pack(f"=IBI{'B' * num}", start, num, total, *data)
+                start += num
+    except Exception:
+        logger.error("read file error \n{}".format(stackprinter.format()))
+
+
+def write_firmware_pack_SA(dd, file_path, chunk_size=224):
+    addr = 0
+    pack_index = 1
+    for data in iter_test_bin_SA(file_path, chunk_size):
+        pack = dd.buildPack(0x13, pack_index, 0x91, data)
+        addr += chunk_size
+        pack_index += 1
+        yield pack
+
+
 class DC201ErrorCode(Enum):
     eError_Motor_Heater_Debug = (1, "上加热体电机错误调试")
     eError_Motor_White_Debug = (2, "白板电机错误调试")

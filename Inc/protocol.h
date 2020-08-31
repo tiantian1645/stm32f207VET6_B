@@ -32,6 +32,10 @@ typedef enum {
     eProtocolEmitPack_Client_CMD_FA_PD_SET = 0x34,  /* 采样板PD测试*/
     eProtocolEmitPack_Client_CMD_FA_LED_SET = 0x35, /* 采样板LED设置*/
 
+    eProtocolEmitPack_Client_CMD_BL_INSTR = 0x90,   /* 采样板BL命令帧 */
+    eProtocolEmitPack_Client_CMD_BL_DATA = 0x91,    /* 采样板BL数据帧 */
+    eProtocolEmitPack_Client_CMD_SAMPLE_VER = 0x92, /* 采样板版本读取 */
+
     eProtocolEmitPack_Client_CMD_Correct = 0xC0, /* 校正数据 */
 
     eProtocolEmitPack_Client_CMD_Debug_Motor = 0xD0,        /* 调试用 电机控制 */

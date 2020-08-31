@@ -1350,6 +1350,25 @@ BaseType_t comm_Data_Conf_Offset_Get_FromISR(void)
 }
 
 /**
+ * @brief  采样板数据包转发 中断版本
+ * @note   数据包长度至少为7
+ * @param  pData 原始数据包指针
+ * @param  length 原始数据包长度
+ * @retval pdPASS 提交成功 pdFALSE 提交失败
+ */
+BaseType_t comm_Data_Transit_FromISR(uint8_t * pData, uint8_t length)
+{
+    uint8_t sendLength;
+
+    if (length < 7) {
+        return pdFALSE;
+    }
+
+    sendLength = buildPackOrigin(eComm_Data, pData[5], pData + 6, length - 7); /* 构造测试配置包 */
+    return comm_Data_SendTask_QueueEmit_FromISR(pData + 6, sendLength);
+}
+
+/**
  * @brief  发送杂散光测试包
  * @note   开始杂散光测试 耗时15秒
  * @retval pdPASS 提交成功 pdFALSE 提交失败

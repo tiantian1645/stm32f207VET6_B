@@ -1,14 +1,17 @@
 import queue
+import struct
 import sys
 import time
+from collections import namedtuple
+
 import loguru
 import stackprinter
-from collections import namedtuple
-from bytes_helper import bytesPuttyPrint
-from dc201_pack import DC201_PACK
 
 # from PySide2.QtCore import QObject, QRunnable, Signal as pyqtSignal, Slot as pyqtSlot
 from PyQt5.QtCore import QObject, QRunnable, pyqtSignal, pyqtSlot
+
+from bytes_helper import bytesPuttyPrint
+from dc201_pack import DC201_PACK
 
 HenjiConf = namedtuple("HenjiConf", "shitsumon henji")
 logger = loguru.logger.bind(name="serial_worker")
@@ -27,6 +30,8 @@ HENJI_TABLE = (
     HenjiConf(shitsumon=0x0F, henji=(0xFA,)),
     HenjiConf(shitsumon=0xFC, henji=(0xFB,)),
     HenjiConf(shitsumon=0xDE, henji=(0xDE,)),
+    HenjiConf(shitsumon=0x91, henji=(0x91,)),
+    HenjiConf(shitsumon=0x90, henji=(0x90,)),
 )
 
 
@@ -181,6 +186,13 @@ class SerialSendWorker(QRunnable):
                 return (True, write_data, info)
             else:
                 return (False, write_data, info)
+        elif write_data[5] == 0x90 and info.content[5] == 0x90:
+            return (True, write_data, info)
+        elif write_data[5] == 0x91 and info.content[5] == 0x91:
+            if info.content[6] == 0x00:
+                return (True, write_data, info)
+            else:
+                return (False, write_data, info)
         # logger.debug(f"wait henji result | {bytesPuttyPrint(write_data)} -> {info.text} | {write_data[3] == info.content[6]}")
         return (write_data[3] == info.content[6], write_data, info)
 
@@ -201,6 +213,9 @@ class SerialSendWorker(QRunnable):
                     continue
                 if write_data[5] == 0xFC:
                     logger.debug(f"serial write data FC | {len(write_data)}")
+                elif write_data[5] == 0x91:
+                    logger.debug(f"serial write data SA | {len(write_data)} | {struct.unpack('=IBI', write_data[6:15])}")
+                    logger.debug(f"serial write data SA Data | {bytesPuttyPrint(write_data)}")
                 else:
                     logger.debug(f"serial write data | {bytesPuttyPrint(write_data)}")
                 # time.sleep(0.01)
@@ -208,7 +223,7 @@ class SerialSendWorker(QRunnable):
                 self.serial.write(write_data)
                 self.recv_worker.serial_lock.unlock()
                 self.signals.serial_statistic.emit(("w", write_data))
-                if write_data[5] in (0x0F, 0xDD, 0xFC):
+                if write_data[5] in (0x0F, 0xDD, 0xFC, 0x91):
                     timeout = 8
                 else:
                     timeout = 2

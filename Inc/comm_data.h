@@ -10,7 +10,7 @@
 #define COMM_DATA_DMA_RX_SIZE 256
 #define COMM_DATA_SER_RX_SIZE COMM_DATA_DMA_RX_SIZE
 
-#define COMM_DATA_SER_TX_SIZE 32
+#define COMM_DATA_SER_TX_SIZE 255
 
 #define COMM_DATA_SER_TX_RETRY_NUM 3   /* 重发次数 */
 #define COMM_DATA_SER_TX_RETRY_INT 200 /* 重发间隔 200mS 内应有响应包 */
@@ -98,6 +98,11 @@ typedef enum {
     eComm_Data_Inbound_CMD_LED_GET = 0x32,    /* LED电压读取 */
     eComm_Data_Inbound_CMD_FA_DEBUG = 0xD3,   /* 工装PD采样输出 */
     eComm_Data_Inbound_CMD_OFFSET_GET = 0xB4, /* Offset读取 */
+
+    /* Bootloader */
+    eComm_Data_Inbound_CMD_BL_INSTR = 0x90,    /* 采样板BL命令帧 */
+    eComm_Data_Inbound_CMD_BL_DATA = 0x91,     /* 采样板BL数据帧 */
+    eComm_Data_Inbound_CMD_GET_VERSION = 0x92, /* 采样板APP版本 */
 } eComm_Data_Inbound_CMD;
 
 typedef struct {
@@ -183,6 +188,8 @@ BaseType_t comm_Data_Conf_FA_PD_Set_FromISR(uint8_t * pData);
 BaseType_t comm_Data_Conf_FA_LED_Set_FromISR(uint8_t * pData);
 
 BaseType_t comm_Data_Conf_Offset_Get_FromISR(void);
+
+BaseType_t comm_Data_Transit_FromISR(uint8_t * pData, uint8_t length);
 
 BaseType_t comm_Data_Sample_Owari(void);
 

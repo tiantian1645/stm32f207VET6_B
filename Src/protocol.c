@@ -1396,6 +1396,11 @@ static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length)
             }
             comm_Data_Conf_FA_LED_Set_FromISR(&pInBuff[6]);
             break;
+        case eProtocolEmitPack_Client_CMD_SAMPLE_VER:
+        case eProtocolEmitPack_Client_CMD_BL_INSTR:
+        case eProtocolEmitPack_Client_CMD_BL_DATA:
+            comm_Data_Transit_FromISR(pInBuff, length);
+            break;
         default:
             error_Emit_FromISR(eError_Comm_Out_Unknow_CMD);
             break;
@@ -1601,6 +1606,11 @@ static void protocol_Parse_Main_Fun_ISR(uint8_t * pInBuff, uint16_t length)
                 error_Emit_FromISR(eError_Comm_Out_Param_Error);
             }
             break;
+        case eProtocolEmitPack_Client_CMD_SAMPLE_VER:
+        case eProtocolEmitPack_Client_CMD_BL_INSTR:
+        case eProtocolEmitPack_Client_CMD_BL_DATA:
+            comm_Data_Transit_FromISR(pInBuff, length);
+            break;
         default:
             error_Emit_FromISR(eError_Comm_Main_Unknow_CMD);
             break;
@@ -1721,6 +1731,16 @@ static void protocol_Parse_Data_Fun_ISR(uint8_t * pInBuff, uint16_t length)
         case eComm_Data_Inbound_CMD_OFFSET_GET:
             comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_Offset_Get, &pInBuff[6], length - 7); /* 构造数据包 */
             comm_Out_SendTask_QueueEmitWithModify_FromISR(pInBuff + 6, length);                                          /* 转发至外串口 */
+            break;
+        case eComm_Data_Inbound_CMD_GET_VERSION:
+        case eComm_Data_Inbound_CMD_BL_INSTR:
+        case eComm_Data_Inbound_CMD_BL_DATA:
+            if (comm_Main_SendTask_Queue_GetWaiting_FromISR() >= 6) {                               /* 避免阻塞主串口发送队列 */
+                comm_Main_SendTask_QueueEmitWithBuild_FromISR(pInBuff[5], &pInBuff[6], length - 7); /* 构造数据包 */
+                comm_Out_SendTask_QueueEmitWithModify_FromISR(pInBuff + 6, length);                 /* 转发至外串口 */
+            } else {
+                comm_Out_SendTask_QueueEmitWithBuild_FromISR(pInBuff[5], &pInBuff[6], length - 7); /* 构造数据包 */
+            }
             break;
         default:
             error_Emit_FromISR(eError_Comm_Data_Unknow_CMD);

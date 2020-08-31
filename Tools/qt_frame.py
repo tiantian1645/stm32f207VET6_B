@@ -61,7 +61,7 @@ import qtmodern.styles
 import qtmodern.windows
 
 from bytes_helper import bytes2Float, bytesPuttyPrint
-from dc201_pack import DC201_PACK, DC201_ParamInfo, DC201ErrorCode, parse_1440, write_firmware_pack_BL, write_firmware_pack_FC
+from dc201_pack import DC201_PACK, DC201_ParamInfo, DC201ErrorCode, parse_1440, write_firmware_pack_BL, write_firmware_pack_FC, write_firmware_pack_SA
 from deal_openpyxl import ILLU_CC_DataInfo, TEMP_CC_DataInfo, check_file_permission, dump_CC, dump_correct_record, dump_sample, load_CC  # insert_sample
 from mengy_color_table import ColorGreens, ColorPurples, ColorReds
 from qt_modern_dialog import ModernDialog, ModernMessageBox
@@ -126,7 +126,7 @@ logger.add("./log/dc201.log", rotation=rotation, retention=retention, enqueue=Tr
 
 DB_EXCEL_PATH_RE = re.compile(r"s(\d+)n(\d+)")
 TMER_INTERVAL = 200
-APP_BIN_CHUNK_SIZE = CONFIG.get("app_bin_chunk_size", 1024)  # min 256 max 4096
+APP_BIN_CHUNK_SIZE = CONFIG.get("app_bin_chunk_size", 4096)  # min 256 max 4096
 
 
 class QHLine(QFrame):
@@ -152,6 +152,7 @@ class MainWindow(QMainWindow):
         self.henji_queue = queue.Queue()
         self.last_firm_path = None
         self.last_bl_path = None
+        self.last_samplefr_path = None
         self.threadpool = QThreadPool()
         self.id_card_data = bytearray(4096)
         self.storge_time_start = 0
@@ -181,9 +182,9 @@ class MainWindow(QMainWindow):
         self.initUI()
         self.center()
 
-    def _serialSendPack(self, *args, **kwargs):
+    def _serialSendPack(self, cmd_type, payload=None, device_id=0x13):
         try:
-            pack = self.dd.buildPack(0x13, self.getPackIndex(), *args, **kwargs)
+            pack = self.dd.buildPack(device_id, self.getPackIndex(), cmd_type, payload)
         except Exception:
             logger.error(f"build pack exception \n{stackprinter.format()}")
             raise
@@ -213,11 +214,13 @@ class MainWindow(QMainWindow):
         self._serialSendPack(0xDF)
 
     def _getStatus(self):
+        self.sample_fr_bt.setToolTip("")
         self._serialSendPack(0x07)
         self._getHeater()
         self._getDebuFlag()
         self._getDeviceID()
         self._serialSendPack(0xDC, (3,))
+        self._serialSendPack(0x92)
 
     def _setColor(self, wg, nbg=None, nfg=None):
         palette = wg.palette()
@@ -1592,6 +1595,15 @@ class MainWindow(QMainWindow):
             self.updateSampleLED(info)
         elif cmd_type == 0x35:
             self.updateStaryOffset(info)
+        elif cmd_type == 0x92:
+            payload = info.content[6:-1]
+            logger.info(f"get sample board version | {bytesPuttyPrint(payload)}")
+            v = ""
+            if len(payload) == 1:
+                v = f"BL v{payload[0]}"
+            elif len(payload) == 3:
+                v = f"APP v{payload[0]}.{payload[1]}.{payload[2]}"
+            self.sample_fr_bt.setToolTip(f"采集板软件版本 {v}")
 
     def onSerialSendWorkerResult(self, write_result):
         result, write_data, info = write_result
@@ -1661,6 +1673,29 @@ class MainWindow(QMainWindow):
             return
         elif write_data[5] == 0xD9:
             logger.info(f"ID卡信息包 | {write_result}")
+        elif write_data[5] == 0x91:
+            if result:
+                offset = struct.unpack("I", write_data[6:10])[0]
+                size = struct.unpack("B", write_data[10:11])[0]
+                total = struct.unpack("I", write_data[11:15])[0]
+                logger.debug(f"sample firmware upgrade pack | offset {offset} size {size} total {total}")
+                self.samplefr_wrote_size += size
+                self.upgsample_pr.setValue(int(self.samplefr_wrote_size * 100 / self.samplefr_size))
+                time_usage = time.time() - self.samplefr_start_time
+                if offset + size == total:
+                    title = f"采样板固件升级 结束 | {self.samplefr_wrote_size} / {self.samplefr_size} Byte | {time_usage:.2f} S"
+                    self.upgsample_dg_bt.setText("もう一回")
+                    self.upgsample_dg_bt.setEnabled(True)
+                    self.upgsample_dg_bt.setChecked(False)
+                else:
+                    title = f"采样板固件升级 中... | {self.samplefr_wrote_size} / {self.samplefr_size} Byte | {time_usage:.2f} S"
+                self.upgsample_dg.setWindowTitle(title)
+            else:
+                self.upgsample_dg_bt.setText("重试")
+                self.upgsample_dg_bt.setEnabled(True)
+                self.upgsample_dg_bt.setChecked(False)
+                self._clearTaskQueue()
+            return
         logger.info(f"other | {write_result}")
 
     def onSerialStatistic(self, info):
@@ -1793,7 +1828,7 @@ class MainWindow(QMainWindow):
         # self._serialSendPack(0xDC)
         self.upgbl_dg = QDialog(self)
         self.upgbl_dg.setWindowTitle("Bootloader升级")
-        self.upgbl_dg_ly = QVBoxLayout(self.upgbl_dg)
+        dg_ly = QVBoxLayout(self.upgbl_dg)
 
         upgbl_temp_ly = QHBoxLayout()
         upgbl_temp_ly.addWidget(QLabel("Bootloader路径"))
@@ -1804,7 +1839,7 @@ class MainWindow(QMainWindow):
         self.upgbl_dg_fb_bt = QPushButton("...")
         upgbl_temp_ly.addWidget(self.upgbl_dg_lb)
         upgbl_temp_ly.addWidget(self.upgbl_dg_fb_bt)
-        self.upgbl_dg_ly.addLayout(upgbl_temp_ly)
+        dg_ly.addLayout(upgbl_temp_ly)
         self.upgbl_dg_fb_bt.clicked.connect(self.onUpgBLDialogFileSelect)
 
         upgbl_temp_ly = QHBoxLayout()
@@ -1813,7 +1848,7 @@ class MainWindow(QMainWindow):
         upgbl_temp_ly.addWidget(self.upgbl_pr)
         self.upgbl_dg_bt = QPushButton("开始")
         upgbl_temp_ly.addWidget(self.upgbl_dg_bt)
-        self.upgbl_dg_ly.addLayout(upgbl_temp_ly)
+        dg_ly.addLayout(upgbl_temp_ly)
 
         self.upgbl_pr.setMaximum(100)
         self.upgbl_dg_bt.setCheckable(True)
@@ -1873,6 +1908,93 @@ class MainWindow(QMainWindow):
                 self.last_bl_path = file_path
                 self.upgbl_dg.setWindowTitle(f"Bootloader升级 | {self._getFileHash_SHA256(file_path)}")
                 self.bl_size = file_size
+
+    def onSampleFr(self, event):
+        # self._serialSendPack(0x0F)
+        # self._serialSendPack(0xDC)
+        self.upgsample_dg = QDialog(self)
+        self.upgsample_dg.setWindowTitle("采样板固件升级")
+        dg_ly = QVBoxLayout(self.upgsample_dg)
+
+        temp_ly = QHBoxLayout()
+        temp_ly.addWidget(QLabel("采样板固件路径"))
+        self.upgsample_dg_lb = QLineEdit()
+        if self.last_samplefr_path is not None and os.path.isfile(self.last_samplefr_path):
+            self.upgsample_dg_lb.setText(self.last_samplefr_path)
+            self.upgsample_dg.setWindowTitle(f"采样板固件升级 | {self._getFileHash_SHA256(self.last_samplefr_path)}")
+        self.upgbl_dg_fb_bt = QPushButton("...")
+        temp_ly.addWidget(self.upgsample_dg_lb)
+        temp_ly.addWidget(self.upgbl_dg_fb_bt)
+        dg_ly.addLayout(temp_ly)
+        self.upgbl_dg_fb_bt.clicked.connect(self.onUpgSampleDialogFileSelect)
+
+        temp_ly = QHBoxLayout()
+        self.upgsample_pr = QProgressBar(self)
+        temp_ly.addWidget(QLabel("进度"))
+        temp_ly.addWidget(self.upgsample_pr)
+        self.upgsample_dg_bt = QPushButton("开始")
+        temp_ly.addWidget(self.upgsample_dg_bt)
+        dg_ly.addLayout(temp_ly)
+
+        self.upgsample_pr.setMaximum(100)
+        self.upgsample_dg_bt.setCheckable(True)
+        self.upgsample_dg_bt.clicked.connect(self.onUpgSampleDialog)
+
+        self.upgsample_dg.resize(600, 75)
+        self.upgsample_dg = ModernDialog(self.upgsample_dg, self)
+        self.upgsample_dg.exec_()
+
+    def onUpgSampleDialog(self, event):
+        terminal = False
+        if event is True:
+            file_path = self.upgsample_dg_lb.text()
+            if file_path.startswith("http") and file_path.endswith("bin"):
+                if os.path.isfile("temp_sample.bin"):
+                    os.remove("temp_sample.bin")
+                try:
+                    resp = requests.get(file_path, timeout=10)
+                    if resp.status_code != 200:
+                        terminal = True
+                except Exception as e:
+                    self.upgsample_dg_lb.setText(f"url 处理异常 | {repr(e)}")
+                    terminal = True
+                if terminal:
+                    self.upgsample_dg_bt.setChecked(False)
+                    self.upgsample_dg.setWindowTitle("固件升级")
+                    return
+                file_path = "temp_sample.bin"
+                self.upgsample_dg_lb.setText(file_path)
+                with open("temp_sample.bin", "wb") as f:
+                    f.write(resp.content)
+            if os.path.isfile(file_path):
+                self.upgsample_dg_bt.setEnabled(False)
+                self.samplefr_wrote_size = 0
+                self.samplefr_start_time = time.time()
+                self._serialSendPack(0x90, device_id=0x46)
+                for pack in write_firmware_pack_SA(self.dd, file_path, chunk_size=224):
+                    self.task_queue.put(pack)
+            else:
+                logger.error(f"invalid file path | {file_path}")
+                self.upgsample_dg_bt.setChecked(False)
+                self.upgsample_dg_lb.setText("请输入有效路径")
+                self.upgsample_dg.setWindowTitle("采样板固件升级")
+        elif event is False:
+            self.upgsample_dg.close()
+
+    def onUpgSampleDialogFileSelect(self, event):
+        fd = QFileDialog()
+        file_path, _ = fd.getOpenFileName(filter="BIN 文件 (*.bin)")
+        if file_path:
+            file_size = os.path.getsize(file_path)
+            if file_size > 4 ** 16:
+                self.upgsample_dg_bt.setChecked(False)
+                self.upgsample_dg_lb.setText("文件大小超过128K")
+                self.upgsample_dg.setWindowTitle("采样板固件升级")
+            else:
+                self.upgsample_dg_lb.setText(file_path)
+                self.last_samplefr_path = file_path
+                self.upgsample_dg.setWindowTitle(f"采样板固件升级 | {self._getFileHash_SHA256(file_path)}")
+                self.samplefr_size = file_size
 
     def onReboot(self, event):
         self._serialSendPack(0xDC)
@@ -2982,7 +3104,8 @@ class MainWindow(QMainWindow):
         boot_ly.setContentsMargins(3, 3, 3, 3)
         boot_ly.setSpacing(0)
         self.upgrade_bt = QPushButton("固件", maximumWidth=50, clicked=self.onUpgrade)
-        self.bootload_bt = QPushButton("Bootloader", maximumWidth=75, clicked=self.onBootload)
+        self.bootload_bt = QPushButton("BL", maximumWidth=40, clicked=self.onBootload)
+        self.sample_fr_bt = QPushButton("采样板", maximumWidth=60, clicked=self.onSampleFr)
         self.reboot_bt = QPushButton("重启", maximumWidth=50, clicked=self.onReboot)
         self.selftest_bt = QPushButton("自检", maximumWidth=50)
         self.selftest_bt.mousePressEvent = self.onSelfCheck  # 区分鼠标按键
@@ -2991,6 +3114,7 @@ class MainWindow(QMainWindow):
         self.debugtest_cnt = 0
         boot_ly.addWidget(self.upgrade_bt)
         boot_ly.addWidget(self.bootload_bt)
+        boot_ly.addWidget(self.sample_fr_bt)
         boot_ly.addWidget(self.reboot_bt)
         boot_ly.addWidget(self.selftest_bt)
         boot_ly.addWidget(self.debugtest_bt)
