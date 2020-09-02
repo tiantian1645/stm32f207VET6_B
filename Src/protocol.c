@@ -1735,7 +1735,7 @@ static void protocol_Parse_Data_Fun_ISR(uint8_t * pInBuff, uint16_t length)
         case eComm_Data_Inbound_CMD_GET_VERSION:
         case eComm_Data_Inbound_CMD_BL_INSTR:
         case eComm_Data_Inbound_CMD_BL_DATA:
-            if (comm_Main_SendTask_Queue_GetWaiting_FromISR() >= 6) {                               /* 避免阻塞主串口发送队列 */
+            if (comm_Main_SendTask_Queue_GetWaiting_FromISR() < COMM_MAIN_SEND_QUEU_LENGTH - 6) {   /* 避免阻塞主串口发送队列 */
                 comm_Main_SendTask_QueueEmitWithBuild_FromISR(pInBuff[5], &pInBuff[6], length - 7); /* 构造数据包 */
                 comm_Out_SendTask_QueueEmitWithModify_FromISR(pInBuff + 6, length);                 /* 转发至外串口 */
             } else {
