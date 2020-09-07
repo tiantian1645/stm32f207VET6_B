@@ -502,6 +502,7 @@ class MainWindow(QMainWindow):
             if all(1170 <= F <= 1172 for i in check_info_list) and all(1800000 < i.A < 2800000 for i in check_info_list):
                 msg.setIcon(QMessageBox.Information)
                 msg.setWindowTitle("PD测试通过")
+                logger.success(f"PD测试通过 | {check_info_list}")
                 detail_text = f"PASS\n{msg_content}"
                 msg.setText(f"PASS\n{msg_content}")
                 self.self_test_pd_lb.setText("PD测试通过")
@@ -510,6 +511,7 @@ class MainWindow(QMainWindow):
             else:
                 msg.setIcon(QMessageBox.Critical)
                 msg.setWindowTitle("PD测试失败")
+                logger.error(f"PD测试失败 | {check_info_list}")
                 detail_text = f"FAIL\n{msg_content}"
                 msg.setText(f"FAIL\n{msg_content}")
                 self.self_test_pd_lb.setText("PD测试失败")
@@ -710,12 +712,13 @@ class MainWindow(QMainWindow):
         self.self_test_pd_lb.setText("测试结果")
         self.self_test_pd_lb.setStyleSheet("background-color : white; color : #3d3d3d;")
 
-    def on_selftest_clr_plot(self, event):
+    def on_selftest_clr_plot(self, event=None):
         self.pd_plot_graph.clear_plot()
         for i in range(6):
             self.pd_plot_graph.plot_data_new(name=f"CH-{i + 1}")
 
     def on_selftest_all_test(self, event):
+        self.on_selftest_clr_plot()
         self.selftest_temp_env_lb.setText("**.**")
         self.on_led_set()
         self._clear_widget_style_sheet(self.selftest_temp_env_gb)
