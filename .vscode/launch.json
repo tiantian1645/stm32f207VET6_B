@@ -1,0 +1,20 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+  {
+    "name": "Cortex Debug",
+    "cwd": "${workspaceRoot}",
+    "executable": "${workspaceRoot}/Debug/${workspaceFolderBasename}.elf",
+    "request": "launch",
+    "type": "cortex-debug",
+    "device": "STM32F207VE", //使用J-link GDB Server时必须有；其他GBD Server时可选（有可能帮助自动选择SVD文件）。支持的设备见 https://www.segger.com/downloads/supported-devices.php
+    "svdFile": "${workspaceRoot}/STM32F20x.svd", //svd文件，有这个文件才能查看寄存器的值，每个单片机都不同。可以在以下地址找到 https://github.com/posborne/cmsis-svd
+    "interface": "swd",
+    "servertype": "jlink", //使用的GDB Server
+    "configFiles": [],
+    "preLaunchTask": "build",
+    "rtos": "FreeRTOS",
+    "showDevDebugOutput": false,
+    "runToMain": true
+  }]
+}
