@@ -371,10 +371,10 @@ eTrayState tray_Motor_Init(void)
         do {
             vTaskDelay(100);
         } while (TRAY_MOTOR_IS_OPT_1 && xTaskGetTickCount() - xTick < 5000);
-        if (TRAY_MOTOR_IS_BUSY){
-			vTaskDelay(100);
-			tray_Motor_Brake(); /* 刹车 */
-			vTaskDelay(100);
+        if (TRAY_MOTOR_IS_BUSY) {
+            vTaskDelay(100);
+            tray_Motor_Brake(); /* 刹车 */
+            vTaskDelay(100);
         }
     }
     if (TRAY_MOTOR_IS_FLAG) {
@@ -420,6 +420,7 @@ void tray_Motor_Calculate(uint32_t target_step)
 eTrayState tray_Move_By_Index(eTrayIndex index, uint32_t timeout)
 {
     eTrayState result;
+    int32_t position;
 
     motor_CMD_Info_Set_PF_Enter(&gTray_Motor_Run_CMD_Info, tray_Motor_Enter); /* 配置启动前回调 */
     motor_CMD_Info_Set_Tiemout(&gTray_Motor_Run_CMD_Info, timeout);           /* 运动超时时间 */
@@ -443,7 +444,17 @@ eTrayState tray_Move_By_Index(eTrayIndex index, uint32_t timeout)
         default:
             return eTrayState_Error;
     }
-    result = tray_Motor_Run(); /* 执行电机运动 */
+    result = tray_Motor_Run();                                                                    /* 执行电机运动 */
+    if (result == eTrayState_OK && index == eTrayIndex_2) {                                       /* 出仓执行正常 */
+        position = motor_Status_Get_Position(&gTray_Motor_Run_Status);                            /* 位置检查 */
+        if (position < 6000) {                                                                    /* 位置异常 */
+            error_Emit(eError_Tray_Motor_POS2_Error);                                             /* 上报异常 */
+            tray_Motor_Calculate((index >> 5) << 3);                                              /* 计算运动距离 及方向 32细分转8细分 */
+            motor_CMD_Info_Set_PF_Leave(&gTray_Motor_Run_CMD_Info, tray_Motor_Leave_On_Busy_Bit); /* 等待驱动状态位空闲 */
+            result = tray_Motor_Run();                                                            /* 执行电机运动 */
+            return eTrayState_Error;
+        }
+    }
     return result;
 }
 

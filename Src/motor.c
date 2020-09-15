@@ -611,7 +611,9 @@ uint8_t motor_Emit_FromISR(sMotor_Fun * pFun_type)
  */
 static void motor_Tray_Move_By_Index(eTrayIndex index)
 {
-    uint8_t buffer[8], flag = 0;
+    uint8_t buffer[8], flag = 0, opt = 2;
+
+    opt = TRAY_MOTOR_IS_OPT_1; /* 加热体未抬起就读取光耦状态 以免抬起后光耦发生变化 */
 
     if (heat_Motor_Position_Is_Up() == 0) {
         flag = 1; /* 上加热体电机处于砸下状态 */
@@ -638,13 +640,13 @@ static void motor_Tray_Move_By_Index(eTrayIndex index)
     }
 
     /* 托盘保持力矩不足 托盘容易位置会发生变化 实际位置与驱动记录位置不匹配 每次移动托盘电机必须重置 */
-    if ((index == eTrayIndex_0 && TRAY_MOTOR_IS_OPT_1 == 0)                        /* 从光耦外回到原点 */
-        || (index == eTrayIndex_2 && TRAY_MOTOR_IS_OPT_1 && flag)) {               /* 或者 起点时上加热体砸下 从光耦处离开 */
-    } else if ((index == eTrayIndex_1 && flag == 0 && TRAY_MOTOR_IS_OPT_1 == 0)) { /* 从出仓位移动到扫码位置 */
-        if (tray_Motor_Scan_Reverse_Get()) {                                       /* 侦测到出仓后托盘位移 */
-            tray_Motor_Scan_Reverse_Clear();                                       /* 清除标志位 */
-            tray_Move_By_Index(eTrayIndex_0, 5000);                                /* 复归到原点 */
-            tray_Move_By_Index(eTrayIndex_2, 5000);                                /* 出仓 */
+    if ((index == eTrayIndex_0 && opt == 0)                        /* 从光耦外回到原点 */
+        || (index == eTrayIndex_2 && opt && flag)) {               /* 或者 起点时上加热体砸下 从光耦处离开 */
+    } else if ((index == eTrayIndex_1 && flag == 0 && opt == 0)) { /* 从出仓位移动到扫码位置 */
+        if (tray_Motor_Scan_Reverse_Get()) {                       /* 侦测到出仓后托盘位移 */
+            tray_Motor_Scan_Reverse_Clear();                       /* 清除标志位 */
+            tray_Move_By_Index(eTrayIndex_0, 5000);                /* 复归到原点 */
+            tray_Move_By_Index(eTrayIndex_2, 5000);                /* 出仓 */
         }
         if (tray_Move_By_Index(eTrayIndex_1, 5000) != eTrayState_OK) {                            /* 运动托盘电机 */
             buffer[0] = 0x00;                                                                     /* 托盘电机运动失败 */

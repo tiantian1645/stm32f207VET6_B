@@ -46,6 +46,7 @@ typedef enum {
     eError_Tray_ID_Code_Card_Out = 121,   /* ID Code 卡拔出 */
     eError_Sample_Initiative_Break = 122, /* 主动打断测试 */
     eError_Sample_Normailly_Exit = 123,   /* 正常退出测试 */
+    eError_Tray_Motor_POS2_Error = 124,   /* 出仓位置异常 */
 
     /* 执行异常 */
     eError_Motor_Heater_Timeout_Up = 200,             /* 上加热体电机运动超时 上升方向 */
