@@ -84,12 +84,18 @@ typedef enum {
     eError_Stary_Incomlete = 232,                     /* 杂散光测试未完成 */
     eError_Stary_Doing = 233,                         /* 杂散光测试中 */
     eError_Temp_BTM_Stable_Timeout = 234,             /* 等待下加热体温度稳定超时 */
-    eError_Temp_BTM_Stable_Waiting = 235,             /* 等待下加热体温度稳定中 */
     eError_Comm_Main_Source_Lock = 236,               /* 主串口资源被锁 */
+    eError_Temp_BTM_Stable_Waiting = 235,             /* 等待下加热体温度稳定中 */
     eError_Comm_Out_Source_Lock = 237,                /* 外串口资源被锁 */
     eError_Comm_Data_Source_Lock = 238,               /* 采样板串口资源被锁 */
     eError_Correct_Info_Lost = 239,                   /* 定标信息不足 */
     eError_Sample_Out_Of_Range = 240,                 /* 超出最大采样轮次 */
+    eError_LED_Correct_Out_Of_Range_610 = 241,        /* 校正 610 LED 时电压越限 */
+    eError_LED_Correct_Out_Of_Range_550 = 242,        /* 校正 550 LED 时电压越限 */
+    eError_LED_Correct_Out_Of_Range_405 = 243,        /* 校正 405 LED 时电压越限 */
+    eError_LED_Correct_Max_Retry_610 = 244,           /* 校正 610 LED 时达到最大尝试次数 */
+    eError_LED_Correct_Max_Retry_550 = 245,           /* 校正 550 LED 时达到最大尝试次数 */
+    eError_LED_Correct_Max_Retry_405 = 246,           /* 校正 405 LED 时达到最大尝试次数 */
 
     /* 周期性上送异常 */
     eError_Temperature_Top_Abnormal = 300, /* 上加热体温度异常 */

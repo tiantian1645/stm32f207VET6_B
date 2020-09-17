@@ -24,6 +24,7 @@ typedef enum {
     eLED_Mode_Kirakira_Green,
     eLED_Mode_Keep_Red,
     eLED_Mode_Kirakira_Red,
+    eLED_Mode_Red_Green,
 } eLED_Mode;
 
 /* Exported constants --------------------------------------------------------*/

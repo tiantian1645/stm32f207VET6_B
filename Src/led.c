@@ -156,6 +156,15 @@ void led_Out_Deal(TickType_t inTick)
                 led_Out_D1_D2_Set(eLED_OUT_D1_D2_Index_RR);
             }
             break;
+        case eLED_Mode_Red_Green:
+            if (inTick % 1000 < 300) {
+                led_Out_D1_D2_Set(eLED_OUT_D1_D2_Index_RR);
+            } else if (inTick % 1000 < 600) {
+                led_Out_D1_D2_Set(eLED_OUT_D1_D2_Index_YY);
+            } else {
+                led_Out_D1_D2_Set(eLED_OUT_D1_D2_Index_GG);
+            }
+            break;
         default:
             led_Mode_Set(eLED_Mode_Keep_Green);
             led_Out_D1_D2_Set(eLED_OUT_D1_D2_Index_GG);

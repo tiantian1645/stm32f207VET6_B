@@ -287,9 +287,9 @@ def dump_correct_record(correct_list, file_path):
         wb.add_named_style(EVEN_STYLE)
         wb.add_named_style(CC_STYLE)
         wb.add_named_style(OO_STYLE)
-        sheet_610 = wb.create_sheet(f"610")
-        sheet_550 = wb.create_sheet(f"550")
-        sheet_405 = wb.create_sheet(f"405")
+        sheet_610 = wb.create_sheet("610")
+        sheet_550 = wb.create_sheet("550")
+        sheet_405 = wb.create_sheet("405")
 
         for i in range(36):
             n = ord("C") - ord("A") + i + 1

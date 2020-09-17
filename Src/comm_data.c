@@ -553,7 +553,7 @@ eComm_Data_Sample_Radiant gComm_Data_SelfCheck_PD_Flag_Get(void)
 uint8_t comm_Data_Get_LED_Voltage()
 {
     comm_Data_Conf_LED_Voltage_Get();
-    vTaskDelay(600);
+    vTaskDelay(300);
     return 0;
 }
 
@@ -784,7 +784,7 @@ uint8_t comm_Data_Check_LED(eComm_Data_Sample_Radiant radiant, uint16_t dac, uin
         }
     }
 
-    if (last_bias_1300 == 0x80000000) { /* 首次进入 */
+    if (idx == 0) { /* 首次进入 */
         if (bias_1300 < 0) {
             sign = 1;
         } else {
@@ -818,12 +818,13 @@ uint8_t comm_Data_Check_LED(eComm_Data_Sample_Radiant radiant, uint16_t dac, uin
     } else if (idx >= 2) {
         cal_inter =
             (gComm_Data_LED_SP_Record[2].adc_avg - gComm_Data_LED_SP_Record[1].adc_avg) / (gComm_Data_LED_SP_Record[2].dac - gComm_Data_LED_SP_Record[1].dac);
-        if ((14000000 + gComm_Data_LED_SP_Record[2].adc_avg) > (13000000 + max)) {
+        if ((14500000 + gComm_Data_LED_SP_Record[2].adc_avg) > (13000000 + max)) {
             cal_inter = (13000000.0 - gComm_Data_LED_SP_Record[2].adc_avg) / cal_inter;
         } else {
-            cal_inter = (14000000.0 - max) / cal_inter;
+            cal_inter = (14500000.0 - max) / cal_inter;
         }
 
+        cal_inter *= 0.9;
         cal_inter += (cal_inter > 0) ? (0.5) : (-0.5);
 
         if (fabs(cal_inter) > 2) {

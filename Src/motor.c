@@ -1164,8 +1164,8 @@ static void motor_Task(void * argument)
                 motor_Self_Check_Motor_White(buffer);
                 motor_Self_Check_Motor_Heater(buffer);
                 motor_Self_Check_Motor_Scan(buffer);
-                motor_Self_Check_Scan(buffer);
                 motor_Tray_Move_By_Index(eTrayIndex_0); /* 入仓 */
+                motor_Self_Check_Scan(buffer);
                 if (TRAY_MOTOR_IS_OPT_1) {
                     heat_Motor_Down();
                 }
@@ -1287,6 +1287,7 @@ static void motor_Task(void * argument)
             case eMotor_Fun_SP_LED:
                 xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0);                                                    /* 清空通知 */
                 comm_Data_Get_LED_Voltage();                                                                         /* 获取采样板LED电压配置 */
+                led_Mode_Set(eLED_Mode_Red_Green);                                                                   /* 红绿交替 */
                 for (radiant = eComm_Data_Sample_Radiant_610; radiant <= eComm_Data_Sample_Radiant_405; ++radiant) { /* 逐个波长校正 */
                     switch (radiant) {
                         case eComm_Data_Sample_Radiant_610:
@@ -1318,15 +1319,23 @@ static void motor_Task(void * argument)
                         comm_Data_Wait_Data((radiant != eComm_Data_Sample_Radiant_405) ? (0x3F) : (0x01), 1200); /* 等待采样结果上送 */
                         stage = comm_Data_Check_LED(radiant, cnt, i);                                            /* 检查采样值 */
                         cnt += gComm_Data_LED_Voltage_Interval_Get();                                            /* 回退电压值 */
-                        comm_Data_Set_LED_Voltage(radiant, cnt);                                                 /* 调整电压值 */
-                        if (stage == 0) {                                                                        /* 合格即跳出 */
+                        if (cnt > 1200) {                                                                        /* 电压越限 */
+                            error_Emit(eError_LED_Correct_Out_Of_Range_610 + radiant - eComm_Data_Sample_Radiant_610);
                             break;
                         }
-                        vTaskDelay(300); /* 等待 */
+                        comm_Data_Set_LED_Voltage(radiant, cnt); /* 调整电压值 */
+                        if (stage == 0) {                        /* 合格即跳出 */
+                            break;
+                        }
+                        if (i == 20 - 1) {
+                            error_Emit(eError_LED_Correct_Max_Retry_610 + radiant - eComm_Data_Sample_Radiant_610);
+                        }
+                        comm_Data_Get_LED_Voltage(); /* 获取采样板LED电压配置 */
                     }
                 }
                 motor_Tray_Move_By_Index(eTrayIndex_2); /* 出仓 */
                 gComm_Data_SP_LED_Flag_Clr();           /* 清除校正采样板LED电压状态 */
+                led_Mode_Set(eLED_Mode_Keep_Green);     /* LED 绿灯常亮 */
                 break;
             default:
                 break;
@@ -1453,8 +1462,6 @@ static void motor_Self_Check_Motor_Scan(uint8_t * pBuffer)
  */
 static void motor_Self_Check_Scan(uint8_t * pBuffer)
 {
-    heat_Motor_Up();                                                                 /* 抬起上加热体*/
-    tray_Move_By_Index(eTrayIndex_1, 3000);                                          /* 扫码位置 */
     pBuffer[0] = eMotor_Fun_Self_Check_Scan - eMotor_Fun_Self_Check_Motor_White + 6; /* 自检测试 单项 扫码头 */
     barcode_Motor_Run_By_Index(eBarcodeIndex_0);                                     /* 移动到初始位置 */
     pBuffer[1] = barcode_Read_From_Serial(pBuffer + 2, pBuffer + 3, 10, 1000);       /* 读取扫码结果 长度为10 */

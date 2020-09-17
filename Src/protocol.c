@@ -29,6 +29,11 @@ extern TIM_HandleTypeDef htim4;
 /* Private includes ----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
+#define SELF_CHECK_BTM_MAX 38
+#define SELF_CHECK_BTM_MIN 36
+
+#define SELF_CHECK_TOP_MAX 38
+#define SELF_CHECK_TOP_MIN 36
 
 /* Private typedef -----------------------------------------------------------*/
 typedef struct {
@@ -650,9 +655,9 @@ void protocol_Self_Check_Temp_TOP(uint8_t * pBuffer, eProtocol_COMM_Index idx)
     temp = temp_Get_Temp_Data_TOP(); /* 读取温度值 */
     if (temp == TEMP_INVALID_DATA) { /* 排除无效值 */
         result = 1;
-    } else if (temp > 37.3) { /* 温度过高 */
+    } else if (temp > SELF_CHECK_TOP_MAX) { /* 温度过高 */
         result = 2;
-    } else if (temp < 36.7) { /* 温度过低 */
+    } else if (temp < SELF_CHECK_TOP_MIN) { /* 温度过低 */
         result = 3;
     } else {
         result = 0; /* 正常范围 */
@@ -685,9 +690,9 @@ void protocol_Self_Check_Temp_TOP_FromISR(uint8_t * pBuffer, eProtocol_COMM_Inde
     temp = temp_Get_Temp_Data_TOP(); /* 读取温度值 */
     if (temp == TEMP_INVALID_DATA) { /* 排除无效值 */
         result = 1;
-    } else if (temp > 37.3) { /* 温度过高 */
+    } else if (temp > SELF_CHECK_TOP_MAX) { /* 温度过高 */
         result = 2;
-    } else if (temp < 36.7) { /* 温度过低 */
+    } else if (temp < SELF_CHECK_TOP_MIN) { /* 温度过低 */
         result = 3;
     } else {
         result = 0; /* 正常范围 */
@@ -720,9 +725,9 @@ void protocol_Self_Check_Temp_BTM(uint8_t * pBuffer, eProtocol_COMM_Index idx)
     temp = temp_Get_Temp_Data_BTM(); /* 读取温度值 */
     if (temp == TEMP_INVALID_DATA) { /* 排除无效值 */
         result = 1;
-    } else if (temp > 37.3) { /* 温度过高 */
+    } else if (temp > SELF_CHECK_BTM_MAX) { /* 温度过高 */
         result = 2;
-    } else if (temp < 36.7) { /* 温度过低 */
+    } else if (temp < SELF_CHECK_BTM_MIN) { /* 温度过低 */
         result = 3;
     } else {
         result = 0; /* 正常范围 */
@@ -755,9 +760,9 @@ void protocol_Self_Check_Temp_BTM_FromISR(uint8_t * pBuffer, eProtocol_COMM_Inde
     temp = temp_Get_Temp_Data_BTM(); /* 读取温度值 */
     if (temp == TEMP_INVALID_DATA) { /* 排除无效值 */
         result = 1;
-    } else if (temp > 37.3) { /* 温度过高 */
+    } else if (temp > SELF_CHECK_BTM_MAX) { /* 温度过高 */
         result = 2;
-    } else if (temp < 36.7) { /* 温度过低 */
+    } else if (temp < SELF_CHECK_BTM_MIN) { /* 温度过低 */
         result = 3;
     } else {
         result = 0; /* 正常范围 */
