@@ -1,6 +1,4 @@
 {
-  "python.pythonPath": "C:\\Program Files\\Python37\\python.exe",
-  // "python.pythonPath": "Tools\\venv32\\Scripts\\python.exe",
   "python.linting.flake8Enabled": true,
   "python.linting.enabled": true,
   "python.linting.flake8Args": ["--ignore=E24,W504,E203, W503", "--verbose", "--max-line-length=160"],
