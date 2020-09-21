@@ -456,7 +456,9 @@ static uint8_t motor_Sample_Deal(uint8_t normal_report)
             }
         }
     }
-    error_Emit(eError_Sample_Out_Of_Range); /* 超出最大轮次 */
+    if (gComm_Data_Sample_Max_Point_Get() > 0) {
+        error_Emit(eError_Sample_Out_Of_Range); /* 超出最大轮次 */
+    }
     return 3;
 }
 

@@ -1381,8 +1381,10 @@ BaseType_t comm_Data_Start_Stary_Test(void)
     sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_STRAY, pData, 0); /* 构造杂散光测试包 */
     pData[3] = (uint8_t)(temp_Random_Generate());                                      /* 随机帧号 */
     pData[3] = (pData[3] == 0) ? (0xA5) : (pData[3]);                                  /* 排除零值 */
-    comm_Data_Stary_Test_Mark();                                                       /* 标记杂散光测试开始 */
-    return comm_Data_SendTask_QueueEmit(pData, sendLength, 50);
+    comm_Data_Stary_Test_Mark();                                                       /* 先行标记杂散光测试开始 */
+    if (comm_Data_SendTask_QueueEmit(pData, sendLength, 50) != pdPASS) {               /* 加入队列失败 */
+        comm_Data_Stary_Test_Clear();                                                  /* 清除标记 */
+    }
 }
 
 /**
