@@ -124,6 +124,7 @@ class DC201ErrorCode(Enum):
     eError_Comm_Out_Resend_1 = (6, "采样板串口第一次发送无回应")
     eError_Comm_Out_Resend_2 = (7, "采样板串口第二次发送无回应")
     eError_Fan_Lost_Speed = (8, "风扇转速过低")
+    eError_SP_LED_Success = (9, "采集板LED电压校正通过")
     eError_Motor_Task_Busy = (100, "电机任务忙")
     eError_Motor_Notify_No_Read = (101, "电机任务通知不能读")
     eError_Storge_Task_Busy = (102, "存储任务忙")

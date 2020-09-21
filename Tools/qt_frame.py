@@ -2911,16 +2911,22 @@ class MainWindow(QMainWindow):
         start = struct.unpack("H", raw_pack[6:8])[0]
         num = struct.unpack("H", raw_pack[8:10])[0]
         logger.debug(f"param pack | start {start} | num {num} | raw_pack_len {len(raw_pack)}")
-        for i in range(num):
-            idx = start + i
-            if idx < len(self.out_flash_param_temp_sps):
-                value = struct.unpack("f", raw_pack[10 + i * 4 : 14 + i * 4])[0] * -1
-                sp = self.out_flash_param_temp_sps[idx]
-            else:
-                value = struct.unpack("I", raw_pack[10 + i * 4 : 14 + i * 4])[0]
-                sp = self.out_flash_param_cc_sps[idx - len(self.out_flash_param_temp_sps)]
-            sp.setValue(value)
-            self._setColor(sp)
+        if start < 0x5000:
+            for i in range(num):
+                idx = start + i
+                if idx < len(self.out_flash_param_temp_sps):
+                    value = struct.unpack("f", raw_pack[10 + i * 4 : 14 + i * 4])[0] * -1
+                    sp = self.out_flash_param_temp_sps[idx]
+                else:
+                    value = struct.unpack("I", raw_pack[10 + i * 4 : 14 + i * 4])[0]
+                    sp = self.out_flash_param_cc_sps[idx - len(self.out_flash_param_temp_sps)]
+                sp.setValue(value)
+                self._setColor(sp)
+        elif start == 0x5000:
+            sample_led_pd_buffer = struct.unpack("I" * 18, raw_pack[10:82])
+            sample_led_dac_buffer = struct.unpack("H" * 3, raw_pack[82:88])
+            logger.info(f"采集板 LED 白板 PD 值 | {sample_led_pd_buffer}")
+            logger.info(f"采集板 LED 电压值 值 | {sample_led_dac_buffer}")
 
     def genBinaryData(self, data, unit=32, offset=0):
         result = []

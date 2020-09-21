@@ -21,6 +21,8 @@ typedef enum {
     eStorgeNotifyConf_Test_ID_Card = 0x00000200,
     eStorgeNotifyConf_Test_All = 0x00000400,
     eStorgeNotifyConf_Dump_Correct = 0x00000800,
+    eStorgeNotifyConf_Load_Sample_LED = 0x00001000,
+    eStorgeNotifyConf_Dump_Sample_LED = 0x00002000,
     eStorgeNotifyConf_COMM_Out = 0x10000000,
     eStorgeNotifyConf_COMM_Main = 0x20000000,
 } eStorgeNotifyConf;
@@ -436,6 +438,8 @@ uint8_t stroge_Conf_CC_O_Data(uint8_t * pBuffer);
 uint8_t stroge_Conf_CC_O_Data_From_B3(uint8_t * pBuffer, uint8_t length);
 eStorgeParamIndex storge_Param_Illumine_CC_Get_Index(uint8_t channel, eComm_Data_Sample_Radiant wave);
 void storge_Param_Illumine_CC_Set_Single(eStorgeParamIndex idx, uint32_t data);
+
+void storge_Sample_LED_PD_Set(eComm_Data_Sample_Radiant radian, uint8_t idx, uint32_t pd_data, uint16_t dac);
 
 void gStorgeIllumineCnt_Clr(void);
 uint8_t gStorgeIllumineCnt_Check(uint8_t target);

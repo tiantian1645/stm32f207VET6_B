@@ -19,6 +19,7 @@
 #include "white_motor.h"
 #include "sample.h"
 #include "heater.h"
+#include "storge_task.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern UART_HandleTypeDef huart2;
@@ -728,6 +729,7 @@ uint8_t comm_Data_Check_LED(eComm_Data_Sample_Radiant radiant, uint16_t dac, uin
             continue;
         }
         temp_32 = sums[i] / gComm_Data_Samples[i].num;
+        storge_Sample_LED_PD_Set(radiant, i, temp_32, dac);
         if (temp_32 == 0) {
             continue;
         }
@@ -763,7 +765,7 @@ uint8_t comm_Data_Check_LED(eComm_Data_Sample_Radiant radiant, uint16_t dac, uin
     }
 
     bias_1300 = bias_1300 / j;
-    if (max >= 14500000) { /* 最大值越限 */
+    if (max >= 14000000) { /* 最大值越限 */
         sign = gComm_Data_LED_Voltage_Interval_Get() / 2;
         if (sign == 0) {
             gComm_Data_LED_Voltage_Interval_Set(-1);
@@ -818,10 +820,10 @@ uint8_t comm_Data_Check_LED(eComm_Data_Sample_Radiant radiant, uint16_t dac, uin
     } else if (idx >= 2) {
         cal_inter =
             (gComm_Data_LED_SP_Record[2].adc_avg - gComm_Data_LED_SP_Record[1].adc_avg) / (gComm_Data_LED_SP_Record[2].dac - gComm_Data_LED_SP_Record[1].dac);
-        if ((14500000 + gComm_Data_LED_SP_Record[2].adc_avg) > (13000000 + max)) {
+        if ((14000000 + gComm_Data_LED_SP_Record[2].adc_avg) > (13000000 + max)) {
             cal_inter = (13000000.0 - gComm_Data_LED_SP_Record[2].adc_avg) / cal_inter;
         } else {
-            cal_inter = (14500000.0 - max) / cal_inter;
+            cal_inter = (14000000.0 - max) / cal_inter;
         }
 
         cal_inter *= 0.9;

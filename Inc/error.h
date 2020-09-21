@@ -20,6 +20,7 @@ typedef enum {
     eError_Comm_Out_Resend_1 = 6,  /* 采样板串口第一次发送无回应 */
     eError_Comm_Out_Resend_2 = 7,  /* 采样板串口第二次发送无回应 */
     eError_Fan_Lost_Speed = 8,     /* 风扇转速过低 */
+	eError_SP_LED_Success = 9,     /* 采集板电压校正通过 */
 
     /* 提示类信息 */
     eError_Motor_Task_Busy = 100,         /* 电机任务忙 */

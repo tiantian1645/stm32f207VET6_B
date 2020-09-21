@@ -26,12 +26,14 @@
 #define STORGE_DEAL_MASK                                                                                                                                       \
     (eStorgeNotifyConf_Read_Flash + eStorgeNotifyConf_Write_Flash + eStorgeNotifyConf_Read_Parmas + eStorgeNotifyConf_Write_Parmas +                           \
      eStorgeNotifyConf_Load_Parmas + eStorgeNotifyConf_Dump_Params + eStorgeNotifyConf_Read_ID_Card + eStorgeNotifyConf_Write_ID_Card +                        \
-     eStorgeNotifyConf_Test_Flash + eStorgeNotifyConf_Test_ID_Card + eStorgeNotifyConf_Test_All + eStorgeNotifyConf_Dump_Correct)
+     eStorgeNotifyConf_Test_Flash + eStorgeNotifyConf_Test_ID_Card + eStorgeNotifyConf_Test_All + eStorgeNotifyConf_Dump_Correct +                             \
+     eStorgeNotifyConf_Load_Sample_LED + eStorgeNotifyConf_Dump_Sample_LED)
 
 #define STORGE_APP_PARAMS_ADDR (0x1000) /* Sector 1 */
 #define STORGE_APP_CREDEG_ADDR (0x2000) /* Sector 2 */
 #define STORGE_APP_CREDEG_ADDR_405 ((STORGE_APP_CREDEG_ADDR) + 8640)
-#define STORGE_APP_APRAM_PART_NUM (56) /* 单次操作最大数目 */
+#define STORGE_APP_SAPLED_ADDR (0x5000) /* LED校正结果白板PD值 */
+#define STORGE_APP_APRAM_PART_NUM (56)  /* 单次操作最大数目 */
 /* Private typedef -----------------------------------------------------------*/
 typedef struct {
     uint32_t addr;                   /* 操作地址 */
@@ -58,6 +60,8 @@ static uint8_t gStorgeTaskInfoLock = 0;
 static sStorgeParamInfo gStorgeParamInfo;
 static uint8_t gStorgeIllumineCnt = 0;
 static sStorgeCorrectInfo gStorgeFlashCorrectBuffer[6] = {0};
+static uint32_t gStorgeFlashSample_LED_PD_Buffer[18] = {0};
+static uint16_t gStorgeFlashSample_LED_DAC_Buffer[3] = {0};
 
 /* Private function prototypes -----------------------------------------------*/
 static void storgeTask(void * argument);
@@ -532,6 +536,42 @@ static void storgeTask(void * argument)
                             storgeOutFlashWriteErrorHandle();
                         }
                     }
+                }
+                break;
+            case eStorgeNotifyConf_Load_Sample_LED:
+                readCnt = spi_FlashReadBuffer(STORGE_APP_SAPLED_ADDR, (uint8_t *)gStorgeFlashSample_LED_PD_Buffer, sizeof(gStorgeFlashSample_LED_PD_Buffer));
+                if (readCnt != sizeof(gStorgeFlashSample_LED_PD_Buffer)) {
+                    storgeOutFlashReadErrorHandle();
+                }
+                readCnt = spi_FlashReadBuffer(STORGE_APP_SAPLED_ADDR + sizeof(gStorgeFlashSample_LED_PD_Buffer), (uint8_t *)gStorgeFlashSample_LED_DAC_Buffer,
+                                              sizeof(gStorgeFlashSample_LED_DAC_Buffer));
+                if (readCnt != sizeof(gStorgeFlashSample_LED_DAC_Buffer)) {
+                    storgeOutFlashReadErrorHandle();
+                }
+                length = sizeof(gStorgeFlashSample_LED_PD_Buffer) + sizeof(gStorgeFlashSample_LED_DAC_Buffer);
+                memcpy(buff + 4, (uint8_t *)gStorgeFlashSample_LED_PD_Buffer, sizeof(gStorgeFlashSample_LED_PD_Buffer));
+                memcpy(buff + 4 + sizeof(gStorgeFlashSample_LED_PD_Buffer), (uint8_t *)gStorgeFlashSample_LED_DAC_Buffer,
+                       sizeof(gStorgeFlashSample_LED_DAC_Buffer));
+                buff[0] = (uint8_t)(STORGE_APP_SAPLED_ADDR);
+                buff[1] = STORGE_APP_SAPLED_ADDR >> 8;
+                buff[2] = length >> 0;
+                buff[3] = length >> 8;
+                if (ulNotifyValue & eStorgeNotifyConf_COMM_Out) {
+                    xResult = comm_Out_SendTask_QueueEmitWithBuildCover(0xDD, buff, length + 4);
+                    if (xResult != pdPASS) {
+                        break;
+                    }
+                }
+                break;
+            case eStorgeNotifyConf_Dump_Sample_LED:
+                wroteCnt = spi_FlashWriteBuffer(STORGE_APP_SAPLED_ADDR, (uint8_t *)gStorgeFlashSample_LED_PD_Buffer, sizeof(gStorgeFlashSample_LED_PD_Buffer));
+                if (wroteCnt != sizeof(gStorgeFlashSample_LED_PD_Buffer)) {
+                    storgeOutFlashWriteErrorHandle();
+                }
+                wroteCnt = spi_FlashWriteBuffer(STORGE_APP_SAPLED_ADDR + sizeof(gStorgeFlashSample_LED_PD_Buffer), (uint8_t *)gStorgeFlashSample_LED_DAC_Buffer,
+                                                sizeof(gStorgeFlashSample_LED_DAC_Buffer));
+                if (wroteCnt != sizeof(gStorgeFlashSample_LED_DAC_Buffer)) {
+                    storgeOutFlashWriteErrorHandle();
                 }
                 break;
             default:
@@ -1053,4 +1093,33 @@ uint8_t stroge_Conf_CC_O_Data_From_B3(uint8_t * pBuffer, uint8_t length)
     gStorgeFlashCorrectBuffer[pBuffer[1] - 1].num = length;
     memcpy(gStorgeFlashCorrectBuffer[pBuffer[1] - 1].buffer, pBuffer + 2, length);
     return result;
+}
+
+/**
+ * @brief  采集板LED电压校正数据缓存
+ * @note   只修改内存数据
+ * @param  radian  波长
+ * @param  idx 通道
+ * @param  pd_data 白板PD值
+ * @param  dac LED电压值
+ * @retval None
+ */
+void storge_Sample_LED_PD_Set(eComm_Data_Sample_Radiant radian, uint8_t idx, uint32_t pd_data, uint16_t dac)
+{
+    switch (radian) {
+        case eComm_Data_Sample_Radiant_610:
+            gStorgeFlashSample_LED_PD_Buffer[6 * 0 + idx] = pd_data;
+            gStorgeFlashSample_LED_DAC_Buffer[0] = dac;
+            break;
+        case eComm_Data_Sample_Radiant_550:
+            gStorgeFlashSample_LED_PD_Buffer[6 * 1 + idx] = pd_data;
+            gStorgeFlashSample_LED_DAC_Buffer[1] = dac;
+            break;
+        case eComm_Data_Sample_Radiant_405:
+            gStorgeFlashSample_LED_PD_Buffer[6 * 2 + idx] = pd_data;
+            gStorgeFlashSample_LED_DAC_Buffer[2] = dac;
+            break;
+        default:
+            break;
+    }
 }

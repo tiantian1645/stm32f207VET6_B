@@ -904,7 +904,7 @@ static void motor_Task(void * argument)
     BaseType_t xResult = pdFALSE;
     uint32_t xNotifyValue, cnt = 0;
     sMotor_Fun mf;
-    uint8_t buffer[64], stage;
+    uint8_t buffer[64], stage, error;
     TickType_t xTick;
     eComm_Data_Sample_Radiant radiant = eComm_Data_Sample_Radiant_610;
 
@@ -1296,8 +1296,10 @@ static void motor_Task(void * argument)
                 gComm_Data_Lamp_BP_Flag_Clr();          /* 清除灯BP状态 */
                 break;
             case eMotor_Fun_SP_LED:
+                error = 0;
                 xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0);                                                    /* 清空通知 */
                 comm_Data_Get_LED_Voltage();                                                                         /* 获取采样板LED电压配置 */
+                storgeTaskNotification(eStorgeNotifyConf_Load_Sample_LED, eComm_Data);                               /* 通知存储任务 加载记录 */
                 led_Mode_Set(eLED_Mode_Red_Green);                                                                   /* 红绿交替 */
                 for (radiant = eComm_Data_Sample_Radiant_610; radiant <= eComm_Data_Sample_Radiant_405; ++radiant) { /* 逐个波长校正 */
                     switch (radiant) {
@@ -1332,17 +1334,24 @@ static void motor_Task(void * argument)
                         cnt += gComm_Data_LED_Voltage_Interval_Get();                                            /* 回退电压值 */
                         if (cnt > 1200) {                                                                        /* 电压越限 */
                             error_Emit(eError_LED_Correct_Out_Of_Range_610 + radiant - eComm_Data_Sample_Radiant_610);
+                            error |= (1 << (radiant - 1));
                             break;
                         }
-                        comm_Data_Set_LED_Voltage(radiant, cnt); /* 调整电压值 */
-                        if (stage == 0) {                        /* 合格即跳出 */
+                        comm_Data_Set_LED_Voltage(radiant, cnt);                                  /* 调整电压值 */
+                        if (stage == 0) {                                                         /* 合格即跳出 */
+                            storgeTaskNotification(eStorgeNotifyConf_Dump_Sample_LED, eComm_Out); /* 通知存储任务 保存记录 */
                             break;
                         }
                         if (i == 20 - 1) {
                             error_Emit(eError_LED_Correct_Max_Retry_610 + radiant - eComm_Data_Sample_Radiant_610);
+                            error |= (8 << (radiant - 1));
                         }
                         comm_Data_Get_LED_Voltage(); /* 获取采样板LED电压配置 */
                     }
+                }
+                storgeTaskNotification(eStorgeNotifyConf_Load_Sample_LED, eComm_Out); /* 通知存储任务 加载记录 */
+                if (error == 0) {
+                    error_Emit(eError_SP_LED_Success);
                 }
                 motor_Tray_Move_By_Index(eTrayIndex_2); /* 出仓 */
                 gComm_Data_SP_LED_Flag_Clr();           /* 清除校正采样板LED电压状态 */
