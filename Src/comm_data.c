@@ -1384,7 +1384,9 @@ BaseType_t comm_Data_Start_Stary_Test(void)
     comm_Data_Stary_Test_Mark();                                                       /* 先行标记杂散光测试开始 */
     if (comm_Data_SendTask_QueueEmit(pData, sendLength, 50) != pdPASS) {               /* 加入队列失败 */
         comm_Data_Stary_Test_Clear();                                                  /* 清除标记 */
+        return pdFAIL;
     }
+    return pdPASS;
 }
 
 /**
