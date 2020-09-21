@@ -57,11 +57,11 @@ typedef struct {
 
 /* Private macro -------------------------------------------------------------*/
 #define BARCODE_MOTOR_IS_OPT (motor_OPT_Status_Get(eMotor_OPT_Index_Scan) == eMotor_OPT_Status_OFF) /* 光耦输入 */
-#define BARCODE_MOTOR_IS_BUSY (dSPIN_Busy_SW())                                                     /* 扫码电机忙碌位读取 */
-#define BARCODE_MOTOR_IS_FLAG (dSPIN_Flag())                                                        /* 扫码电机标志脚读取 */
-#define BARCODE_MOTOR_MAX_DISP 16000                                                                /* 扫码电机运动最大步数 物理限制步数 */
-#define BARCODE_UART huart3                                                                         /* 扫码串口 */
-#define BARCODE_MOTOR_MAX_GO_UNTIL_SPEED 40000                                                      /* 扫码电机归零最大速度 */
+#define BARCODE_MOTOR_IS_BUSY (dSPIN_Busy_SW()) /* 扫码电机忙碌位读取 */
+#define BARCODE_MOTOR_IS_FLAG (dSPIN_Flag()) /* 扫码电机标志脚读取 */
+#define BARCODE_MOTOR_MAX_DISP 16000 /* 扫码电机运动最大步数 物理限制步数 */
+#define BARCODE_UART huart3 /* 扫码串口 */
+#define BARCODE_MOTOR_MAX_GO_UNTIL_SPEED 40000 /* 扫码电机归零最大速度 */
 
 /* Private variables ---------------------------------------------------------*/
 static sMotorRunStatus gBarcodeMotorRunStatus;
@@ -149,32 +149,56 @@ void barcode_Interrupt_Flag_Clear(void)
 void barcode_Result_Init(void)
 {
     gBarcodeDecodeResult[0].pData = gBarcodeDecodeData_0;
+    gBarcodeDecodeResult[0].length = 0;
     gBarcodeDecodeResult[0].state = eBarcodeState_Error;
     memset(gBarcodeDecodeData_0, 0xA5, ARRAY_LEN(gBarcodeDecodeData_0));
 
     gBarcodeDecodeResult[1].pData = gBarcodeDecodeData_1;
+    gBarcodeDecodeResult[1].length = 0;
     gBarcodeDecodeResult[1].state = eBarcodeState_Error;
     memset(gBarcodeDecodeData_1, 0xA5, ARRAY_LEN(gBarcodeDecodeData_1));
 
     gBarcodeDecodeResult[2].pData = gBarcodeDecodeData_2;
+    gBarcodeDecodeResult[2].length = 0;
     gBarcodeDecodeResult[2].state = eBarcodeState_Error;
     memset(gBarcodeDecodeData_2, 0xA5, ARRAY_LEN(gBarcodeDecodeData_2));
 
     gBarcodeDecodeResult[3].pData = gBarcodeDecodeData_3;
+    gBarcodeDecodeResult[3].length = 0;
     gBarcodeDecodeResult[3].state = eBarcodeState_Error;
     memset(gBarcodeDecodeData_3, 0xA5, ARRAY_LEN(gBarcodeDecodeData_3));
 
     gBarcodeDecodeResult[4].pData = gBarcodeDecodeData_4;
+    gBarcodeDecodeResult[4].length = 0;
     gBarcodeDecodeResult[4].state = eBarcodeState_Error;
     memset(gBarcodeDecodeData_4, 0xA5, ARRAY_LEN(gBarcodeDecodeData_4));
 
     gBarcodeDecodeResult[5].pData = gBarcodeDecodeData_5;
+    gBarcodeDecodeResult[5].length = 0;
     gBarcodeDecodeResult[5].state = eBarcodeState_Error;
     memset(gBarcodeDecodeData_5, 0xA5, ARRAY_LEN(gBarcodeDecodeData_5));
 
     gBarcodeDecodeResult[6].pData = gBarcodeDecodeData_6;
+    gBarcodeDecodeResult[6].length = 0;
     gBarcodeDecodeResult[6].state = eBarcodeState_Error;
     memset(gBarcodeDecodeData_6, 0xA5, ARRAY_LEN(gBarcodeDecodeData_6));
+}
+
+/**
+ * @brief  有效扫码结果数量
+ * @param  None
+ * @retval 有效扫码结果数量
+ */
+uint8_t barcode_Result_Valid_Cnt(void)
+{
+    uint8_t i, cnt = 0;
+
+    for (i = 0; i < ARRAY_LEN(gBarcodeDecodeResult); ++i) {
+        if (gBarcodeDecodeResult[i].state != eBarcodeState_Error && gBarcodeDecodeResult[i].length > 0) {
+            ++cnt;
+        }
+    }
+    return cnt;
 }
 
 /**

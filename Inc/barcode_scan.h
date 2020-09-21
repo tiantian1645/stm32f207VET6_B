@@ -60,6 +60,8 @@ typedef struct {
 void barcode_Test(uint32_t cnt);
 
 void barcode_Init(void);
+void barcode_Result_Init(void);
+uint8_t barcode_Result_Valid_Cnt(void);
 uint8_t barcode_Task_Notify(uint32_t mark);
 
 eBarcodeState barcode_Motor_Enter(void);
