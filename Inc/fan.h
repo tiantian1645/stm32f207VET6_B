@@ -20,6 +20,8 @@
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/
+uint32_t fan_IC_Freq_Get(void);
+
 void fan_Init(void);
 
 void fan_Ctrl_Deal(float temp_env);
