@@ -12,7 +12,7 @@
 #define MOTOR_TASK_NOTIFY_WHITE (1 << 2)
 #define MOTOR_TASK_NOTIFY_HEATER (1 << 3)
 
-#define MOTOR_CORRECT_POINT_NUM    12
+#define MOTOR_CORRECT_POINT_NUM 12
 
 /* Exported types ------------------------------------------------------------*/
 
@@ -64,6 +64,7 @@ typedef enum {
     eMotor_Fun_Self_Check_Motor_Scan,   /* 自检测试 单项 扫码电机*/
     eMotor_Fun_Self_Check_Scan,         /* 自检测试 单项 扫码头 */
     eMotor_Fun_Self_Check_PD,           /* 自检测试 单项 PD */
+    eMotor_Fun_Self_Check_FAN,          /* 自检测试 单项 风扇 */
     eMotor_Fun_Stary_Test,              /* 杂散光测试 */
     eMotor_Fun_Correct,                 /* 定标 */
     eMotor_Fun_Debug_Tray_Scan,         /* 托盘电机扫码位置 */
@@ -113,10 +114,10 @@ typedef enum {
 
 typedef enum {
     eMotor_Correct_Stary, /* 杂散光测试 */
-    eMotor_Correct_610, /* 定标测试 610 */
-    eMotor_Correct_550, /* 定标测试 550 */
-    eMotor_Correct_405, /* 定标测试 405 */
-}eMotor_Correct;
+    eMotor_Correct_610,   /* 定标测试 610 */
+    eMotor_Correct_550,   /* 定标测试 550 */
+    eMotor_Correct_405,   /* 定标测试 405 */
+} eMotor_Correct;
 
 /* Exported define -----------------------------------------------------------*/
 #define motor_Status_Set_Position(__RUNSTATUS__, __POSITION__) ((__RUNSTATUS__)->position = (__POSITION__))

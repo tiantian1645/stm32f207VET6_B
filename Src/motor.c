@@ -74,6 +74,7 @@ static void motor_Self_Check_Motor_Tray(uint8_t * pBuffer);
 static void motor_Self_Check_Motor_Scan(uint8_t * pBuffer);
 static void motor_Self_Check_Scan(uint8_t * pBuffer);
 static void motor_Self_Check_PD(uint8_t * pBuffer, uint8_t mask);
+static void motor_Self_Check_FAN(uint8_t * pBuffer);
 
 static void motor_Stary_Test(void);
 
@@ -1171,6 +1172,7 @@ static void motor_Task(void * argument)
                 } while (gMotorPressureStopBits_Get(mf.fun_type) == 0);
                 break;
             case eMotor_Fun_Self_Check: /* 自检测试 */
+                fan_Enter_Self_Test();
                 motor_Self_Check_Motor_Tray(buffer);
                 motor_Self_Check_Motor_White(buffer);
                 motor_Self_Check_Motor_Heater(buffer);
@@ -1181,6 +1183,8 @@ static void motor_Task(void * argument)
                     heat_Motor_Down();
                 }
                 motor_Self_Check_PD(buffer, 0x07);
+                motor_Self_Check_FAN(buffer);
+                fan_Leave_Self_Test();
                 motor_Tray_Move_By_Index(eTrayIndex_2); /* 出仓 */
                 break;
             case eMotor_Fun_Self_Check_FA: /* 自检测试  生产板厂 */
@@ -1208,6 +1212,12 @@ static void motor_Task(void * argument)
                 break;
             case eMotor_Fun_Self_Check_PD: /* 自检测试 单项 PD */
                 motor_Self_Check_PD(buffer, 0x07 & mf.fun_param_1);
+                break;
+            case eMotor_Fun_Self_Check_FAN: /* 自检测试 风扇 */
+                fan_Enter_Self_Test();
+                vTaskDelay(3000);
+                motor_Self_Check_FAN(buffer);
+                fan_Leave_Self_Test();
                 break;
             case eMotor_Fun_Stary_Test: /* 杂散光测试 */
                 motor_Stary_Test();     /* 杂散光测试 */
@@ -1531,5 +1541,33 @@ static void motor_Self_Check_PD(uint8_t * pBuffer, uint8_t mask)
         comm_Out_SendTask_QueueEmitWithModify(pBuffer, 54 + 7, 0);                                              /* 转发至外串口但不允许阻塞 */
     } else {
         comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 54); /* 上报主串口 */
+    }
+}
+
+/**
+ * @brief  自检测试 单项 风扇
+ * @param  pBuffer   数据指针
+ * @retval None
+ */
+static void motor_Self_Check_FAN(uint8_t * pBuffer)
+{
+    uint32_t freq;
+
+    freq = fan_IC_Freq_Get();
+    pBuffer[0] = eMotor_Fun_Self_Check_FAN - eMotor_Fun_Self_Check_Motor_White + 6; /* 自检测试 单项 风扇 */
+    if (freq < 3600) {
+        pBuffer[1] = 1;
+    } else if (freq > 5000) {
+        pBuffer[1] = 2;
+    } else {
+        pBuffer[1] = 0;
+    }
+    memcpy(pBuffer + 2, (uint8_t *)(&freq), 4);
+
+    if (comm_Main_SendTask_Queue_GetFree() > 0) {
+        comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 6);
+        comm_Out_SendTask_QueueEmitWithModify(pBuffer, 6 + 7, 0); /* 转发至外串口但不允许阻塞 */
+    } else {
+        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 6);
     }
 }

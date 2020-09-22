@@ -1218,9 +1218,12 @@ static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length)
                     case 5:                                                                        /* ID Code 卡 */
                         storgeTaskNotification_FromISR(eStorgeNotifyConf_Test_ID_Card, eComm_Out); /* 通知存储任务 */
                         break;
-                    case 0x0B:                        /* PD */
-                        motor_fun.fun_param_1 = 0x07; /* 默认全部波长 */
-                    case 0xFA:                        /* 生产板厂检测项目 */
+                    case 0x0B:                                                                   /* PD */
+                        motor_fun.fun_param_1 = 0x07;                                            /* 默认全部波长 */
+                        motor_fun.fun_type = eMotor_Fun_Self_Check_Motor_White - 6 + pInBuff[6]; /* 整体自检测试 单项 */
+                        motor_Emit_FromISR(&motor_fun);                                          /* 提交到电机队列 */
+                        break;
+                    case 0xFA: /* 生产板厂检测项目 */
                         protocol_Self_Check_Temp_ENV_FromISR(pInBuff, eComm_Out);
                         motor_fun.fun_type = eMotor_Fun_Self_Check_FA;                           /* 自检测试 生产板厂 */
                         motor_Emit_FromISR(&motor_fun);                                          /* 提交到电机队列 */
@@ -1566,8 +1569,11 @@ static void protocol_Parse_Main_Fun_ISR(uint8_t * pInBuff, uint16_t length)
                     case 5:                                                                         /* ID Code 卡 */
                         storgeTaskNotification_FromISR(eStorgeNotifyConf_Test_ID_Card, eComm_Main); /* 通知存储任务 */
                         break;
-                    case 0x0B:                        /* PD */
-                        motor_fun.fun_param_1 = 0x07; /* 默认全部波长 */
+                    case 0x0B:                                                                   /* PD */
+                        motor_fun.fun_param_1 = 0x07;                                            /* 默认全部波长 */
+                        motor_fun.fun_type = eMotor_Fun_Self_Check_Motor_White - 6 + pInBuff[6]; /* 整体自检测试 单项 */
+                        motor_Emit_FromISR(&motor_fun);                                          /* 提交到电机队列 */
+                        break;
                     default:
                         motor_fun.fun_type = eMotor_Fun_Self_Check_Motor_White - 6 + pInBuff[6]; /* 整体自检测试 单项 */
                         motor_Emit_FromISR(&motor_fun);                                          /* 提交到电机队列 */

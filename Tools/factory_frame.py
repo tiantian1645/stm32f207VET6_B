@@ -435,6 +435,17 @@ class MainWindow(QMainWindow):
                     self._setColor(self.selftest_motor_scan_l, nbg="green")
                     self.selftest_motor_scan_gb.setStyleSheet("QGroupBox:title {color: green};")
                 self.selftest_motor_scan_l.setText(text)
+        elif item == 12:
+            fan_speed = struct.unpack("I", raw_bytes[8:12])[0]
+            self.selftest_fan_lb.setText(f"{fan_speed:5d}")
+            if result == 0:
+                self._setColor(self.selftest_fan_lb, nbg="green")
+            elif result == 1:
+                self._setColor(self.selftest_fan_lb, nbg="red")
+            else:
+                self._setColor(self.selftest_fan_lb, nbg="yellow")
+        else:
+            logger.debug(f"get other item {item} | result {result} | raw_bytes {bytesPuttyPrint(raw_bytes)}")
 
     def updateVersionLabel(self, info):
         self.version = f"{bytes2Float(info.content[6:10]):.3f}"
@@ -654,9 +665,19 @@ class MainWindow(QMainWindow):
         self.selftest_storge_lb_f.setAlignment(Qt.AlignCenter)
         selftest_storge_ly.addWidget(self.selftest_storge_lb_f)
 
+        selftest_fan_gb = QGroupBox("风扇")
+        selftest_fan_ly = QHBoxLayout(selftest_fan_gb)
+        selftest_fan_ly.setContentsMargins(3, 3, 3, 3)
+        selftest_fan_ly.setSpacing(3)
+        self.selftest_fan_lb = QLabel("*****")
+        self.selftest_fan_lb.mouseReleaseEvent = self.onSelftest_fan_lb_Clicked
+        self.selftest_fan_lb.setAlignment(Qt.AlignCenter)
+        selftest_fan_ly.addWidget(self.selftest_fan_lb)
+
         selftest_wg_ly.addWidget(self.selftest_temp_env_gb, 0, 0, 2, 1)
         selftest_wg_ly.addLayout(selftest_motor_ly, 0, 1, 2, 12)
         selftest_wg_ly.addWidget(selftest_storge_gb, 0, 13, 2, 1)
+        selftest_wg_ly.addWidget(selftest_fan_gb, 0, 14, 2, 1)
 
     def onSelftest_temp_env_gb_Clicked(self, event):
         self._clear_widget_style_sheet(self.selftest_temp_env_gb)
@@ -704,6 +725,11 @@ class MainWindow(QMainWindow):
     def onSelftest_storge_lb_f_Clicked(self, event):
         self._setColor(self.selftest_storge_lb_f)
         self._serialSendPack(0xDA, (0x04,))
+
+    def onSelftest_fan_lb_Clicked(self, event):
+        self.selftest_fan_lb.setText("*****")
+        self._setColor(self.selftest_fan_lb)
+        self._serialSendPack(0xDA, (0x0C,))
 
     def on_selftest_pd_debug(self, event=None):
         self._serialSendPack(0x34, (1,))

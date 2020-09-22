@@ -23,6 +23,8 @@
 void fan_Init(void);
 
 void fan_Ctrl_Deal(float temp_env);
+void fan_Enter_Self_Test(void);
+void fan_Leave_Self_Test(void);
 
 void fan_IC_Error_Report_Enable(void);
 void fan_IC_Error_Report_Disable(void);

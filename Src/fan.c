@@ -20,13 +20,17 @@ extern TIM_HandleTypeDef htim10;
 /* Private includes ----------------------------------------------------------*/
 
 /* Private typedef -----------------------------------------------------------*/
+typedef enum {
+    eFan_Work_State_CtrlDeal,
+    eFan_Work_State_SelfTest,
+} eFan_Work_State;
+
+/* Private define ------------------------------------------------------------*/
 #define FAN_PWM_TIM htim8
 #define FAN_PWM_TIM_CHANNEL TIM_CHANNEL_1
 
 #define FAN_FB_TIM htim10
 #define FAN_FB_TIM_CHANNEL TIM_CHANNEL_1
-
-/* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -34,11 +38,11 @@ extern TIM_HandleTypeDef htim10;
 static uint8_t gFan_TIM_IC_Enter_Flag = 0, gFan_IC_Error_Report_Flag = 0;
 static uint32_t gFan_IC_Value_Enter = 0, gFan_IC_Value_Leave = 0, gFan_IC_Diff = 0, gFan_IC_Freq = 0;
 static float gFan_Setting_Rate = 0;
+static eFan_Work_State gFan_Work_state = eFan_Work_State_CtrlDeal;
 
 /* Private constants ---------------------------------------------------------*/
 
 /* Private function prototypes -----------------------------------------------*/
-static uint32_t fan_IC_Freq_Get(void);
 static void fan_IC_Freq_Clr(void);
 
 static void fan_IC_Start(void);
@@ -56,7 +60,7 @@ static uint8_t fan_Is_Running(void);
  * @param  None
  * @retval None
  */
-static uint32_t fan_IC_Freq_Get(void)
+uint32_t fan_IC_Freq_Get(void)
 {
     return gFan_IC_Freq;
 }
@@ -100,9 +104,10 @@ void fan_IC_Error_Report_Disable(void)
  */
 void fan_Init(void)
 {
-    fan_Start();                  /* 启动风扇PWM输出 */
-    fan_Adjust(0.1);              /* 调整PWM占空比 */
-    fan_IC_Error_Report_Enable(); /* 使能告警 */
+    fan_Start();                                /* 启动风扇PWM输出 */
+    fan_Adjust(0.1);                            /* 调整PWM占空比 */
+    fan_IC_Error_Report_Enable();               /* 使能告警 */
+    gFan_Work_state = eFan_Work_State_CtrlDeal; /* 初始化工作状态 */
 }
 
 /**
@@ -190,6 +195,10 @@ void fan_Ctrl_Deal(float temp_env)
 {
     uint8_t is_running;
 
+    if (gFan_Work_state == eFan_Work_State_SelfTest) {
+        return;
+    }
+
     is_running = fan_Is_Running(); /* 风扇是否工作中 */
 
     if (temp_env < 27 || temp_env == TEMP_INVALID_DATA) {
@@ -207,6 +216,34 @@ void fan_Ctrl_Deal(float temp_env)
         }
         fan_Adjust(0.3 * temp_env - 8);
     }
+}
+
+/**
+ * @brief  进入自检状态
+ * @param  None
+ * @retval None
+ */
+void fan_Enter_Self_Test(void)
+{
+    gFan_Work_state = eFan_Work_State_SelfTest;
+
+    fan_IC_Freq_Clr();
+    fan_IC_Start();
+
+    if (fan_Is_Running() == 0) {
+        fan_Start();
+    }
+    fan_Adjust(1.0);
+}
+
+/**
+ * @brief  退出自检状态
+ * @param  None
+ * @retval None
+ */
+void fan_Leave_Self_Test(void)
+{
+    gFan_Work_state = eFan_Work_State_CtrlDeal;
 }
 
 /**
