@@ -362,7 +362,11 @@ class MainWindow(QMainWindow):
         raw_bytes = info.content
         item = raw_bytes[6]
         result = raw_bytes[7]
-        if item == 3:
+        if item == 1:
+            logger.info(f"上加热体温度 {struct.unpack('f', raw_bytes[8:12])[0]:.2f}")
+        elif item == 2:
+            logger.info(f"下加热体温度 {struct.unpack('f', raw_bytes[8:12])[0]:.2f}")
+        elif item == 3:
             if result > 0:
                 self.selftest_temp_env_gb.setStyleSheet("QGroupBox:title {color: red};")
             else:
@@ -435,6 +439,9 @@ class MainWindow(QMainWindow):
                     self._setColor(self.selftest_motor_scan_l, nbg="green")
                     self.selftest_motor_scan_gb.setStyleSheet("QGroupBox:title {color: green};")
                 self.selftest_motor_scan_l.setText(text)
+        elif item == 11:
+            pd_data = struct.unpack("I" * 13, raw_bytes[8:-1])
+            logger.info(f"PD测试 掩码 | {result} | {pd_data}")
         elif item == 12:
             fan_speed = struct.unpack("I", raw_bytes[8:12])[0]
             self.selftest_fan_lb.setText(f"{fan_speed:5d}")
