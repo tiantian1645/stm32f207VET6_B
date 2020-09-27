@@ -104,9 +104,12 @@ void comm_Main_IRQ_RX_Deal(UART_HandleTypeDef * huart)
  */
 void comm_Main_DMA_TX_CallBack(void)
 {
-    BaseType_t xTaskWoken = pdFALSE;
+    BaseType_t xResult, xHigherPriorityTaskWoken = pdFALSE;
     if (comm_Main_Send_Sem != NULL) {
-        xSemaphoreGiveFromISR(comm_Main_Send_Sem, &xTaskWoken); /* DMA 发送完成 */
+        xResult = xSemaphoreGiveFromISR(comm_Main_Send_Sem, &xHigherPriorityTaskWoken); /* DMA 发送完成 */
+        if (xResult == pdTRUE) {
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+        }
     } else {
         FL_Error_Handler(__FILE__, __LINE__);
     }
@@ -138,9 +141,12 @@ BaseType_t comm_Main_DMA_TX_Wait(uint32_t timeout)
  */
 BaseType_t comm_Main_DMA_TX_Enter_From_ISR(void)
 {
-    if (xSemaphoreTakeFromISR(comm_Main_Send_Sem, NULL) != pdPASS) { /* 确保发送完成信号量被释放 */
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+    if (xSemaphoreTakeFromISR(comm_Main_Send_Sem, &xHigherPriorityTaskWoken) != pdPASS) { /* 确保发送完成信号量被释放 */
         return pdFALSE; /* 115200波特率下 发送长度少于 256B 长度数据包耗时超过 30mS */
     }
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     return pdPASS;
 }
 
@@ -164,7 +170,11 @@ BaseType_t comm_Main_DMA_TX_Enter(uint32_t timeout)
  */
 void comm_Main_DMA_TX_Error_From_ISR(void)
 {
-    xSemaphoreGiveFromISR(comm_Main_Send_Sem, NULL); /* DMA 发送异常 释放信号量 */
+    BaseType_t xResult, xHigherPriorityTaskWoken = pdFALSE;
+    xResult = xSemaphoreGiveFromISR(comm_Main_Send_Sem, &xHigherPriorityTaskWoken); /* DMA 发送异常 释放信号量 */
+    if (xResult == pdTRUE) {
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
 }
 
 /**
@@ -346,7 +356,7 @@ BaseType_t comm_Main_SendTask_QueueEmit(uint8_t * pData, uint8_t length, uint32_
  */
 BaseType_t comm_Main_SendTask_QueueEmit_FromISR(uint8_t * pData, uint8_t length)
 {
-    BaseType_t xResult;
+    BaseType_t xResult, xHigherPriorityTaskWoken = pdFALSE;
 
     if (length == 0 || pData == NULL) {
         return pdFALSE;
@@ -359,10 +369,12 @@ BaseType_t comm_Main_SendTask_QueueEmit_FromISR(uint8_t * pData, uint8_t length)
     memcpy(gComm_Main_SendInfo_FromISR.buff, pData, length);
     gComm_Main_SendInfo_FromISR.length = length;
 
-    xResult = xQueueSendToBackFromISR(comm_Main_SendQueue, &gComm_Main_SendInfo_FromISR, NULL);
+    xResult = xQueueSendToBackFromISR(comm_Main_SendQueue, &gComm_Main_SendInfo_FromISR, &xHigherPriorityTaskWoken);
     serialSourceFlagsSet_FromISR(eSerial_Source_COMM_Main_Send_Buffer_ISR_Bit);
     if (xResult != pdPASS) {
         error_Emit_FromISR(eError_Comm_Main_Busy);
+    } else {
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     }
     return xResult;
 }
@@ -436,8 +448,11 @@ BaseType_t comm_Main_SendTask_ErrorInfoQueueEmit(uint16_t * pErrorCode, uint32_t
  */
 BaseType_t comm_Main_SendTask_ErrorInfoQueueEmitFromISR(uint16_t * pErrorCode)
 {
-    BaseType_t xResult;
-    xResult = xQueueSendToBackFromISR(comm_Main_Error_Info_SendQueue, pErrorCode, NULL);
+    BaseType_t xResult, xHigherPriorityTaskWoken = pdFALSE;
+    xResult = xQueueSendToBackFromISR(comm_Main_Error_Info_SendQueue, pErrorCode, &xHigherPriorityTaskWoken);
+    if (xResult == pdTRUE) {
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
     return xResult;
 }
 
@@ -448,9 +463,12 @@ BaseType_t comm_Main_SendTask_ErrorInfoQueueEmitFromISR(uint16_t * pErrorCode)
  */
 BaseType_t comm_Main_SendTask_ACK_QueueEmitFromISR(uint8_t * pPackIndex)
 {
-    BaseType_t xResult;
+    BaseType_t xResult, xHigherPriorityTaskWoken = pdFALSE;
 
-    xResult = xQueueSendToBackFromISR(comm_Main_ACK_SendQueue, pPackIndex, NULL);
+    xResult = xQueueSendToBackFromISR(comm_Main_ACK_SendQueue, pPackIndex, &xHigherPriorityTaskWoken);
+    if (xResult == pdTRUE) {
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
     return xResult;
 }
 

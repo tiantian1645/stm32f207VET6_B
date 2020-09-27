@@ -590,6 +590,8 @@ uint8_t motor_Emit(sMotor_Fun * pFun_type, uint32_t timeout)
  */
 uint8_t motor_Emit_FromISR(sMotor_Fun * pFun_type)
 {
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
     if (gMotorTempStableWaiting_Check()) { /* 等待温度稳定中 */
         error_Emit_FromISR(eError_Temp_BTM_Stable_Waiting);
         return 3;
@@ -599,9 +601,11 @@ uint8_t motor_Emit_FromISR(sMotor_Fun * pFun_type)
         error_Emit_FromISR(eError_Stary_Doing);
         return 2;
     }
-    if (xQueueSendToBackFromISR(motor_Fun_Queue_Handle, pFun_type, NULL) != pdPASS) {
+    if (xQueueSendToBackFromISR(motor_Fun_Queue_Handle, pFun_type, &xHigherPriorityTaskWoken) != pdPASS) {
         error_Emit_FromISR(eError_Motor_Task_Busy);
         return 1;
+    } else {
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     }
     return 0;
 }

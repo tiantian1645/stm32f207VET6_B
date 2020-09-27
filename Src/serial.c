@@ -85,7 +85,13 @@ EventBits_t serialSourceFlagsWait(EventBits_t flag_bits, uint32_t timeout)
  */
 EventBits_t serialSourceFlagsSet_FromISR(EventBits_t flag_bits)
 {
-    return xEventGroupSetBitsFromISR(serial_source_flags, flag_bits, NULL);
+    BaseType_t xResult, xHigherPriorityTaskWoken = pdFALSE;
+
+    xResult = xEventGroupSetBitsFromISR(serial_source_flags, flag_bits, &xHigherPriorityTaskWoken);
+    if (xResult) {
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
+    return xResult;
 }
 
 /**
