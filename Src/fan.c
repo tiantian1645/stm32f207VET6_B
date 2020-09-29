@@ -187,7 +187,7 @@ static uint8_t fan_Is_Running(void)
 /**
  * @brief  风扇风速控制处理
  * @param  temp_env 环境温度
- * @note   低于27度保持低速 高于30度全速 27～30之间线性调整转速
+ * @note   低于27度保持低速 0.31输出 高于30度全速 1.0 27～30之间线性调整转速
  * @note   当前环境温度探头处温度为箱内温度
  * @retval None
  */
@@ -214,7 +214,7 @@ void fan_Ctrl_Deal(float temp_env)
         if (is_running == 0) {
             fan_Start();
         }
-        fan_Adjust(0.3 * temp_env - 8);
+        fan_Adjust(0.27 * temp_env - 7.1);
     }
 }
 
@@ -257,16 +257,18 @@ void fan_IC_Error_Deal(void)
     uint8_t is_running;
     static uint32_t tick = 0;
 
-    if (gFan_IC_Error_Report_Flag == 0) {
+    if (gFan_IC_Error_Report_Flag == 0) { /* 禁用判断时不判断 */
         tick = HAL_GetTick();
     }
 
-    if (gFan_Setting_Rate == 0) {
+    if (gFan_Setting_Rate == 0) { /* 风速设置为0时不判断 */
+        tick = HAL_GetTick();
         return;
     }
 
     is_running = fan_Is_Running(); /* 风扇是否工作中 */
     if (is_running == 0) {         /* 停机时不判断 */
+        tick = HAL_GetTick();
         return;
     }
 
