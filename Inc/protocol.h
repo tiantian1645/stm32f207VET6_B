@@ -32,6 +32,9 @@ typedef enum {
     eProtocolEmitPack_Client_CMD_FA_PD_SET = 0x34,  /* 采样板PD测试*/
     eProtocolEmitPack_Client_CMD_FA_LED_SET = 0x35, /* 采样板LED设置*/
 
+    eProtocolEmitPack_Client_CMD_SP_WHITE_MAGNIFY_GET = 0x37, /* 采样板白板放大倍数读取 */
+    eProtocolEmitPack_Client_CMD_SP_WHITE_MAGNIFY_SET = 0x38, /* 采样板白板放大倍数设置 */
+
     eProtocolEmitPack_Client_CMD_BL_INSTR = 0x90,   /* 采样板BL命令帧 */
     eProtocolEmitPack_Client_CMD_BL_DATA = 0x91,    /* 采样板BL数据帧 */
     eProtocolEmitPack_Client_CMD_SAMPLE_VER = 0x92, /* 采样板版本读取 */
@@ -56,19 +59,20 @@ typedef enum {
 } eProtocolEmitPack_Client_CMD_Type;
 
 typedef enum {
-    eProtocolRespPack_Client_ACK = 0xAA,        /* 应答帧 */
-    eProtocolRespPack_Client_TMP = 0xA0,        /* 温度数据帧 */
-    eProtocolRespPack_Client_DISH = 0xB0,       /* 托盘状态帧 */
-    eProtocolRespPack_Client_ID_CARD = 0xB1,    /* ID卡信息包 */
-    eProtocolRespPack_Client_BARCODE = 0xB2,    /* 扫码信息帧 */
-    eProtocolRespPack_Client_SAMP_DATA = 0xB3,  /* 采集数据帧 */
-    eProtocolRespPack_Client_ERR = 0xB5,        /* 仪器错误帧 */
-    eProtocolRespPack_Client_SAMP_OVER = 0xB6,  /* 采样完成帧 */
-    eProtocolRespPack_Client_VER = 0xB7,        /* 版本信息帧 */
-    eProtocolRespPack_Client_Debug_Temp = 0xEE, /* 温度上送 调试用 */
-    eProtocolRespPack_Client_LED_Get = 0x32,    /* 采样板LED电压读取 */
-    eProtocolRespPack_Client_FA_PD = 0x34,      /* 采样板工装PD输出 */
-    eProtocolRespPack_Client_Offset_Get = 0x35, /* 采样板Offset读取 */
+    eProtocolRespPack_Client_ACK = 0xAA,               /* 应答帧 */
+    eProtocolRespPack_Client_TMP = 0xA0,               /* 温度数据帧 */
+    eProtocolRespPack_Client_DISH = 0xB0,              /* 托盘状态帧 */
+    eProtocolRespPack_Client_ID_CARD = 0xB1,           /* ID卡信息包 */
+    eProtocolRespPack_Client_BARCODE = 0xB2,           /* 扫码信息帧 */
+    eProtocolRespPack_Client_SAMP_DATA = 0xB3,         /* 采集数据帧 */
+    eProtocolRespPack_Client_ERR = 0xB5,               /* 仪器错误帧 */
+    eProtocolRespPack_Client_SAMP_OVER = 0xB6,         /* 采样完成帧 */
+    eProtocolRespPack_Client_VER = 0xB7,               /* 版本信息帧 */
+    eProtocolRespPack_Client_Debug_Temp = 0xEE,        /* 温度上送 调试用 */
+    eProtocolRespPack_Client_LED_Get = 0x32,           /* 采样板LED电压读取 */
+    eProtocolRespPack_Client_FA_PD = 0x34,             /* 采样板工装PD输出 */
+    eProtocolRespPack_Client_Offset_Get = 0x35,        /* 采样板Offset读取 */
+    eProtocolRespPack_Client_WHITE_MAGNIFY_Get = 0x37, /* 采样板白板PD放大倍数读取 */
 } eProtocolRespPack_Client_Type;
 
 typedef enum {

@@ -80,25 +80,27 @@ typedef struct {
 } sComm_Data_Sample;
 
 typedef enum {
-    eComm_Data_Outbound_CMD_CONF = 0x26,       /* 测试项信息帧 */
-    eComm_Data_Outbound_CMD_START = 0x27,      /* 采样开始控制帧 */
-    eComm_Data_Outbound_CMD_STRAY = 0x28,      /* 杂散光采集帧 */
-    eComm_Data_Outbound_CMD_TEST = 0x30,       /* 工装测试配置帧 */
-    eComm_Data_Outbound_CMD_LED_GET = 0x32,    /* LED电压读取 */
-    eComm_Data_Outbound_CMD_LED_SET = 0x33,    /* LED电压设置 */
-    eComm_Data_Outbound_CMD_FA_PD_SET = 0x34,  /* 工装PD测试 */
-    eComm_Data_Outbound_CMD_FA_LED_SET = 0x35, /* 工装PD测试 */
-    eComm_Data_Outbound_CMD_OFFSET_GET = 0x36, /* 杂散光读取 */
+    eComm_Data_Outbound_CMD_CONF = 0x26,              /* 测试项信息帧 */
+    eComm_Data_Outbound_CMD_START = 0x27,             /* 采样开始控制帧 */
+    eComm_Data_Outbound_CMD_STRAY = 0x28,             /* 杂散光采集帧 */
+    eComm_Data_Outbound_CMD_TEST = 0x30,              /* 工装测试配置帧 */
+    eComm_Data_Outbound_CMD_LED_GET = 0x32,           /* LED电压读取 */
+    eComm_Data_Outbound_CMD_LED_SET = 0x33,           /* LED电压设置 */
+    eComm_Data_Outbound_CMD_FA_PD_SET = 0x34,         /* 工装PD测试 */
+    eComm_Data_Outbound_CMD_FA_LED_SET = 0x35,        /* 工装PD测试 */
+    eComm_Data_Outbound_CMD_OFFSET_GET = 0x36,        /* 杂散光读取 */
+    eComm_Data_Outbound_CMD_WHITE_MAGNIFY_GET = 0x37, /* 白板PD放大倍数读取 */
+    eComm_Data_Outbound_CMD_WHITE_MAGNIFY_SET = 0x38, /* 白板PD放大倍数设置 */
 } eComm_Data_Outbound_CMD;
 
 typedef enum {
-    eComm_Data_Inbound_CMD_DATA = 0xB3,       /* 采集数据帧 */
-    eComm_Data_Inbound_CMD_OVER = 0x34,       /* 采集数据完成帧 */
-    eComm_Data_Inbound_CMD_ERROR = 0xB5,      /* 错误信息帧 */
-    eComm_Data_Inbound_CMD_LED_GET = 0x32,    /* LED电压读取 */
-    eComm_Data_Inbound_CMD_FA_DEBUG = 0xD3,   /* 工装PD采样输出 */
-    eComm_Data_Inbound_CMD_OFFSET_GET = 0xB4, /* Offset读取 */
-
+    eComm_Data_Inbound_CMD_DATA = 0xB3,              /* 采集数据帧 */
+    eComm_Data_Inbound_CMD_OVER = 0x34,              /* 采集数据完成帧 */
+    eComm_Data_Inbound_CMD_ERROR = 0xB5,             /* 错误信息帧 */
+    eComm_Data_Inbound_CMD_LED_GET = 0x32,           /* LED电压读取 */
+    eComm_Data_Inbound_CMD_FA_DEBUG = 0xD3,          /* 工装PD采样输出 */
+    eComm_Data_Inbound_CMD_OFFSET_GET = 0xB4,        /* Offset读取 */
+    eComm_Data_Inbound_CMD_WHITE_MAGNIFY_GET = 0x37, /* 白板PD放大倍数读取 */
     /* Bootloader */
     eComm_Data_Inbound_CMD_BL_INSTR = 0x90,    /* 采样板BL命令帧 */
     eComm_Data_Inbound_CMD_BL_DATA = 0x91,     /* 采样板BL数据帧 */
@@ -188,6 +190,9 @@ BaseType_t comm_Data_Conf_FA_PD_Set_FromISR(uint8_t * pData);
 BaseType_t comm_Data_Conf_FA_LED_Set_FromISR(uint8_t * pData);
 
 BaseType_t comm_Data_Conf_Offset_Get_FromISR(void);
+
+BaseType_t comm_Data_Conf_White_Magnify_Get_FromISR(void);
+BaseType_t comm_Data_Conf_White_Magnify_Set_FromISR(uint8_t * pData);
 
 BaseType_t comm_Data_Transit_FromISR(uint8_t * pData, uint8_t length);
 

@@ -1365,6 +1365,34 @@ BaseType_t comm_Data_Conf_Offset_Get_FromISR(void)
 }
 
 /**
+ * @brief  采样板白板PD放大倍数获取 中断版本
+ * @note   采样板白板PD放大倍数获取
+ * @param  None
+ * @retval pdPASS 提交成功 pdFALSE 提交失败
+ */
+BaseType_t comm_Data_Conf_White_Magnify_Get_FromISR(void)
+{
+    uint8_t sendLength, pData[8];
+
+    sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_WHITE_MAGNIFY_GET, pData, 0); /* 构造测试配置包 */
+    return comm_Data_SendTask_QueueEmit_FromISR(pData, sendLength);
+}
+
+/**
+ * @brief  采样板白板PD放大倍数设置 中断版本
+ * @note   采样板白板PD放大倍数设置
+ * @param  * pData 电压配置数组地址 uint16_t array[3]
+ * @retval pdPASS 提交成功 pdFALSE 提交失败
+ */
+BaseType_t comm_Data_Conf_White_Magnify_Set_FromISR(uint8_t * pData)
+{
+    uint8_t sendLength;
+
+    sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_WHITE_MAGNIFY_SET, pData, 72); /* 构造测试配置包 */
+    return comm_Data_SendTask_QueueEmit_FromISR(pData, sendLength);
+}
+
+/**
  * @brief  采样板数据包转发 中断版本
  * @note   数据包长度至少为7
  * @param  pData 原始数据包指针

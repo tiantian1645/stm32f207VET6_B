@@ -1404,6 +1404,12 @@ static void protocol_Parse_Out_Fun_ISR(uint8_t * pInBuff, uint16_t length)
             }
             comm_Data_Conf_FA_LED_Set_FromISR(&pInBuff[6]);
             break;
+        case eProtocolEmitPack_Client_CMD_SP_WHITE_MAGNIFY_GET:
+            comm_Data_Conf_White_Magnify_Get_FromISR();
+            break;
+        case eProtocolEmitPack_Client_CMD_SP_WHITE_MAGNIFY_SET:
+            comm_Data_Conf_White_Magnify_Set_FromISR(&pInBuff[6]);
+            break;
         case eProtocolEmitPack_Client_CMD_SAMPLE_VER:
         case eProtocolEmitPack_Client_CMD_BL_INSTR:
         case eProtocolEmitPack_Client_CMD_BL_DATA:
@@ -1742,6 +1748,10 @@ static void protocol_Parse_Data_Fun_ISR(uint8_t * pInBuff, uint16_t length)
         case eComm_Data_Inbound_CMD_OFFSET_GET:
             comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_Offset_Get, &pInBuff[6], length - 7); /* 构造数据包 */
             comm_Out_SendTask_QueueEmitWithModify_FromISR(pInBuff + 6, length);                                          /* 转发至外串口 */
+            break;
+        case eComm_Data_Inbound_CMD_WHITE_MAGNIFY_GET:
+            comm_Main_SendTask_QueueEmitWithBuild_FromISR(eProtocolRespPack_Client_WHITE_MAGNIFY_Get, &pInBuff[6], length - 7); /* 构造数据包 */
+            comm_Out_SendTask_QueueEmitWithModify_FromISR(pInBuff + 6, length);                                                 /* 转发至外串口 */
             break;
         case eComm_Data_Inbound_CMD_GET_VERSION:
         case eComm_Data_Inbound_CMD_BL_INSTR:

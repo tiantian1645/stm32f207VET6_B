@@ -1446,17 +1446,60 @@ class MainWindow(QMainWindow):
         self._serialSendPack(0x33, data)
         QTimer.singleShot(800, self.onSampleLED_Read)
 
+    def onSample_White_Magnify(self, event=None):
+        self.sample_white_magnify_qd.show()
+
+    def updateSampleWhiteMagnify(self, info):
+        for i, sp in enumerate(self.sample_white_magnify_sps):
+            sp.setValue(struct.unpack("f", info.content[6 + i * 4 : 10 + i * 4])[0])
+            self._setColor(sp)
+
+    def onSample_White_Magnify_Read(self, event=None):
+        self._serialSendPack(0x37)
+
+    def onSample_White_Magnify_Write(self, event=None):
+        data = bytearray()
+        for idx, sp in enumerate(self.sample_white_magnify_sps):
+            self._setColor(sp, nfg="red")
+            data += struct.pack("f", sp.value())
+        self._serialSendPack(0x38, data)
+        QTimer.singleShot(800, self.onSample_White_Magnify_Read)
+
     def create_Sample_LED(self):
         self.sample_led_gb = QGroupBox("采样板LED")
-        sample_led_ly = QGridLayout(self.sample_led_gb)
+        sample_led_ly = QVBoxLayout(self.sample_led_gb)
         self.sample_led_sps = [QSpinBox(minimum=10, maximum=2200, maximumWidth=60) for _ in range(3)]
+        sp_ly = QHBoxLayout()
         for idx, sp in enumerate(self.sample_led_sps):
-            sample_led_ly.addWidget(sp, 0, 2 * idx, 1, 2)
+            sp_ly.addWidget(sp)
+        bt_ly = QHBoxLayout()
         self.sample_led_read_bt = QPushButton("读取", clicked=self.onSampleLED_Read)
         self.sample_led_write_bt = QPushButton("写入", clicked=self.onSampleLED_Write, enabled=False)
         self.sample_led_write_bt_flag = 0
-        sample_led_ly.addWidget(self.sample_led_read_bt, 1, 0, 1, 3)
-        sample_led_ly.addWidget(self.sample_led_write_bt, 1, 3, 1, 3)
+        self.sample_write_magnify_bt = QPushButton("放大倍数", clicked=self.onSample_White_Magnify)
+        bt_ly.addWidget(self.sample_led_read_bt)
+        bt_ly.addWidget(self.sample_led_write_bt)
+        bt_ly.addWidget(self.sample_write_magnify_bt)
+        sample_led_ly.addLayout(sp_ly)
+        sample_led_ly.addLayout(bt_ly)
+        self.sample_white_magnify_qd = QDialog(self)
+        self.sample_white_magnify_qd.setWindowTitle("采集板白板PD放大倍数")
+        sample_white_magnify_qb_ly = QVBoxLayout(self.sample_white_magnify_qd)
+        self.sample_white_magnify_sps = []
+        for i in range(3):
+            temp_ly = QHBoxLayout()
+            temp_ly.addWidget(QLabel(WAVE_NAMES[i]))
+            for j in range(6):
+                sp = QDoubleSpinBox(minimum=0.1, maximum=10, value=1.0, singleStep=0.5)
+                self.sample_white_magnify_sps.append(sp)
+                temp_ly.addWidget(sp)
+            sample_white_magnify_qb_ly.addLayout(temp_ly)
+        temp_ly = QHBoxLayout()
+        self.sample_white_magnify_r_bt = QPushButton("读取", clicked=self.onSample_White_Magnify_Read)
+        self.sample_white_magnify_w_bt = QPushButton("写入", clicked=self.onSample_White_Magnify_Write)
+        temp_ly.addWidget(self.sample_white_magnify_r_bt)
+        temp_ly.addWidget(self.sample_white_magnify_w_bt)
+        sample_white_magnify_qb_ly.addLayout(temp_ly)
 
     def createSerial(self):
         self.serial_gb = QGroupBox("串口")
@@ -1595,6 +1638,8 @@ class MainWindow(QMainWindow):
             self.updateSampleLED(info)
         elif cmd_type == 0x35:
             self.updateStaryOffset(info)
+        elif cmd_type == 0x37:
+            self.updateSampleWhiteMagnify(info)
         elif cmd_type == 0x92:
             payload = info.content[6:-1]
             logger.info(f"get sample board version | {bytesPuttyPrint(payload)}")
