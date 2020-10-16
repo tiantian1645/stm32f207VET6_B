@@ -276,7 +276,10 @@ uint8_t white_Motor_Wait_Stop(uint32_t timeout)
  */
 uint8_t white_Motor_PD()
 {
-    error_Emit(eError_Motor_White_Debug);
+    // TickType_t xTick;
+
+    // xTick = xTaskGetTickCount();
+    // error_Emit(eError_Motor_White_Debug);
 
     if (white_Motor_Position_Is_In()) { /* 光耦被遮挡 处于收起状态 */
         white_Motor_Deactive();
@@ -301,6 +304,10 @@ uint8_t white_Motor_PD()
     if (white_Motor_Wait_Stop(WHITE_MOTOR_RUN_PD_TIMEOUT) == 0) {
         m_drv8824_release();
         gWhite_Motor_PD_Failed_Flag_Clr();
+        // xTick = xTaskGetTickCount() - xTick;
+        // if (xTick) {
+        //     return 0;
+        // }
         return 0;
     }
     m_drv8824_release();
@@ -319,9 +326,11 @@ uint8_t white_Motor_PD()
  */
 uint8_t white_Motor_WH()
 {
-    error_Emit(eError_Motor_White_Debug);
+    // TickType_t xTick;
+    // xTick = xTaskGetTickCount();
+    // error_Emit(eError_Motor_White_Debug);
 
-    if (gWhite_Motor_PD_Failed_Flag_Get()) {    /* PD方向运动异常 清零位置 */
+    if (gWhite_Motor_PD_Failed_Flag_Get()) { /* PD方向运动异常 清零位置 */
         white_Motor_PD();
     } else if (white_Motor_Position_Is_Out()) { /* 已完成白板位置运动 */
         white_Motor_Deactive();
@@ -344,6 +353,10 @@ uint8_t white_Motor_WH()
 
     if (white_Motor_Wait_Stop(WHITE_MOTOR_RUN_WH_TIMEOUT) == 0) {
         m_drv8824_release();
+        // xTick = xTaskGetTickCount() - xTick;
+        // if (xTick) {
+        //     return 0;
+        // }
         return 0;
     }
     m_drv8824_release();

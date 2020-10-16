@@ -207,7 +207,7 @@ uint8_t heat_Motor_Wait_Stop(uint32_t timeout)
  */
 uint8_t heat_Motor_Run(eMotorDir dir, uint32_t timeout)
 {
-    error_Emit(eError_Motor_Heater_Debug);
+    // error_Emit(eError_Motor_Heater_Debug);
     if (heat_Motor_Position_Is_Up()) { /* 光耦被遮挡 处于抬起状态 */
         heat_Motor_Deactive();
         gHeat_Motor_Position_Clr(); /* 清空位置记录 */
