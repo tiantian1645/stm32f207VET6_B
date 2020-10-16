@@ -8,6 +8,7 @@
 #include "motor.h"
 #include "m_drv8824.h"
 #include "white_motor.h"
+#include <math.h>
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim1;
@@ -24,18 +25,26 @@ typedef enum {
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
-#define WHITE_MOTOR_PD_PCS_MAX 42000 /* 启动初速 max 60000 min 21000 */
-#define WHITE_MOTOR_PD_PCS_MIN 14000 /* 最高速度 min 12345 */
 #define WHITE_MOTOR_PD_PCS_UNT 8
 #define WHITE_MOTOR_PD_PCS_SUM 322
 #define WHITE_MOTOR_PD_PCS_PATCH 6
 #define WHITE_MOTOR_PD_PCS_GAP (800)
+#define WHITE_MOTOR_PD_FREQ_MAX (7714.286) /* 108000000 / 14000 */
+#define WHITE_MOTOR_PD_FREQ_MIN (2000.00) /* 108000000 / 54000 */
+#define WHITE_MOTOR_PD_E_K (0.30)
+#define WHITE_MOTOR_PD_E_B (6)
 
-#define WHITE_MOTOR_WH_PCS_MAX 48000
-#define WHITE_MOTOR_WH_PCS_MIN 32000
 #define WHITE_MOTOR_WH_PCS_UNT 8
-#define WHITE_MOTOR_WH_PCS_SUM 317
+#define WHITE_MOTOR_WH_PCS_SUM 318
 #define WHITE_MOTOR_WH_PCS_GAP (800)
+#define WHITE_MOTOR_WH_FREQ_MAX (4200.00) /* 108000000 / 32000 */
+#define WHITE_MOTOR_WH_FREQ_MIN (2500.00) /* 108000000 / 43200 */
+#define WHITE_MOTOR_WH_E_K (0.20)
+#define WHITE_MOTOR_WH_E_B (6)
+
+#define WHITE_MOTOR_WH_FREQ_MIN2 (2000.00)
+#define WHITE_MOTOR_WH_E_K2 (0.60)
+#define WHITE_MOTOR_WH_E_B2 (80)
 
 /* Private variables ---------------------------------------------------------*/
 static eMotorDir gWhite_Motor_Dir = eMotorDir_FWD;
@@ -359,7 +368,21 @@ uint8_t white_Motor_Toggle(void)
 }
 
 /**
- * @brief  白板电机向上运动 PWM输出控制
+ * @brief  白板电机PD方向 PWM输出周期计算
+ * @param  idx 输出计数
+ * @retval 周期脉冲长度
+ */
+uint16_t whiteMotor_PWM_Period_In(uint16_t idx)
+{
+    float freq;
+
+    freq = WHITE_MOTOR_PD_FREQ_MIN + (WHITE_MOTOR_PD_FREQ_MAX - WHITE_MOTOR_PD_FREQ_MIN) / (1 + expf(-WHITE_MOTOR_PD_E_K * idx + WHITE_MOTOR_PD_E_B));
+
+    return 108000000.0 / freq;
+}
+
+/**
+ * @brief  白板电机PD方向 PWM输出控制
  * @param  None
  * @retval 0 输出完成 1 输出未完成
  */
@@ -380,10 +403,8 @@ uint8_t white_Motor_PWM_Gen_In(void)
         return 0;
     }
 
-    cnt = gPWM_TEST_AW_CNT_Get(); /* 获取当前脉冲计数 */
-    gWhite_Motor_SRC_Buffer[0] = (WHITE_MOTOR_PD_PCS_MAX - WHITE_MOTOR_PD_PCS_MIN > (WHITE_MOTOR_PD_PCS_GAP * cnt))
-                                     ? (WHITE_MOTOR_PD_PCS_MAX - (WHITE_MOTOR_PD_PCS_GAP * cnt))
-                                     : (WHITE_MOTOR_PD_PCS_MIN);       /* 周期长度 */
+    cnt = gPWM_TEST_AW_CNT_Get();                                      /* 获取当前脉冲计数 */
+    gWhite_Motor_SRC_Buffer[0] = whiteMotor_PWM_Period_In(cnt);        /* 周期长度 */
     gWhite_Motor_SRC_Buffer[1] = WHITE_MOTOR_PD_PCS_UNT;               /* 重复次数 */
     gWhite_Motor_SRC_Buffer[2] = (gWhite_Motor_SRC_Buffer[0] + 1) / 2; /* 占空比 默认50% */
     /* burst模式修改时基单元 */
@@ -394,7 +415,26 @@ uint8_t white_Motor_PWM_Gen_In(void)
 }
 
 /**
- * @brief  白板电机向下运动 PWM输出控制
+ * @brief  白板电机白板方向 PWM输出周期计算
+ * @param  idx 输出计数
+ * @retval 周期脉冲长度
+ */
+uint16_t whiteMotor_PWM_Period_Out(uint16_t idx)
+{
+    float freq;
+
+    if (idx < WHITE_MOTOR_WH_PCS_SUM / 2) {
+        freq = WHITE_MOTOR_WH_FREQ_MIN + (WHITE_MOTOR_WH_FREQ_MAX - WHITE_MOTOR_WH_FREQ_MIN) / (1 + expf(-WHITE_MOTOR_WH_E_K * idx + WHITE_MOTOR_WH_E_B));
+    } else {
+        freq = WHITE_MOTOR_WH_FREQ_MIN2 + (WHITE_MOTOR_WH_FREQ_MAX - WHITE_MOTOR_WH_FREQ_MIN2) /
+                                              (1 + expf(WHITE_MOTOR_WH_E_K2 * (idx - WHITE_MOTOR_WH_PCS_SUM / 2) - WHITE_MOTOR_WH_E_B2));
+    }
+
+    return 108000000.0 / freq;
+}
+
+/**
+ * @brief  白板电机白板方向 PWM输出控制
  * @param  None
  * @retval 0 输出完成 1 输出未完成
  */
@@ -411,9 +451,7 @@ uint8_t white_Motor_PWM_Gen_Out(void)
         gWhite_Motor_Status_Set(eWhite_Motor_Out_Finish);
         return 0;
     } else {
-        gWhite_Motor_SRC_Buffer[0] = (WHITE_MOTOR_WH_PCS_MAX - WHITE_MOTOR_WH_PCS_MIN > WHITE_MOTOR_WH_PCS_GAP * cnt)
-                                         ? (WHITE_MOTOR_WH_PCS_MAX - WHITE_MOTOR_WH_PCS_GAP * cnt)
-                                         : (WHITE_MOTOR_WH_PCS_MIN);       /* 周期长度 */
+        gWhite_Motor_SRC_Buffer[0] = whiteMotor_PWM_Period_Out(cnt);       /* 周期长度 */
         gWhite_Motor_SRC_Buffer[1] = WHITE_MOTOR_WH_PCS_UNT;               /* 重复次数 */
         gWhite_Motor_SRC_Buffer[2] = (gWhite_Motor_SRC_Buffer[0] + 1) / 2; /* 占空比 默认50% */
         /* burst模式修改时基单元 */
