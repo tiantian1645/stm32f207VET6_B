@@ -7,6 +7,7 @@
 #include "main.h"
 #include "motor.h"
 #include "m_drv8824.h"
+#include <math.h>
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim1;
@@ -18,17 +19,20 @@ extern TIM_HandleTypeDef htim1;
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
-#define HEAT_MOTOR_UP_PCS_MAX 44000
-#define HEAT_MOTOR_UP_PCS_MIN 42000
 #define HEAT_MOTOR_UP_PCS_UNT 60
 #define HEAT_MOTOR_UP_PCS_SUM 32
-#define HEAT_MOTOR_UP_PCS_GAP (((HEAT_MOTOR_UP_PCS_MAX) - (HEAT_MOTOR_UP_PCS_MIN)) / (HEAT_MOTOR_UP_PCS_SUM))
+#define HEAT_MOTOR_UP_FREQ_MAX (108000000.0 / 40000)
+#define HEAT_MOTOR_UP_FREQ_MIN (108000000.0 / 48000)
+#define HEAT_MOTOR_UP_E_K (0.3)
+#define HEAT_MOTOR_UP_E_B (2)
 
-#define HEAT_MOTOR_DOWN_PCS_MAX 36000
-#define HEAT_MOTOR_DOWN_PCS_MIN 30000
 #define HEAT_MOTOR_DOWN_PCS_UNT 24
 #define HEAT_MOTOR_DOWN_PCS_SUM 72
-#define HEAT_MOTOR_DOWN_PCS_GAP (((HEAT_MOTOR_DOWN_PCS_MAX) - (HEAT_MOTOR_DOWN_PCS_MIN)) / (HEAT_MOTOR_DOWN_PCS_SUM))
+#define HEAT_MOTOR_DOWN_FREQ_MAX (108000000.0 / 30000)
+#define HEAT_MOTOR_DOWN_FREQ_MIN (108000000.0 / 36000)
+#define HEAT_MOTOR_DOWN_E_K (0.4)
+#define HEAT_MOTOR_DOWN_E_B (4)
+
 /* Private variables ---------------------------------------------------------*/
 static eMotorDir gHeat_Motor_Dir = eMotorDir_FWD;
 static uint32_t gHeat_Motor_Position = 0xFFFFFFFF;
@@ -248,35 +252,59 @@ uint8_t heat_Motor_Run(eMotorDir dir, uint32_t timeout)
 }
 
 /**
+ * @brief  加热体电机向上运动 PWM输出周期变化
+ * @param  idx 输入计数
+ * @retval 周期值
+ */
+uint16_t heat_Motor_PWM_Period_Up(uint16_t idx)
+{
+    float freq;
+
+    freq = HEAT_MOTOR_UP_FREQ_MIN + (HEAT_MOTOR_UP_FREQ_MAX - HEAT_MOTOR_UP_FREQ_MIN) / (1 + expf(-HEAT_MOTOR_UP_E_K * idx + HEAT_MOTOR_UP_E_B));
+    return 108000000 / freq;
+}
+
+/**
  * @brief  加热体电机向上运动 PWM输出控制
  * @param  None
  * @retval 0 输出完成 1 输出未完成
  */
 uint8_t heat_Motor_PWM_Gen_Up(void)
 {
-    uint32_t total = 0;
+    uint32_t cnt = 0;
 
-    total = gPWM_TEST_AW_CNT_Get();
+    cnt = gPWM_TEST_AW_CNT_Get();
 
-    if (total > HEAT_MOTOR_UP_PCS_SUM * 4 || heat_Motor_Position_Is_Up()) {
+    if (cnt > HEAT_MOTOR_UP_PCS_SUM * 4 || heat_Motor_Position_Is_Up()) {
         heat_Motor_Deactive();
         PWM_AW_Stop();
         return 0;
     }
 
-    if (total > 0 && (total % (2 * HEAT_MOTOR_UP_PCS_SUM) == 0)) {
+    if (cnt > 0 && (cnt % (2 * HEAT_MOTOR_UP_PCS_SUM) == 0)) {
         HAL_GPIO_TogglePin(STEP_DIR2_GPIO_Port, STEP_DIR2_Pin); /* 切换方向 托盘出仓位置时 旋转方向有可能会被顶住 */
     }
 
-    gHeat_Motor_SRC_Buffer[0] = (HEAT_MOTOR_UP_PCS_MAX - HEAT_MOTOR_UP_PCS_MIN > HEAT_MOTOR_UP_PCS_GAP * (total % HEAT_MOTOR_UP_PCS_SUM))
-                                    ? (HEAT_MOTOR_UP_PCS_MAX - HEAT_MOTOR_UP_PCS_GAP * (total % HEAT_MOTOR_UP_PCS_SUM))
-                                    : (HEAT_MOTOR_UP_PCS_MAX);       /* 周期长度 */
+    gHeat_Motor_SRC_Buffer[0] = heat_Motor_PWM_Period_Up(cnt);
     gHeat_Motor_SRC_Buffer[1] = HEAT_MOTOR_UP_PCS_UNT;               /* 重复次数 */
     gHeat_Motor_SRC_Buffer[2] = (gHeat_Motor_SRC_Buffer[0] + 1) / 2; /* 占空比 默认50% */
     /* burst模式修改时基单元 */
     HAL_TIM_DMABurst_WriteStart(&htim1, TIM_DMABASE_ARR, TIM_DMA_UPDATE, (uint32_t *)gHeat_Motor_SRC_Buffer, TIM_DMABURSTLENGTH_3TRANSFERS);
     gPWM_TEST_AW_CNT_Inc(); /* 自增脉冲计数 */
     return 1;
+}
+
+/**
+ * @brief  加热体电机向下运动 PWM输出周期变化
+ * @param  idx 输入计数
+ * @retval 周期值
+ */
+uint16_t heat_Motor_PWM_Period_Down(uint16_t idx)
+{
+    float freq;
+
+    freq = HEAT_MOTOR_DOWN_FREQ_MIN + (HEAT_MOTOR_DOWN_FREQ_MAX - HEAT_MOTOR_DOWN_FREQ_MIN) / (1 + expf(-HEAT_MOTOR_DOWN_E_K * idx + HEAT_MOTOR_DOWN_E_B));
+    return 108000000 / freq;
 }
 
 /**
@@ -294,9 +322,7 @@ uint8_t heat_Motor_PWM_Gen_Down(void)
         PWM_AW_Stop();
         return 0;
     } else {
-        gHeat_Motor_SRC_Buffer[0] = (HEAT_MOTOR_DOWN_PCS_MAX - HEAT_MOTOR_DOWN_PCS_MIN > HEAT_MOTOR_DOWN_PCS_GAP * cnt)
-                                        ? (HEAT_MOTOR_DOWN_PCS_MAX - HEAT_MOTOR_DOWN_PCS_GAP * cnt)
-                                        : (HEAT_MOTOR_DOWN_PCS_MIN);     /* 周期长度 */
+        gHeat_Motor_SRC_Buffer[0] = heat_Motor_PWM_Period_Down(cnt);
         gHeat_Motor_SRC_Buffer[1] = HEAT_MOTOR_DOWN_PCS_UNT;             /* 重复次数 */
         gHeat_Motor_SRC_Buffer[2] = (gHeat_Motor_SRC_Buffer[0] + 1) / 2; /* 占空比 默认50% */
         /* burst模式修改时基单元 */
