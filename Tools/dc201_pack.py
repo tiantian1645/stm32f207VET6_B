@@ -150,6 +150,7 @@ class DC201ErrorCode(Enum):
     eError_Sample_Initiative_Break = (122, "主动打断测试")
     eError_Sample_Normailly_Exit = (123, "正常退出测试")
     eError_Tray_Motor_POS2_Error = (124, "出仓位置异常")
+    eError_Barcode_Content_Empty = (125, "没有任何条码信息")
     eError_Motor_Heater_Timeout_Up = (200, "上加热体电机运动超时 上升方向")
     eError_Motor_Heater_Timeout_Down = (201, "上加热体电机运动超时 下降方向")
     eError_Motor_Heater_Status_Warui = (202, "上加热体电机驱动状态异常")
