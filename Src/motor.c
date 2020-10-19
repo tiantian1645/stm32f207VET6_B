@@ -976,11 +976,13 @@ static void motor_Task(void * argument)
                     motor_Sample_Owari();              /* 清理 */
                     break;                             /* 收到打断信息 提前结束 */
                 }
-                if (protocol_Debug_SampleBarcode() == 0) {        /* 非调试模式 */
-                    if (barcode_Result_Valid_Cnt() == 0) {        /* 有效条码数量为0 */
-                        error_Emit(eError_Barcode_Content_Empty); /* 提示没有扫到任何条码 */
-                        motor_Sample_Owari();                     /* 清理 */
-                        break;                                    /* 没有任何条码 提前结束 */
+                if (protocol_Debug_SampleBarcode() == 0) {                      /* 非调试模式 */
+                    if (barcode_Result_Valid_Cnt() == 0) {                      /* 有效条码数量为0 */
+                        if (gMotor_Sampl_Comm_Get() != eMotor_Sampl_Comm_Out) { /* 测试命令来源不是外串口 */
+                            error_Emit(eError_Barcode_Content_Empty);           /* 提示没有扫到任何条码 */
+                            motor_Sample_Owari();                               /* 清理 */
+                            break;                                              /* 没有任何条码 提前结束 */
+                        }
                     }
                 }
                 if (comm_Data_Conf_Sem_Wait(pdMS_TO_TICKS(750)) != pdPASS) { /* 等待配置信息 */
