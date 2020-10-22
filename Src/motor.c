@@ -943,7 +943,9 @@ static void motor_Task(void * argument)
                 gMotorAgingStatistic.motor_white_pd_test_sum += 1;
             }
             if (++ag_cnt % 10 == 0) {
-                storge_Dump_Aging_Statistic(&gMotorAgingStatistic);
+            	if (ag_cnt % 100 == 0) {
+                    storge_Dump_Aging_Statistic(&gMotorAgingStatistic);
+            	}
                 memcpy(buffer, (uint8_t *)(&gMotorAgingStatistic), sizeof(sStorgeAgingStatistic));
                 comm_Out_SendTask_QueueEmitWithBuildCover(0xDC, buffer, sizeof(sStorgeAgingStatistic));
             }

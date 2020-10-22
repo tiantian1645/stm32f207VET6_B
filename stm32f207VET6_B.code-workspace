@@ -5,7 +5,7 @@
 		}
 	],
 	"settings": {
-		"clang-format.executable": "C:\\Users\\Administrator\\.vscode\\extensions\\ms-vscode.cpptools-0.27.0\\LLVM\\bin\\clang-format.exe",
+		"clang-format.executable": "E:\\Download\\clang-format-6923b0a7.exe",
 		"C_Cpp.clang_format_sortIncludes": false,
 		"clang-format.fallbackStyle": "WebKit",
 		"editor.formatOnSave": true,
