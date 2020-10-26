@@ -533,26 +533,34 @@ void protocol_Temp_Upload_Error_Deal(TickType_t now, float temp_btm, float temp_
  * @brief  温度主动上送处理 主板串口
  * @param  temp_btm 下加热体温度
  * @param  temp_top 上加热体温度
+ * @param  temp_env 环境温度
  * @retval None
  */
-void protocol_Temp_Upload_Main_Deal(float temp_btm, float temp_top)
+void protocol_Temp_Upload_Main_Deal(float temp_btm, float temp_top, float temp_env)
 {
     uint8_t buffer[10], length;
 
-    if (protocol_Temp_Upload_Comm_Get(eComm_Main) == 0) { /* 无需进行串口发送 */
+    // if (protocol_Temp_Upload_Comm_Get(eComm_Main) == 0) { /* 无需进行串口发送 */
+    //     return;
+    // }
+    if (comm_Main_SendTask_Queue_GetWaiting() > 1) { /* 发送队列内有其他数据包 */
         return;
     }
 
-    buffer[0] = ((uint16_t)(temp_btm * 100 + 0.5)) & 0xFF;                         /* 小端模式 低8位 */
-    buffer[1] = ((uint16_t)(temp_btm * 100 + 0.5)) >> 8;                           /* 小端模式 高8位 */
-    buffer[2] = ((uint16_t)(temp_top * 100 + 0.5)) & 0xFF;                         /* 小端模式 低8位 */
-    buffer[3] = ((uint16_t)(temp_top * 100 + 0.5)) >> 8;                           /* 小端模式 高8位 */
-    length = buildPackOrigin(eComm_Main, eProtocolRespPack_Client_TMP, buffer, 4); /* 构造数据包 */
+    if (temp_btm != TEMP_INVALID_DATA || temp_top != TEMP_INVALID_DATA) {              /* 温度值都不是无效值 */
+        buffer[0] = ((uint16_t)(temp_btm * 100 + 0.5)) & 0xFF;                         /* 小端模式 低8位 */
+        buffer[1] = ((uint16_t)(temp_btm * 100 + 0.5)) >> 8;                           /* 小端模式 高8位 */
+        buffer[2] = ((uint16_t)(temp_top * 100 + 0.5)) & 0xFF;                         /* 小端模式 低8位 */
+        buffer[3] = ((uint16_t)(temp_top * 100 + 0.5)) >> 8;                           /* 小端模式 高8位 */
+        length = buildPackOrigin(eComm_Main, eProtocolRespPack_Client_TMP, buffer, 4); /* 构造数据包 */
+        comm_Main_SendTask_QueueEmitCover(buffer, length);                             /* 提交到发送队列 */
+    }
 
-    if (comm_Main_SendTask_Queue_GetWaiting() == 0) {                         /* 允许发送且发送队列内没有其他数据包 */
-        if (temp_btm != TEMP_INVALID_DATA || temp_top != TEMP_INVALID_DATA) { /* 温度值都不是无效值 */
-            comm_Main_SendTask_QueueEmitCover(buffer, length);                /* 提交到发送队列 */
-        }
+    if (temp_env != TEMP_INVALID_DATA) {                                                   /* 温度值不是无效值 */
+        buffer[0] = ((uint16_t)(temp_env * 100 + 0.5)) & 0xFF;                             /* 小端模式 低8位 */
+        buffer[1] = ((uint16_t)(temp_env * 100 + 0.5)) >> 8;                               /* 小端模式 高8位 */
+        length = buildPackOrigin(eComm_Main, eProtocolRespPack_Client_ENV_TMP, buffer, 2); /* 构造数据包 */
+        comm_Main_SendTask_QueueEmitCover(buffer, length);                                 /* 提交到发送队列 */
     }
 }
 
@@ -604,19 +612,20 @@ void protocol_Temp_Upload_Out_Deal(float temp_btm, float temp_top)
  */
 void protocol_Temp_Upload_Deal(void)
 {
-    float temp_top, temp_btm;
+    float temp_top, temp_btm, temp_env;
     TickType_t now;
     static TickType_t xTick_Main = 0, xTick_Out = 0;
 
     temp_btm = temp_Get_Temp_Data_BTM(); /* 下加热体温度 */
     temp_top = temp_Get_Temp_Data_TOP(); /* 上加热体温度 */
+    temp_env = temp_Get_Temp_Data_ENV(); /* 环境温度 */
 
     now = xTaskGetTickCount();
     if (protocol_Temp_Upload_Is_Suspend() == 0) { /* 暂停上送标志 */
         protocol_Temp_Upload_Error_Deal(now, temp_btm, temp_top);
         if (now - xTick_Main > 5 * pdMS_TO_TICKS(1000)) {
             xTick_Main = now;
-            protocol_Temp_Upload_Main_Deal(temp_btm, temp_top);
+            protocol_Temp_Upload_Main_Deal(temp_btm, temp_top, temp_env);
         }
     }
 

@@ -60,7 +60,8 @@ typedef enum {
 
 typedef enum {
     eProtocolRespPack_Client_ACK = 0xAA,               /* 应答帧 */
-    eProtocolRespPack_Client_TMP = 0xA0,               /* 温度数据帧 */
+    eProtocolRespPack_Client_TMP = 0xA0,               /* 加热体温度数据帧 */
+    eProtocolRespPack_Client_ENV_TMP = 0xA1,           /* 环境温度数据帧 */
     eProtocolRespPack_Client_DISH = 0xB0,              /* 托盘状态帧 */
     eProtocolRespPack_Client_ID_CARD = 0xB1,           /* ID卡信息包 */
     eProtocolRespPack_Client_BARCODE = 0xB2,           /* 扫码信息帧 */
