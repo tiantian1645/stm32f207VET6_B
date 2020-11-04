@@ -26,26 +26,25 @@ typedef enum {
 
 /* Private macro -------------------------------------------------------------*/
 #define WHITE_MOTOR_PD_PCS_UNT 8
-#define WHITE_MOTOR_PD_PCS_SUM 322
-#define WHITE_MOTOR_PD_PCS_PATCH 6
+#define WHITE_MOTOR_PD_PCS_SUM 150
+#define WHITE_MOTOR_PD_PCS_PATCH 2
 #define WHITE_MOTOR_PD_PCS_GAP (800)
-#define WHITE_MOTOR_PD_FREQ_MAX (7714.286) /* 108000000 / 14000 */
-#define WHITE_MOTOR_PD_FREQ_MIN (2000.00) /* 108000000 / 54000 */
+#define WHITE_MOTOR_PD_FREQ_MAX (4800.00) /* 108000000 / 14000 */
+#define WHITE_MOTOR_PD_FREQ_MIN (4400.00) /* 108000000 / 54000 */
 #define WHITE_MOTOR_PD_E_K (0.25)
 #define WHITE_MOTOR_PD_E_B (5.2)
 
 #define WHITE_MOTOR_WH_PCS_UNT 8
-#define WHITE_MOTOR_WH_PCS_SUM 318
+#define WHITE_MOTOR_WH_PCS_SUM 145
 #define WHITE_MOTOR_WH_PCS_GAP (800)
-#define WHITE_MOTOR_WH_FREQ_MAX (4200.00) /* 108000000 / 32000 */
-#define WHITE_MOTOR_WH_FREQ_MIN (2500.00) /* 108000000 / 43200 */
+#define WHITE_MOTOR_WH_FREQ_MAX (4600.00) /* 108000000 / 32000 */
+#define WHITE_MOTOR_WH_FREQ_MIN (4800.00) /* 108000000 / 43200 */
 #define WHITE_MOTOR_WH_E_K (0.20)
 #define WHITE_MOTOR_WH_E_B (6)
 
 #define WHITE_MOTOR_WH_FREQ_MIN2 (2000.00)
 #define WHITE_MOTOR_WH_E_K2 (0.60)
 #define WHITE_MOTOR_WH_E_B2 (80)
-
 /* Private variables ---------------------------------------------------------*/
 static eMotorDir gWhite_Motor_Dir = eMotorDir_FWD;
 static uint32_t gWhite_Motor_Position = 0xFFFFFFFF;
