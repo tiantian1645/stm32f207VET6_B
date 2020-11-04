@@ -29,16 +29,16 @@ typedef enum {
 #define WHITE_MOTOR_PD_PCS_SUM 150
 #define WHITE_MOTOR_PD_PCS_PATCH 2
 #define WHITE_MOTOR_PD_PCS_GAP (800)
-#define WHITE_MOTOR_PD_FREQ_MAX (4800.00) /* 108000000 / 14000 */
-#define WHITE_MOTOR_PD_FREQ_MIN (4400.00) /* 108000000 / 54000 */
+#define WHITE_MOTOR_PD_FREQ_MAX (4000.00) /* 108000000 / 14000 */
+#define WHITE_MOTOR_PD_FREQ_MIN (3700.00) /* 108000000 / 54000 */
 #define WHITE_MOTOR_PD_E_K (0.25)
 #define WHITE_MOTOR_PD_E_B (5.2)
 
 #define WHITE_MOTOR_WH_PCS_UNT 8
 #define WHITE_MOTOR_WH_PCS_SUM 145
 #define WHITE_MOTOR_WH_PCS_GAP (800)
-#define WHITE_MOTOR_WH_FREQ_MAX (4600.00) /* 108000000 / 32000 */
-#define WHITE_MOTOR_WH_FREQ_MIN (4800.00) /* 108000000 / 43200 */
+#define WHITE_MOTOR_WH_FREQ_MAX (4000.00) /* 108000000 / 32000 */
+#define WHITE_MOTOR_WH_FREQ_MIN (3700.00) /* 108000000 / 43200 */
 #define WHITE_MOTOR_WH_E_K (0.20)
 #define WHITE_MOTOR_WH_E_B (6)
 
@@ -275,9 +275,9 @@ uint8_t white_Motor_Wait_Stop(uint32_t timeout)
  */
 uint8_t white_Motor_PD()
 {
-    // TickType_t xTick;
+    TickType_t xTick;
 
-    // xTick = xTaskGetTickCount();
+    xTick = xTaskGetTickCount();
     // error_Emit(eError_Motor_White_Debug);
 
     if (white_Motor_Position_Is_In()) { /* 光耦被遮挡 处于收起状态 */
@@ -303,10 +303,10 @@ uint8_t white_Motor_PD()
     if (white_Motor_Wait_Stop(WHITE_MOTOR_RUN_PD_TIMEOUT) == 0) {
         m_drv8824_release();
         gWhite_Motor_PD_Failed_Flag_Clr();
-        // xTick = xTaskGetTickCount() - xTick;
-        // if (xTick) {
-        //     return 0;
-        // }
+        xTick = xTaskGetTickCount() - xTick;
+        if (xTick) {
+            return 0;
+        }
         return 0;
     }
     m_drv8824_release();
