@@ -26,25 +26,20 @@ typedef enum {
 
 /* Private macro -------------------------------------------------------------*/
 #define WHITE_MOTOR_PD_PCS_UNT 8
-#define WHITE_MOTOR_PD_PCS_SUM 150
+#define WHITE_MOTOR_PD_PCS_SUM 154
 #define WHITE_MOTOR_PD_PCS_PATCH 2
-#define WHITE_MOTOR_PD_PCS_GAP (800)
-#define WHITE_MOTOR_PD_FREQ_MAX (4000.00) /* 108000000 / 14000 */
-#define WHITE_MOTOR_PD_FREQ_MIN (3700.00) /* 108000000 / 54000 */
-#define WHITE_MOTOR_PD_E_K (0.25)
-#define WHITE_MOTOR_PD_E_B (5.2)
+#define WHITE_MOTOR_PD_FREQ_MAX (3000.0)
+#define WHITE_MOTOR_PD_FREQ_MIN (2500.0)
+#define WHITE_MOTOR_PD_E_K (0.20)
+#define WHITE_MOTOR_PD_E_B (5.0)
 
 #define WHITE_MOTOR_WH_PCS_UNT 8
-#define WHITE_MOTOR_WH_PCS_SUM 145
-#define WHITE_MOTOR_WH_PCS_GAP (800)
-#define WHITE_MOTOR_WH_FREQ_MAX (4000.00) /* 108000000 / 32000 */
-#define WHITE_MOTOR_WH_FREQ_MIN (3700.00) /* 108000000 / 43200 */
-#define WHITE_MOTOR_WH_E_K (0.20)
+#define WHITE_MOTOR_WH_PCS_SUM 150
+#define WHITE_MOTOR_WH_FREQ_MAX (2200.0)
+#define WHITE_MOTOR_WH_FREQ_MIN (1800.0)
+#define WHITE_MOTOR_WH_E_K (0.1)
 #define WHITE_MOTOR_WH_E_B (6)
 
-#define WHITE_MOTOR_WH_FREQ_MIN2 (2000.00)
-#define WHITE_MOTOR_WH_E_K2 (0.60)
-#define WHITE_MOTOR_WH_E_B2 (80)
 /* Private variables ---------------------------------------------------------*/
 static eMotorDir gWhite_Motor_Dir = eMotorDir_FWD;
 static uint32_t gWhite_Motor_Position = 0xFFFFFFFF;
@@ -325,8 +320,8 @@ uint8_t white_Motor_PD()
  */
 uint8_t white_Motor_WH()
 {
-    // TickType_t xTick;
-    // xTick = xTaskGetTickCount();
+    TickType_t xTick;
+    xTick = xTaskGetTickCount();
     // error_Emit(eError_Motor_White_Debug);
 
     if (gWhite_Motor_PD_Failed_Flag_Get()) { /* PD方向运动异常 清零位置 */
@@ -352,10 +347,10 @@ uint8_t white_Motor_WH()
 
     if (white_Motor_Wait_Stop(WHITE_MOTOR_RUN_WH_TIMEOUT) == 0) {
         m_drv8824_release();
-        // xTick = xTaskGetTickCount() - xTick;
-        // if (xTick) {
-        //     return 0;
-        // }
+        xTick = xTaskGetTickCount() - xTick;
+        if (xTick) {
+            return 0;
+        }
         return 0;
     }
     m_drv8824_release();
@@ -390,7 +385,7 @@ uint16_t whiteMotor_PWM_Period_In(uint16_t idx)
 
     freq = WHITE_MOTOR_PD_FREQ_MIN + (WHITE_MOTOR_PD_FREQ_MAX - WHITE_MOTOR_PD_FREQ_MIN) / (1 + expf(-WHITE_MOTOR_PD_E_K * idx + WHITE_MOTOR_PD_E_B));
 
-    return 108000000.0 / freq;
+    return STEP_TIM_FREQ / freq;
 }
 
 /**
@@ -435,14 +430,14 @@ uint16_t whiteMotor_PWM_Period_Out(uint16_t idx)
 {
     float freq;
 
-    if (idx < WHITE_MOTOR_WH_PCS_SUM / 2) {
-        freq = WHITE_MOTOR_WH_FREQ_MIN + (WHITE_MOTOR_WH_FREQ_MAX - WHITE_MOTOR_WH_FREQ_MIN) / (1 + expf(-WHITE_MOTOR_WH_E_K * idx + WHITE_MOTOR_WH_E_B));
-    } else {
-        freq = WHITE_MOTOR_WH_FREQ_MIN2 + (WHITE_MOTOR_WH_FREQ_MAX - WHITE_MOTOR_WH_FREQ_MIN2) /
-                                              (1 + expf(WHITE_MOTOR_WH_E_K2 * (idx - WHITE_MOTOR_WH_PCS_SUM / 2) - WHITE_MOTOR_WH_E_B2));
-    }
+     if (idx < WHITE_MOTOR_WH_PCS_SUM / 2) {
+         freq = WHITE_MOTOR_WH_FREQ_MIN + (WHITE_MOTOR_WH_FREQ_MAX - WHITE_MOTOR_WH_FREQ_MIN) / (1 + expf(-WHITE_MOTOR_WH_E_K * idx + WHITE_MOTOR_WH_E_B));
+     } else {
+        freq = WHITE_MOTOR_WH_FREQ_MIN +
+               (WHITE_MOTOR_WH_FREQ_MAX - WHITE_MOTOR_WH_FREQ_MIN) / (1 + expf(WHITE_MOTOR_WH_E_K * (idx - WHITE_MOTOR_WH_PCS_SUM / 2) - WHITE_MOTOR_WH_E_B));
+     }
 
-    return 108000000.0 / freq;
+    return STEP_TIM_FREQ / freq;
 }
 
 /**

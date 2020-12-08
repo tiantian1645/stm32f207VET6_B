@@ -12,6 +12,7 @@
 #define STEP_TIM_ARR (0xFFFF)
 #define STEP_TIM_RCR (1 - 1)
 #define STEP_TIM_PUL (0xFFF)
+#define STEP_TIM_FREQ (108000000.0 / (STEP_TIM_PSC + 1))
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum {

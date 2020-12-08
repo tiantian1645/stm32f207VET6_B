@@ -946,8 +946,9 @@ static void motor_Task(void * argument)
             	if (ag_cnt % 100 == 0) {
                     storge_Dump_Aging_Statistic(&gMotorAgingStatistic);
             	}
-                memcpy(buffer, (uint8_t *)(&gMotorAgingStatistic), sizeof(sStorgeAgingStatistic));
-                comm_Out_SendTask_QueueEmitWithBuildCover(0xDC, buffer, sizeof(sStorgeAgingStatistic));
+                memset(buffer, 0, ARRAY_LEN(buffer));
+                sprintf((char *)buffer, "PD: %ld/%ld WH: %ld/%ld\n", gMotorAgingStatistic.motor_white_pd_failed_cnt, gMotorAgingStatistic.motor_white_pd_test_sum, gMotorAgingStatistic.motor_white_wh_failed_cnt, gMotorAgingStatistic.motor_white_wh_test_sum);
+                comm_Out_SendTask_QueueEmitCover(buffer, strlen((char *)buffer));
             }
             continue;
         }
