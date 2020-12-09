@@ -241,6 +241,9 @@ BaseType_t protocol_is_NeedWaitRACK(uint8_t * pData)
     if (pData[5] == eProtocolRespPack_Client_ACK || pData[5] == eProtocolRespPack_Client_ERR) {
         return pdFALSE;
     }
+    if (pData[0] != 0x69 || pData[1] != 0xAA) {
+        return pdFALSE;
+    }
     return pdTRUE;
 }
 
