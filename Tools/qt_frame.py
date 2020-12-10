@@ -1468,7 +1468,7 @@ class MainWindow(QMainWindow):
     def create_Sample_LED(self):
         self.sample_led_gb = QGroupBox("采样板LED")
         sample_led_ly = QVBoxLayout(self.sample_led_gb)
-        self.sample_led_sps = [QSpinBox(minimum=10, maximum=2200, maximumWidth=60) for _ in range(3)]
+        self.sample_led_sps = [QSpinBox(minimum=10, maximum=65535, maximumWidth=60) for _ in range(3)]
         sp_ly = QHBoxLayout()
         for idx, sp in enumerate(self.sample_led_sps):
             sp_ly.addWidget(sp)
