@@ -96,10 +96,12 @@ __pycache__/
 # Distribution / packaging
 .Python
 build/
+build_led/
 develop-eggs/
 dist/
 dist32/
 dist_fa/
+dist_led/
 downloads/
 eggs/
 .eggs/
@@ -148,6 +150,7 @@ coverage.xml
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+*.sqlite
 
 # Flask stuff:
 instance/

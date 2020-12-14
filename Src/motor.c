@@ -482,14 +482,14 @@ void motor_Resource_Init(void)
     }
 
     /* 警告 上加热体电机不抬起 不允许操作托盘电机 */
-    m_drv8824_Init();                            /* 上加热体电机初始化 */
-    tray_Motor_Init();                           /* 托盘电机初始化 */
-    barcode_Motor_Init();                        /* 扫码电机初始化 */
-    whilte_Motor_Init();                         /* 白板电机初始化 */
-    barcode_Motor_Reset_Pos();                   /* 重置扫码电机位置 */
-    tray_Motor_Reset_Pos();                      /* 重置托盘电机位置 */
-    heat_Motor_Down();                           /* 砸下上加热体 */
-    barcode_Motor_Run_By_Index(eBarcodeIndex_6); /* 二位码位置就位 */
+    m_drv8824_Init(); /* 上加热体电机初始化 */
+    // tray_Motor_Init();                           /* 托盘电机初始化 */
+    // barcode_Motor_Init();                        /* 扫码电机初始化 */
+    whilte_Motor_Init(); /* 白板电机初始化 */
+    // barcode_Motor_Reset_Pos();                   /* 重置扫码电机位置 */
+    // tray_Motor_Reset_Pos();                      /* 重置托盘电机位置 */
+    // heat_Motor_Down();                           /* 砸下上加热体 */
+    // barcode_Motor_Run_By_Index(eBarcodeIndex_6); /* 二位码位置就位 */
 }
 
 /**
@@ -916,9 +916,9 @@ static void motor_Task(void * argument)
     led_Mode_Set(eLED_Mode_Keep_Green);    /* LED 绿灯常亮 */
     motor_OPT_Status_Init_Wait_Complete(); /* 等待光耦结果完成 */
     motor_Resource_Init();                 /* 电机驱动、位置初始化 */
-    barcode_Init();                        /* 扫码枪初始化 */
-    tray_Motor_EE_Clear();                 /* 清除托盘丢步标志位 */
-    heater_Overshoot_Init(0);              /* 初始化过冲参数 */
+    // barcode_Init();                        /* 扫码枪初始化 */
+    tray_Motor_EE_Clear();    /* 清除托盘丢步标志位 */
+    heater_Overshoot_Init(0); /* 初始化过冲参数 */
 
     for (;;) {
         xResult = xQueuePeek(motor_Fun_Queue_Handle, &mf, portMAX_DELAY);
@@ -971,7 +971,7 @@ static void motor_Task(void * argument)
                 barcode_Result_Init();                            /* 扫码结果初始化 */
                 led_Mode_Set(eLED_Mode_Kirakira_Green);           /* LED 绿灯闪烁 */
 
-                motor_Sample_Temperature_Check();      /* 采样前温度检查 */
+                // motor_Sample_Temperature_Check();      /* 采样前温度检查 */
                 if (motor_Sample_Barcode_Scan() > 0) { /* 扫码处理 */
                     motor_Sample_Owari();              /* 清理 */
                     break;                             /* 收到打断信息 提前结束 */

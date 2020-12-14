@@ -1393,7 +1393,7 @@ static void Miscellaneous_Task(void * argument)
         fan_Ctrl_Deal(temp_Get_Temp_Data_ENV()); /* 根据环境温度调整风扇输出 */
         fan_IC_Error_Deal();                     /* 风扇转速监控 */
         led_Out_Deal(xTick);                     /* 外接LED板处理 */
-        protocol_Temp_Upload_Deal();             /* 温度信息上送处理 */
+        // protocol_Temp_Upload_Deal();             /* 温度信息上送处理 */
 
         if (cnt % 5 == 0) {           /* 500mS */
             led_Board_Green_Toggle(); /* 板上运行灯闪烁 */

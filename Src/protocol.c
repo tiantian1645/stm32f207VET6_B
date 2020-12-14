@@ -63,7 +63,7 @@ static sProtocol_ACK_Record gProtocol_ACK_Record = {1, 1, 1};
 static uint8_t gProtocol_Temp_Upload_Comm_Ctl = 0;
 static uint8_t gProtocol_Temp_Upload_Comm_Suspend = 0;
 
-static uint8_t gProtocol_Debug_Flag = eProtocol_Debug_ErrorReport;
+static uint8_t gProtocol_Debug_Flag = eProtocol_Debug_ErrorReport | eProtocol_Debug_SampleBarcode | eProtocol_Debug_SampleMotorTray;
 
 static uint8_t gProtocol_Out_ACK_Pack_Buffer[8];
 static uint8_t gProtocol_Main_ACK_Pack_Buffer[8];

@@ -1,12 +1,14 @@
-from PyQt5.QtCore import QTimer, Signal
+import math
+
+from PyQt5.QtCore import QTimer, pyqtSignal
 from PyQt5.QtWidgets import QMessageBox
 
 
 class TimerMessageBox(QMessageBox):
 
-    close_callback = Signal()
+    close_callback = pyqtSignal()
 
-    def __init__(self, parent=None, timeout=3):  # , icon=QMessageBox.Critical, title='timer', text="text", info="info"):
+    def __init__(self, parent=None, timeout=math.nan):  # , icon=QMessageBox.Critical, title='timer', text="text", info="info"):
         super(TimerMessageBox, self).__init__(parent)
         self.time_to_wait = timeout
         # self.setIcon(icon)
