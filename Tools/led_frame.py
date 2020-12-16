@@ -41,7 +41,7 @@ from qt_serial import SerialRecvWorker, SerialSendWorker
 from qt_timeout_msgbox import TimerMessageBox
 from version import VERSION_LED
 
-ICON_PATH = "./icos/tt.ico"
+ICON_PATH = "./icos/led.ico"
 CONF_PATH = "./conf/led_config.json"
 DEFAULT_CONF = {
     "610": {"num": 3, "range": (1000, 2000)},

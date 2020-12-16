@@ -16,7 +16,7 @@ a = Analysis(['../led_frame.py'],
              cipher=block_cipher,
              noarchive=False)
 
-a.datas += [('.\\icos\\tt.ico', 'E:\\repo\\stm32f207VET6_B\\Tools\\icos\\tt.ico', 'DATA')]
+a.datas += [('.\\icos\\led.ico', 'E:\\repo\\stm32f207VET6_B\\Tools\\icos\\led.ico', 'DATA')]
 a.datas += [('.\\log\\dc201_led.log', 'E:\\repo\\stm32f207VET6_B\\Tools\\log\\dc201_led.log', 'DATA')]
 a.datas += [('.\\conf\\led_config.json', 'E:\\repo\\stm32f207VET6_B\\Tools\\conf\\led_config.json', 'DATA')]
 a.datas += [('.\\data\\led_sample.sqlite', 'E:\\repo\\stm32f207VET6_B\\Tools\\data\\led_sample.sqlite', 'DATA')]
@@ -33,7 +33,7 @@ exe = EXE(pyz,
           strip=False,
           upx=False,
           console=False, 
-          icon='E:\\repo\\stm32f207VET6_B\\Tools\\icos\\tt.ico')
+          icon='E:\\repo\\stm32f207VET6_B\\Tools\\icos\\led.ico')
 
 coll = COLLECT(exe,
                a.binaries,
