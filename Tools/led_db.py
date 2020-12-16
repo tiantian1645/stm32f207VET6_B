@@ -1,4 +1,4 @@
-from pony.orm import Database, PrimaryKey, Required, IntArray, db_session, desc
+from pony.orm import Database, PrimaryKey, Required, IntArray, db_session, desc, select
 from datetime import datetime
 import csv
 
@@ -35,15 +35,19 @@ def fetch_sample_record(start, size, reverse=False):
 
 
 @db_session
-def dump_all_record(file_path):
+def dump_all_record(file_path, start_datteime=datetime.min):
     try:
         with open(file_path, mode="w", newline="") as csv_file:
-            fieldnames = ["id", "label", "occur", "led", "channel", "white_pd", "gray_pd", "od"]
+            fieldnames = ["id", "label", "occur", "led", "channel", "white_pd", "gray_pd", "od", "white_r_gray"]
             writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
 
             writer.writeheader()
-            for sr in SampleRecord.select():
-                writer.writerow(sr.to_dict())
+            for sr in select(r for r in SampleRecord if r.occur > start_datteime):
+                data = sr.to_dict()
+                white_list = data["white_pd"]
+                gray_list = data["white_pd"]
+                data["white_r_gray"] = (sum(white_list) / len(white_list)) / (sum(gray_list) / len(gray_list))
+                writer.writerow(data)
             return True
     except Exception:
         return False

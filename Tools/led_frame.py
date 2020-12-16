@@ -13,7 +13,7 @@ import serial.tools.list_ports
 import simplejson
 import stackprinter
 from loguru import logger
-from PyQt5.QtCore import QMutex, Qt, QThreadPool, QTimer
+from PyQt5.QtCore import QMutex, Qt, QThreadPool, QTimer, QDateTime
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (
     QApplication,
@@ -31,14 +31,15 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QVBoxLayout,
     QWidget,
+    QDateTimeEdit,
 )
 
 from bytes_helper import bytesPuttyPrint
 from dc201_pack import DC201_PACK
+from led_db import creat_new_record, dump_all_record, led_db_init
 from qt_serial import SerialRecvWorker, SerialSendWorker
 from qt_timeout_msgbox import TimerMessageBox
 from version import VERSION_LED
-from led_db import creat_new_record, led_db_init, dump_all_record
 
 ICON_PATH = "./icos/tt.ico"
 CONF_PATH = "./conf/led_config.json"
@@ -133,7 +134,8 @@ class MainWindow(QMainWindow):
         self.move(qr.topLeft())
 
     def resizeEvent(self, event):
-        logger.debug(f"windows size | {self.size()}")
+        # logger.debug(f"windows size | {self.size()}")
+        pass
 
     def closeEvent(self, event):
         logger.debug("invoke close event")
@@ -165,22 +167,23 @@ class MainWindow(QMainWindow):
         kirakira_ly = QHBoxLayout(kirakira_wg)
         kirakira_ly.setContentsMargins(5, 0, 5, 0)
         kirakira_ly.setSpacing(5)
-        self.kirakira_recv_lb = QLabel("    ")
+        self.kirakira_recv_lb = QLabel("  ")
         self.kirakira_recv_time = time.time()
-        self.kirakira_send_lb = QLabel("    ")
+        self.kirakira_send_lb = QLabel("  ")
         self.kirakira_send_time = time.time()
-        kirakira_ly.addWidget(QLabel("发送"))
+        kirakira_ly.addWidget(QLabel("发"))
         kirakira_ly.addWidget(self.kirakira_send_lb)
-        kirakira_ly.addWidget(QLabel("接收"))
+        kirakira_ly.addWidget(QLabel("收"))
         kirakira_ly.addWidget(self.kirakira_recv_lb)
         serial_ly.addWidget(QVLine())
         serial_ly.addWidget(kirakira_wg)
+        serial_ly.addWidget(QVLine())
         # 测试结果
         self.sample_result_gb = QGroupBox("测试")
         sample_result_ly = QGridLayout(self.sample_result_gb)
-        self.sample_result_610_lbs = [QLabel("*****", alignment=Qt.AlignRight | Qt.AlignVCenter) for _ in range(6)]
-        self.sample_result_550_lbs = [QLabel("*****", alignment=Qt.AlignRight | Qt.AlignVCenter) for _ in range(6)]
-        self.sample_result_405_lbs = [QLabel("*****", alignment=Qt.AlignRight | Qt.AlignVCenter) for _ in range(1)]
+        self.sample_result_610_lbs = [QLabel("***** | *.**", alignment=Qt.AlignRight | Qt.AlignVCenter) for _ in range(6)]
+        self.sample_result_550_lbs = [QLabel("***** | *.**", alignment=Qt.AlignRight | Qt.AlignVCenter) for _ in range(6)]
+        self.sample_result_405_lbs = [QLabel("***** | *.**", alignment=Qt.AlignRight | Qt.AlignVCenter) for _ in range(1)]
         self.sample_start_bts = [QPushButton(name, clicked=partial(self.on_sample_start, idx=i)) for i, name in enumerate(("610", "550", "405"))]
         for i in range(6):
             sample_result_ly.addWidget(QLabel(f"通道 {i+ 1}", alignment=Qt.AlignRight | Qt.AlignVCenter), 0, i + 1)
@@ -199,14 +202,17 @@ class MainWindow(QMainWindow):
         temp_ly = QHBoxLayout()
         temp_ly.addWidget(self.serial_wg)
         self.sample_record_label_ed = QLineEdit()
-        temp_ly.addWidget(QLabel("测试标签:"))
+        temp_ly.addWidget(QLabel("标签:"))
         temp_ly.addWidget(self.sample_record_label_ed)
+        self.sample_record_dump_filte_datetime = QDateTimeEdit(calendarPopup=True)
+        self.sample_record_dump_filte_datetime.setDateTime(QDateTime.currentDateTime())
+        temp_ly.addWidget(self.sample_record_dump_filte_datetime)
         self.last_db_dump_dir = Path("./")
         temp_ly.addWidget(QPushButton("导出", clicked=self.on_sample_record_output))
         layout.addLayout(temp_ly)
         self.setWindowIcon(QIcon(ICON_PATH))
         self.setCentralWidget(widget)
-        self.resize(480, 200)
+        self.resize(650, 200)
 
     def serialRefreshPort(self):
         self.serial_post_co.clear()
@@ -275,17 +281,17 @@ class MainWindow(QMainWindow):
         self.sample_bts_disable()
         if idx == 0:
             for lb in self.sample_result_610_lbs:
-                lb.setText("*****")
+                lb.setText("***** | *.**")
                 lb.setToolTip("-----")
                 lb.setStyleSheet("")
         elif idx == 1:
             for lb in self.sample_result_550_lbs:
-                lb.setText("*****")
+                lb.setText("***** | *.**")
                 lb.setToolTip("-----")
                 lb.setStyleSheet("")
         elif idx == 2:
             for lb in self.sample_result_405_lbs:
-                lb.setText("*****")
+                lb.setText("***** | *.**")
                 lb.setToolTip("-----")
                 lb.setStyleSheet("")
         self.sample_idx = idx
@@ -376,13 +382,19 @@ class MainWindow(QMainWindow):
                     if channel == 1:
                         sample_finish = True
                     lb = self.sample_result_405_lbs[channel - 1]
+                else:
+                    lb = None
+                    logger.error(f"error self.sample_idx {self.sample_idx}")
+                    return
                 if v_min < c_min or v_max > c_max:
                     lb.setStyleSheet("background-color: red")
                 else:
                     lb.setStyleSheet("background-color: green")
                 lb.setToolTip(f"W_PD {sample_raw_data.white_pd} | R_PD {sample_raw_data.gray_pd} | OD {sample_raw_data.od}")
                 avg = sum(sample_raw_data.od) / length
-                lb.setText(f"{avg:.0f}")
+                avg_white = sum(sample_raw_data.white_pd) / length
+                avg_gray = sum(sample_raw_data.gray_pd) / length
+                lb.setText(f"{avg:.0f} | {avg_white / avg_gray:.2f}")
                 if sample_finish:
                     self.sample_bts_enable()
                     logger.debug(f"sample finish {self.sample_raw_data_buffer}")
@@ -435,11 +447,13 @@ class MainWindow(QMainWindow):
             QTimer.singleShot(100, lambda: self.kirakira_recv_lb.setStyleSheet("background-color : white; color : #3d3d3d;"))
 
     def on_sample_record_output(self, event=None):
+        start_datetime = self.sample_record_dump_filte_datetime.dateTime().toPyDateTime()
+        logger.debug(f"dump record after {start_datetime}")
         fd = QFileDialog()
         default_path = self.last_db_dump_dir / f"dc201_led_{datetime.now():%Y-%m-%d_%H%M%S}.csv"
         file_path, _ = fd.getSaveFileName(filter="CSV 逗号分隔值文件 (*.csv)", directory=default_path.as_posix())
         if file_path:
-            result = dump_all_record(file_path)
+            result = dump_all_record(file_path, start_datteime=start_datetime)
             msg = QMessageBox(self)
             if result is False:
                 msg.setIcon(QMessageBox.Critical)
