@@ -1,3 +1,3 @@
 VERSION = "v0.37"
 VERSION_FA = "v0.07"
-VERSION_LED = "v0.0.2"
+VERSION_LED = "v0.0.3"
