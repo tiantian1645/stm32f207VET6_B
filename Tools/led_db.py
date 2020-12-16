@@ -45,7 +45,7 @@ def dump_all_record(file_path, start_datteime=datetime.min):
             for sr in select(r for r in SampleRecord if r.occur > start_datteime):
                 data = sr.to_dict()
                 white_list = data["white_pd"]
-                gray_list = data["white_pd"]
+                gray_list = data["gray_pd"]
                 data["white_r_gray"] = (sum(white_list) / len(white_list)) / (sum(gray_list) / len(gray_list))
                 writer.writerow(data)
             return True
