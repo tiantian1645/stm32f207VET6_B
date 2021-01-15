@@ -1,42 +1,40 @@
 {
-  "configurations": [
-    {
-      "name": "ARM none eabi GCC",
-      "includePath": [
-        "${workspaceRoot}",
-        "${workspaceRoot}/Inc",
-        "${workspaceRoot}/Src",
-        "${workspaceRoot}/Drivers/CMSIS/Include/",
-        "${workspaceRoot}/Drivers/CMSIS/Device/ST/STM32F2xx/Include",
-        "${workspaceRoot}/Drivers/STM32F2xx_HAL_Driver/Inc",
-        "${workspaceRoot}/Drivers/STM32F2xx_HAL_Driver/Inc/Legacy/",
-        "${workspaceRoot}/Drivers/STM32F2xx_HAL_Driver/Src",
-        "${workspaceRoot}/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2",
-        "${workspaceRoot}/Middlewares/Third_Party/FreeRTOS/Source/include",
-        "${workspaceRoot}/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3"
-      ],
-      "browse": {
-        "path": [
-          "${workspaceRoot}"
+    "configurations": [{
+        "name": "ARM none eabi GCC",
+        "includePath": [
+            "${workspaceRoot}",
+            "${workspaceRoot}/Inc",
+            "${workspaceRoot}/Src",
+            "${workspaceRoot}/Drivers/CMSIS/Include/",
+            "${workspaceRoot}/Drivers/CMSIS/Device/ST/STM32F2xx/Include",
+            "${workspaceRoot}/Drivers/STM32F2xx_HAL_Driver/Inc",
+            "${workspaceRoot}/Drivers/STM32F2xx_HAL_Driver/Inc/Legacy/",
+            "${workspaceRoot}/Drivers/STM32F2xx_HAL_Driver/Src",
+            "${workspaceRoot}/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2",
+            "${workspaceRoot}/Middlewares/Third_Party/FreeRTOS/Source/include",
+            "${workspaceRoot}/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3"
         ],
-        "limitSymbolsToIncludedHeaders": true,
-        "databaseFilename": ""
-      },
-      "defines": [
-        "DEBUG=1",
-        "SystemCoreClock = 96000000UL",
-        "STM32F207xx"
-      ],
-      "intelliSenseMode": "gcc-x64",
-      "compilerPath": "D:\\ST\\STM32CubeIDE_1.4.0\\STM32CubeIDE\\plugins\\com.st.stm32cube.ide.mcu.externaltools.gnu-arm-embedded.7-2018-q2-update.win32_1.4.0.202007081208\\tools\\bin\\arm-none-eabi-gcc.exe",
-      "compilerArgs": [
-        "-mcpu=cortex-m4",
-        "-mthumb",
-        "-mfloat-abi=hard"
-      ],
-      "cStandard": "c11",
-      "cppStandard": "c++17"
-    }
-  ],
-  "version": 4
+        "browse": {
+            "path": [
+                "${workspaceRoot}"
+            ],
+            "limitSymbolsToIncludedHeaders": true,
+            "databaseFilename": ""
+        },
+        "defines": [
+            "DEBUG=1",
+            "SystemCoreClock = 96000000UL",
+            "STM32F207xx"
+        ],
+        "intelliSenseMode": "gcc-x64",
+        "compilerPath": "D:\\ST\\STM32CubeIDE_1.4.0\\STM32CubeIDE\\plugins\\com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.7-2018-q2-update.win32_1.5.0.202011040924\\tools\\bin\\arm-none-eabi-gcc.exe",
+        "compilerArgs": [
+            "-mcpu=cortex-m4",
+            "-mthumb",
+            "-mfloat-abi=hard"
+        ],
+        "cStandard": "c11",
+        "cppStandard": "c++17"
+    }],
+    "version": 4
 }
