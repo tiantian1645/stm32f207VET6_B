@@ -1366,8 +1366,9 @@ uint8_t Miscellaneous_Task_Is_Busy(void)
 static void Miscellaneous_Task(void * argument)
 {
     TickType_t xTick;
-    uint32_t cnt, notify;
+    uint32_t cnt, notify, pre_light_start, pre_light_stop;
     BaseType_t xResult;
+    uint8_t buffer[16];
 
     temp_Start_ADC_DMA();                         /* 启动ADC转换 */
     fan_Init();                                   /* 风扇初始化 */
@@ -1375,6 +1376,8 @@ static void Miscellaneous_Task(void * argument)
     protocol_Temp_Upload_Comm_Set(eComm_Main, 0); /* 关闭主板发送 */
     xTick = xTaskGetTickCount();                  /* 获取系统时刻 */
     vTaskDelay(30);                               /* ADC 转换完成 */
+    pre_light_start = 0;
+    pre_light_stop = 0;
 
     for (;;) {
         xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &notify, 80);
@@ -1387,7 +1390,20 @@ static void Miscellaneous_Task(void * argument)
                     white_Motor_WH(); /* 运动白板电机 白物质位置 */
                     Miscellaneous_Task_State = 0;
                     break;
+                case 1:
+                    pre_light_start = xTick;
+                    break;
             }
+        }
+
+        if (pre_light_start && xTick - pre_light_start > 100) {
+            pre_light_start = 0;
+            comm_Data_Pre_Light_Start(buffer);
+            pre_light_stop = xTick;
+        }
+        if (pre_light_stop && xTick - pre_light_stop > 5000) {
+            pre_light_stop = 0;
+            comm_Data_Pre_Light_Stop(buffer);
         }
 
         fan_Ctrl_Deal(temp_Get_Temp_Data_ENV()); /* 根据环境温度调整风扇输出 */

@@ -1131,6 +1131,33 @@ BaseType_t comm_Data_Sample_Send_Conf_TV_FromISR(uint8_t * pData)
 }
 
 /**
+ * @brief  发送 预先点灯控制
+ * @param  pData 缓存指针
+ * @retval pdPASS 提交成功 pdFALSE 提交失败
+ */
+BaseType_t comm_Data_Pre_Light_Start(uint8_t * pData)
+{
+    uint8_t sendLength;
+
+    pData[0] = 0x00;
+    sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_PRE_LIGHT, pData, 1); /* 构造数据包 */
+    return comm_Data_SendTask_QueueEmitCover(pData, sendLength);
+}
+/**
+ * @brief  发送 预先点灯控制
+ * @param  pData 缓存指针
+ * @retval pdPASS 提交成功 pdFALSE 提交失败
+ */
+BaseType_t comm_Data_Pre_Light_Stop(uint8_t * pData)
+{
+    uint8_t sendLength;
+
+    pData[0] = 0x01;
+    sendLength = buildPackOrigin(eComm_Data, eComm_Data_Outbound_CMD_PRE_LIGHT, pData, 1); /* 构造数据包 */
+    return comm_Data_SendTask_QueueEmitCover(pData, sendLength);
+}
+
+/**
  * @brief  发送采样配置 定标
  * @param  wave 波长配置  405不做定标
  * @param  pData 缓存指针

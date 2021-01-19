@@ -970,6 +970,7 @@ static void motor_Task(void * argument)
                 comm_Data_Conf_Sem_Wait(0);                       /* 清除配置信息信号量 */
                 barcode_Result_Init();                            /* 扫码结果初始化 */
                 led_Mode_Set(eLED_Mode_Kirakira_Green);           /* LED 绿灯闪烁 */
+                Miscellaneous_Task_Notify(1);                     /* 启动预先点灯 */
 
                 motor_Sample_Temperature_Check();      /* 采样前温度检查 */
                 if (motor_Sample_Barcode_Scan() > 0) { /* 扫码处理 */
