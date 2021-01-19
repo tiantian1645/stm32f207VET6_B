@@ -91,6 +91,7 @@ typedef enum {
     eComm_Data_Outbound_CMD_OFFSET_GET = 0x36,        /* 杂散光读取 */
     eComm_Data_Outbound_CMD_WHITE_MAGNIFY_GET = 0x37, /* 白板PD放大倍数读取 */
     eComm_Data_Outbound_CMD_WHITE_MAGNIFY_SET = 0x38, /* 白板PD放大倍数设置 */
+    eComm_Data_Outbound_CMD_PRE_LIGHT = 0x39,         /* 预先点灯控制 */
 } eComm_Data_Outbound_CMD;
 
 typedef enum {
@@ -199,6 +200,9 @@ BaseType_t comm_Data_Conf_White_Magnify_Set_FromISR(uint8_t * pData);
 BaseType_t comm_Data_Transit_FromISR(uint8_t * pData, uint8_t length);
 
 BaseType_t comm_Data_Sample_Owari(void);
+
+BaseType_t comm_Data_Pre_Light_Start(uint8_t * pData);
+BaseType_t comm_Data_Pre_Light_Stop(uint8_t * pData);
 
 uint8_t gComm_Data_Sample_PD_WH_Idx_Get(void);
 

@@ -103,6 +103,8 @@ def merge_hex_by_intelhex(bl_hex_path, app_hex_path, output_path):
 
 
 def main():
+    if REPO.active_branch.name != "master":
+        return
     logger.debug(f"current path | {os.path.abspath('./')}")
     version_str = get_version_str()
     now = datetime.now()
