@@ -23,8 +23,11 @@ typedef enum {
 } eWhite_Motor_Status;
 
 /* Private define ------------------------------------------------------------*/
+#define HAYDON_15 1
 
 /* Private macro -------------------------------------------------------------*/
+#if HAYDON_15
+
 #define WHITE_MOTOR_PD_PCS_UNT 8
 #define WHITE_MOTOR_PD_PCS_SUM 154
 #define WHITE_MOTOR_PD_PCS_PATCH 2
@@ -40,6 +43,24 @@ typedef enum {
 #define WHITE_MOTOR_WH_E_K (0.1)
 #define WHITE_MOTOR_WH_E_B (6)
 
+#else
+
+#define WHITE_MOTOR_PD_PCS_UNT 8
+#define WHITE_MOTOR_PD_PCS_SUM 308
+#define WHITE_MOTOR_PD_PCS_PATCH 2
+#define WHITE_MOTOR_PD_FREQ_MAX (6400.0)
+#define WHITE_MOTOR_PD_FREQ_MIN (4800.0)
+#define WHITE_MOTOR_PD_E_K (0.5)
+#define WHITE_MOTOR_PD_E_B (4.0)
+
+#define WHITE_MOTOR_WH_PCS_UNT 8
+#define WHITE_MOTOR_WH_PCS_SUM 300
+#define WHITE_MOTOR_WH_FREQ_MAX (4400.0)
+#define WHITE_MOTOR_WH_FREQ_MIN (3600.0)
+#define WHITE_MOTOR_WH_E_K (0.1)
+#define WHITE_MOTOR_WH_E_B (6)
+
+#endif
 /* Private variables ---------------------------------------------------------*/
 static eMotorDir gWhite_Motor_Dir = eMotorDir_FWD;
 static uint32_t gWhite_Motor_Position = 0xFFFFFFFF;
