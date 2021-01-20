@@ -26,7 +26,7 @@
             "SystemCoreClock = 96000000UL",
             "STM32F207xx"
         ],
-        "intelliSenseMode": "gcc-x64",
+        "intelliSenseMode": "gcc-arm",
         "compilerPath": "D:\\ST\\STM32CubeIDE_1.4.0\\STM32CubeIDE\\plugins\\com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.7-2018-q2-update.win32_1.5.0.202011040924\\tools\\bin\\arm-none-eabi-gcc.exe",
         "compilerArgs": [
             "-mcpu=cortex-m4",
