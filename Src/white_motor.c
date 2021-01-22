@@ -23,8 +23,13 @@ typedef enum {
 } eWhite_Motor_Status;
 
 /* Private define ------------------------------------------------------------*/
+#define DINGZHI 0
+#define HAYDON 1
+#define WHITE_DONOT_MOVE 0
 
 /* Private macro -------------------------------------------------------------*/
+#if DINGZHI
+
 #define WHITE_MOTOR_PD_PCS_UNT 8
 #define WHITE_MOTOR_PD_PCS_SUM 322
 #define WHITE_MOTOR_PD_PCS_PATCH 2
@@ -45,6 +50,25 @@ typedef enum {
 #define WHITE_MOTOR_WH_FREQ_MIN2 (2000.00)
 #define WHITE_MOTOR_WH_E_K2 (0.60)
 #define WHITE_MOTOR_WH_E_B2 (80)
+
+#else
+
+#define WHITE_MOTOR_PD_PCS_UNT 8
+#define WHITE_MOTOR_PD_PCS_SUM 154
+#define WHITE_MOTOR_PD_PCS_PATCH 2
+#define WHITE_MOTOR_PD_FREQ_MAX (4800.0)
+#define WHITE_MOTOR_PD_FREQ_MIN (2400.0)
+#define WHITE_MOTOR_PD_E_K (0.30)
+#define WHITE_MOTOR_PD_E_B (4.0)
+
+#define WHITE_MOTOR_WH_PCS_UNT 8
+#define WHITE_MOTOR_WH_PCS_SUM 150
+#define WHITE_MOTOR_WH_FREQ_MAX (2800.0)
+#define WHITE_MOTOR_WH_FREQ_MIN (1800.0)
+#define WHITE_MOTOR_WH_E_K (0.1)
+#define WHITE_MOTOR_WH_E_B (6)
+
+#endif
 
 /* Private variables ---------------------------------------------------------*/
 static eMotorDir gWhite_Motor_Dir = eMotorDir_FWD;
@@ -280,7 +304,9 @@ uint8_t white_Motor_PD()
 
     // xTick = xTaskGetTickCount();
     // error_Emit(eError_Motor_White_Debug);
-
+#if WHITE_DONOT_MOVE
+    return 0;
+#endif
     if (white_Motor_Position_Is_In()) { /* 光耦被遮挡 处于收起状态 */
         white_Motor_Deactive();
         gWhite_Motor_Position_Clr(); /* 清空位置记录 */
@@ -326,6 +352,9 @@ uint8_t white_Motor_PD()
  */
 uint8_t white_Motor_WH()
 {
+#if WHITE_DONOT_MOVE
+    return 0;
+#endif
     // TickType_t xTick;
     // xTick = xTaskGetTickCount();
     // error_Emit(eError_Motor_White_Debug);
