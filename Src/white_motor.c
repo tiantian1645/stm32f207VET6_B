@@ -468,8 +468,8 @@ uint16_t whiteMotor_PWM_Period_Out(uint16_t idx)
     if (idx < WHITE_MOTOR_WH_PCS_SUM / 2) {
         freq = WHITE_MOTOR_WH_FREQ_MIN + (WHITE_MOTOR_WH_FREQ_MAX - WHITE_MOTOR_WH_FREQ_MIN) / (1 + expf(-WHITE_MOTOR_WH_E_K * idx + WHITE_MOTOR_WH_E_B));
     } else {
-        freq = WHITE_MOTOR_WH_FREQ_MIN2 + (WHITE_MOTOR_WH_FREQ_MAX - WHITE_MOTOR_WH_FREQ_MIN2) /
-                                              (1 + expf(WHITE_MOTOR_WH_E_K2 * (idx - WHITE_MOTOR_WH_PCS_SUM / 2) - WHITE_MOTOR_WH_E_B2));
+        freq = WHITE_MOTOR_WH_FREQ_MIN +
+               (WHITE_MOTOR_WH_FREQ_MAX - WHITE_MOTOR_WH_FREQ_MIN) / (1 + expf(WHITE_MOTOR_WH_E_K * (idx - WHITE_MOTOR_WH_PCS_SUM) - WHITE_MOTOR_WH_E_B));
     }
 
     return 108000000.0 / freq;
