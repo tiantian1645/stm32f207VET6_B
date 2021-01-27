@@ -508,6 +508,14 @@ void motor_Init(void)
     }
 }
 
+uint8_t motor_Task_Is_Hima(void)
+{
+    if (uxQueueMessagesWaiting(motor_Fun_Queue_Handle)) {
+        return 0;
+    }
+    return 1;
+}
+
 /**
  * @brief  电机任务 测量定时器通信
  * @param  info 通信信息

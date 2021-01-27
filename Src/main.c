@@ -1368,7 +1368,7 @@ static void Miscellaneous_Task(void * argument)
     TickType_t xTick;
     uint32_t cnt, notify, pre_light_start, pre_light_stop;
     BaseType_t xResult;
-    uint8_t buffer[16];
+    uint8_t buffer[16], mod;
 
     temp_Start_ADC_DMA();                         /* 启动ADC转换 */
     fan_Init();                                   /* 风扇初始化 */
@@ -1404,6 +1404,20 @@ static void Miscellaneous_Task(void * argument)
         if (pre_light_stop && xTick - pre_light_stop > 5000) {
             pre_light_stop = 0;
             comm_Data_Pre_Light_Stop(buffer);
+        }
+
+        if (motor_Task_Is_Hima()) {
+            mod = cnt % 100;
+            switch (mod) {
+                case 90:
+                    comm_Data_Pre_Light_Start(buffer);
+                    break;
+                case 0:
+                    comm_Data_Pre_Light_Stop(buffer);
+                    break;
+                default:
+                    break;
+            }
         }
 
         fan_Ctrl_Deal(temp_Get_Temp_Data_ENV()); /* 根据环境温度调整风扇输出 */

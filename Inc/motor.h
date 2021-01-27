@@ -139,6 +139,7 @@ typedef enum {
 #define motor_CMD_Info_Get_PF_Leave(__COM_INFO__) ((__COM_INFO__)->pfLeave)
 
 void motor_Init(void);
+uint8_t motor_Task_Is_Hima(void);
 uint8_t motor_Emit(sMotor_Fun * pFun_type, uint32_t timeout);
 uint8_t motor_Emit_FromISR(sMotor_Fun * pFun_type);
 
