@@ -264,6 +264,8 @@ float temp_Get_Temp_Data(eTemp_NTC_Index idx)
         case eTemp_NTC_Index_8:
             s_idx = eStorgeParamIndex_Temp_CC_env;
             break;
+        default:
+        	return TEMP_INVALID_DATA;
     }
     if (storge_ParamReadSingle(s_idx, up.u8s) == 4) {
         if (up.f32 > 5 || up.f32 < -5) {

@@ -860,7 +860,7 @@ static void motor_Sample_Temperature_Check(void)
  */
 static uint8_t motor_Sample_Barcode_Scan(void)
 {
-    eBarcodeState barcode_result;
+    eBarcodeState barcode_result = eBarcodeState_OK;
 
     if (protocol_Debug_SampleBarcode() == 0) { /* 非调试模式 */
         if (protocol_Debug_SampleMotorTray() == 0) {
@@ -979,9 +979,11 @@ static void motor_Task(void * argument)
                 if (protocol_Debug_SampleBarcode() == 0) {                      /* 非调试模式 */
                     if (barcode_Result_Valid_Cnt() == 0) {                      /* 有效条码数量为0 */
                         if (gMotor_Sampl_Comm_Get() != eMotor_Sampl_Comm_Out) { /* 测试命令来源不是外串口 */
-                            error_Emit(eError_Barcode_Content_Empty);           /* 提示没有扫到任何条码 */
-                            motor_Sample_Owari();                               /* 清理 */
-                            break;                                              /* 没有任何条码 提前结束 */
+                            if (gComm_Data_AgingLoop_Mode_Get() == 0) {         /* 正常测试 */
+                                error_Emit(eError_Barcode_Content_Empty);       /* 提示没有扫到任何条码 */
+                                motor_Sample_Owari();                           /* 清理 */
+                                break;                                          /* 没有任何条码 提前结束 */
+                            }
                         }
                     }
                 }

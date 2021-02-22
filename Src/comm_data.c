@@ -717,7 +717,7 @@ void gComm_Data_LED_Voltage_Points_Set(uint8_t points)
 uint8_t comm_Data_Check_LED(eComm_Data_Sample_Radiant radiant, uint16_t dac, uint8_t idx)
 {
     uint8_t i, j, result = 1;
-    uint32_t sums[6] = {0, 0, 0, 0, 0, 0}, temp_32, min = 0xFFFFFFFF, max = 0;
+    uint32_t sums[6] = {0, 0, 0, 0, 0, 0}, temp_32 = 0, min = 0xFFFFFFFF, max = 0;
     int16_t sign;
     int32_t bias_1300 = 0;
     float cal_inter;
@@ -1140,7 +1140,7 @@ BaseType_t comm_Data_Sample_Send_Conf_TV_FromISR(uint8_t * pData)
  */
 BaseType_t comm_Data_Sample_Send_Conf_Correct(uint8_t * pData, eComm_Data_Sample_Radiant wave, uint8_t point_num, uint8_t cmd_type)
 {
-    uint8_t i, sendLength;
+    uint8_t i, sendLength = 0;
 
     gComm_Data_Sample_Max_Point_Clear(); /* 清除最大点数 */
     for (i = 0; i < 6; ++i) {

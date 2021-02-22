@@ -973,7 +973,7 @@ void storge_Param_CC_Illumine_CC_Sort(uint32_t * pBuffer, uint8_t length)
 float storge_Param_CC_Illumine_CC_Filter(uint8_t * pBuffer, uint8_t length)
 {
     uint8_t i;
-    uint16_t temp;
+    uint16_t temp = 0;
     uint32_t sum = 0, max = 0, min = 0xFFFFFFFF;
 
     if (pBuffer[0] < 7) { /* 数据不足 */

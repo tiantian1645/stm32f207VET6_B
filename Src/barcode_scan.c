@@ -455,6 +455,7 @@ void barcode_Motor_Calculate(uint32_t target_step)
 {
     int32_t current_position;
 
+    current_position = target_step;
     if (barcode_Motor_Enter() != eBarcodeState_Tiemout) {
         current_position = motor_Status_Get_Position(&gBarcodeMotorRunStatus);
         m_l6470_release(); /* 释放SPI总线资源*/

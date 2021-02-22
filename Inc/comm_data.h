@@ -145,6 +145,8 @@ BaseType_t comm_Data_SendTask_QueueEmit_FromISR(uint8_t * pData, uint8_t length)
 
 BaseType_t comm_Data_Send_ACK_Give_From_ISR(uint8_t packIndex);
 
+uint8_t gComm_Data_AgingLoop_Mode_Get(void);
+
 uint8_t gComm_Data_Sample_Max_Point_Get(void);
 void gComm_Data_Sample_Max_Point_Clear(void);
 

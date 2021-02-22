@@ -1366,7 +1366,7 @@ uint8_t Miscellaneous_Task_Is_Busy(void)
 static void Miscellaneous_Task(void * argument)
 {
     TickType_t xTick;
-    uint32_t cnt, notify;
+    uint32_t cnt = 0, notify;
     BaseType_t xResult;
 
     temp_Start_ADC_DMA();                         /* 启动ADC转换 */
