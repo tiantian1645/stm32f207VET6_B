@@ -2343,12 +2343,14 @@ class MainWindow(QMainWindow):
                     self.selftest_motor_scan_gb.setStyleSheet("QGroupBox:title {color: green};")
                 self.selftest_motor_scan_l.setText(text)
         elif item == 11:
-            if len(raw_bytes) != 61:
+            if len(raw_bytes) != 62:
                 logger.error(f"self check pd data length error | {bytesPuttyPrint(raw_bytes)}")
             mask = raw_bytes[7]
+            wh_except = raw_bytes[8]
+            logger.debug(f"get self check pd wh_except | {wh_except}")
             values = []
             for i in range(13):
-                value = struct.unpack("I", raw_bytes[8 + 4 * i : 8 + 4 * (i + 1)])[0]
+                value = struct.unpack("I", raw_bytes[9 + 4 * i : 9 + 4 * (i + 1)])[0]
                 logger.debug(f"get self check pd data | {i} | {value}")
                 values.append(value)
             now = datetime.now()

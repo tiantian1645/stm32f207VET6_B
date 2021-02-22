@@ -1522,6 +1522,7 @@ static void motor_Self_Check_PD(uint8_t * pBuffer, uint8_t mask)
 {
     eComm_Data_Sample_Radiant radiant;
     uint32_t record[13] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    uint8_t wh_except = 0;
 
     for (radiant = eComm_Data_Sample_Radiant_610; radiant <= eComm_Data_Sample_Radiant_405; ++radiant) { /* 逐个波长校正 */
         if (((1 << (radiant - 1)) & mask) == 0) {                                                        /* 非测试项 */
@@ -1544,12 +1545,21 @@ static void motor_Self_Check_PD(uint8_t * pBuffer, uint8_t mask)
     gComm_Data_SelfCheck_PD_Flag_Clr();                                            /* 清除自检测试 单项 PD状态 */
     pBuffer[0] = eMotor_Fun_Self_Check_PD - eMotor_Fun_Self_Check_Motor_White + 6; /* 自检测试 单项 PD */
     pBuffer[1] = mask;                                                             /* 掩码值 */
-    memcpy(&pBuffer[2], (uint8_t *)(record), ARRAY_LEN(record) * 4);
+    for (uint8_t i = 0; i < ARRAY_LEN(record); ++i) {
+        if (record[i] == 0) { /* 未做项目不检查 */
+            continue;
+        } else if (record[i] < 2000000) { /* 小于200万 认为没有白板 */
+            wh_except = 1;
+            break;
+        }
+    }
+    pBuffer[2] = wh_except;
+    memcpy(&pBuffer[3], (uint8_t *)(record), ARRAY_LEN(record) * 4);
     if (comm_Main_SendTask_Queue_GetFree() > 0) {
-        comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 54); /* 上报主串口 */
-        comm_Out_SendTask_QueueEmitWithModify(pBuffer, 54 + 7, 0);                                              /* 转发至外串口但不允许阻塞 */
+        comm_Main_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 3 + 52); /* 上报主串口 */
+        comm_Out_SendTask_QueueEmitWithModify(pBuffer, 3 + 52 + 7, 0);                                              /* 转发至外串口但不允许阻塞 */
     } else {
-        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 54); /* 上报主串口 */
+        comm_Out_SendTask_QueueEmitWithBuildCover(eProtocolEmitPack_Client_CMD_Debug_Self_Check, pBuffer, 3 + 52); /* 上报主串口 */
     }
 }
 
