@@ -272,7 +272,7 @@ void fan_IC_Error_Deal(void)
         return;
     }
 
-    if (fan_IC_Freq_Get() < 1200) {
+    if (fan_IC_Freq_Get() < 900) {
         if (HAL_GetTick() - tick > 300 * 1000) { /* 5分钟上报一次 */
             tick = HAL_GetTick();
             error_Emit(eError_Fan_Lost_Speed);
