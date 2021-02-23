@@ -23,7 +23,7 @@ typedef enum {
 } eWhite_Motor_Status;
 
 /* Private define ------------------------------------------------------------*/
-#define DINGZHI 1
+#define DINGZHI 0
 #define HAYDON (1 - DINGZHI)
 #define WHITE_DONOT_MOVE 0
 
@@ -54,17 +54,17 @@ typedef enum {
 #else
 
 #define WHITE_MOTOR_PD_PCS_UNT 8
-#define WHITE_MOTOR_PD_PCS_SUM 154
+#define WHITE_MOTOR_PD_PCS_SUM 308
 #define WHITE_MOTOR_PD_PCS_PATCH 2
-#define WHITE_MOTOR_PD_FREQ_MAX (4800.0)
-#define WHITE_MOTOR_PD_FREQ_MIN (2400.0)
-#define WHITE_MOTOR_PD_E_K (0.30)
+#define WHITE_MOTOR_PD_FREQ_MAX (6400.0)
+#define WHITE_MOTOR_PD_FREQ_MIN (4800.0)
+#define WHITE_MOTOR_PD_E_K (0.5)
 #define WHITE_MOTOR_PD_E_B (4.0)
 
 #define WHITE_MOTOR_WH_PCS_UNT 8
-#define WHITE_MOTOR_WH_PCS_SUM 150
-#define WHITE_MOTOR_WH_FREQ_MAX (2800.0)
-#define WHITE_MOTOR_WH_FREQ_MIN (1800.0)
+#define WHITE_MOTOR_WH_PCS_SUM 300
+#define WHITE_MOTOR_WH_FREQ_MAX (4400.0)
+#define WHITE_MOTOR_WH_FREQ_MIN (3600.0)
 #define WHITE_MOTOR_WH_E_K (0.1)
 #define WHITE_MOTOR_WH_E_B (6)
 
