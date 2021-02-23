@@ -344,6 +344,7 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef * huart)
             if (error_code != HAL_UART_ERROR_NONE) {
                 error_Emit_FromISR((error_code << 10) | eError_Comm_Main_UART);
             }
+            comm_Main_DMA_TX_Error_From_ISR();
             comm_Main_DMA_RX_Restore();
             break;
         case (uint32_t)USART2:
@@ -352,6 +353,7 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef * huart)
             if (error_code != HAL_UART_ERROR_NONE) {
                 error_Emit_FromISR((error_code << 10) | eError_Comm_Data_UART);
             }
+            comm_Data_DMA_TX_Error_From_ISR();
             comm_Data_DMA_RX_Restore();
             break;
         case (uint32_t)UART5:
@@ -360,6 +362,7 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef * huart)
             if (error_code != HAL_UART_ERROR_NONE) {
                 error_Emit_FromISR((error_code << 10) | eError_Comm_Out_UART);
             }
+            comm_Out_DMA_TX_Error_From_ISR();
             comm_Out_DMA_RX_Restore();
             break;
     }
