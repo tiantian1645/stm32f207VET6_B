@@ -78,7 +78,7 @@ BaseType_t Miscellaneous_Task_Notify(uint32_t notify);
 uint8_t Miscellaneous_Task_Is_Busy(void);
 void FL_Error_Handler(char * file, int line);
 uint8_t GetHardwareVersion(void);
-void reset_Tim1(void);
+
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/

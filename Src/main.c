@@ -130,10 +130,7 @@ static uint8_t Miscellaneous_Task_State = 0;
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void reset_Tim1(void)
-{
-    MX_TIM1_Init();
-}
+
 /* USER CODE END 0 */
 
 /**
@@ -1366,7 +1363,7 @@ uint8_t Miscellaneous_Task_Is_Busy(void)
 static void Miscellaneous_Task(void * argument)
 {
     TickType_t xTick;
-    uint32_t cnt, notify, pre_light_start, pre_light_stop;
+    uint32_t cnt = 0, notify, pre_light_start, pre_light_stop;
     BaseType_t xResult;
     uint8_t buffer[16];
 

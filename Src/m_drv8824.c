@@ -303,7 +303,6 @@ void PWM_AW_Stop(void)
 {
     HAL_TIM_DMABurst_WriteStop(&htim1, TIM_DMA_UPDATE);
     HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1); /* 停止PWM输出 */
-    reset_Tim1();
 }
 
 /**
