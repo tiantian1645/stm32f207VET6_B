@@ -18,6 +18,7 @@
 #include "spi_flash.h"
 #include "innate_flash.h"
 #include "heater.h"
+#include "version.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim9;

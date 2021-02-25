@@ -41,7 +41,7 @@ INVALID_DIFF_PARENTS = (Path("Tools"), Path(".vscode"), Path(".settings"))
 
 
 def get_version_str():
-    with open("../Inc/main.h", "r", encoding="utf-8") as f:
+    with open("../Inc/version.h", "r", encoding="utf-8") as f:
         for line in f.readlines():
             version_match = VERSION_RE.match(line)
             if version_match:
