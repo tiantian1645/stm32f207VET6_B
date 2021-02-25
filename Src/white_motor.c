@@ -26,6 +26,7 @@ typedef enum {
 #define DINGZHI 0
 #define HAYDON (1 - DINGZHI)
 #define WHITE_DONOT_MOVE 0
+#define MEASURE 0
 
 /* Private macro -------------------------------------------------------------*/
 #if DINGZHI
@@ -56,9 +57,9 @@ typedef enum {
 #define WHITE_MOTOR_PD_PCS_UNT 8
 #define WHITE_MOTOR_PD_PCS_SUM 308
 #define WHITE_MOTOR_PD_PCS_PATCH 2
-#define WHITE_MOTOR_PD_FREQ_MAX (6400.0)
-#define WHITE_MOTOR_PD_FREQ_MIN (4800.0)
-#define WHITE_MOTOR_PD_E_K (0.5)
+#define WHITE_MOTOR_PD_FREQ_MAX (9200.0)
+#define WHITE_MOTOR_PD_FREQ_MIN (3600.0)
+#define WHITE_MOTOR_PD_E_K (0.4)
 #define WHITE_MOTOR_PD_E_B (4.0)
 
 #define WHITE_MOTOR_WH_PCS_UNT 8
@@ -300,13 +301,15 @@ uint8_t white_Motor_Wait_Stop(uint32_t timeout)
  */
 uint8_t white_Motor_PD()
 {
-    // TickType_t xTick;
-
-    // xTick = xTaskGetTickCount();
-    // error_Emit(eError_Motor_White_Debug);
 #if WHITE_DONOT_MOVE
     return 0;
 #endif
+#if MEASURE
+    TickType_t xTick;
+
+    xTick = xTaskGetTickCount();
+#endif
+    // error_Emit(eError_Motor_White_Debug);
     if (white_Motor_Position_Is_In()) { /* 光耦被遮挡 处于收起状态 */
         white_Motor_Deactive();
         gWhite_Motor_Position_Clr(); /* 清空位置记录 */
@@ -330,10 +333,12 @@ uint8_t white_Motor_PD()
     if (white_Motor_Wait_Stop(WHITE_MOTOR_RUN_PD_TIMEOUT) == 0) {
         m_drv8824_release();
         gWhite_Motor_PD_Failed_Flag_Clr();
-        // xTick = xTaskGetTickCount() - xTick;
-        // if (xTick) {
-        //     return 0;
-        // }
+#if MEASURE
+        xTick = xTaskGetTickCount() - xTick;
+        if (xTick) {
+            return 0;
+        }
+#endif
         return 0;
     }
     m_drv8824_release();
@@ -355,9 +360,11 @@ uint8_t white_Motor_WH()
 #if WHITE_DONOT_MOVE
     return 0;
 #endif
-    // TickType_t xTick;
-    // xTick = xTaskGetTickCount();
     // error_Emit(eError_Motor_White_Debug);
+#if MEASURE
+    TickType_t xTick;
+    xTick = xTaskGetTickCount();
+#endif
 
     if (gWhite_Motor_PD_Failed_Flag_Get()) { /* PD方向运动异常 清零位置 */
         white_Motor_PD();
@@ -382,10 +389,12 @@ uint8_t white_Motor_WH()
 
     if (white_Motor_Wait_Stop(WHITE_MOTOR_RUN_WH_TIMEOUT) == 0) {
         m_drv8824_release();
-        // xTick = xTaskGetTickCount() - xTick;
-        // if (xTick) {
-        //     return 0;
-        // }
+#if MEASURE
+        xTick = xTaskGetTickCount() - xTick;
+        if (xTick) {
+            return 0;
+        }
+#endif
         return 0;
     }
     m_drv8824_release();
