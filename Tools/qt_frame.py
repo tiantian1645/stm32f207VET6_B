@@ -3203,7 +3203,9 @@ class MainWindow(QMainWindow):
         error_code = struct.unpack("H", info.content[6:8])[0]
         error_content = self.getErrorContent(error_code)
         level = QMessageBox.Warning
-        if self.warn_msgbox_cnt > 50:
+        if error_code in (122, 123):
+            timeout = 5
+        elif self.warn_msgbox_cnt > 5:
             timeout = 5
         else:
             timeout = nan
