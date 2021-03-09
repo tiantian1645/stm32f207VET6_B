@@ -1318,6 +1318,7 @@ static void motor_Task(void * argument)
                 error = 0;
                 xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, 0);                                                    /* 清空通知 */
                 comm_Data_Get_LED_Voltage();                                                                         /* 获取采样板LED电压配置 */
+                gStorgeTaskInfoLockWait(3000);                                                                       /* 等待存储任务空闲 */
                 storgeTaskNotification(eStorgeNotifyConf_Load_Sample_LED, eComm_Data);                               /* 通知存储任务 加载记录 */
                 led_Mode_Set(eLED_Mode_Red_Green);                                                                   /* 红绿交替 */
                 for (radiant = eComm_Data_Sample_Radiant_610; radiant <= eComm_Data_Sample_Radiant_405; ++radiant) { /* 逐个波长校正 */
@@ -1358,6 +1359,7 @@ static void motor_Task(void * argument)
                         }
                         comm_Data_Set_LED_Voltage(radiant, cnt);                                  /* 调整电压值 */
                         if (stage == 0) {                                                         /* 合格即跳出 */
+                            gStorgeTaskInfoLockWait(3000);                                        /* 等待存储任务空闲 */
                             storgeTaskNotification(eStorgeNotifyConf_Dump_Sample_LED, eComm_Out); /* 通知存储任务 保存记录 */
                             break;
                         }
@@ -1368,6 +1370,7 @@ static void motor_Task(void * argument)
                         comm_Data_Get_LED_Voltage(); /* 获取采样板LED电压配置 */
                     }
                 }
+                gStorgeTaskInfoLockWait(3000);                                        /* 等待存储任务空闲 */
                 storgeTaskNotification(eStorgeNotifyConf_Load_Sample_LED, eComm_Out); /* 通知存储任务 加载记录 */
                 if (error == 0) {
                     error_Emit(eError_SP_LED_Success);

@@ -240,7 +240,7 @@ uint8_t storgeWriteConfInfo_FromISR(uint32_t addr, uint8_t * pIn, uint32_t num)
 }
 
 /**
- * @brief  存储任务启动通知 中断版本
+ * @brief  存储任务启动通知
  * @param  hw          存储类型
  * @param  rw          操作类型
  * @retval 任务通知结果
