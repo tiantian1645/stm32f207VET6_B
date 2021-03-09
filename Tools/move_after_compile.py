@@ -11,17 +11,17 @@ from loguru import logger
 
 # bootloader
 BL_VERSION_RES = (
-    re.compile(r"#define BOOTLOADER_YEAR \((\d+)\)"),
-    re.compile(r"#define BOOTLOADER_MONTH \((\d+)\)"),
-    re.compile(r"#define BOOTLOADER_DAY \((\d+)\)"),
+    re.compile(r"#define VERSION_BUILT_DATE_YEAR (\d+)"),
+    re.compile(r"#define VERSION_BUILT_DATE_MONTH (\d+)"),
+    re.compile(r"#define VERSION_BUILT_DATE_DAY (\d+)"),
     re.compile(r"#define BOOTLOADER_VERSION \((\d+)\)"),
 )
 
 
 def get_bootloader_version_str():
     version_ms = [None] * len(BL_VERSION_RES)
-    with open("../../stm32f207VET6_Bootloader/Core/Inc/main.h", "r", encoding="utf-8") as f:
-        for line in f.readlines():
+    with open("../../stm32f207VET6_Bootloader/Core/Inc/version.h", "r", encoding="utf-8") as f:
+        for line in f:
             for rm in BL_VERSION_RES:
                 rr = rm.match(line)
                 if rr is None:
@@ -29,7 +29,7 @@ def get_bootloader_version_str():
                 version_ms[BL_VERSION_RES.index(rm)] = int(rr.group(1))
                 break
     if all(version_ms):
-        return f"{version_ms[3]}-20{version_ms[0]:02d}-{version_ms[1]:02d}-{version_ms[2]:02d}"
+        return f"{version_ms[3]}"
     return ""
 
 
