@@ -54,6 +54,10 @@ typedef enum {
 
 #else
 
+#define HAYDON_75 (1)
+#define HAYDON_150 (1 - HAYDON_75)
+
+#if HAYDON_75
 #define WHITE_MOTOR_PD_PCS_UNT 8
 #define WHITE_MOTOR_PD_PCS_SUM 308
 #define WHITE_MOTOR_PD_PCS_PATCH 2
@@ -68,6 +72,24 @@ typedef enum {
 #define WHITE_MOTOR_WH_FREQ_MIN (2000.0)
 #define WHITE_MOTOR_WH_E_K (0.1)
 #define WHITE_MOTOR_WH_E_B (6)
+#endif /* #if HAYDON_75 */
+
+#if HAYDON_150
+#define WHITE_MOTOR_PD_PCS_UNT 8
+#define WHITE_MOTOR_PD_PCS_SUM 150
+#define WHITE_MOTOR_PD_PCS_PATCH 2
+#define WHITE_MOTOR_PD_FREQ_MAX (4600.0)
+#define WHITE_MOTOR_PD_FREQ_MIN (1800.0)
+#define WHITE_MOTOR_PD_E_K (0.4)
+#define WHITE_MOTOR_PD_E_B (4.0)
+
+#define WHITE_MOTOR_WH_PCS_UNT 8
+#define WHITE_MOTOR_WH_PCS_SUM 154
+#define WHITE_MOTOR_WH_FREQ_MAX (2200.0)
+#define WHITE_MOTOR_WH_FREQ_MIN (1800.0)
+#define WHITE_MOTOR_WH_E_K (0.1)
+#define WHITE_MOTOR_WH_E_B (6)
+#endif /* #if HAYDON_150 */
 
 #endif
 
