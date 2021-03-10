@@ -66,6 +66,10 @@ typedef struct {
     // Operation mode
     uint8_t automode; //!< Defines if the PID controller is enabled or disabled
     ePID_Ctrl_Dir direction;
+    // Output
+    float Op; //!< Proportional output
+    float Oi; //!< Integral output
+    float Od; //!< Derivative output
 } sPID_Ctrl_Conf;
 
 /*-------------------------------------------------------------*/

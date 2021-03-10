@@ -53,6 +53,7 @@ from PyQt5.QtWidgets import (
     QSpacerItem,
     QSpinBox,
     QStatusBar,
+    QTabWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -160,7 +161,6 @@ class MainWindow(QMainWindow):
         self.out_flash_length = 0
         self.out_flash_data = bytearray()
         self.temp_start_time = None
-        self.temp_raw_start_time = None
         self.dd = DC201_PACK()
         self.pack_index = 1
         self.device_id = ""
@@ -316,8 +316,31 @@ class MainWindow(QMainWindow):
         self.temperature_plot_dg = QDialog(self)
         self.temperature_plot_dg.setWindowTitle("温度记录")
         temperature_plot_ly = QVBoxLayout(self.temperature_plot_dg)
-        self.temperature_plot_graph = TemperatureGraph(parent=self.temperature_plot_dg)
-        temperature_plot_ly.addWidget(self.temperature_plot_graph.win)
+
+        self.temp_graph_tab = QTabWidget(self.temperature_plot_dg)
+        self.temperature_plot_graph = TemperatureGraph(parent=self.temp_graph_tab)
+        self.temp_graph_tab.addTab(self.temperature_plot_graph.win, "加热体")
+
+        self.temperature_raw_graph = TemperatureGraph(parent=self.temp_graph_tab)
+        for i in range(9):
+            self.temperature_raw_graph.plot_data_new(name=f"#{i + 1}")
+        self.temp_graph_tab.addTab(self.temperature_raw_graph.win, "ADC 采样")
+
+        self.temperature_B_PID_graph = TemperatureGraph(parent=self.temp_graph_tab)
+        self.temperature_B_PID_graph.plot_data_new(name="B_Out")
+        self.temperature_B_PID_graph.plot_data_new(name="B_Op")
+        self.temperature_B_PID_graph.plot_data_new(name="B_Oi")
+        self.temperature_B_PID_graph.plot_data_new(name="B_Od")
+        self.temp_graph_tab.addTab(self.temperature_B_PID_graph.win, "下加热体 PID")
+
+        self.temperature_T_PID_graph = TemperatureGraph(parent=self.temp_graph_tab)
+        self.temperature_T_PID_graph.plot_data_new(name="T_Out")
+        self.temperature_T_PID_graph.plot_data_new(name="T_Op")
+        self.temperature_T_PID_graph.plot_data_new(name="T_Oi")
+        self.temperature_T_PID_graph.plot_data_new(name="T_Od")
+        self.temp_graph_tab.addTab(self.temperature_T_PID_graph.win, "上加热体 PID")
+
+        temperature_plot_ly.addWidget(self.temp_graph_tab)
         self.temperature_plot_reset_bt = QPushButton("默认参数")
         self.temperature_plot_clear_bt = QPushButton("清零")
         temperature_heater_ctl_ly = QVBoxLayout()
@@ -404,7 +427,6 @@ class MainWindow(QMainWindow):
         temp_ly = QHBoxLayout(temp_wg)
         for i, l in enumerate(self.temperautre_wg_raw_lbs):
             temp_ly.addWidget(l)
-        temp_wg.mousePressEvent = self.onTemperautreRawLabelClick
         temperature_plot_ly.addWidget(temp_wg)
 
         temp_ly = QHBoxLayout()
@@ -426,10 +448,9 @@ class MainWindow(QMainWindow):
 
         self.temperature_heater_btm_cb.clicked.connect(self.onTemperatureHeaterChanged)
         self.temperature_heater_top_cb.clicked.connect(self.onTemperatureHeaterChanged)
-        self.temperature_plot_clear_bt.clicked.connect(self.onTemperautreDataClear)
+        self.temperature_plot_clear_bt.clicked.connect(self.onTemperatureTabGraphClear)
         self.temperature_plot_reset_bt.clicked.connect(self.onTemperatureCtlResetPara)
-        self.temperature_plot_graph.plot_data_new(name="下加热体", color="FF0000")
-        self.temperature_plot_graph.plot_data_new(name="上加热体", color="0000FF")
+        self.onTemperautreDataClear()
 
         motor_tray_position_wg = QWidget()
         motor_tray_position_ly = QHBoxLayout(motor_tray_position_wg)
@@ -578,27 +599,42 @@ class MainWindow(QMainWindow):
             if v is not None:
                 self.temperature_heater_top_ks_sps[i].setValue(v)
 
-    def onTemperautreDataClear(self, event):
+    def onTemperatureTabGraphClear(self, event=None):
+        cuttent_wg = self.temp_graph_tab.currentWidget()
+        if 1 or cuttent_wg is self.temperature_plot_graph.win:
+            self.onTemperautreDataClear()
+            self.temperature_raw_graph.clear_plot()
+            for i in range(9):
+                self.temperature_raw_graph.plot_data_new(name=f"#{i + 1}")
+
+            self.temperature_B_PID_graph.clear_plot()
+            self.temperature_B_PID_graph.plot_data_new(name="B_Out")
+            self.temperature_B_PID_graph.plot_data_new(name="B_Op")
+            self.temperature_B_PID_graph.plot_data_new(name="B_Oi")
+            self.temperature_B_PID_graph.plot_data_new(name="B_Od")
+
+            self.temperature_T_PID_graph.clear_plot()
+            self.temperature_T_PID_graph.plot_data_new(name="T_Out")
+            self.temperature_T_PID_graph.plot_data_new(name="T_Op")
+            self.temperature_T_PID_graph.plot_data_new(name="T_Oi")
+            self.temperature_T_PID_graph.plot_data_new(name="T_Od")
+
+    def onTemperautreDataClear(self, event=None):
         self.temp_start_time = None
         self.temperature_plot_graph.clear_plot()
         self.temperature_plot_graph.plot_data_new(name="下加热体", color="FF0000")
         self.temperature_plot_graph.plot_data_new(name="上加热体", color="0000FF")
-
-    def onTemperautreRawLabelClick(self, event):
-        self.temperature_raw_plot_dg.show()
-
-    def onTemperautreRawDataClear(self, event):
-        self.temp_raw_start_time = None
-        self.temperature_raw_graph.clear_plot()
-        for i in range(9):
-            self.temperature_raw_graph.plot_data_new(name=f"#{i + 1}")
+        self.temperature_plot_graph.plot_data_new(name="B_Set", color="fc7100")
+        self.temperature_plot_graph.plot_data_new(name="B_Out", color="ff00dd")
+        self.temperature_plot_graph.plot_data_new(name="T_Set", color="17afeb")
+        self.temperature_plot_graph.plot_data_new(name="T_Out", color="17d2eb")
 
     def updateTemperautre(self, info):
         if self.temp_start_time is None:
-            self.temp_start_time = time.time()
+            self.temp_start_time = time.perf_counter()
             tiem_point = 0
         else:
-            tiem_point = time.time() - self.temp_start_time
+            tiem_point = time.perf_counter() - self.temp_start_time
         temp_btm = int.from_bytes(info.content[6:8], byteorder="little") / 100
         temp_top = int.from_bytes(info.content[8:10], byteorder="little") / 100
         self.temperature_plot_graph.plot_data_update(0, tiem_point, temp_btm)
@@ -621,19 +657,36 @@ class MainWindow(QMainWindow):
 
     def updateTemperautreRaw(self, info):
         payload_length = len(info.content) - 7
-        if payload_length not in (36, 54):
+        if payload_length not in (36, 54, 94):
             logger.error(f"error temp raw info | {info}")
             return
-        if self.temp_raw_start_time is None:
-            self.temp_raw_start_time = time.time()
+        if self.temp_start_time is None:
+            self.temp_start_time = time.perf_counter()
             time_point = 0
         else:
-            time_point = time.time() - self.temp_raw_start_time
+            time_point = time.perf_counter() - self.temp_start_time
+        if payload_length == 94:
+            temp_point_list = struct.unpack("f" * 10, info.content[6 + 54 : 6 + 94])
+            self.temperature_B_PID_graph.plot_data_update(0, time_point, temp_point_list[1])
+            self.temperature_B_PID_graph.plot_data_update(1, time_point, temp_point_list[2])
+            self.temperature_B_PID_graph.plot_data_update(2, time_point, temp_point_list[3])
+            self.temperature_B_PID_graph.plot_data_update(3, time_point, temp_point_list[4])
+            self.temperature_T_PID_graph.plot_data_update(0, time_point, temp_point_list[6])
+            self.temperature_T_PID_graph.plot_data_update(1, time_point, temp_point_list[7])
+            self.temperature_T_PID_graph.plot_data_update(2, time_point, temp_point_list[8])
+            self.temperature_T_PID_graph.plot_data_update(3, time_point, temp_point_list[9])
+            self.temperature_plot_graph.plot_data_update(2, time_point, temp_point_list[0])
+            self.temperature_plot_graph.plot_data_update(3, time_point, temp_point_list[1])
+            self.temperature_plot_graph.plot_data_update(4, time_point, temp_point_list[5])
+            self.temperature_plot_graph.plot_data_update(5, time_point, temp_point_list[6])
         for idx in range(9):
             temp_value = struct.unpack("f", info.content[6 + 4 * idx : 10 + 4 * idx])[0]
-            if payload_length == 54:
+            if payload_length in (54, 94):
                 adc_raw = struct.unpack("H", info.content[10 + 32 + 2 * idx : 12 + 32 + 2 * idx])[0]
-                r = 10 * (4095 - adc_raw) / adc_raw
+                if adc_raw != 0:
+                    r = 10 * (4095 - adc_raw) / adc_raw
+                else:
+                    r = 10 * 4095
                 self.temperautre_wg_raw_lbs[idx].setText(f"#{idx + 1} {temp_value:.3f}℃")
                 self.temperautre_wg_raw_lbs[idx].setToolTip(f"ADC {adc_raw} 电阻 {r:.6f} kΩ")
             elif payload_length == 36:
@@ -2625,19 +2678,6 @@ class MainWindow(QMainWindow):
         self.id_card_data_read_bt.clicked.connect(self.onID_CardRead)
         self.id_card_data_write_bt.clicked.connect(self.onID_CardWrite)
         self.id_card_data_dg = ModernDialog(self.id_card_data_dg, self)
-
-        self.temperature_raw_plot_dg = QDialog(self)
-        self.temperature_raw_plot_dg.setWindowTitle("温度ADC 采样原始数据")
-        temperature_raw_plot_ly = QVBoxLayout(self.temperature_raw_plot_dg)
-        self.temperature_raw_graph = TemperatureGraph(parent=self.temperature_raw_plot_dg)
-        self.temperature_raw_plot_clear_bt = QPushButton("清零")
-        temperature_raw_plot_ly.addWidget(self.temperature_raw_graph.win)
-        temperature_raw_plot_ly.addWidget(self.temperature_raw_plot_clear_bt)
-        for i in range(9):
-            self.temperature_raw_graph.plot_data_new(name=f"#{i + 1}")
-        self.temperature_raw_plot_clear_bt.clicked.connect(self.onTemperautreRawDataClear)
-        self.temperature_raw_plot_dg.resize(600, 600)
-        self.temperature_raw_plot_dg = ModernDialog(self.temperature_raw_plot_dg, self)
 
         self.out_flash_data_dg = QDialog(self)
         self.out_flash_data_dg.setWindowTitle("外部Flash")

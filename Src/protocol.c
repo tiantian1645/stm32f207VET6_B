@@ -573,9 +573,10 @@ void protocol_Temp_Upload_Main_Deal(float temp_btm, float temp_top, float temp_e
  */
 void protocol_Temp_Upload_Out_Deal(float temp_btm, float temp_top)
 {
-    uint8_t buffer[64], length, i;
+    uint8_t buffer[128], length, i;
     float temperature;
     uint16_t adc_raw;
+    const eHeater_PID_Conf offste_list[] = {eHeater_PID_Conf_Set_Point, eHeater_PID_Conf_Output, eHeater_PID_Conf_OP, eHeater_PID_Conf_OI, eHeater_PID_Conf_OD};
 
     if (protocol_Temp_Upload_Comm_Get(eComm_Out) == 0) { /* 无需进行串口发送 */
         return;
@@ -600,8 +601,25 @@ void protocol_Temp_Upload_Out_Deal(float temp_btm, float temp_top)
                 adc_raw = gTempADC_Results_Get_By_Index(i);
                 memcpy(buffer + 36 + 2 * i, (uint8_t *)(&adc_raw), 2);
             }
-            length = buildPackOrigin(eComm_Out, eProtocolRespPack_Client_Debug_Temp, buffer, 54); /* 构造数据包  */
-            comm_Out_SendTask_QueueEmitCover(buffer, length);                                     /* 提交到发送队列 */
+            length = 54;
+            for (uint8_t i = 0; i < ARRAY_LEN(offste_list); ++i) {
+                temperature = heater_BTM_Conf_Get(offste_list[i]);
+                if (i > 0) {
+                    temperature = temperature / heater_BTM_Conf_Get(eHeater_PID_Conf_Max_Output) * 100.0;
+                }
+                memcpy(buffer + length, (uint8_t *)(&temperature), 4);
+                length += 4;
+            }
+            for (uint8_t i = 0; i < ARRAY_LEN(offste_list); ++i) {
+                temperature = heater_TOP_Conf_Get(offste_list[i]);
+                if (i > 0) {
+                    temperature = temperature / heater_TOP_Conf_Get(eHeater_PID_Conf_Max_Output) * 100.0;
+                }
+                memcpy(buffer + length, (uint8_t *)(&temperature), 4);
+                length += 4;
+            }
+            length = buildPackOrigin(eComm_Out, eProtocolRespPack_Client_Debug_Temp, buffer, length); /* 构造数据包  */
+            comm_Out_SendTask_QueueEmitCover(buffer, length);                                         /* 提交到发送队列 */
         }
     }
 }

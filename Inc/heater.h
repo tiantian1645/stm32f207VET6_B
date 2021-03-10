@@ -33,6 +33,9 @@ typedef enum {
     eHeater_PID_Conf_Output,
     eHeater_PID_Conf_Min_Output,
     eHeater_PID_Conf_Max_Output,
+    eHeater_PID_Conf_OP,
+    eHeater_PID_Conf_OI,
+    eHeater_PID_Conf_OD,
 } eHeater_PID_Conf;
 
 typedef enum {

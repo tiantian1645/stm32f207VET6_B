@@ -474,6 +474,12 @@ static float heater_PID_Conf_Param_Get(sPID_Ctrl_Conf * pConf, eHeater_PID_Conf 
             return pConf->omin;
         case eHeater_PID_Conf_Max_Output:
             return pConf->omax;
+        case eHeater_PID_Conf_OP:
+            return pConf->Op;
+        case eHeater_PID_Conf_OI:
+            return pConf->Oi;
+        case eHeater_PID_Conf_OD:
+            return pConf->Od;
     }
     return 0;
 }
@@ -512,6 +518,10 @@ static void heater_PID_Conf_Param_Set(sPID_Ctrl_Conf * pConf, eHeater_PID_Conf o
         case eHeater_PID_Conf_Max_Output:
             pConf->omax = data;
             break;
+        case eHeater_PID_Conf_OP:
+        case eHeater_PID_Conf_OI:
+        case eHeater_PID_Conf_OD:
+        	break;
     }
 }
 
@@ -701,7 +711,7 @@ void heater_TOP_Output_Stop(void)
  * @param  None
  * @retval PWM 输出 状态
  */
-HAL_TIM_StateTypeDef heater_TOP_Output_Is_Live(void)
+uint8_t heater_TOP_Output_Is_Live(void)
 {
     return (HEATER_TOP_TIM.Instance->CR1 & TIM_CR1_CEN) == TIM_CR1_CEN;
 }

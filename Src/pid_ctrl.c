@@ -21,7 +21,7 @@
 
 /* Private macro -------------------------------------------------------------*/
 #define TICK_SECOND configTICK_RATE_HZ /* 系统时钟频率 */
-#define tick_get HAL_GetTick     /* 系统时钟获取函数 */
+#define tick_get HAL_GetTick           /* 系统时钟获取函数 */
 
 /* Private variables ---------------------------------------------------------*/
 
@@ -98,6 +98,9 @@ void pid_ctrl_compute(sPID_Ctrl_Conf * pPID_Info)
     // Compute differential on input
     float dinput = in - pPID_Info->lastin;
     // Compute PID output
+    pPID_Info->Op = pPID_Info->Kp * error;
+    pPID_Info->Od = -1.0 * pPID_Info->Kd * dinput;
+    pPID_Info->Oi = pPID_Info->iterm;
     float out = pPID_Info->Kp * error + pPID_Info->iterm - pPID_Info->Kd * dinput;
     // Apply limit to output value
     if (out > pPID_Info->omax)
