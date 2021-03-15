@@ -1337,7 +1337,7 @@ static void motor_Task(void * argument)
                             break;
                     }
                     comm_Data_Set_LED_Voltage(radiant, cnt);                                    /* 设置初始化电压值 */
-                    for (uint8_t i = 0; i < 20; ++i) {                                          /* 循环测试-检测-调整电压 */
+                    for (uint8_t i = 0; i < 30; ++i) {                                          /* 循环测试-检测-调整电压 */
                         comm_Data_RecordInit();                                                 /* 初始化数据记录 */
                         gComm_Data_SP_LED_Flag_Mark(radiant);                                   /* 标记校正采样板LED电压状态 */
                         comm_Data_Sample_Send_Conf_Correct(buffer, radiant,                     /* 配置波长 */
