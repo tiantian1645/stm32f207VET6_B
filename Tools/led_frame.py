@@ -7,6 +7,7 @@ from collections import namedtuple
 from datetime import datetime
 from functools import partial
 from pathlib import Path
+from PyQt5 import QtGui
 
 import serial
 import serial.tools.list_ports
@@ -181,21 +182,35 @@ class MainWindow(QMainWindow):
         # 测试结果
         self.sample_result_gb = QGroupBox("测试")
         sample_result_ly = QGridLayout(self.sample_result_gb)
-        self.sample_result_610_lbs = [QLabel("***** | *.**", alignment=Qt.AlignRight | Qt.AlignVCenter) for _ in range(6)]
-        self.sample_result_550_lbs = [QLabel("***** | *.**", alignment=Qt.AlignRight | Qt.AlignVCenter) for _ in range(6)]
-        self.sample_result_405_lbs = [QLabel("***** | *.**", alignment=Qt.AlignRight | Qt.AlignVCenter) for _ in range(1)]
+        self.sample_result_610_lbs = [QLabel("*****", alignment=Qt.AlignHCenter | Qt.AlignVCenter) for _ in range(6)]
+        self.sample_result_550_lbs = [QLabel("*****", alignment=Qt.AlignHCenter | Qt.AlignVCenter) for _ in range(6)]
+        self.sample_result_405_lbs = [QLabel("*****", alignment=Qt.AlignHCenter | Qt.AlignVCenter) for _ in range(1)]
+
+        self.sample_result_pd_610_lbs = [QLabel("****", alignment=Qt.AlignHCenter | Qt.AlignVCenter) for _ in range(6)]
+        self.sample_result_pd_550_lbs = [QLabel("****", alignment=Qt.AlignHCenter | Qt.AlignVCenter) for _ in range(6)]
+        self.sample_result_pd_405_lbs = [QLabel("****", alignment=Qt.AlignHCenter | Qt.AlignVCenter) for _ in range(1)]
+
         self.sample_start_bts = [QPushButton(name, clicked=partial(self.on_sample_start, idx=i)) for i, name in enumerate(("610", "550", "405"))]
         for i in range(6):
-            sample_result_ly.addWidget(QLabel(f"通道 {i+ 1}", alignment=Qt.AlignRight | Qt.AlignVCenter), 0, i + 1)
+            sample_result_ly.addWidget(QLabel(f"通道 {i+ 1}"), 0, 2 * i + 1, 1, 2, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
 
         for i, bt in enumerate(self.sample_start_bts):
-            sample_result_ly.addWidget(bt, i + 1, 0)
-        for i, lb in enumerate(self.sample_result_610_lbs):
-            sample_result_ly.addWidget(lb, 1, i + 1)
-        for i, lb in enumerate(self.sample_result_550_lbs):
-            sample_result_ly.addWidget(lb, 2, i + 1)
-        for i, lb in enumerate(self.sample_result_405_lbs):
-            sample_result_ly.addWidget(lb, 3, i + 1)
+            sample_result_ly.addWidget(bt, i + 1, 0, 1, 1)
+        for i in range(6):
+            temp_ly = QHBoxLayout()
+            temp_ly.addWidget(self.sample_result_610_lbs[i])
+            temp_ly.addWidget(self.sample_result_pd_610_lbs[i])
+            sample_result_ly.addLayout(temp_ly, 1, 2 * i + 1, 1, 2)
+
+            temp_ly = QHBoxLayout()
+            temp_ly.addWidget(self.sample_result_550_lbs[i])
+            temp_ly.addWidget(self.sample_result_pd_550_lbs[i])
+            sample_result_ly.addLayout(temp_ly, 2, 2 * i + 1, 1, 2)
+            if i == 0:
+                temp_ly = QHBoxLayout()
+                temp_ly.addWidget(self.sample_result_405_lbs[i])
+                temp_ly.addWidget(self.sample_result_pd_405_lbs[i])
+                sample_result_ly.addLayout(temp_ly, 3, 2 * i + 1, 1, 2)
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.addWidget(self.sample_result_gb)
@@ -278,22 +293,31 @@ class MainWindow(QMainWindow):
             bt.setEnabled(True)
 
     def on_sample_start(self, event, idx=0):
+        def reset_lb(lb, t):
+            lb.setToolTip("-----")
+            lb.setStyleSheet("")
+            if t == "od":
+                lb.setText("*****")
+            else:
+                lb.setText("****")
+                lb.setFont(QtGui.QFont("Comic Sans MS", 16))
+
         self.sample_bts_disable()
         if idx == 0:
             for lb in self.sample_result_610_lbs:
-                lb.setText("***** | *.**")
-                lb.setToolTip("-----")
-                lb.setStyleSheet("")
+                reset_lb(lb, "od")
+            for lb in self.sample_result_pd_610_lbs:
+                reset_lb(lb, "pd")
         elif idx == 1:
             for lb in self.sample_result_550_lbs:
-                lb.setText("***** | *.**")
-                lb.setToolTip("-----")
-                lb.setStyleSheet("")
+                reset_lb(lb, "od")
+            for lb in self.sample_result_pd_550_lbs:
+                reset_lb(lb, "pd")
         elif idx == 2:
             for lb in self.sample_result_405_lbs:
-                lb.setText("***** | *.**")
-                lb.setToolTip("-----")
-                lb.setStyleSheet("")
+                reset_lb(lb, "od")
+            for lb in self.sample_result_pd_405_lbs:
+                reset_lb(lb, "pd")
         self.sample_idx = idx
         self._serialSendPack(0x01)
         point_num = self.conf_data[["610", "550", "405"][idx]]["num"]
@@ -369,32 +393,43 @@ class MainWindow(QMainWindow):
                 v_max = max(sample_raw_data.od)
                 c_min = min(self.conf_data[led_name]["range"])
                 c_max = max(self.conf_data[led_name]["range"])
+                pd_v_min = min(sample_raw_data.white_pd)
+                pd_v_max = max(sample_raw_data.white_pd)
+                pd_c_min = 1000 * 10000
+                pd_c_max = 1500 * 10000
                 sample_finish = False
                 if self.sample_idx == 0:
                     if channel == 6:
                         sample_finish = True
                     lb = self.sample_result_610_lbs[channel - 1]
+                    pd_lb = self.sample_result_pd_610_lbs[channel - 1]
                 elif self.sample_idx == 1:
                     if channel == 6:
                         sample_finish = True
                     lb = self.sample_result_550_lbs[channel - 1]
+                    pd_lb = self.sample_result_pd_550_lbs[channel - 1]
                 elif self.sample_idx == 2:
                     if channel == 1:
                         sample_finish = True
                     lb = self.sample_result_405_lbs[channel - 1]
+                    pd_lb = self.sample_result_pd_405_lbs[channel - 1]
                 else:
-                    lb = None
                     logger.error(f"error self.sample_idx {self.sample_idx}")
                     return
                 if v_min < c_min or v_max > c_max:
                     lb.setStyleSheet("background-color: red")
                 else:
                     lb.setStyleSheet("background-color: green")
-                lb.setToolTip(f"W_PD {sample_raw_data.white_pd} | R_PD {sample_raw_data.gray_pd} | OD {sample_raw_data.od}")
+                if pd_v_min < pd_c_min or pd_v_max > pd_c_max:
+                    pd_lb.setStyleSheet("background-color: #f4514a")
+                else:
+                    pd_lb.setStyleSheet("background-color: lightgreen")
+                lb.setToolTip(f"OD {sample_raw_data.od}")
+                pd_lb.setToolTip(f"W_PD {sample_raw_data.white_pd}")
                 avg = sum(sample_raw_data.od) / length
-                avg_white = sum(sample_raw_data.white_pd) / length
-                avg_gray = sum(sample_raw_data.gray_pd) / length
-                lb.setText(f"{avg:.0f} | {avg_white / avg_gray:.2f}")
+                lb.setText(f"{avg:.0f}")
+                avg_white_pd = sum(sample_raw_data.white_pd) / length
+                pd_lb.setText(f"{avg_white_pd / 10000:.0f}")
                 if sample_finish:
                     self.sample_bts_enable()
                     logger.debug(f"sample finish {self.sample_raw_data_buffer}")
@@ -412,8 +447,11 @@ class MainWindow(QMainWindow):
                     msg = TimerMessageBox(self)
                     msg.setIcon(QMessageBox.Information)
                     msg.setWindowTitle("测试完成")
-                    od_statistic = "\n".join(f"\t通道 {i.channel}: {sum(i.od) / len(i.od):.0f}\t\t\t" for i in self.sample_raw_data_buffer)
-                    msg.setText(f"{led_name} OD")
+                    od_statistic = "\n".join(
+                        f"\t通道 {i.channel}: {sum(i.od) / len(i.od):.0f} {sum(i.white_pd) / len(i.white_pd) / 10000:.4f} \t\t\t"
+                        for i in self.sample_raw_data_buffer
+                    )
+                    msg.setText(f"{led_name} OD/PD")
                     msg.setInformativeText(od_statistic)
                     detailed_text = (
                         "白板PD\n"
