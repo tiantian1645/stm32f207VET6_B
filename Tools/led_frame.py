@@ -7,18 +7,18 @@ from collections import namedtuple
 from datetime import datetime
 from functools import partial
 from pathlib import Path
-from PyQt5 import QtGui
 
 import serial
 import serial.tools.list_ports
 import simplejson
 import stackprinter
 from loguru import logger
-from PyQt5.QtCore import QMutex, Qt, QThreadPool, QTimer, QDateTime
-from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import QDateTime, QMutex, Qt, QThreadPool, QTimer
+from PyQt5.QtGui import QFont, QIcon
 from PyQt5.QtWidgets import (
     QApplication,
     QComboBox,
+    QDateTimeEdit,
     QDesktopWidget,
     QFileDialog,
     QFrame,
@@ -32,7 +32,6 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QVBoxLayout,
     QWidget,
-    QDateTimeEdit,
 )
 
 from bytes_helper import bytesPuttyPrint
@@ -300,7 +299,7 @@ class MainWindow(QMainWindow):
                 lb.setText("*****")
             else:
                 lb.setText("****")
-                lb.setFont(QtGui.QFont("Comic Sans MS", 16))
+                lb.setFont(QFont("Comic Sans MS", 16))
 
         self.sample_bts_disable()
         if idx == 0:
