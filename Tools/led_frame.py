@@ -395,7 +395,7 @@ class MainWindow(QMainWindow):
                 pd_v_min = min(sample_raw_data.white_pd)
                 pd_v_max = max(sample_raw_data.white_pd)
                 pd_c_min = 1000 * 10000
-                pd_c_max = 1500 * 10000
+                pd_c_max = 1550 * 10000
                 sample_finish = False
                 if self.sample_idx == 0:
                     if channel == 6:
