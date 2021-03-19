@@ -54,7 +54,7 @@ typedef enum {
 
 #else
 
-#define HAYDON_75 (0)
+#define HAYDON_75 (1)
 #define HAYDON_150 (1 - HAYDON_75)
 
 #if HAYDON_75
