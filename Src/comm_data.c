@@ -752,10 +752,10 @@ uint8_t comm_Data_Check_LED(eComm_Data_Sample_Radiant radiant, uint16_t dac, uin
         if (temp_32 < min) {
             min = temp_32;
         }
-        if (temp_32 >= 12500000) {
-            bias_1300 += temp_32 - 12000000;
+        if (temp_32 >= 13000000) {
+            bias_1300 += temp_32 - 13000000;
         } else {
-            bias_1300 -= 12000000 - temp_32;
+            bias_1300 -= 13000000 - temp_32;
         }
     }
 
@@ -769,15 +769,15 @@ uint8_t comm_Data_Check_LED(eComm_Data_Sample_Radiant radiant, uint16_t dac, uin
         gComm_Data_LED_SP_Record[2].adc_avg = temp_32;
     }
 
-    if (j == 0 || (-2000 < bias_1300 && bias_1300 < 2000)) { /* 没有有效值 或者误差已经足够小 */
-        gComm_Data_LED_Voltage_Interval_Set(0);              /* 不修改间隔结束流程 */
-        last_bias_1300 = 0x80000000;                         /* 初始化历史值 */
-        gComm_Data_LED_Voltage_Points_Set(1);                /* 点数设为 1 */
+    if (j == 0 || (-20000 < bias_1300 && bias_1300 < 20000)) { /* 没有有效值 或者误差已经足够小 */
+        gComm_Data_LED_Voltage_Interval_Set(0);                /* 不修改间隔结束流程 */
+        last_bias_1300 = 0x80000000;                           /* 初始化历史值 */
+        gComm_Data_LED_Voltage_Points_Set(1);                  /* 点数设为 1 */
         return 0;
     }
 
     bias_1300 = bias_1300 / j;
-    if (max >= 14000000) { /* 最大值越限 */
+    if (max >= 15000000) { /* 最大值越限 */
         sign = gComm_Data_LED_Voltage_Interval_Get() / 2;
         if (sign == 0) {
             gComm_Data_LED_Voltage_Interval_Set(-1);
