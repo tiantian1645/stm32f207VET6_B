@@ -12,8 +12,7 @@
             "${workspaceRoot}/Drivers/STM32F2xx_HAL_Driver/Src",
             "${workspaceRoot}/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2",
             "${workspaceRoot}/Middlewares/Third_Party/FreeRTOS/Source/include",
-            "${workspaceRoot}/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3",
-            "D:\\ST\\STM32CubeIDE_1.4.0\\STM32CubeIDE\\plugins\\com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.7-2018-q2-update.win32_1.5.0.202011040924\\tools\\arm-none-eabi\\include"
+            "${workspaceRoot}/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3"
         ],
         "browse": {
             "path": [
@@ -28,7 +27,7 @@
             "STM32F207xx"
         ],
         "intelliSenseMode": "gcc-arm",
-        "compilerPath": "D:\\ST\\STM32CubeIDE_1.4.0\\STM32CubeIDE\\plugins\\com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.7-2018-q2-update.win32_1.5.0.202011040924\\tools\\bin\\arm-none-eabi-gcc.exe",
+        "compilerPath": "D:\\ST\\STM32CubeIDE\\STM32CubeIDE\\plugins\\com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.9-2020-q2-update.win32_1.5.0.202011040924\\tools\\bin\\arm-none-eabi-gcc.exe",
         "compilerArgs": [
             "-mcpu=cortex-m4",
             "-mthumb",
