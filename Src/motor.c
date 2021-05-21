@@ -1588,7 +1588,7 @@ static void motor_Self_Check_FAN(uint8_t * pBuffer)
     pBuffer[0] = eMotor_Fun_Self_Check_FAN - eMotor_Fun_Self_Check_Motor_White + 6; /* 自检测试 单项 风扇 */
     if (freq < 3600) {
         pBuffer[1] = 1;
-    } else if (freq > 5000) {
+    } else if (freq > 10000) {
         pBuffer[1] = 2;
     } else {
         pBuffer[1] = 0;
