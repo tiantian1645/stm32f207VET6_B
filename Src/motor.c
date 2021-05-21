@@ -1004,15 +1004,13 @@ static void motor_Task(void * argument)
                     motor_Sample_Owari();                       /* 清理 */
                     break;                                      /* 提前结束 */
                 }
-                if (protocol_Debug_SampleBarcode() == 0) {                                                       /* 非调试模式 */
-                    cnt = HAL_GetTick() - xTick;                                                                 /* 耗时时间 */
-                    if (cnt < pdMS_TO_TICKS(15 * 1000)) {                                                        /* 等待补全15秒 */
-                        xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(15 * 1000) - cnt); /* 等待任务通知 */
-                        if (xResult == pdPASS && xNotifyValue == eMotorNotifyValue_BR) {                         /* 收到中终止命令 */
-                            error_Emit(eError_Sample_Initiative_Break);                                          /* 主动打断 */
-                            motor_Sample_Owari();                                                                /* 清理 */
-                            break;
-                        }
+                cnt = HAL_GetTick() - xTick;                                                                 /* 耗时时间 */
+                if (cnt < pdMS_TO_TICKS(15 * 1000)) {                                                        /* 等待补全15秒 预先点灯 */
+                    xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(15 * 1000) - cnt); /* 等待任务通知 */
+                    if (xResult == pdPASS && xNotifyValue == eMotorNotifyValue_BR) {                         /* 收到中终止命令 */
+                        error_Emit(eError_Sample_Initiative_Break);                                          /* 主动打断 */
+                        motor_Sample_Owari();                                                                /* 清理 */
+                        break;
                     }
                 }
                 comm_Data_RecordInit(); /* 初始化数据记录 */
@@ -1232,6 +1230,8 @@ static void motor_Task(void * argument)
                 motor_Stary_Test();     /* 杂散光测试 */
                 break;
             case eMotor_Fun_Correct:                        /* 定标 */
+                xTick = HAL_GetTick();                      /* 记录总体准备起始时间 */
+                Miscellaneous_Task_Notify(1);               /* 启动预先点灯 */
                 if (protocol_Debug_SampleBarcode() == 0) {  /* 非调试模式 */
                     motor_Tray_Move_By_Index(eTrayIndex_1); /* 扫码位置 */
                 }
@@ -1253,7 +1253,16 @@ static void motor_Task(void * argument)
                     motor_Tray_Move_By_Index(eTrayIndex_0);  /* 入仓 */
                     heat_Motor_Down();                       /* 砸下上加热体 */
                 }
-                white_Motor_PD(); /* 运动白板电机 PD位置 清零位置 */
+                white_Motor_PD();                                                                            /* 运动白板电机 PD位置 清零位置 */
+                cnt = HAL_GetTick() - xTick;                                                                 /* 耗时时间 */
+                if (cnt < pdMS_TO_TICKS(15 * 1000)) {                                                        /* 等待补全15秒 */
+                    xResult = xTaskNotifyWait(0, 0xFFFFFFFF, &xNotifyValue, pdMS_TO_TICKS(15 * 1000) - cnt); /* 等待任务通知 */
+                    if (xResult == pdPASS && xNotifyValue == eMotorNotifyValue_BR) {                         /* 收到中终止命令 */
+                        error_Emit(eError_Sample_Initiative_Break);                                          /* 主动打断 */
+                        motor_Sample_Owari();                                                                /* 清理 */
+                        break;
+                    }
+                }
 
                 for (radiant = eComm_Data_Sample_Radiant_610; radiant <= eComm_Data_Sample_Radiant_405; ++radiant) {
                     comm_Data_Sample_Send_Conf_Correct(buffer, radiant, MOTOR_CORRECT_POINT_NUM, eComm_Data_Outbound_CMD_TEST); /* 配置波长 点数 */
