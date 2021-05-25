@@ -1874,7 +1874,7 @@ class MainWindow(QMainWindow):
             if conf[-3] == 0 or conf[-1] == 0:
                 v = 0
             else:
-                v = conf[-1] * 10 + 7.2 - (12 if self.debug_flag_cbs[2].isChecked() else 0)
+                v = conf[-1] * 10 + 7.8
             self.matplot_timer_lbs[i].setText(f"{v:.1f}")
             self.sample_confs.append(SampleConf(conf[-3], conf[-2], conf[-1], self.matplot_conf_set_cs[i].currentText()))
         logger.debug(f"get matplot cnf | {conf}")
