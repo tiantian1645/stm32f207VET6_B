@@ -23,7 +23,7 @@ typedef enum {
 } eWhite_Motor_Status;
 
 /* Private define ------------------------------------------------------------*/
-#define DINGZHI 0
+#define DINGZHI 1
 #define HAYDON (1 - DINGZHI)
 #define WHITE_DONOT_MOVE 0
 #define MEASURE 0
