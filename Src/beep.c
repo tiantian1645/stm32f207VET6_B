@@ -27,7 +27,7 @@ typedef struct {
 } sBeep_Conf;
 
 /* Private define ------------------------------------------------------------*/
-#define BEEP_TIM htim9             /* 定时器9 */
+#define BEEP_TIM htim9 /* 定时器9 */
 #define BEEP_TIM_CHN TIM_CHANNEL_2 /* 通道2 */
 
 /* Private macro -------------------------------------------------------------*/
@@ -205,7 +205,7 @@ void beep_Deal(uint32_t res)
         return;
     }
 
-    ccer = BEEP_TIM.Instance->CCER & (1 <<BEEP_TIM_CHN);
+    ccer = BEEP_TIM.Instance->CCER & (1 << BEEP_TIM_CHN);
     if (gap % (gBeep_Conf.t_off + gBeep_Conf.t_on) > gBeep_Conf.t_on) {
         if (ccer) {
             HAL_TIM_PWM_Stop(&BEEP_TIM, BEEP_TIM_CHN); /* 停止PWM输出 */
@@ -225,9 +225,9 @@ void beep_Deal(uint32_t res)
 void beep_Init(void)
 {
     beep_Stop();
-    beep_Conf_Set_Period_Cnt(1);
+    beep_Conf_Set_Period_Cnt(5);
     beep_Conf_Set_T_on(500);
-    beep_Conf_Set_T_off(0);
+    beep_Conf_Set_T_off(500);
     beep_Conf_Set_Freq(eBeep_Freq_mi);
     beep_Start();
 }
